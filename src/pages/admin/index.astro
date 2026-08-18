@@ -1,0 +1,706 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import {
+  getAdminDashboardStats,
+  getSources,
+  getArticles,
+  getCategories,
+  getAutomationSettings,
+  getSiteSettings,
+  getAutomationLogs,
+} from '../../lib/db';
+
+const stats = getAdminDashboardStats();
+const sources = getSources();
+const articles = getArticles({ limit: 50, status: 'published' });
+const categories = getCategories();
+const automationSettings = getAutomationSettings();
+const siteSettings = getSiteSettings();
+const logs = getAutomationLogs(25);
+
+// Map settings array to lookup object
+const autoSettingsMap: Record<string, string> = {};
+for (const s of automationSettings) {
+  autoSettingsMap[s.key] = s.value;
+}
+---
+
+<Layout title="Editorial & Automation Admin Control - NaijaPulse">
+  <div id="admin-root" class="space-y-6">
+    <!-- Top Admin Header -->
+    <div class="p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">Admin & RSS Automation Hub</h1>
+        </div>
+        <p class="text-xs text-slate-400">Manage Nigerian RSS feeds, Groq AI restructuring, Cloudflare D1 storage and editorial content.</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          id="btn-trigger-all-crawl"
+          class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span>Sync All Feeds Now</span>
+        </button>
+
+        <button
+          id="btn-admin-logout"
+          class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors cursor-pointer"
+          title="Sign Out"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Articles</span>
+        <div class="text-xl font-black text-white font-mono">{stats.totalArticles}</div>
+      </div>
+      <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+        <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Active Feeds</span>
+        <div class="text-xl font-black text-emerald-400 font-mono">{stats.activeSources} / {stats.totalSources}</div>
+      </div>
+      <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+        <span class="text-[11px] font-bold text-sky-400 uppercase tracking-wider">Total Reads</span>
+        <div class="text-xl font-black text-sky-400 font-mono">{stats.totalViews.toLocaleString()}</div>
+      </div>
+      <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+        <span class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Engine</span>
+        <div class="text-xs font-bold text-amber-400 font-mono pt-1">Cloudflare D1</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center gap-1.5 border-b border-slate-800 pb-2 overflow-x-auto no-scrollbar">
+      <button data-tab="sources" class="admin-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white cursor-pointer">
+        RSS & API Sources ({sources.length})
+      </button>
+      <button data-tab="articles" class="admin-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition-all cursor-pointer">
+        Articles Manager
+      </button>
+      <button data-tab="automation" class="admin-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition-all cursor-pointer">
+        Groq AI & Workers
+      </button>
+      <button data-tab="settings" class="admin-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition-all cursor-pointer">
+        Site Settings
+      </button>
+      <button data-tab="logs" class="admin-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-900 transition-all cursor-pointer">
+        Audit Logs ({logs.length})
+      </button>
+    </div>
+
+    <!-- TAB 1: RSS & API SOURCES MANAGEMENT -->
+    <div id="tab-sources" class="admin-tab-content space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold text-white">Configured Nigerian News & Govt RSS Feeds</h2>
+          <p class="text-xs text-slate-400">Cloudflare Workers periodically fetch, parse, and verify these feeds.</p>
+        </div>
+        <button
+          id="btn-open-add-source"
+          class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+        >
+          <span>+ Add Feed</span>
+        </button>
+      </div>
+
+      <!-- Live Test Any RSS Feed Card -->
+      <div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">Live Feed Inspector & Validator</h3>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <input
+            type="url"
+            id="test-feed-input"
+            placeholder="https://punchng.com/feed/ or any RSS/Atom XML URL..."
+            value="https://punchng.com/feed/"
+            class="flex-1 h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500 font-mono"
+          />
+          <button
+            type="button"
+            id="btn-run-feed-test"
+            class="px-4 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+          >
+            Test Live Feed
+          </button>
+        </div>
+        <div id="feed-test-result" class="hidden p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 space-y-1"></div>
+      </div>
+
+      <!-- Sources Table List -->
+      <div class="space-y-2.5">
+        {sources.map((src) => (
+          <div class="p-3.5 rounded-xl bg-slate-900/40 border border-slate-800/80 hover:border-slate-700 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="space-y-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-white truncate">{src.name}</span>
+                {src.is_official === 1 && (
+                  <span class="px-1.5 py-0.5 rounded bg-sky-950 border border-sky-500/30 text-sky-400 text-[9px] font-bold uppercase font-mono">
+                    Official Govt/Verified
+                  </span>
+                )}
+                <span class="text-[10px] text-emerald-400 font-mono">Trust: {src.trust_score}%</span>
+              </div>
+              <div class="text-xs text-slate-400 font-mono truncate max-w-lg">{src.feed_url}</div>
+              <p class="text-[11px] text-slate-400 italic">{src.license_notes}</p>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button
+                onclick={`triggerSingleCrawl('${src.id}', '${src.name}')`}
+                class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors cursor-pointer"
+                title="Fetch this feed now"
+              >
+                Fetch Now
+              </button>
+              <button
+                onclick={`toggleSource('${src.id}', ${src.is_enabled ? 0 : 1})`}
+                class={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  src.is_enabled ? 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30' : 'bg-red-950 text-red-400 hover:bg-red-900'
+                }`}
+              >
+                {src.is_enabled ? 'Enabled' : 'Disabled'}
+              </button>
+              <button
+                onclick={`deleteSourceRecord('${src.id}')`}
+                class="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Delete feed"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- TAB 2: ARTICLES MANAGER -->
+    <div id="tab-articles" class="admin-tab-content hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold text-white">Articles & Editorial Catalog</h2>
+          <p class="text-xs text-slate-400">Review published stories, edit headlines, manage breaking/top flags.</p>
+        </div>
+        <button
+          id="btn-open-create-article"
+          class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+        >
+          <span>+ Create New Story</span>
+        </button>
+      </div>
+
+      <div class="space-y-2.5">
+        {articles.map((art) => (
+          <div class="p-3.5 rounded-xl bg-slate-900/40 border border-slate-800 flex items-start justify-between gap-3">
+            <div class="space-y-1 min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold text-emerald-400 uppercase font-mono">{art.category_name}</span>
+                {art.is_top_story === 1 && (
+                  <span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold uppercase font-mono">Top Story</span>
+                )}
+                {art.is_breaking === 1 && (
+                  <span class="px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 text-[9px] font-bold uppercase font-mono">Breaking</span>
+                )}
+                <span class="text-[10px] text-slate-400">{art.views_count} views</span>
+              </div>
+              <h4 class="text-sm font-bold text-white truncate">{art.title}</h4>
+              <p class="text-xs text-slate-400 line-clamp-1">{art.summary}</p>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0 pt-1">
+              <a
+                href={`/article/${art.slug}`}
+                target="_blank"
+                class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+              >
+                View
+              </a>
+              <button
+                onclick={`deleteArticleRecord('${art.id}')`}
+                class="p-1 rounded text-slate-400 hover:text-red-400 transition-colors cursor-pointer"
+                title="Delete story"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- TAB 3: GROQ AI & AUTOMATION SETTINGS -->
+    <div id="tab-automation" class="admin-tab-content hidden space-y-4">
+      <form id="automation-settings-form" class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+        <div>
+          <h2 class="text-base font-bold text-white">Groq AI Editorial Restructuring & Workers Engine</h2>
+          <p class="text-xs text-slate-400">Configure Cloudflare Workers ingestion pipelines and Groq LLM inference parameters.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Groq AI Inference Model</label>
+            <select
+              name="groq_model"
+              class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500 font-mono"
+            >
+              <option value="llama-3.3-70b-versatile" selected={autoSettingsMap.groq_model === 'llama-3.3-70b-versatile'}>
+                llama-3.3-70b-versatile (Recommended for News)
+              </option>
+              <option value="llama-3.1-8b-instant" selected={autoSettingsMap.groq_model === 'llama-3.1-8b-instant'}>
+                llama-3.1-8b-instant (Fastest Speed)
+              </option>
+              <option value="mixtral-8x7b-32768" selected={autoSettingsMap.groq_model === 'mixtral-8x7b-32768'}>
+                mixtral-8x7b-32768
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Cron Trigger Interval (Minutes)</label>
+            <input
+              type="number"
+              name="cron_interval_minutes"
+              value={autoSettingsMap.cron_interval_minutes || '30'}
+              class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500 font-mono"
+            />
+          </div>
+
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-bold text-slate-300 mb-1">Editorial Synthesis Prompt Template</label>
+            <textarea
+              name="ai_prompt_template"
+              rows="3"
+              class="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500 font-sans"
+            >{autoSettingsMap.ai_prompt_template}</textarea>
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end">
+          <button
+            type="submit"
+            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors cursor-pointer shadow-md"
+          >
+            Save Automation Settings
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- TAB 4: SITE SETTINGS -->
+    <div id="tab-settings" class="admin-tab-content hidden space-y-4">
+      <form id="site-settings-form" class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+        <div>
+          <h2 class="text-base font-bold text-white">General & SEO Settings</h2>
+          <p class="text-xs text-slate-400">Configure public metadata, contact information, and security keys.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Publication Name</label>
+            <input
+              type="text"
+              name="site_name"
+              value={siteSettings.site_name || 'NaijaPulse'}
+              class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Tagline</label>
+            <input
+              type="text"
+              name="site_tagline"
+              value={siteSettings.site_tagline || 'Your Pulse. Our Nation. Fast. Verified. Unbiased.'}
+              class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Editorial Desk Email</label>
+            <input
+              type="email"
+              name="contact_email"
+              value={siteSettings.contact_email || 'editor@naijapulse.ng'}
+              class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500 font-mono"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Admin Access Password</label>
+            <input
+              type="password"
+              name="admin_password"
+              value={siteSettings.admin_password || 'admin123'}
+              class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500 font-mono"
+            />
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end">
+          <button
+            type="submit"
+            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors cursor-pointer shadow-md"
+          >
+            Save Site Settings
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- TAB 5: AUDIT LOGS -->
+    <div id="tab-logs" class="admin-tab-content hidden space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-bold text-white">System & Ingestion Audit Trail</h2>
+        <span class="text-xs text-slate-400 font-mono">Last 25 Events</span>
+      </div>
+
+      <div class="space-y-2">
+        {logs.map((log) => (
+          <div class="p-3 rounded-xl bg-slate-900/40 border border-slate-800 text-xs font-mono flex items-start justify-between gap-3">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase ${
+                  log.level === 'error' ? 'bg-red-950 text-red-400' : log.level === 'warning' ? 'bg-amber-950 text-amber-400' : 'bg-emerald-950 text-emerald-400'
+                }`}>
+                  {log.event_type}
+                </span>
+                {log.source_name && <span class="text-slate-400">[{log.source_name}]</span>}
+              </div>
+              <p class="text-slate-200 font-sans text-xs">{log.message}</p>
+            </div>
+            <span class="text-[10px] text-slate-400 shrink-0">{new Date(log.created_at).toLocaleTimeString()}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD SOURCE MODAL -->
+  <dialog id="modal-add-source" class="p-0 rounded-2xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl backdrop:bg-black/70 max-w-lg w-full">
+    <form id="form-add-source" class="p-6 space-y-4">
+      <h3 class="text-base font-bold text-white">Add New RSS / News Feed</h3>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Source Name</label>
+          <input type="text" name="name" required placeholder="e.g. Daily Trust Nigeria" class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">RSS / Atom Feed URL</label>
+          <input type="url" name="feed_url" required placeholder="https://..." class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500 font-mono" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Default Category</label>
+          <select name="category_default_id" class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500">
+            {categories.map((c) => (
+              <option value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">License & Attribution Notes</label>
+          <input type="text" name="license_notes" value="Permitted RSS headlines feed with canonical link and credit." class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500" />
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+        <button type="button" onclick="document.getElementById('modal-add-source').close()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer">Cancel</button>
+        <button type="submit" class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer">Save Source</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- CREATE ARTICLE MODAL -->
+  <dialog id="modal-create-article" class="p-0 rounded-2xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl backdrop:bg-black/70 max-w-xl w-full">
+    <form id="form-create-article" class="p-6 space-y-4">
+      <h3 class="text-base font-bold text-white">Create New Editorial News Story</h3>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Story Title</label>
+          <input type="text" name="title" required placeholder="Enter compelling factual headline..." class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Summary Lead</label>
+          <textarea name="summary" rows="2" required placeholder="1-2 sentences summarizing the story..." class="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Category</label>
+          <select name="category_id" class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500">
+            {categories.map((c) => (
+              <option value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Image URL</label>
+          <input type="url" name="image_url" value="https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80" class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500 font-mono" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Image Caption & Credit</label>
+          <input type="text" name="image_credit" value="NaijaPulse Media" class="w-full h-10 px-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Full Article Body (HTML / Paragraphs)</label>
+          <textarea name="content" rows="6" required placeholder="<p>Paragraph 1...</p><p>Paragraph 2...</p>" class="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-emerald-500 font-mono"></textarea>
+        </div>
+        <div class="flex items-center gap-4 text-xs font-semibold text-slate-300">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" name="is_top_story" value="1" class="rounded bg-slate-950 text-emerald-600 focus:ring-0" />
+            Top Story
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" name="is_trending" value="1" class="rounded bg-slate-950 text-emerald-600 focus:ring-0" />
+            Trending
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" name="is_breaking" value="1" class="rounded bg-slate-950 text-emerald-600 focus:ring-0" />
+            Breaking Alert
+          </label>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+        <button type="button" onclick="document.getElementById('modal-create-article').close()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer">Cancel</button>
+        <button type="submit" class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer">Publish Story</button>
+      </div>
+    </form>
+  </dialog>
+</Layout>
+
+<script is:inline>
+  // Simple Session Auth Guard
+  const auth = sessionStorage.getItem('naijapulse_admin_auth');
+  if (!auth) {
+    window.location.href = '/admin/login';
+  }
+
+  // Logout
+  document.getElementById('btn-admin-logout')?.addEventListener('click', () => {
+    sessionStorage.removeItem('naijapulse_admin_auth');
+    window.location.href = '/admin/login';
+  });
+
+  // Tab switching
+  const tabs = document.querySelectorAll('.admin-tab-btn');
+  const contents = document.querySelectorAll('.admin-tab-content');
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const target = tab.getAttribute('data-tab');
+      tabs.forEach((t) => {
+        t.classList.remove('bg-emerald-600', 'text-white');
+        t.classList.add('text-slate-400');
+      });
+      tab.classList.add('bg-emerald-600', 'text-white');
+      tab.classList.remove('text-slate-400');
+
+      contents.forEach((c) => c.classList.add('hidden'));
+      document.getElementById(`tab-${target}`)?.classList.remove('hidden');
+    });
+  });
+
+  // Modals open
+  document.getElementById('btn-open-add-source')?.addEventListener('click', () => {
+    document.getElementById('modal-add-source')?.showModal();
+  });
+  document.getElementById('btn-open-create-article')?.addEventListener('click', () => {
+    document.getElementById('modal-create-article')?.showModal();
+  });
+
+  // Live Test Feed handler
+  document.getElementById('btn-run-feed-test')?.addEventListener('click', async () => {
+    const url = document.getElementById('test-feed-input')?.value;
+    const resultBox = document.getElementById('feed-test-result');
+    if (!url || !resultBox) return;
+
+    resultBox.classList.remove('hidden');
+    resultBox.innerHTML = '<span class="text-amber-400">Connecting and fetching RSS feed XML...</span>';
+
+    try {
+      const res = await fetch('/api/admin/test-feed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feed_url: url }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        resultBox.innerHTML = `
+          <div class="text-emerald-400 font-bold">✓ Feed Valid & Accessible (${data.itemCount} items parsed)</div>
+          <div><strong>Feed Title:</strong> ${data.title}</div>
+          <div><strong>Latest Headline:</strong> ${data.items?.[0]?.title || 'N/A'}</div>
+          <div><strong>Publication Date:</strong> ${data.items?.[0]?.pubDate || 'N/A'}</div>
+        `;
+      } else {
+        resultBox.innerHTML = `<span class="text-red-400">✗ Failed: ${data.error}</span>`;
+      }
+    } catch (err) {
+      resultBox.innerHTML = `<span class="text-red-400">✗ Network error: ${err.message}</span>`;
+    }
+  });
+
+  // Trigger all crawl
+  document.getElementById('btn-trigger-all-crawl')?.addEventListener('click', async () => {
+    window.showToast?.('Triggering Cloudflare RSS ingestion pipeline...', 'info');
+    try {
+      const res = await fetch('/api/admin/trigger-crawl', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        window.showToast?.(`Ingestion complete: ${data.totalIngested} new items indexed!`, 'success');
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    } catch {
+      window.showToast?.('Error triggering crawl', 'error');
+    }
+  });
+
+  // Trigger single crawl
+  window.triggerSingleCrawl = async function(id, name) {
+    window.showToast?.(`Fetching ${name}...`, 'info');
+    try {
+      const res = await fetch('/api/admin/trigger-crawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_id: id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.showToast?.(`Synchronized ${name} successfully!`, 'success');
+        setTimeout(() => window.location.reload(), 1000);
+      }
+    } catch {
+      window.showToast?.('Error fetching source', 'error');
+    }
+  };
+
+  // Toggle source
+  window.toggleSource = async function(id, is_enabled) {
+    try {
+      const res = await fetch('/api/admin/sources', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_enabled: is_enabled === 1 }),
+      });
+      if (res.ok) {
+        window.showToast?.('Source status updated', 'success');
+        window.location.reload();
+      }
+    } catch {}
+  };
+
+  // Delete source
+  window.deleteSourceRecord = async function(id) {
+    if (confirm('Are you sure you want to remove this RSS source?')) {
+      try {
+        const res = await fetch('/api/admin/sources', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        if (res.ok) {
+          window.showToast?.('Source deleted');
+          window.location.reload();
+        }
+      } catch {}
+    }
+  };
+
+  // Delete article
+  window.deleteArticleRecord = async function(id) {
+    if (confirm('Are you sure you want to delete this article?')) {
+      try {
+        const res = await fetch('/api/admin/articles', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        if (res.ok) {
+          window.showToast?.('Article removed');
+          window.location.reload();
+        }
+      } catch {}
+    }
+  };
+
+  // Add source form submit
+  document.getElementById('form-add-source')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const body = Object.fromEntries(formData.entries());
+    try {
+      const res = await fetch('/api/admin/sources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        window.showToast?.('New source added successfully!', 'success');
+        window.location.reload();
+      }
+    } catch {}
+  });
+
+  // Create article form submit
+  document.getElementById('form-create-article')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const body = Object.fromEntries(formData.entries());
+    body.is_top_story = body.is_top_story === '1';
+    body.is_trending = body.is_trending === '1';
+    body.is_breaking = body.is_breaking === '1';
+    try {
+      const res = await fetch('/api/admin/articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        window.showToast?.('Story published successfully!', 'success');
+        window.location.reload();
+      }
+    } catch {}
+  });
+
+  // Automation settings save
+  document.getElementById('automation-settings-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const settings = Object.fromEntries(formData.entries());
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'automation', settings }),
+      });
+      if (res.ok) {
+        window.showToast?.('Automation settings saved!', 'success');
+      }
+    } catch {}
+  });
+
+  // Site settings save
+  document.getElementById('site-settings-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const settings = Object.fromEntries(formData.entries());
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'site', settings }),
+      });
+      if (res.ok) {
+        window.showToast?.('Site settings updated!', 'success');
+      }
+    } catch {}
+  });
+</script>

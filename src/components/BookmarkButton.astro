@@ -1,0 +1,92 @@
+---
+interface Props {
+  article: {
+    id: string;
+    slug: string;
+    title: string;
+    category_name?: string;
+    image_url: string;
+    published_at: string;
+    reading_time_minutes: number;
+  };
+}
+
+const { article } = Astro.props;
+---
+
+<button
+  type="button"
+  id={`bookmark-btn-${article.id}`}
+  data-article={JSON.stringify(article)}
+  class="bookmark-toggle-btn p-2 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer"
+  title="Save for offline reading"
+>
+  <svg class="w-5 h-5 bookmark-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+  </svg>
+</button>
+
+<script is:inline>
+  function setupBookmarkButtons() {
+    document.querySelectorAll('.bookmark-toggle-btn').forEach((btn) => {
+      if (btn.hasAttribute('data-initialized')) return;
+      btn.setAttribute('data-initialized', 'true');
+
+      const raw = btn.getAttribute('data-article');
+      if (!raw) return;
+      const article = JSON.parse(raw);
+      const icon = btn.querySelector('.bookmark-icon');
+
+      // Check current saved status
+      const getBookmarks = () => {
+        try {
+          return JSON.parse(localStorage.getItem('naijapulse_bookmarks') || '[]');
+        } catch {
+          return [];
+        }
+      };
+
+      const isSaved = () => getBookmarks().some((item) => item.id === article.id);
+
+      const updateUI = () => {
+        if (isSaved()) {
+          icon?.setAttribute('fill', 'currentColor');
+          btn.classList.add('text-emerald-400');
+        } else {
+          icon?.setAttribute('fill', 'none');
+          btn.classList.remove('text-emerald-400');
+        }
+      };
+
+      updateUI();
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        let list = getBookmarks();
+        if (isSaved()) {
+          list = list.filter((item) => item.id !== article.id);
+          localStorage.setItem('naijapulse_bookmarks', JSON.stringify(list));
+          updateUI();
+          window.showToast?.('Removed from Saved Articles');
+        } else {
+          list.unshift(article);
+          localStorage.setItem('naijapulse_bookmarks', JSON.stringify(list));
+          updateUI();
+          window.showToast?.('Saved to Offline Reading List', 'success');
+        }
+
+        // Update badge
+        const badge = document.getElementById('saved-badge');
+        if (badge) {
+          if (list.length > 0) badge.classList.remove('hidden');
+          else badge.classList.add('hidden');
+        }
+      });
+    });
+  }
+
+  setupBookmarkButtons();
+  document.addEventListener('astro:page-load', setupBookmarkButtons);
+</script>

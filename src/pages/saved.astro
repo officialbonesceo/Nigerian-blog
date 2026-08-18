@@ -1,0 +1,112 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Saved Stories - NaijaPulse"
+  description="Your offline reading list and bookmarked Nigerian news stories."
+  activeNav="saved"
+>
+  <div class="space-y-4">
+    <!-- Header -->
+    <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+          Saved Stories
+        </h1>
+        <p class="text-xs text-slate-400 mt-0.5">Stored locally on your device for fast offline reading</p>
+      </div>
+
+      <button
+        id="btn-clear-all-saved"
+        class="text-xs text-slate-400 hover:text-red-400 transition-colors p-2 cursor-pointer"
+      >
+        Clear All
+      </button>
+    </div>
+
+    <!-- Container for dynamic bookmarks -->
+    <div id="saved-list" class="space-y-2.5"></div>
+
+    <!-- Empty State -->
+    <div id="saved-empty" class="hidden p-12 text-center bg-slate-900/40 rounded-2xl border border-slate-800 space-y-3">
+      <div class="w-12 h-12 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center mx-auto text-xl">
+        📑
+      </div>
+      <h3 class="text-base font-bold text-white">No saved stories yet</h3>
+      <p class="text-xs text-slate-400 max-w-sm mx-auto">
+        Tap the bookmark icon on any news headline or reading page to save it here for offline reading.
+      </p>
+      <a
+        href="/"
+        class="inline-block px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors"
+      >
+        Explore Breaking News
+      </a>
+    </div>
+  </div>
+</Layout>
+
+<script is:inline>
+  function renderSavedArticles() {
+    const listContainer = document.getElementById('saved-list');
+    const emptyState = document.getElementById('saved-empty');
+    if (!listContainer || !emptyState) return;
+
+    let saved = [];
+    try {
+      saved = JSON.parse(localStorage.getItem('naijapulse_bookmarks') || '[]');
+    } catch {}
+
+    if (saved.length === 0) {
+      listContainer.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      return;
+    }
+
+    emptyState.classList.add('hidden');
+    listContainer.innerHTML = saved.map((art) => `
+      <article class="p-3 sm:p-4 rounded-xl bg-slate-900/40 hover:bg-slate-900 border border-slate-800 transition-all flex items-start justify-between gap-3 group">
+        <div class="flex-1 min-w-0 space-y-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-500 font-mono">
+            ${art.category_name || 'News'}
+          </span>
+          <h3 class="text-sm font-bold text-slate-100 group-hover:text-emerald-400 leading-snug line-clamp-2">
+            <a href="/article/${art.slug}">${art.title}</a>
+          </h3>
+          <div class="flex items-center gap-2 text-[11px] text-slate-400 pt-1">
+            <span>${art.reading_time_minutes || 4} min read</span>
+            <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+            <button onclick="removeBookmark('${art.id}')" class="text-red-400 hover:text-red-300 text-[10px] font-semibold cursor-pointer">
+              Remove
+            </button>
+          </div>
+        </div>
+        <a href="/article/${art.slug}" class="shrink-0 relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-slate-800">
+          <img src="${art.image_url}" alt="${art.title}" class="w-full h-full object-cover" />
+        </a>
+      </article>
+    `).join('');
+  }
+
+  window.removeBookmark = function(id) {
+    let saved = JSON.parse(localStorage.getItem('naijapulse_bookmarks') || '[]');
+    saved = saved.filter(item => item.id !== id);
+    localStorage.setItem('naijapulse_bookmarks', JSON.stringify(saved));
+    renderSavedArticles();
+    window.showToast?.('Removed from saved stories');
+  };
+
+  document.getElementById('btn-clear-all-saved')?.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all saved stories?')) {
+      localStorage.removeItem('naijapulse_bookmarks');
+      renderSavedArticles();
+      window.showToast?.('Cleared all saved stories');
+    }
+  });
+
+  renderSavedArticles();
+</script>

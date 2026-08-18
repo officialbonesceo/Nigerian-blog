@@ -1,0 +1,62 @@
+---
+import type { Article } from '../lib/types';
+
+interface Props {
+  article: Article;
+  showCategory?: boolean;
+}
+
+const { article, showCategory = true } = Astro.props;
+
+// Calculate relative time (e.g. "2h ago")
+function getRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `${Math.max(1, minutes)}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+const timeAgo = getRelativeTime(article.published_at);
+---
+
+<article class="p-3 sm:p-4 rounded-xl bg-slate-900/40 hover:bg-slate-900 border border-slate-800/80 hover:border-slate-700/80 transition-all duration-200 group">
+  <div class="flex items-start justify-between gap-3.5">
+    <!-- Left Details -->
+    <div class="flex-1 min-w-0 space-y-1.5">
+      {showCategory && (
+        <a
+          href={`/category/${article.category_slug || 'politics'}`}
+          class="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-500 hover:text-emerald-400 font-mono"
+        >
+          {article.category_name || 'News'}
+        </a>
+      )}
+
+      <h3 class="text-sm sm:text-base font-bold text-slate-100 group-hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
+        <a href={`/article/${article.slug}`}>
+          {article.title}
+        </a>
+      </h3>
+
+      <div class="flex items-center gap-2 text-[11px] text-slate-400 pt-0.5">
+        <span>{timeAgo}</span>
+        <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+        <span>{article.reading_time_minutes} min read</span>
+      </div>
+    </div>
+
+    <!-- Right Image Thumbnail -->
+    <a href={`/article/${article.slug}`} class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-slate-800">
+      <img
+        src={article.image_url}
+        alt={article.title}
+        loading="lazy"
+        decoding="async"
+        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+      />
+    </a>
+  </div>
+</article>

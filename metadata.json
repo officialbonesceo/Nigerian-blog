@@ -1,0 +1,6 @@
+{
+  "name": "NaijaPulse News",
+  "description": "Mobile-first Nigerian news platform built with Astro, TypeScript, Cloudflare Workers and D1 database.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

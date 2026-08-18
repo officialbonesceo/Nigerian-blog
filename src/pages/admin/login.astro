@@ -1,0 +1,54 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getSiteSettings } from '../../lib/db';
+
+const settings = getSiteSettings();
+const siteName = settings.site_name || 'NaijaPulse';
+---
+
+<Layout title={`Admin Login - ${siteName}`}>
+  <div class="max-w-md mx-auto my-12 p-6 sm:p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl space-y-6">
+    <div class="text-center space-y-2">
+      <div class="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white mx-auto shadow-lg shadow-emerald-600/20">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
+      <h1 class="text-xl font-black text-white">Editorial Admin Control</h1>
+      <p class="text-xs text-slate-400">Enter your secure editorial administrator password</p>
+    </div>
+
+    <form id="admin-login-form" class="space-y-4">
+      <div>
+        <label for="admin-password" class="block text-xs font-semibold text-slate-300 mb-1.5">Admin Key / Password</label>
+        <input
+          type="password"
+          id="admin-password"
+          required
+          placeholder="••••••••••••"
+          class="w-full h-11 px-3.5 bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl text-sm text-white outline-none transition-all"
+        />
+        <p class="text-[11px] text-slate-500 mt-1">Default development key: <code class="text-emerald-400 font-mono">admin123</code></p>
+      </div>
+
+      <button
+        type="submit"
+        id="btn-login-submit"
+        class="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-all flex items-center justify-center cursor-pointer shadow-md"
+      >
+        Sign In to Portal
+      </button>
+    </form>
+  </div>
+</Layout>
+
+<script is:inline>
+  document.getElementById('admin-login-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const pwd = document.getElementById('admin-password')?.value;
+    if (pwd) {
+      sessionStorage.setItem('naijapulse_admin_auth', pwd);
+      window.location.href = '/admin';
+    }
+  });
+</script>
