@@ -1,25 +1,11 @@
+# Cloudflare Pages Configuration for 9jaBeacon Frontend
 name = "9jabeacon-news"
-main = "./workers/cron-ingest.ts"
+pages_build_output_dir = "dist"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-# Cloudflare D1 Database Binding
-[[d1_databases]]
-binding = "DB"
-database_name = "9jabeacon-d1"
-database_id = "9jabeacon-d1-production"
-migrations_dir = "./migrations"
-
-# Cloudflare Cron Triggers for automated periodic RSS crawling
-[triggers]
-crons = ["*/30 * * * *"] # Run every 30 minutes to fetch and process Nigerian RSS news
-
-# Public Environment Variables
 [vars]
 ENVIRONMENT = "production"
-SITE_URL = "https://9jabeacon.pages.dev"
 SITE_NAME = "9jaBeacon"
+SITE_URL = "https://9jabeacon.pages.dev"
 
-# Groq API and Admin Secrets:
-# npx wrangler secret put GROQ_API_KEY
-# npx wrangler secret put ADMIN_SECRET

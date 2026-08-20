@@ -2,7 +2,14 @@
 import Layout from '../../layouts/Layout.astro';
 import ArticleCard from '../../components/ArticleCard.astro';
 import BookmarkButton from '../../components/BookmarkButton.astro';
-import { getArticleBySlug, getRelatedArticles } from '../../lib/db';
+import { getArticleBySlug, getRelatedArticles, getArticles } from '../../lib/db';
+
+export async function getStaticPaths() {
+  const articles = getArticles({ limit: 1000 });
+  return articles.map((art) => ({
+    params: { slug: art.slug },
+  }));
+}
 
 const { slug } = Astro.params;
 

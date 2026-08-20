@@ -4,6 +4,13 @@ import ArticleCard from '../../components/ArticleCard.astro';
 import TopStoryCard from '../../components/TopStoryCard.astro';
 import { getCategoryBySlug, getArticles, getCategories } from '../../lib/db';
 
+export async function getStaticPaths() {
+  const categories = getCategories();
+  return categories.map((cat) => ({
+    params: { slug: cat.slug },
+  }));
+}
+
 const { slug } = Astro.params;
 
 if (!slug) {
