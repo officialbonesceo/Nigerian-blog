@@ -40,7 +40,7 @@ const { article } = Astro.props;
       // Check current saved status
       const getBookmarks = () => {
         try {
-          return JSON.parse(localStorage.getItem('naijapulse_bookmarks') || '[]');
+          return JSON.parse(localStorage.getItem('9jabeacon_bookmarks') || localStorage.getItem('naijapulse_bookmarks') || '[]');
         } catch {
           return [];
         }
@@ -67,11 +67,13 @@ const { article } = Astro.props;
         let list = getBookmarks();
         if (isSaved()) {
           list = list.filter((item) => item.id !== article.id);
+          localStorage.setItem('9jabeacon_bookmarks', JSON.stringify(list));
           localStorage.setItem('naijapulse_bookmarks', JSON.stringify(list));
           updateUI();
           window.showToast?.('Removed from Saved Articles');
         } else {
           list.unshift(article);
+          localStorage.setItem('9jabeacon_bookmarks', JSON.stringify(list));
           localStorage.setItem('naijapulse_bookmarks', JSON.stringify(list));
           updateUI();
           window.showToast?.('Saved to Offline Reading List', 'success');

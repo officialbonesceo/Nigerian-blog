@@ -19,7 +19,7 @@ interface Props {
 }
 
 const {
-  title = 'NaijaPulse - Your Pulse. Our Nation. Nigerian News Today',
+  title = '9jaBeacon - Your Trusted Light on Nigerian News',
   description = 'Fast, verified and unbiased breaking news from Nigeria. National politics, business, economy, sports, tech, energy, and global diaspora updates.',
   image = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
   article,
@@ -29,16 +29,31 @@ const {
 
 const categories = getCategories();
 const siteSettings = getSiteSettings();
-const siteName = siteSettings.site_name || 'NaijaPulse';
+const siteName = siteSettings.site_name || '9jaBeacon';
 ---
 
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2246%22 fill=%22%23008751%22/><path d=%22M25 50h12l8-22 10 44 8-22h12%22 stroke=%22white%22 stroke-width=%228%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 fill=%22none%22/></svg>" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2246%22 fill=%22%23008751%22/><path d=%22M50 15v18M50 67v18M25 25l13 13M62 62l13 13M15 50h18M67 50h18M25 75l13-13M62 38l13-13%22 stroke=%22white%22 stroke-width=%228%22 stroke-linecap=%22round%22/><circle cx=%2250%22 cy=%2250%22 r=%2212%22 fill=%22white%22/></svg>" />
     <link rel="canonical" href={canonicalUrl} />
+    
+    <!-- Inline Theme Initializer (Prevents FOUC Flash) -->
+    <script is:inline>
+      (function() {
+        const saved = localStorage.getItem('9jabeacon_theme') || localStorage.getItem('naijapulse_theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (saved === 'dark' || (!saved && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        } else if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
     
     <!-- SEO Meta Tags -->
     <title>{title}</title>
@@ -68,7 +83,7 @@ const siteName = siteSettings.site_name || 'NaijaPulse';
     <meta property="twitter:title" content={title} />
     <meta property="twitter:description" content={description} />
     <meta property="twitter:image" content={image} />
-    <meta property="twitter:site" content="@NaijaPulseNg" />
+    <meta property="twitter:site" content="@9jaBeacon" />
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -86,7 +101,7 @@ const siteName = siteSettings.site_name || 'NaijaPulse';
         "dateModified": article.modifiedTime || article.publishedTime,
         "author": [{
           "@type": "Person",
-          "name": article.author || "NaijaPulse Desk"
+          "name": article.author || "9jaBeacon Desk"
         }],
         "publisher": {
           "@type": "Organization",
@@ -117,9 +132,16 @@ const siteName = siteSettings.site_name || 'NaijaPulse';
         -webkit-tap-highlight-color: transparent;
       }
       body {
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      }
+      /* Light / Dark Mode Global Overrides */
+      html:not(.dark) body {
+        background-color: #f8fafc;
+        color: #0f172a;
+      }
+      html.dark body {
         background-color: #080d1a;
         color: #e2e8f0;
-        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       }
       /* Clean mobile scrollbars */
       ::-webkit-scrollbar {
@@ -129,8 +151,12 @@ const siteName = siteSettings.site_name || 'NaijaPulse';
       ::-webkit-scrollbar-track {
         background: transparent;
       }
-      ::-webkit-scrollbar-thumb {
+      html.dark ::-webkit-scrollbar-thumb {
         background: #1e293b;
+        border-radius: 4px;
+      }
+      html:not(.dark) ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
         border-radius: 4px;
       }
       .no-scrollbar::-webkit-scrollbar {
@@ -149,14 +175,28 @@ const siteName = siteSettings.site_name || 'NaijaPulse';
         padding-left: 1.2rem;
         margin: 1.5rem 0;
         font-style: italic;
+      }
+      html.dark .article-content blockquote {
         color: #94a3b8;
+      }
+      html:not(.dark) .article-content blockquote {
+        color: #475569;
+        background-color: #f1f5f9;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-radius: 0 0.5rem 0.5rem 0;
       }
       .article-content h3 {
         font-size: 1.25rem;
         font-weight: 700;
         margin-top: 1.8rem;
         margin-bottom: 0.8rem;
+      }
+      html.dark .article-content h3 {
         color: #f8fafc;
+      }
+      html:not(.dark) .article-content h3 {
+        color: #0f172a;
       }
       .article-content ul {
         list-style-type: disc;
@@ -168,7 +208,7 @@ const siteName = siteSettings.site_name || 'NaijaPulse';
       }
     </style>
   </head>
-  <body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 antialiased pb-20 md:pb-6 selection:bg-emerald-600 selection:text-white">
+  <body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased pb-20 md:pb-6 selection:bg-emerald-600 selection:text-white transition-colors duration-200">
     <!-- Top Header -->
     <Header siteName={siteName} categories={categories} />
 
@@ -187,6 +227,23 @@ const siteName = siteSettings.site_name || 'NaijaPulse';
     <div id="toast-container" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-2 transition-all"></div>
 
     <script is:inline>
+      // Global Theme Toggler
+      window.toggleTheme = function() {
+        const isDark = document.documentElement.classList.contains('dark');
+        if (isDark) {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('9jabeacon_theme', 'light');
+          localStorage.setItem('naijapulse_theme', 'light');
+          window.showToast?.('Switched to Light mode', 'info');
+        } else {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('9jabeacon_theme', 'dark');
+          localStorage.setItem('naijapulse_theme', 'dark');
+          window.showToast?.('Switched to Dark mode', 'info');
+        }
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: isDark ? 'light' : 'dark' } }));
+      };
+
       // Global Toast helper
       window.showToast = function(message, type = 'info') {
         const container = document.getElementById('toast-container');
@@ -195,7 +252,7 @@ const siteName = siteSettings.site_name || 'NaijaPulse';
         toast.className = `px-4 py-2 rounded-full text-xs font-semibold shadow-xl border backdrop-blur-md transition-all duration-300 transform translate-y-2 opacity-0 flex items-center gap-2 ${
           type === 'success' 
             ? 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200' 
-            : 'bg-slate-900/90 border-slate-700 text-slate-100'
+            : 'bg-slate-900/90 border-slate-700 text-slate-100 dark:bg-slate-900/90 dark:border-slate-700 dark:text-slate-100'
         }`;
         toast.innerHTML = `<span>${message}</span>`;
         container.appendChild(toast);

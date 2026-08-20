@@ -6,15 +6,15 @@ interface Props {
 const { activeNav = 'home' } = Astro.props;
 ---
 
-<nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800/80 px-2 py-1.5 safe-area-bottom">
+<nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800/80 px-2 py-1.5 safe-area-bottom transition-colors">
   <div class="flex items-center justify-around max-w-md mx-auto">
     <!-- Home -->
     <a
       href="/"
       class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
         activeNav === 'home'
-          ? 'text-emerald-500 font-bold'
-          : 'text-slate-400 hover:text-slate-200'
+          ? 'text-emerald-600 dark:text-emerald-500 font-bold'
+          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
     >
       <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -28,8 +28,8 @@ const { activeNav = 'home' } = Astro.props;
       href="/category/politics"
       class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
         activeNav === 'category'
-          ? 'text-emerald-500 font-bold'
-          : 'text-slate-400 hover:text-slate-200'
+          ? 'text-emerald-600 dark:text-emerald-500 font-bold'
+          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
     >
       <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -43,8 +43,8 @@ const { activeNav = 'home' } = Astro.props;
       href="/search"
       class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
         activeNav === 'search'
-          ? 'text-emerald-500 font-bold'
-          : 'text-slate-400 hover:text-slate-200'
+          ? 'text-emerald-600 dark:text-emerald-500 font-bold'
+          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
     >
       <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -58,8 +58,8 @@ const { activeNav = 'home' } = Astro.props;
       href="/saved"
       class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all relative ${
         activeNav === 'saved'
-          ? 'text-emerald-500 font-bold'
-          : 'text-slate-400 hover:text-slate-200'
+          ? 'text-emerald-600 dark:text-emerald-500 font-bold'
+          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
     >
       <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -73,10 +73,10 @@ const { activeNav = 'home' } = Astro.props;
     <button
       id="btn-nav-menu"
       type="button"
-      class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+      class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
         activeNav === 'menu'
-          ? 'text-emerald-500 font-bold'
-          : 'text-slate-400 hover:text-slate-200'
+          ? 'text-emerald-600 dark:text-emerald-500 font-bold'
+          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
     >
       <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -90,7 +90,7 @@ const { activeNav = 'home' } = Astro.props;
 <script is:inline>
   // Update saved badge on client load
   try {
-    const saved = JSON.parse(localStorage.getItem('naijapulse_bookmarks') || '[]');
+    const saved = JSON.parse(localStorage.getItem('9jabeacon_bookmarks') || localStorage.getItem('naijapulse_bookmarks') || '[]');
     const badge = document.getElementById('saved-badge');
     if (badge && saved.length > 0) {
       badge.classList.remove('hidden');

@@ -2,13 +2,33 @@ import Database from 'better-sqlite3';
 import { initialCategories, initialSources, initialArticles } from './seed-data';
 import type { Article, Category, Source, AutomationSetting, AutomationLog } from './types';
 import path from 'node:path';
+import fs from 'node:fs';
 
 // Initialize SQLite Database (Simulates Cloudflare D1 locally in Node/Astro dev)
-const dbPath = path.resolve(process.cwd(), 'naijapulse.db');
-const db = new Database(dbPath);
+const dbPath = path.resolve(process.cwd(), '9jabeacon.db');
 
-// Enable WAL mode for high performance concurrent reads
-db.pragma('journal_mode = WAL');
+function openDatabase() {
+  try {
+    const instance = new Database(dbPath);
+    instance.pragma('journal_mode = WAL');
+    return instance;
+  } catch (err: any) {
+    if (err?.code === 'SQLITE_CORRUPT' || String(err).includes('malformed')) {
+      console.warn('[Database] Database file was corrupted, resetting clean database...');
+      try {
+        if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+        if (fs.existsSync(`${dbPath}-wal`)) fs.unlinkSync(`${dbPath}-wal`);
+        if (fs.existsSync(`${dbPath}-shm`)) fs.unlinkSync(`${dbPath}-shm`);
+      } catch {}
+      const instance = new Database(dbPath);
+      instance.pragma('journal_mode = WAL');
+      return instance;
+    }
+    throw err;
+  }
+}
+
+export const db = openDatabase();
 
 // Execute migrations and initial seed setup
 function initDatabase() {
@@ -50,7 +70,7 @@ function initDatabase() {
       image_caption TEXT,
       image_credit TEXT,
       image_license TEXT,
-      author_name TEXT DEFAULT 'NaijaPulse Desk',
+      author_name TEXT DEFAULT '9jaBeacon Desk',
       author_role TEXT DEFAULT 'Editorial Contributor',
       author_avatar TEXT,
       is_top_story INTEGER DEFAULT 0,
@@ -147,11 +167,11 @@ function initDatabase() {
   const settingsCount = db.prepare('SELECT COUNT(*) as count FROM automation_settings').get() as { count: number };
   if (settingsCount.count === 0) {
     const insertSetting = db.prepare(`INSERT INTO automation_settings (key, value, description) VALUES (?, ?, ?)`);
-    insertSetting.run('groq_model', 'llama-3.3-70b-versatile', 'Selected Groq LLM model for Nigerian news editorial restructuring');
+    insertSetting.run('groq_model', 'llama-3.1-8b-instant', 'Selected active Groq LLM model for Nigerian news editorial restructuring');
     insertSetting.run('groq_api_key', '', 'API Key for Groq Cloud inference');
     insertSetting.run('auto_publish', 'false', 'Automatically publish rewritten articles or hold in draft state for review');
     insertSetting.run('cron_interval_minutes', '30', 'Cloudflare Workers scheduled trigger interval');
-    insertSetting.run('ai_prompt_template', `You are an expert Nigerian news editor and fact-checker at NaijaPulse. Rewrite and synthesize this RSS news lead into an original, factual, mobile-optimized news report for Nigerian readers. Maintain journalistic integrity, clear paragraphs, key takeaways, and proper source reference.`, 'System prompt for Groq processing');
+    insertSetting.run('ai_prompt_template', `You are an expert Nigerian news editor and fact-checker at 9jaBeacon. Rewrite and synthesize this RSS news lead into an original, factual, mobile-optimized news report for Nigerian readers. Maintain journalistic integrity, clear paragraphs, key takeaways, and proper source reference.`, 'System prompt for Groq processing');
     insertSetting.run('duplicate_similarity_threshold', '0.85', 'Threshold for duplicate headline detection');
   }
 
@@ -159,10 +179,10 @@ function initDatabase() {
   const siteCount = db.prepare('SELECT COUNT(*) as count FROM site_settings').get() as { count: number };
   if (siteCount.count === 0) {
     const insertSite = db.prepare(`INSERT INTO site_settings (key, value) VALUES (?, ?)`);
-    insertSite.run('site_name', 'NaijaPulse');
-    insertSite.run('site_tagline', 'Your Pulse. Our Nation. Fast. Verified. Unbiased.');
-    insertSite.run('contact_email', 'editor@naijapulse.ng');
-    insertSite.run('twitter_handle', '@NaijaPulseNg');
+    insertSite.run('site_name', '9jaBeacon');
+    insertSite.run('site_tagline', 'Your Trusted Light on Nigerian News. Fast. Verified. Unbiased.');
+    insertSite.run('contact_email', 'editor@9jabeacon.ng');
+    insertSite.run('twitter_handle', '@9jaBeacon');
     insertSite.run('admin_password', 'admin123'); // Default development admin password
   }
 
@@ -170,7 +190,7 @@ function initDatabase() {
   const logCount = db.prepare('SELECT COUNT(*) as count FROM automation_logs').get() as { count: number };
   if (logCount.count === 0) {
     const insertLog = db.prepare(`INSERT INTO automation_logs (id, event_type, source_id, message, level) VALUES (?, ?, ?, ?, ?)`);
-    insertLog.run('log_' + Date.now(), 'SYSTEM_INIT', null, 'NaijaPulse database, D1 schemas, permitted RSS sources and initial feeds initialized.', 'info');
+    insertLog.run('log_' + Date.now(), 'SYSTEM_INIT', null, '9jaBeacon database, D1 schemas, permitted RSS sources and initial feeds initialized.', 'info');
   }
 }
 

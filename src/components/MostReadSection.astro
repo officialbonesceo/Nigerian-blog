@@ -8,39 +8,39 @@ interface Props {
 const { articles = [] } = Astro.props;
 ---
 
-<section class="mt-6 pt-6 border-t border-slate-800/80">
+<section class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800/80">
   <div class="flex items-center justify-between mb-4">
-    <h2 class="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2 font-sans">
+    <h2 class="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 font-sans">
       <span class="w-2 h-2 rounded-full bg-amber-500"></span>
       Most Read
     </h2>
-    <span class="text-[10px] uppercase font-bold text-slate-400 font-mono">Today's Trends</span>
+    <span class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 font-mono">Today's Trends</span>
   </div>
 
   <div class="space-y-3">
     {articles.map((art, index) => (
       <a
         href={`/article/${art.slug}`}
-        class="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-900/60 transition-colors group"
+        class="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900/60 transition-colors group"
       >
         <!-- Rank Number Badge -->
         <span class={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-black shrink-0 font-mono ${
           index === 0 
             ? 'bg-amber-500 text-slate-950 shadow-xs' 
             : index === 1
-            ? 'bg-slate-700 text-white'
-            : 'bg-slate-800/80 text-slate-400'
+            ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white'
+            : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400'
         }`}>
           {index + 1}
         </span>
 
         <div class="flex-1 min-w-0">
-          <h4 class="text-xs sm:text-sm font-bold text-slate-200 group-hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
+          <h4 class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
             {art.title}
           </h4>
-          <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+          <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
             <span>{art.category_name}</span>
-            <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+            <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
             <span>{art.views_count.toLocaleString()} reads</span>
           </div>
         </div>

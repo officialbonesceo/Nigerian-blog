@@ -1,0 +1,26 @@
+# 9jaBeacon Cloudflare Worker Configuration
+name = "9jabeacon-ingest-worker"
+main = "./cron-ingest.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "9jabeacon-d1"
+database_id = "9jabeacon-d1-production"
+migrations_dir = "../migrations"
+
+# Cloudflare Cron Triggers (Every 30 minutes automated sync)
+[triggers]
+crons = ["*/30 * * * *"]
+
+# Worker Environment Variables
+[vars]
+ENVIRONMENT = "production"
+SITE_NAME = "9jaBeacon"
+SITE_URL = "https://9jabeacon.pages.dev"
+
+# Secrets to configure on Cloudflare:
+# npx wrangler secret put GROQ_API_KEY
+# npx wrangler secret put ADMIN_SECRET

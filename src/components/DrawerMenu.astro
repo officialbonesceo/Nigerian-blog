@@ -17,22 +17,22 @@ const { categories = [] } = Astro.props;
 <!-- Drawer Menu Panel -->
 <aside
   id="mobile-drawer"
-  class="fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-slate-950 border-l border-slate-800 z-50 transform translate-x-full transition-transform duration-300 ease-out flex flex-col shadow-2xl safe-area-top safe-area-bottom"
+  class="fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 z-50 transform translate-x-full transition-transform duration-300 ease-out flex flex-col shadow-2xl safe-area-top safe-area-bottom"
 >
   <!-- Drawer Header -->
-  <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+  <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
     <div class="flex items-center gap-2">
-      <div class="w-6 h-6 rounded bg-emerald-600 flex items-center justify-center text-white">
+      <div class="w-6 h-6 rounded bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
         </svg>
       </div>
-      <span class="font-bold text-white tracking-tight">NaijaPulse Menu</span>
+      <span class="font-bold text-slate-900 dark:text-white tracking-tight">9jaBeacon Menu</span>
     </div>
     <button
       id="btn-close-drawer"
       aria-label="Close menu"
-      class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+      class="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
     >
       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -42,20 +42,49 @@ const { categories = [] } = Astro.props;
 
   <!-- Drawer Body -->
   <div class="flex-1 overflow-y-auto p-4 space-y-6">
+    <!-- Theme Switcher in Menu -->
+    <div class="p-3 bg-slate-100 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+      <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Display Theme</h4>
+      <div class="grid grid-cols-2 gap-1.5 pt-1">
+        <button
+          id="btn-drawer-theme-light"
+          type="button"
+          onclick="setDrawerTheme('light')"
+          class="py-2 px-3 text-xs font-bold rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <svg class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          Light Mode
+        </button>
+        <button
+          id="btn-drawer-theme-dark"
+          type="button"
+          onclick="setDrawerTheme('dark')"
+          class="py-2 px-3 text-xs font-bold rounded-lg bg-slate-800 text-white border border-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          Dark Mode
+        </button>
+      </div>
+    </div>
+
     <!-- Categories List -->
     <div>
-      <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Explore Categories</h4>
+      <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5">Explore Categories</h4>
       <div class="space-y-1">
         {categories.map((cat) => (
           <a
             href={`/category/${cat.slug}`}
-            class="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-900 text-slate-300 hover:text-white transition-colors group"
+            class="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors group"
           >
             <span class="text-sm font-medium flex items-center gap-2.5">
               <span class="w-2 h-2 rounded-full" style={`background-color: ${cat.color || '#008751'}`}></span>
               {cat.name}
             </span>
-            <span class="text-xs text-slate-500 font-mono group-hover:text-emerald-400">
+            <span class="text-xs text-slate-400 dark:text-slate-500 font-mono group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
               {cat.follower_count ? `${(cat.follower_count / 1000).toFixed(1)}k` : ''}
             </span>
           </a>
@@ -64,24 +93,24 @@ const { categories = [] } = Astro.props;
     </div>
 
     <!-- Reading Preferences -->
-    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2">
-      <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Article Font Size</h4>
+    <div class="p-3 bg-slate-100 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+      <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Article Font Size</h4>
       <div class="grid grid-cols-3 gap-1.5 pt-1">
         <button
           onclick="setFontScale('sm')"
-          class="py-1.5 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+          class="py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-transparent transition-colors cursor-pointer"
         >
           Small
         </button>
         <button
           onclick="setFontScale('md')"
-          class="py-1.5 text-xs font-semibold rounded bg-emerald-600 text-white transition-colors"
+          class="py-1.5 text-xs font-semibold rounded bg-emerald-600 text-white transition-colors cursor-pointer"
         >
           Standard
         </button>
         <button
           onclick="setFontScale('lg')"
-          class="py-1.5 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+          class="py-1.5 text-xs font-semibold rounded bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-transparent transition-colors cursor-pointer"
         >
           Large
         </button>
@@ -89,38 +118,32 @@ const { categories = [] } = Astro.props;
     </div>
 
     <!-- Quick Links -->
-    <div class="space-y-1 text-sm text-slate-300">
-      <a href="/saved" class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-900">
-        <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div class="space-y-1 text-sm text-slate-700 dark:text-slate-300">
+      <a href="/saved" class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900">
+        <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
         </svg>
         Saved Reading List
       </a>
-      <a href="/search" class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-900">
-        <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <a href="/search" class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900">
+        <svg class="w-4 h-4 text-sky-600 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         Search & Archives
       </a>
-      <a href="/admin" class="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-900 text-emerald-400 font-semibold">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-        Admin & RSS Sources Control
-      </a>
     </div>
 
     <!-- Editorial Disclaimer & Standards -->
-    <div class="pt-4 border-t border-slate-800 text-[11px] text-slate-500 leading-relaxed space-y-1">
-      <p class="font-semibold text-slate-400">Journalistic Integrity & Attribution</p>
-      <p>NaijaPulse indexes official government announcements and permitted Nigerian news feeds with full source credit, canonical URLs, and copyright respect.</p>
+    <div class="pt-4 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 leading-relaxed space-y-1">
+      <p class="font-semibold text-slate-600 dark:text-slate-400">Journalistic Integrity & Attribution</p>
+      <p>9jaBeacon indexes official government announcements and permitted Nigerian news feeds with full source credit, canonical URLs, and copyright respect.</p>
     </div>
   </div>
 
   <!-- Drawer Footer -->
-  <div class="p-4 border-t border-slate-800 bg-slate-900/40 text-xs text-slate-400 flex items-center justify-between">
-    <span>© 2025 NaijaPulse.ng</span>
-    <span class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-mono">v1.0 D1</span>
+  <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+    <span>© 2025 9jaBeacon.ng</span>
+    <span class="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded font-mono">Mobile-First</span>
   </div>
 </aside>
 
@@ -146,8 +169,23 @@ const { categories = [] } = Astro.props;
   closeBtn?.addEventListener('click', closeDrawer);
   backdrop?.addEventListener('click', closeDrawer);
 
+  window.setDrawerTheme = function(mode) {
+    if (mode === 'dark') {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('9jabeacon_theme', 'dark');
+      localStorage.setItem('naijapulse_theme', 'dark');
+      window.showToast?.('Dark mode activated', 'info');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('9jabeacon_theme', 'light');
+      localStorage.setItem('naijapulse_theme', 'light');
+      window.showToast?.('Light mode activated', 'info');
+    }
+    window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: mode } }));
+  };
+
   window.setFontScale = function(size) {
-    localStorage.setItem('naijapulse_font_size', size);
+    localStorage.setItem('9jabeacon_font_size', size);
     document.documentElement.setAttribute('data-font-size', size);
     window.showToast?.(`Font set to ${size.toUpperCase()}`, 'success');
   };
