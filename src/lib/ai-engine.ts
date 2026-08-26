@@ -64,22 +64,14 @@ export interface AiCredentialsConfig {
   customPromptTemplate?: string;
 }
 
-// Complete verified active model cascades (zero manual typing required)
+// Verified high-speed models with fast response times (<3s)
 export const CLOUDFLARE_MODELS_CASCADE = [
   '@cf/meta/llama-3.1-8b-instruct',
-  '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-  '@cf/meta/llama-3.2-3b-instruct',
   '@cf/mistral/mistral-7b-instruct-v0.2',
-  '@cf/qwen/qwen1.5-14b-chat-awq',
 ];
 
 export const OPENROUTER_MODELS_CASCADE = [
   'meta-llama/llama-3.3-70b-instruct:free',
-  'google/gemini-2.0-flash-exp:free',
-  'meta-llama/llama-3.1-8b-instruct:free',
-  'mistralai/mistral-7b-instruct:free',
-  'deepseek/deepseek-r1:free',
-  'qwen/qwen-2.5-72b-instruct',
   'google/gemini-2.0-flash-001',
   'openai/gpt-4o-mini',
 ];
@@ -87,8 +79,6 @@ export const OPENROUTER_MODELS_CASCADE = [
 export const POLLINATIONS_MODELS_CASCADE = [
   'openai',
   'mistral',
-  'llama',
-  'searchgpt',
 ];
 
 const SYSTEM_PROMPT = `You are a Senior Nigerian Investigative News Editor at 9jaBeacon ("Your Trusted Light on Nigerian News").
@@ -164,6 +154,7 @@ Please rewrite this news wire into a comprehensive, verified 9jaBeacon article f
             temperature: 0.3,
             max_tokens: 1800,
           }),
+          signal: AbortSignal.timeout(6000),
         });
 
         if (cfRes.ok) {
@@ -214,6 +205,7 @@ Please rewrite this news wire into a comprehensive, verified 9jaBeacon article f
             max_tokens: 1800,
             response_format: { type: 'json_object' },
           }),
+          signal: AbortSignal.timeout(6000),
         });
 
         if (openrouterRes.ok) {
@@ -264,6 +256,7 @@ Please rewrite this news wire into a comprehensive, verified 9jaBeacon article f
           jsonMode: true,
           seed: 42,
         }),
+        signal: AbortSignal.timeout(6000),
       });
 
       if (pollRes.ok) {
@@ -381,6 +374,7 @@ export async function generateEditorialNewsImage(
             prompt: fullPrompt,
             num_steps: 4,
           }),
+          signal: AbortSignal.timeout(8000),
         });
 
         if (res.ok) {

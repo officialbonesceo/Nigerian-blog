@@ -50,6 +50,7 @@ export async function uploadToCloudinaryDetailed(
     const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
       method: 'POST',
       body: formData,
+      signal: AbortSignal.timeout(8000),
     });
 
     if (res.ok) {
@@ -109,6 +110,7 @@ export async function verifyCloudinaryConnection(
     const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
       method: 'POST',
       body: formData,
+      signal: AbortSignal.timeout(6000),
     });
 
     if (res.ok) {

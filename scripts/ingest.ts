@@ -152,6 +152,9 @@ async function main() {
   const sources = db.prepare('SELECT * FROM sources WHERE is_enabled = 1').all() as SourceRow[];
   console.log(`📡 Loaded ${sources.length} active verified RSS news feeds.`);
 
+  const MAX_ARTICLES_PER_RUN = 10;
+  const startTime = Date.now();
+
   let totalProcessed = 0;
   let totalPublished = 0;
   let totalRejectedNoAi = 0;
@@ -186,16 +189,35 @@ async function main() {
   `);
 
   for (const source of sources) {
+    if (totalPublished >= MAX_ARTICLES_PER_RUN) {
+      console.log(`\n🎯 Reached batch limit of ${MAX_ARTICLES_PER_RUN} fresh articles for this run. Concluding.`);
+      break;
+    }
+
     console.log(`\n-----------------------------------------------------`);
     console.log(`📻 Fetching Feed: [${source.name}] (${source.feed_url})`);
 
     let feedItems: CustomItem[] = [];
     try {
-      const feed = await parser.parseURL(source.feed_url);
+      // 6-second timeout per feed to prevent slow RSS hosts from stalling workflow
+      const feedRes = await fetch(source.feed_url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 9jaBeaconBot/1.0',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (!feedRes.ok) {
+        throw new Error(`HTTP ${feedRes.status}`);
+      }
+
+      const xmlText = await feedRes.text();
+      const feed = await parser.parseString(xmlText);
       feedItems = feed.items || [];
       console.log(`  📑 Found ${feedItems.length} items in feed.`);
     } catch (fetchErr: any) {
-      console.error(`  ❌ Error fetching feed with rss-parser for ${source.name}:`, fetchErr.message);
+      console.warn(`  ⚠️ Feed fetch timed out/failed for ${source.name}: ${fetchErr.message}`);
       insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'FEED_FETCH_ERROR', source.id, `Failed to fetch feed: ${fetchErr.message}`, 'error');
       continue;
     }
@@ -402,6 +424,10 @@ async function main() {
             console.warn(`     ⚡ D1 Cloud Sync:  ⚠️ ${d1Err.message}`);
           }
         }
+        if (totalPublished >= MAX_ARTICLES_PER_RUN) {
+          console.log(`\n🎯 Batch limit of ${MAX_ARTICLES_PER_RUN} fresh articles reached. Ending run.`);
+          break;
+        }
       } catch (insertErr: any) {
         console.error(`     ❌ Database insertion error for article:`, insertErr.message);
       }
@@ -412,13 +438,16 @@ async function main() {
 
   db.close();
 
+  const elapsedSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
+
   console.log('\n================================================================');
   console.log('📊 9JABEACON INGESTION PIPELINE EXECUTION SUMMARY');
   console.log('================================================================');
+  console.log(`  - Total Execution Time:            ${elapsedSeconds}s (Ultra-Fast)`);
   console.log(`  - Total Feed Items Inspected:      ${totalProcessed}`);
   console.log(`  - Duplicates / Already Saved:      ${totalDuplicatesSkipped}`);
   console.log(`  - Strict AI Gate Rejections:       ${totalRejectedNoAi}`);
-  console.log(`  - Successfully Published Articles: ${totalPublished}`);
+  console.log(`  - Successfully Published Articles: ${totalPublished} (Capped at max ${MAX_ARTICLES_PER_RUN})`);
   console.log(`  - Cloudinary Images Uploaded:      ${totalCloudinarySuccess} (CDN Active)`);
   if (totalCloudinaryFallback > 0) {
     console.log(`  - Images using Wire Fallback:      ${totalCloudinaryFallback}`);

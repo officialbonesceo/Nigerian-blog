@@ -35,6 +35,7 @@ export async function executeD1Query(
         sql,
         params,
       }),
+      signal: AbortSignal.timeout(8000),
     });
 
     const data = await res.json() as any;
