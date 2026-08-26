@@ -36,7 +36,7 @@ const timeAgo = getRelativeTime(article.published_at);
       )}
 
       <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
-        <a href={`/article/${article.slug}`}>
+        <a href={`/news/${article.slug}`}>
           {article.title}
         </a>
       </h3>
@@ -49,7 +49,7 @@ const timeAgo = getRelativeTime(article.published_at);
     </div>
 
     <!-- Right Image Thumbnail -->
-    <a href={`/article/${article.slug}`} class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
+    <a href={`/news/${article.slug}`} class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
       <img
         src={article.image_url}
         alt={article.title}

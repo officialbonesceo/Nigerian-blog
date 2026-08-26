@@ -20,7 +20,7 @@ const { articles = [] } = Astro.props;
   <div class="space-y-3">
     {articles.map((art, index) => (
       <a
-        href={`/article/${art.slug}`}
+        href={`/news/${art.slug}`}
         class="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900/60 transition-colors group"
       >
         <!-- Rank Number Badge -->

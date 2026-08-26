@@ -1,0 +1,65 @@
+name: 9jaBeacon AI News Ingestion
+
+on:
+  schedule:
+    # Run every 30 minutes automatically
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    # Allows manual trigger anytime from GitHub Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  ingest-and-synthesize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🟢 Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm install --prefer-offline
+
+      - name: 🤖 Execute 3-Tier AI Ingestion Pipeline
+        env:
+          # Tier 1 (Primary): Cloudflare Workers AI
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_AI_MODEL: ${{ secrets.CLOUDFLARE_AI_MODEL || '@cf/meta/llama-3.1-8b-instruct' }}
+          
+          # Tier 2 (Fallback 1): OpenRouter Multi-Model Cloud AI
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free' }}
+          
+          # Tier 3 (Fallback 2): Pollinations AI Text
+          POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
+        run: |
+          echo "Starting 9jaBeacon autonomous news ingestion..."
+          npm run ingest
+
+      - name: 🚀 Commit and Push Updated News Database
+        run: |
+          git config --global user.name "9jaBeacon Bot"
+          git config --global user.email "bot@9jabeacon.ng"
+          
+          # Stage the updated database and log files if modified
+          git add 9jabeacon.db
+          
+          if git diff --staged --quiet; then
+            echo "No new news articles to commit in this cycle."
+          else
+            echo "New AI-rewritten articles detected! Committing changes..."
+            git commit -m "chore(news): auto-ingest and publish AI-synthesized Nigerian news [skip ci]"
+            git push origin main
+          fi

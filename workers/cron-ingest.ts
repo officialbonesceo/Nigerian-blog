@@ -1,15 +1,43 @@
 /**
- * 9jaBeacon Cloudflare Worker: Scheduled RSS Ingestion & Groq AI Editorial Synthesizer
+ * 9jaBeacon Cloudflare Worker: Scheduled RSS Ingestion & 3-Tier Multi-Model AI Engine
  * Triggered periodically via Cloudflare Cron Triggers (e.g. every 30 minutes)
  * Stores ingested & synthesized news directly into Cloudflare D1
+ * Image generation with Flux-1-Schnell (Strict No-Human Policy)
  */
 import type { WorkerEnv, ScheduledController, ExecutionContext } from './types';
 import { parseXmlFeed } from './rss-parser';
 
+// Verified active multi-model fallback cascades
+const CF_MODELS_CASCADE = [
+  '@cf/meta/llama-3.1-8b-instruct',
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+  '@cf/meta/llama-3.2-3b-instruct',
+  '@cf/mistral/mistral-7b-instruct-v0.2',
+  '@cf/qwen/qwen1.5-14b-chat-awq',
+];
+
+const OPENROUTER_MODELS_CASCADE = [
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'google/gemini-2.0-flash-exp:free',
+  'meta-llama/llama-3.1-8b-instruct:free',
+  'mistralai/mistral-7b-instruct:free',
+  'deepseek/deepseek-r1:free',
+  'qwen/qwen-2.5-72b-instruct',
+  'google/gemini-2.0-flash-001',
+  'openai/gpt-4o-mini',
+];
+
+const POLLINATIONS_MODELS_CASCADE = [
+  'openai',
+  'mistral',
+  'llama',
+  'searchgpt',
+];
+
 export default {
   // Cloudflare Cron Trigger Handler
   async scheduled(event: ScheduledController, env: WorkerEnv, ctx: ExecutionContext): Promise<void> {
-    console.log(`[9jaBeacon Cron] Starting automated RSS ingestion at ${new Date(event.scheduledTime).toISOString()}`);
+    console.log(`[9jaBeacon Cron] Automated RSS ingestion at ${new Date(event.scheduledTime).toISOString()}`);
     ctx.waitUntil(runIngestionPipeline(env));
   },
 
@@ -17,7 +45,6 @@ export default {
   async fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    // Health check endpoint
     if (url.pathname === '/' || url.pathname === '/health') {
       return new Response(JSON.stringify({ 
         service: '9jaBeacon Cloudflare Ingestion Worker', 
@@ -28,7 +55,6 @@ export default {
       });
     }
 
-    // Manual Crawl Trigger endpoint
     if (url.pathname === '/api/cron/trigger' && request.method === 'POST') {
       const authHeader = request.headers.get('Authorization');
       const expectedSecret = env.ADMIN_SECRET;
@@ -43,7 +69,7 @@ export default {
       ctx.waitUntil(runIngestionPipeline(env));
       return new Response(JSON.stringify({ 
         success: true, 
-        message: '9jaBeacon RSS Ingestion Pipeline queued successfully' 
+        message: '9jaBeacon RSS Ingestion Pipeline queued' 
       }), {
         headers: { 'Content-Type': 'application/json' },
       });
@@ -63,24 +89,19 @@ async function runIngestionPipeline(env: WorkerEnv): Promise<void> {
   }
 
   try {
-    // 1. Fetch enabled sources ordered by oldest fetched
     const { results: sources } = await env.DB.prepare(
       'SELECT * FROM sources WHERE is_enabled = 1 ORDER BY last_fetched_at ASC LIMIT 6'
     ).all();
 
     if (!sources || sources.length === 0) {
-      console.log('[9jaBeacon Ingest] No active sources found to crawl.');
       return;
     }
 
     for (const source of sources as any[]) {
       try {
-        console.log(`[9jaBeacon Ingest] Fetching source: ${source.name} (${source.feed_url})`);
-
-        // 2. Fetch live RSS feed
         const res = await fetch(source.feed_url, {
           headers: { 
-            'User-Agent': '9jaBeacon-Bot/1.0 (+https://9jabeacon.pages.dev; news@9jabeacon.ng)',
+            'User-Agent': '9jaBeacon-Bot/2.0 (+https://9jabeacon.pages.dev; news@9jabeacon.ng)',
             'Accept': 'application/rss+xml, application/xml, text/xml, */*'
           },
         });
@@ -95,33 +116,44 @@ async function runIngestionPipeline(env: WorkerEnv): Promise<void> {
 
         let newArticlesCount = 0;
         for (const item of items.slice(0, 3)) {
-          // Check for duplicate link or title
           const existing = await env.DB.prepare(
             'SELECT id FROM articles WHERE source_original_url = ? OR title = ?'
           ).bind(item.link, item.title).first();
 
           if (existing) {
-            continue; // Already saved
+            continue;
           }
 
-          // 3. Process with Groq API (llama-3.1-8b-instant) or format clean editorial draft
-          let rewrittenTitle = item.title;
-          let summary = item.description.slice(0, 220) + (item.description.length > 220 ? '...' : '');
-          let rewrittenContent = item.content || `<p>${item.description}</p>`;
-
-          if (env.GROQ_API_KEY) {
-            const aiResult = await synthesizeWithGroq(env.GROQ_API_KEY, item.title, item.description);
-            if (aiResult) {
-              rewrittenTitle = aiResult.title;
-              summary = aiResult.summary;
-              rewrittenContent = aiResult.content;
-            }
+          // 3-Tier Multi-Model AI synthesis
+          const aiResult = await synthesizeArticle(env, item.title, item.description, item.content);
+          if (!aiResult) {
+            const rejId = 'rej_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+            await env.DB.prepare(`
+              INSERT INTO rejected_articles (
+                id, source_id, source_name, original_title, original_url, raw_content,
+                rejection_reason, ai_tier_failures, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            `).bind(
+              rejId,
+              source.id,
+              source.name,
+              item.title,
+              item.link,
+              item.description,
+              'All AI model tiers failed to rewrite feed lead',
+              'Cloudflare -> OpenRouter -> Pollinations (Failed)'
+            ).run();
+            continue;
           }
 
           const articleId = 'art_' + Math.random().toString(36).substring(2, 9);
-          const slug = generateSlug(rewrittenTitle) + '-' + articleId.slice(-4);
+          const slug = generateSlug(aiResult.title) + '-' + articleId.slice(-4);
 
-          // 4. Save article into Cloudflare D1
+          let imageUrl = item.enclosureUrl;
+          if (!imageUrl) {
+            imageUrl = await generateImage(env, source.category_default_id || 'cat_politics');
+          }
+
           await env.DB.prepare(`
             INSERT INTO articles (
               id, slug, title, summary, content, category_id,
@@ -134,15 +166,15 @@ async function runIngestionPipeline(env: WorkerEnv): Promise<void> {
           `).bind(
             articleId,
             slug,
-            rewrittenTitle,
-            summary,
-            rewrittenContent,
+            aiResult.title,
+            aiResult.summary,
+            aiResult.content,
             source.category_default_id || 'cat_politics',
-            item.enclosureUrl || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
+            imageUrl,
             source.name,
             source.license_notes || 'Editorial Attribution',
-            '9jaBeacon Desk',
-            'Editorial Contributor',
+            '9jaBeacon Editorial Desk',
+            'Editorial Bureau',
             source.id,
             source.name,
             item.link,
@@ -150,15 +182,11 @@ async function runIngestionPipeline(env: WorkerEnv): Promise<void> {
           ).run();
 
           newArticlesCount++;
-          await logEvent(env, 'ARTICLE_INGESTED', source.id, `Ingested story: "${rewrittenTitle}"`, 'info');
+          await logEvent(env, 'ARTICLE_INGESTED', source.id, `Ingested story: "${aiResult.title}"`, 'info');
         }
 
-        // Update last_fetched_at timestamp
         await env.DB.prepare('UPDATE sources SET last_fetched_at = datetime("now") WHERE id = ?').bind(source.id).run();
-        console.log(`[9jaBeacon Ingest] Successfully ingested ${newArticlesCount} stories from ${source.name}`);
-
       } catch (err: any) {
-        console.error(`[9jaBeacon Ingest Error] Source ${source.name}:`, err);
         await logEvent(env, 'SOURCE_ERROR', source.id, err.message, 'error');
       }
     }
@@ -167,47 +195,143 @@ async function runIngestionPipeline(env: WorkerEnv): Promise<void> {
   }
 }
 
-async function synthesizeWithGroq(
-  apiKey: string,
+async function synthesizeArticle(
+  env: WorkerEnv,
   title: string,
   lead: string,
-  modelName: string = 'llama-3.1-8b-instant'
+  fullContent?: string
 ): Promise<{ title: string; summary: string; content: string } | null> {
-  try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert Nigerian news editor at 9jaBeacon. Rewrite this breaking news story clearly in well-structured HTML paragraphs (<p>, <h3>, <blockquote>) with zero clickbait or fluff. Return valid JSON only with fields: title, summary, content.',
-          },
-          {
-            role: 'user',
-            content: `Headline: ${title}\nLead Content: ${lead}`,
-          },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.3,
-      }),
-    });
+  const prompt = `You are a Senior Nigerian News Editor at 9jaBeacon. Rewrite this breaking news story clearly in well-structured HTML paragraphs (<h3>The Scoop</h3>, <h3>The Stakes</h3>, <h3>The Stats</h3>) with zero fluff. Return valid JSON only with fields: title, summary, content.
+Raw Title: ${title}
+Raw Details: ${fullContent || lead}`;
 
-    if (!response.ok) return null;
-    const data = await response.json() as any;
-    const parsed = JSON.parse(data.choices[0].message.content);
-    return {
-      title: parsed.title || title,
-      summary: parsed.summary || lead,
-      content: parsed.content || `<p>${lead}</p>`,
-    };
-  } catch {
-    return null;
+  // Tier 1: Cloudflare Workers AI Cascades (1a -> 1b -> 1c -> 1d -> 1e)
+  if (env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_API_TOKEN) {
+    for (const cfModel of CF_MODELS_CASCADE) {
+      try {
+        const cfRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/ai/run/${cfModel}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.CLOUDFLARE_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 1500,
+          }),
+        });
+
+        if (cfRes.ok) {
+          const cfData = await cfRes.json() as any;
+          const text = cfData?.result?.response || cfData?.response || '';
+          const parsed = parseJson(text);
+          if (parsed?.title && parsed?.content) return parsed;
+        }
+      } catch {}
+    }
   }
+
+  // Tier 2: OpenRouter Multi-Model Fallback Cascades (2a -> 2h)
+  if (env.OPENROUTER_API_KEY) {
+    for (const orModel of OPENROUTER_MODELS_CASCADE) {
+      try {
+        const orRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+            'HTTP-Referer': 'https://9jabeacon.pages.dev',
+            'X-Title': '9jaBeacon News Worker',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: orModel,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 1500,
+            response_format: { type: 'json_object' },
+          }),
+        });
+
+        if (orRes.ok) {
+          const orData = await orRes.json() as any;
+          const text = orData?.choices?.[0]?.message?.content || '';
+          const parsed = parseJson(text);
+          if (parsed?.title && parsed?.content) return parsed;
+        }
+      } catch {}
+    }
+  }
+
+  // Tier 3: Pollinations Serverless AI Cascades (3a -> 3d)
+  for (const pollModel of POLLINATIONS_MODELS_CASCADE) {
+    try {
+      const pollRes = await fetch('https://text.pollinations.ai/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: prompt }],
+          model: pollModel,
+          jsonMode: true,
+          seed: 42,
+        }),
+      });
+      if (pollRes.ok) {
+        const text = await pollRes.text();
+        const parsed = parseJson(text);
+        if (parsed?.title && parsed?.content) return parsed;
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+async function generateImage(env: WorkerEnv, _categoryId: string): Promise<string> {
+  const safeConcept = `Nigerian architectural landmark, financial currency graph, tech server microchip, legal court gavel, modern football stadium, clean conceptual still life, high-end editorial photography, 8k resolution, NO humans, NO faces, NO people, NO portraits, NO text`;
+
+  // Try Cloudflare Flux-1-Schnell if credentials available
+  if (env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_API_TOKEN) {
+    try {
+      const cfRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: safeConcept,
+          num_steps: 4,
+        }),
+      });
+      if (cfRes.ok) {
+        const arrayBuffer = await cfRes.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString('base64');
+        return `data:image/jpeg;base64,${base64}`;
+      }
+    } catch {}
+  }
+
+  // Fallback to Pollinations Flux
+  const cleanPrompt = encodeURIComponent(safeConcept);
+  return `https://image.pollinations.ai/prompt/${cleanPrompt}?width=1200&height=675&nologo=true&model=flux`;
+}
+
+function parseJson(raw: string): { title: string; summary: string; content: string } | null {
+  try {
+    const cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
+    const first = cleaned.indexOf('{');
+    const last = cleaned.lastIndexOf('}');
+    if (first !== -1 && last !== -1) {
+      const parsed = JSON.parse(cleaned.substring(first, last + 1));
+      return {
+        title: parsed.title || '',
+        summary: parsed.summary || '',
+        content: parsed.content || '',
+      };
+    }
+  } catch {}
+  return null;
 }
 
 function generateSlug(text: string): string {

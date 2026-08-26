@@ -1,13 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ArticleCard from '../components/ArticleCard.astro';
-import { searchArticles, getCategories } from '../lib/db';
+import { getArticles, getCategories } from '../lib/db';
 
-const query = Astro.url.searchParams.get('q') || '';
-const categoryId = Astro.url.searchParams.get('category') || '';
-
+const allArticles = getArticles({ limit: 200 });
 const categories = getCategories();
-const results = searchArticles(query, categoryId || undefined, 20);
 ---
 
 <Layout
@@ -17,14 +14,12 @@ const results = searchArticles(query, categoryId || undefined, 20);
 >
   <div class="space-y-4">
     <!-- Search Bar Form -->
-    <form method="GET" action="/search" class="relative">
+    <form id="search-form" class="relative">
       <div class="relative flex items-center">
         <input
           type="text"
-          name="q"
           id="search-input"
-          value={query}
-          placeholder="Search news, topics, people, CBN, Fuel..."
+          placeholder="Search news, CBN, Fuel price, Dangote, Super Eagles..."
           autofocus
           class="w-full h-12 pl-11 pr-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-emerald-500 rounded-2xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition-all shadow-xs dark:shadow-md focus:ring-1 focus:ring-emerald-500/20"
         />
@@ -33,7 +28,8 @@ const results = searchArticles(query, categoryId || undefined, 20);
         </svg>
 
         <button
-          type="submit"
+          type="button"
+          id="btn-search-trigger"
           class="absolute right-2 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors cursor-pointer"
         >
           Search
@@ -41,10 +37,10 @@ const results = searchArticles(query, categoryId || undefined, 20);
       </div>
     </form>
 
-    <!-- Recent Searches Bar (as in the screenshot) -->
+    <!-- Recent Searches Bar -->
     <div id="recent-searches-box" class="p-3.5 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 shadow-xs dark:shadow-none space-y-2">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-600 dark:text-slate-400 font-sans">Recent Searches</span>
+        <span class="text-xs font-bold text-slate-600 dark:text-slate-400 font-sans">Popular Searches</span>
         <button
           type="button"
           id="btn-clear-recents"
@@ -55,97 +51,227 @@ const results = searchArticles(query, categoryId || undefined, 20);
       </div>
 
       <div id="recent-tags" class="flex flex-wrap gap-1.5">
-        <a href="/search?q=CBN" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors">
-          CBN ×
-        </a>
-        <a href="/search?q=Fuel%20Price" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors">
-          Fuel Price ×
-        </a>
-        <a href="/search?q=Elections" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors">
-          Elections ×
-        </a>
-        <a href="/search?q=Naira" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors">
-          Naira ×
-        </a>
+        <button type="button" class="recent-tag px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors cursor-pointer" data-query="CBN">
+          CBN
+        </button>
+        <button type="button" class="recent-tag px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors cursor-pointer" data-query="Fuel Price">
+          Fuel Price
+        </button>
+        <button type="button" class="recent-tag px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors cursor-pointer" data-query="Dangote">
+          Dangote
+        </button>
+        <button type="button" class="recent-tag px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors cursor-pointer" data-query="Super Eagles">
+          Super Eagles
+        </button>
+        <button type="button" class="recent-tag px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors cursor-pointer" data-query="Naira">
+          Naira
+        </button>
       </div>
     </div>
 
     <!-- Category Filter Dropdown -->
-    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-      <a
-        href={query ? `/search?q=${encodeURIComponent(query)}` : '/search'}
-        class={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-          !categoryId ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
-        }`}
+    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1" id="category-filter-bar">
+      <button
+        type="button"
+        data-cat=""
+        class="cat-filter-btn px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors bg-emerald-600 text-white cursor-pointer"
       >
         All Categories
-      </a>
+      </button>
       {categories.map((cat) => (
-        <a
-          href={`/search?q=${encodeURIComponent(query)}&category=${cat.id}`}
-          class={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-            categoryId === cat.id
-              ? 'bg-emerald-600 text-white font-bold'
-              : 'bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
-          }`}
+        <button
+          type="button"
+          data-cat={cat.id}
+          class="cat-filter-btn px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer"
         >
           {cat.name}
-        </a>
+        </button>
       ))}
     </div>
 
     <!-- Search Results Header & Feed -->
     <section class="mt-4 space-y-3">
       <div class="flex items-center justify-between">
-        <h2 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
-          {query ? `Results for "${query}"` : 'Top Results'} ({results.length})
+        <h2 id="results-count-header" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+          All Stories ({allArticles.length})
         </h2>
       </div>
 
-      {results.length > 0 ? (
-        <div class="space-y-2.5">
-          {results.map((art) => (
-            <ArticleCard article={art} />
-          ))}
-        </div>
-      ) : (
-        <div class="p-12 text-center bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs dark:shadow-none space-y-3">
-          <div class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center mx-auto text-xl">
-            🔍
-          </div>
-          <h3 class="text-base font-bold text-slate-900 dark:text-white">No articles matched your search</h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            Try different keywords like "Economy", "Dangote", "Super Eagles" or browse through our categories.
-          </p>
-          <a
-            href="/"
-            class="inline-block px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors"
+      <div id="articles-container" class="space-y-2.5">
+        {allArticles.map((art) => (
+          <div
+            class="article-search-item"
+            data-id={art.id}
+            data-title={(art.title || '').toLowerCase()}
+            data-summary={(art.summary || '').toLowerCase()}
+            data-category={art.category_id || ''}
+            data-category-name={(art.category_name || '').toLowerCase()}
           >
-            Browse All News
-          </a>
+            <ArticleCard article={art} />
+          </div>
+        ))}
+      </div>
+
+      <!-- No Results State -->
+      <div id="no-results-state" class="hidden p-12 text-center bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs dark:shadow-none space-y-3">
+        <div class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center mx-auto text-xl">
+          🔍
         </div>
-      )}
+        <h3 class="text-base font-bold text-slate-900 dark:text-white">No articles matched your search</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+          Try different keywords like "Economy", "Dangote", "CBN" or select another category above.
+        </p>
+        <button
+          type="button"
+          id="btn-reset-search"
+          class="inline-block px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors cursor-pointer"
+        >
+          Clear Filters & Show All
+        </button>
+      </div>
     </section>
   </div>
 </Layout>
 
 <script is:inline>
-  // Save search to recents
-  const input = document.getElementById('search-input');
-  if (input && input.value.trim()) {
-    try {
-      let recents = JSON.parse(localStorage.getItem('naijapulse_recents') || '[]');
-      const val = input.value.trim();
-      recents = [val, ...recents.filter(item => item.toLowerCase() !== val.toLowerCase())].slice(0, 6);
-      localStorage.setItem('naijapulse_recents', JSON.stringify(recents));
-    } catch {}
-  }
+  // Dynamic window.location search parser & filtering
+  (function() {
+    let activeCategory = '';
+    const input = document.getElementById('search-input');
+    const articles = Array.from(document.querySelectorAll('.article-search-item'));
+    const resultsHeader = document.getElementById('results-count-header');
+    const noResultsState = document.getElementById('no-results-state');
+    const catButtons = Array.from(document.querySelectorAll('.cat-filter-btn'));
 
-  // Clear recents
-  document.getElementById('btn-clear-recents')?.addEventListener('click', () => {
-    localStorage.removeItem('naijapulse_recents');
-    const box = document.getElementById('recent-searches-box');
-    if (box) box.style.display = 'none';
-    window.showToast?.('Cleared recent searches');
-  });
+    function filterArticles() {
+      const q = (input?.value || '').trim().toLowerCase();
+      let visibleCount = 0;
+
+      articles.forEach((item) => {
+        const title = item.getAttribute('data-title') || '';
+        const summary = item.getAttribute('data-summary') || '';
+        const cat = item.getAttribute('data-category') || '';
+        const catName = item.getAttribute('data-category-name') || '';
+
+        const matchesQuery = !q || title.includes(q) || summary.includes(q) || catName.includes(q);
+        const matchesCategory = !activeCategory || cat === activeCategory;
+
+        if (matchesQuery && matchesCategory) {
+          item.style.display = 'block';
+          visibleCount++;
+        } else {
+          item.style.display = 'none';
+        }
+      });
+
+      if (resultsHeader) {
+        if (q) {
+          resultsHeader.textContent = `Results for "${q}" (${visibleCount})`;
+        } else if (activeCategory) {
+          resultsHeader.textContent = `Category Stories (${visibleCount})`;
+        } else {
+          resultsHeader.textContent = `All Stories (${visibleCount})`;
+        }
+      }
+
+      if (noResultsState) {
+        if (visibleCount === 0) {
+          noResultsState.classList.remove('hidden');
+        } else {
+          noResultsState.classList.add('hidden');
+        }
+      }
+    }
+
+    // Auto-read window.location.search on load
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialQ = urlParams.get('q') || '';
+      const initialCat = urlParams.get('category') || '';
+
+      if (initialQ && input) {
+        input.value = initialQ;
+      }
+      if (initialCat) {
+        activeCategory = initialCat;
+        updateCatButtonStyles();
+      }
+
+      filterArticles();
+    }
+
+    function updateCatButtonStyles() {
+      catButtons.forEach((btn) => {
+        const cat = btn.getAttribute('data-cat') || '';
+        if (cat === activeCategory) {
+          btn.className = 'cat-filter-btn px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors bg-emerald-600 text-white cursor-pointer';
+        } else {
+          btn.className = 'cat-filter-btn px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer';
+        }
+      });
+    }
+
+    // Input listeners
+    input?.addEventListener('input', () => {
+      filterArticles();
+      // Update window.location URL query without reloading
+      const url = new URL(window.location.href);
+      if (input.value.trim()) {
+        url.searchParams.set('q', input.value.trim());
+      } else {
+        url.searchParams.delete('q');
+      }
+      window.history.replaceState({}, '', url.toString());
+    });
+
+    // Category button clicks
+    catButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activeCategory = btn.getAttribute('data-cat') || '';
+        updateCatButtonStyles();
+        filterArticles();
+
+        const url = new URL(window.location.href);
+        if (activeCategory) {
+          url.searchParams.set('category', activeCategory);
+        } else {
+          url.searchParams.delete('category');
+        }
+        window.history.replaceState({}, '', url.toString());
+      });
+    });
+
+    // Recent tags click
+    document.querySelectorAll('.recent-tag').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const query = btn.getAttribute('data-query') || '';
+        if (input) {
+          input.value = query;
+          const url = new URL(window.location.href);
+          url.searchParams.set('q', query);
+          window.history.replaceState({}, '', url.toString());
+          filterArticles();
+        }
+      });
+    });
+
+    // Reset button
+    document.getElementById('btn-reset-search')?.addEventListener('click', () => {
+      if (input) input.value = '';
+      activeCategory = '';
+      updateCatButtonStyles();
+      const url = new URL(window.location.href);
+      url.searchParams.delete('q');
+      url.searchParams.delete('category');
+      window.history.replaceState({}, '', url.pathname);
+      filterArticles();
+    });
+
+    // Clear recents box
+    document.getElementById('btn-clear-recents')?.addEventListener('click', () => {
+      const box = document.getElementById('recent-searches-box');
+      if (box) box.style.display = 'none';
+      window.showToast?.('Cleared searches');
+    });
+  })();
 </script>

@@ -7,8 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 # Cloudflare D1 Database Binding
 [[d1_databases]]
 binding = "DB"
-database_name = "9jabeacon-d1"
-database_id = "9jabeacon-d1-production"
+database_name = "naijablog"
+database_id = "naijablog"
 migrations_dir = "../migrations"
 
 # Cloudflare Cron Triggers (Every 30 minutes automated sync)
@@ -22,5 +22,8 @@ SITE_NAME = "9jaBeacon"
 SITE_URL = "https://9jabeacon.pages.dev"
 
 # Secrets to configure on Cloudflare:
-# npx wrangler secret put GROQ_API_KEY
+# npx wrangler secret put CLOUDFLARE_ACCOUNT_ID
+# npx wrangler secret put CLOUDFLARE_API_TOKEN
+# npx wrangler secret put OPENROUTER_API_KEY
 # npx wrangler secret put ADMIN_SECRET
+# npx wrangler secret put POLLINATIONS_API_KEY

@@ -26,7 +26,12 @@ export interface ExecutionContext {
 
 export interface WorkerEnv {
   DB: D1Database;
-  GROQ_API_KEY?: string;
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  CLOUDFLARE_API_TOKEN?: string;
+  CLOUDFLARE_AI_MODEL?: string;
+  OPENROUTER_API_KEY?: string;
+  OPENROUTER_MODEL?: string;
+  POLLINATIONS_API_KEY?: string;
   ADMIN_SECRET?: string;
   ENVIRONMENT?: string;
   SITE_URL?: string;

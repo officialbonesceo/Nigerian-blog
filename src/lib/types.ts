@@ -72,6 +72,42 @@ export interface AutomationLog {
   created_at: string;
 }
 
+export interface ArticleReport {
+  id: string;
+  article_id: string;
+  article_title?: string;
+  article_slug?: string;
+  reason: string;
+  details?: string;
+  reporter_email?: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  created_at: string;
+}
+
+export interface RejectedArticle {
+  id: string;
+  source_id?: string;
+  source_name?: string;
+  original_title: string;
+  original_url: string;
+  raw_content?: string;
+  rejection_reason: string;
+  ai_tier_failures?: string;
+  status: 'rejected' | 'resolved' | 'published';
+  created_at: string;
+}
+
+export interface VisitorAnalyticsLog {
+  id: string;
+  session_id: string;
+  visit_date: string;
+  page_path: string;
+  user_agent?: string;
+  referrer?: string;
+  device_type?: string;
+  created_at: string;
+}
+
 export interface RssFeedItem {
   title: string;
   link: string;

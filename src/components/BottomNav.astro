@@ -1,104 +1,187 @@
 ---
 interface Props {
-  activeNav?: 'home' | 'category' | 'search' | 'saved' | 'menu';
+  activeNav?: 'home' | 'naija-news' | 'money-hustle' | 'sports' | 'world' | string;
 }
 
 const { activeNav = 'home' } = Astro.props;
 ---
 
-<nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800/80 px-2 py-1.5 safe-area-bottom transition-colors">
-  <div class="flex items-center justify-around max-w-md mx-auto">
-    <!-- Home -->
+<!-- Tall Rectangular Bottom Navigation Bar with Sliding Pill Bubble Indicator -->
+<nav
+  id="main-bottom-nav"
+  aria-label="Primary Mobile Navigation"
+  class="md:hidden fixed bottom-0 left-0 right-0 z-40 h-[76px] bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-t border-slate-200/90 dark:border-slate-800/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_25px_rgba(0,0,0,0.4)] safe-area-bottom select-none transition-colors"
+>
+  <div id="nav-track" class="relative flex items-center justify-between h-full px-2 max-w-lg mx-auto">
+    
+    <!-- Sliding Round Pill Bubble Indicator (Goes past half the nav height: 54px high in 76px nav) -->
+    <div
+      id="nav-pill-indicator"
+      class="absolute top-1/2 -translate-y-1/2 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-md shadow-emerald-500/30 dark:shadow-emerald-500/20 pointer-events-none transition-all duration-300 ease-out z-0"
+      style="height: 54px; width: 0px; left: 0px; opacity: 0;"
+    ></div>
+
+    <!-- 1. HOME TAB -->
     <a
       href="/"
-      class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+      data-tab="home"
+      class={`nav-tab-item relative z-10 flex flex-col items-center justify-center h-[54px] px-1 flex-1 rounded-2xl transition-colors duration-200 group ${
         activeNav === 'home'
-          ? 'text-emerald-600 dark:text-emerald-500 font-bold'
+          ? 'is-active text-white'
           : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
     >
-      <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      <svg class="w-5 h-5 transition-transform duration-200 group-active:scale-90 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
       </svg>
-      <span class="text-[10px] tracking-tight">Home</span>
+      <span class="text-[10px] font-bold tracking-tight whitespace-nowrap">Home</span>
     </a>
 
-    <!-- Category -->
+    <!-- 2. NAIJA NEWS TAB -->
     <a
-      href="/category/politics"
-      class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
-        activeNav === 'category'
-          ? 'text-emerald-600 dark:text-emerald-500 font-bold'
+      href="/category/naija-news"
+      data-tab="naija-news"
+      class={`nav-tab-item relative z-10 flex flex-col items-center justify-center h-[54px] px-1 flex-1 rounded-2xl transition-colors duration-200 group ${
+        activeNav === 'naija-news' || activeNav === 'politics'
+          ? 'is-active text-white'
           : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
     >
-      <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+      <svg class="w-5 h-5 transition-transform duration-200 group-active:scale-90 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
       </svg>
-      <span class="text-[10px] tracking-tight">Category</span>
+      <span class="text-[10px] font-bold tracking-tight whitespace-nowrap">Naija News</span>
     </a>
 
-    <!-- Search -->
+    <!-- 3. MONEY HUSTLE TAB -->
     <a
-      href="/search"
-      class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
-        activeNav === 'search'
-          ? 'text-emerald-600 dark:text-emerald-500 font-bold'
+      href="/category/money-hustle"
+      data-tab="money-hustle"
+      class={`nav-tab-item relative z-10 flex flex-col items-center justify-center h-[54px] px-1 flex-1 rounded-2xl transition-colors duration-200 group ${
+        activeNav === 'money-hustle' || activeNav === 'business' || activeNav === 'economy' || activeNav === 'tech'
+          ? 'is-active text-white'
           : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
     >
-      <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      <svg class="w-5 h-5 transition-transform duration-200 group-active:scale-90 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
       </svg>
-      <span class="text-[10px] tracking-tight">Search</span>
+      <span class="text-[10px] font-bold tracking-tight whitespace-nowrap">Money Hustle</span>
     </a>
 
-    <!-- Saved -->
+    <!-- 4. SPORTS TAB -->
     <a
-      href="/saved"
-      class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all relative ${
-        activeNav === 'saved'
-          ? 'text-emerald-600 dark:text-emerald-500 font-bold'
+      href="/category/sports"
+      data-tab="sports"
+      class={`nav-tab-item relative z-10 flex flex-col items-center justify-center h-[54px] px-1 flex-1 rounded-2xl transition-colors duration-200 group ${
+        activeNav === 'sports'
+          ? 'is-active text-white'
           : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
     >
-      <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+      <svg class="w-5 h-5 transition-transform duration-200 group-active:scale-90 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V4a2 2 0 10-2 2h2zm0 13a9 9 0 100-18 9 9 0 000 18z" />
       </svg>
-      <span class="text-[10px] tracking-tight">Saved</span>
-      <span id="saved-badge" class="hidden absolute top-0.5 right-2 w-2 h-2 rounded-full bg-emerald-500"></span>
+      <span class="text-[10px] font-bold tracking-tight whitespace-nowrap">Sports</span>
     </a>
 
-    <!-- Menu Drawer Trigger -->
-    <button
-      id="btn-nav-menu"
-      type="button"
-      class={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-        activeNav === 'menu'
-          ? 'text-emerald-600 dark:text-emerald-500 font-bold'
+    <!-- 5. WORLD TAB -->
+    <a
+      href="/category/world"
+      data-tab="world"
+      class={`nav-tab-item relative z-10 flex flex-col items-center justify-center h-[54px] px-1 flex-1 rounded-2xl transition-colors duration-200 group ${
+        activeNav === 'world'
+          ? 'is-active text-white'
           : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
     >
-      <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      <svg class="w-5 h-5 transition-transform duration-200 group-active:scale-90 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-      <span class="text-[10px] tracking-tight">Menu</span>
-    </button>
+      <span class="text-[10px] font-bold tracking-tight whitespace-nowrap">World</span>
+    </a>
+
   </div>
 </nav>
 
 <script is:inline>
-  // Update saved badge on client load
-  try {
-    const saved = JSON.parse(localStorage.getItem('9jabeacon_bookmarks') || localStorage.getItem('naijapulse_bookmarks') || '[]');
-    const badge = document.getElementById('saved-badge');
-    if (badge && saved.length > 0) {
-      badge.classList.remove('hidden');
-    }
-  } catch {}
+  function updateNavIndicator(clickedEl) {
+    const track = document.getElementById('nav-track');
+    const indicator = document.getElementById('nav-pill-indicator');
+    if (!track || !indicator) return;
 
-  document.getElementById('btn-nav-menu')?.addEventListener('click', () => {
-    document.getElementById('mobile-drawer')?.classList.remove('translate-x-full');
-    document.getElementById('drawer-backdrop')?.classList.remove('hidden');
+    let targetEl = clickedEl;
+
+    if (!targetEl) {
+      // Find active tab from current URL
+      const path = window.location.pathname.toLowerCase();
+      const tabs = Array.from(document.querySelectorAll('.nav-tab-item'));
+
+      if (path === '/' || path === '') {
+        targetEl = document.querySelector('.nav-tab-item[data-tab="home"]');
+      } else if (path.includes('naija-news') || path.includes('politics')) {
+        targetEl = document.querySelector('.nav-tab-item[data-tab="naija-news"]');
+      } else if (path.includes('money-hustle') || path.includes('business') || path.includes('economy') || path.includes('tech') || path.includes('energy')) {
+        targetEl = document.querySelector('.nav-tab-item[data-tab="money-hustle"]');
+      } else if (path.includes('sports')) {
+        targetEl = document.querySelector('.nav-tab-item[data-tab="sports"]');
+      } else if (path.includes('world')) {
+        targetEl = document.querySelector('.nav-tab-item[data-tab="world"]');
+      }
+
+      if (!targetEl && tabs.length > 0) {
+        targetEl = tabs[0];
+      }
+    }
+
+    if (targetEl && track) {
+      const trackRect = track.getBoundingClientRect();
+      const targetRect = targetEl.getBoundingClientRect();
+      
+      const leftOffset = targetRect.left - trackRect.left;
+      const width = targetRect.width;
+
+      indicator.style.left = `${leftOffset}px`;
+      indicator.style.width = `${width}px`;
+      indicator.style.opacity = '1';
+
+      // Update text color classes
+      document.querySelectorAll('.nav-tab-item').forEach((tab) => {
+        if (tab === targetEl) {
+          tab.classList.add('is-active', 'text-white');
+          tab.classList.remove('text-slate-500', 'dark:text-slate-400');
+        } else {
+          tab.classList.remove('is-active', 'text-white');
+          tab.classList.add('text-slate-500', 'dark:text-slate-400');
+        }
+      });
+    }
+  }
+
+  // Setup tab click listeners for instant smooth indicator glide
+  function attachNavListeners() {
+    const tabs = document.querySelectorAll('.nav-tab-item');
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        updateNavIndicator(tab);
+      });
+    });
+    // Position on current load
+    setTimeout(() => updateNavIndicator(), 20);
+  }
+
+  // Execute on initial DOM load & Astro View Transitions page changes
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachNavListeners);
+  } else {
+    attachNavListeners();
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    attachNavListeners();
+  });
+
+  window.addEventListener('resize', () => {
+    updateNavIndicator();
   });
 </script>

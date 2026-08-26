@@ -64,6 +64,42 @@ CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published_at);
 CREATE INDEX IF NOT EXISTS idx_articles_top ON articles(is_top_story);
 CREATE INDEX IF NOT EXISTS idx_articles_trending ON articles(is_trending);
 
+CREATE TABLE IF NOT EXISTS article_reports (
+  id TEXT PRIMARY KEY,
+  article_id TEXT NOT NULL,
+  article_title TEXT,
+  article_slug TEXT,
+  reason TEXT NOT NULL,
+  details TEXT,
+  reporter_email TEXT,
+  status TEXT DEFAULT 'pending',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS rejected_articles (
+  id TEXT PRIMARY KEY,
+  source_id TEXT,
+  source_name TEXT,
+  original_title TEXT NOT NULL,
+  original_url TEXT NOT NULL,
+  raw_content TEXT,
+  rejection_reason TEXT NOT NULL,
+  ai_tier_failures TEXT,
+  status TEXT DEFAULT 'rejected',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS visitor_analytics (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  visit_date TEXT NOT NULL,
+  page_path TEXT NOT NULL,
+  user_agent TEXT,
+  referrer TEXT,
+  device_type TEXT DEFAULT 'mobile',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS automation_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,

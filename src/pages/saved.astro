@@ -75,7 +75,7 @@ import Layout from '../layouts/Layout.astro';
             ${art.category_name || 'News'}
           </span>
           <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 leading-snug line-clamp-2">
-            <a href="/article/${art.slug}">${art.title}</a>
+            <a href="/news/${art.slug}">${art.title}</a>
           </h3>
           <div class="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
             <span>${art.reading_time_minutes || 4} min read</span>
@@ -85,7 +85,7 @@ import Layout from '../layouts/Layout.astro';
             </button>
           </div>
         </div>
-        <a href="/article/${art.slug}" class="shrink-0 relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
+        <a href="/news/${art.slug}" class="shrink-0 relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
           <img src="${art.image_url}" alt="${art.title}" class="w-full h-full object-cover" />
         </a>
       </article>

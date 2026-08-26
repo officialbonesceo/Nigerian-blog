@@ -2,118 +2,60 @@ import type { Category, Source, Article } from './types';
 
 export const initialCategories: Category[] = [
   {
-    id: 'cat_politics',
-    slug: 'politics',
-    name: 'Politics',
-    description: 'National assembly, electoral reforms, executive policies and governance news across Nigeria.',
-    icon: 'landmark',
+    id: 'cat_naija_news',
+    slug: 'naija-news',
+    name: 'Naija News',
+    description: 'Breaking national reports, state assemblies, executive governance, infrastructure, and citizen stories across Nigeria.',
+    icon: 'flag',
     color: '#008751',
-    follower_count: 14200,
+    follower_count: 28400,
     display_order: 1,
   },
   {
-    id: 'cat_business',
-    slug: 'business',
-    name: 'Business',
-    description: 'Markets, corporate earnings, banking, trade policy and foreign exchange updates.',
+    id: 'cat_money_hustle',
+    slug: 'money-hustle',
+    name: 'Money Hustle',
+    description: 'Wealth creation, side hustles, SME strategies, Naira FX rates, fintech investments, banking and market opportunities.',
     icon: 'trending-up',
     color: '#0284c7',
-    follower_count: 18600,
+    follower_count: 34100,
     display_order: 2,
-  },
-  {
-    id: 'cat_economy',
-    slug: 'economy',
-    name: 'Economy',
-    description: 'Macroeconomics, inflation, monetary policy, GDP indicators and fiscal trends.',
-    icon: 'coins',
-    color: '#d97706',
-    follower_count: 11900,
-    display_order: 3,
   },
   {
     id: 'cat_sports',
     slug: 'sports',
     name: 'Sports',
-    description: 'Super Eagles, Premier League, UEFA competitions, NPFL and Nigerian athletes worldwide.',
+    description: 'Super Eagles, Premier League, NPFL, UEFA Champions League, boxing, combat sports, and Nigerian athletics worldwide.',
     icon: 'trophy',
     color: '#16a34a',
-    follower_count: 22400,
+    follower_count: 41200,
+    display_order: 3,
+  },
+  {
+    id: 'cat_world',
+    slug: 'world',
+    name: 'World',
+    description: 'International breaking events, geopolitics, global technology shifts, diplomacy, and diaspora developments.',
+    icon: 'globe',
+    color: '#6366f1',
+    follower_count: 19800,
     display_order: 4,
-  },
-  {
-    id: 'cat_tech',
-    slug: 'tech',
-    name: 'Tech & Startups',
-    description: 'Fintech innovations, venture funding, Yaba startup ecosystem and African digital developments.',
-    icon: 'cpu',
-    color: '#7c3aed',
-    follower_count: 9800,
-    display_order: 5,
-  },
-  {
-    id: 'cat_energy',
-    slug: 'energy',
-    name: 'Energy & Oil',
-    description: 'Petroleum industry, Dangote refinery, NNPCL operations and renewable transition in Nigeria.',
-    icon: 'flame',
-    color: '#ea580c',
-    follower_count: 8300,
-    display_order: 6,
   },
 ];
 
 export const initialSources: Source[] = [
+  // Naija News
   {
-    id: 'src_punch_breaking',
-    name: 'The Punch News (Official RSS)',
+    id: 'src_punch_news',
+    name: 'The Punch Newspapers',
     feed_url: 'https://punchng.com/feed/',
     website_url: 'https://punchng.com',
-    category_default_id: 'cat_politics',
+    category_default_id: 'cat_naija_news',
     is_enabled: 1,
     is_official: 1,
     trust_score: 96.5,
-    license_notes: 'Reputable daily publication. RSS feed permitted for headlines and metadata indexing with full canonical attribution.',
-    last_fetched_at: '2026-08-18T14:30:00Z',
-    fetch_interval_minutes: 30,
-  },
-  {
-    id: 'src_von_news',
-    name: 'Voice of Nigeria (VON Government RSS)',
-    feed_url: 'https://von.gov.ng/feed/',
-    website_url: 'https://von.gov.ng',
-    category_default_id: 'cat_politics',
-    is_enabled: 1,
-    is_official: 1,
-    trust_score: 98.0,
-    license_notes: 'Federal Government official international broadcast station. Public interest news releases under open govt attribution guidelines.',
-    last_fetched_at: '2026-08-18T14:15:00Z',
-    fetch_interval_minutes: 30,
-  },
-  {
-    id: 'src_cbn_press',
-    name: 'Central Bank of Nigeria (CBN Press Feed)',
-    feed_url: 'https://www.cbn.gov.ng/RSS/cbn_press_releases.xml',
-    website_url: 'https://www.cbn.gov.ng',
-    category_default_id: 'cat_economy',
-    is_enabled: 1,
-    is_official: 1,
-    trust_score: 99.5,
-    license_notes: 'Monetary policy and financial sector public regulatory releases with source citation.',
-    last_fetched_at: '2026-08-18T13:45:00Z',
-    fetch_interval_minutes: 60,
-  },
-  {
-    id: 'src_premium_times',
-    name: 'Premium Times Nigeria',
-    feed_url: 'https://www.premiumtimesng.com/feed',
-    website_url: 'https://www.premiumtimesng.com',
-    category_default_id: 'cat_business',
-    is_enabled: 1,
-    is_official: 0,
-    trust_score: 95.0,
-    license_notes: 'Investigative reporting and national coverage. Editorial rewriting with source credit required.',
-    last_fetched_at: '2026-08-18T14:00:00Z',
+    license_notes: 'Nigeria leading daily publication. RSS feed permitted for headlines and metadata indexing with full canonical attribution.',
+    last_fetched_at: '2026-08-25T14:30:00Z',
     fetch_interval_minutes: 30,
   },
   {
@@ -121,25 +63,161 @@ export const initialSources: Source[] = [
     name: 'Vanguard News Nigeria',
     feed_url: 'https://www.vanguardngr.com/feed/',
     website_url: 'https://www.vanguardngr.com',
-    category_default_id: 'cat_politics',
+    category_default_id: 'cat_naija_news',
     is_enabled: 1,
     is_official: 0,
-    trust_score: 94.0,
-    license_notes: 'National breaking news feed. Requires editorial synthesis and reference links.',
-    last_fetched_at: '2026-08-18T13:30:00Z',
-    fetch_interval_minutes: 45,
+    trust_score: 94.5,
+    license_notes: 'National breaking news and investigative wire. Editorial synthesis with source credit.',
+    last_fetched_at: '2026-08-25T14:00:00Z',
+    fetch_interval_minutes: 30,
   },
   {
     id: 'src_channels_tv',
-    name: 'Channels Television News',
+    name: 'Channels Television',
     feed_url: 'https://www.channelstv.com/feed/',
     website_url: 'https://www.channelstv.com',
-    category_default_id: 'cat_politics',
+    category_default_id: 'cat_naija_news',
+    is_enabled: 1,
+    is_official: 1,
+    trust_score: 97.5,
+    license_notes: 'Broadcast journalism desk with breaking national coverage.',
+    last_fetched_at: '2026-08-25T14:45:00Z',
+    fetch_interval_minutes: 30,
+  },
+  {
+    id: 'src_von_news',
+    name: 'Voice of Nigeria (VON Official)',
+    feed_url: 'https://von.gov.ng/feed/',
+    website_url: 'https://von.gov.ng',
+    category_default_id: 'cat_naija_news',
+    is_enabled: 1,
+    is_official: 1,
+    trust_score: 98.0,
+    license_notes: 'Federal Government official international broadcast station.',
+    last_fetched_at: '2026-08-25T14:15:00Z',
+    fetch_interval_minutes: 30,
+  },
+
+  // Money Hustle
+  {
+    id: 'src_techcabal',
+    name: 'TechCabal African Innovation',
+    feed_url: 'https://techcabal.com/feed/',
+    website_url: 'https://techcabal.com',
+    category_default_id: 'cat_money_hustle',
+    is_enabled: 1,
+    is_official: 1,
+    trust_score: 96.0,
+    license_notes: 'Fintech, venture rounds, startup business models, and African tech wealth.',
+    last_fetched_at: '2026-08-25T13:30:00Z',
+    fetch_interval_minutes: 45,
+  },
+  {
+    id: 'src_businessday',
+    name: 'BusinessDay Nigeria',
+    feed_url: 'https://businessday.ng/feed/',
+    website_url: 'https://businessday.ng',
+    category_default_id: 'cat_money_hustle',
     is_enabled: 1,
     is_official: 1,
     trust_score: 97.0,
-    license_notes: 'Multi-award winning independent broadcast network. Summary indexing with video/text attribution.',
-    last_fetched_at: '2026-08-18T14:45:00Z',
+    license_notes: 'Markets, corporate earnings, Naira exchange rates, and real estate investments.',
+    last_fetched_at: '2026-08-25T13:45:00Z',
+    fetch_interval_minutes: 30,
+  },
+  {
+    id: 'src_cbn_press',
+    name: 'Central Bank of Nigeria (CBN Feed)',
+    feed_url: 'https://www.cbn.gov.ng/RSS/cbn_press_releases.xml',
+    website_url: 'https://www.cbn.gov.ng',
+    category_default_id: 'cat_money_hustle',
+    is_enabled: 1,
+    is_official: 1,
+    trust_score: 99.5,
+    license_notes: 'Official monetary policy, banking guidelines, and interest rate resolutions.',
+    last_fetched_at: '2026-08-25T12:00:00Z',
+    fetch_interval_minutes: 60,
+  },
+  {
+    id: 'src_cnbc_markets',
+    name: 'CNBC Global Markets & Wealth',
+    feed_url: 'https://search.cnbc.com/rs/search/combinedlist/view.xml?partnerId=wrss01&id=100003114',
+    website_url: 'https://www.cnbc.com',
+    category_default_id: 'cat_money_hustle',
+    is_enabled: 1,
+    is_official: 0,
+    trust_score: 95.0,
+    license_notes: 'Global indices, commodities, gold, crude oil, and crypto asset movements.',
+    last_fetched_at: '2026-08-25T11:00:00Z',
+    fetch_interval_minutes: 45,
+  },
+
+  // Sports
+  {
+    id: 'src_bbc_sport',
+    name: 'BBC Sport Global',
+    feed_url: 'https://feeds.bbci.co.uk/sport/rss.xml',
+    website_url: 'https://www.bbc.com/sport',
+    category_default_id: 'cat_sports',
+    is_enabled: 1,
+    is_official: 1,
+    trust_score: 98.0,
+    license_notes: 'Comprehensive football, African players abroad, Formula 1, and boxing coverage.',
+    last_fetched_at: '2026-08-25T14:20:00Z',
+    fetch_interval_minutes: 30,
+  },
+  {
+    id: 'src_skysports_football',
+    name: 'Sky Sports Premier League',
+    feed_url: 'https://www.skysports.com/rss/12040',
+    website_url: 'https://www.skysports.com',
+    category_default_id: 'cat_sports',
+    is_enabled: 1,
+    is_official: 0,
+    trust_score: 96.0,
+    license_notes: 'Transfer breaking reports, match analysis, and league tables.',
+    last_fetched_at: '2026-08-25T13:10:00Z',
+    fetch_interval_minutes: 30,
+  },
+
+  // World
+  {
+    id: 'src_reuters_world',
+    name: 'Reuters World News Wire',
+    feed_url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+    website_url: 'https://www.reuters.com',
+    category_default_id: 'cat_world',
+    is_enabled: 1,
+    is_official: 1,
+    trust_score: 98.5,
+    license_notes: 'Global diplomatic summits, bilateral accords, geopolitical changes, and macro trends.',
+    last_fetched_at: '2026-08-25T14:00:00Z',
+    fetch_interval_minutes: 30,
+  },
+  {
+    id: 'src_bbc_world',
+    name: 'BBC World News',
+    feed_url: 'https://feeds.bbci.co.uk/news/world/rss.xml',
+    website_url: 'https://www.bbc.com/news/world',
+    category_default_id: 'cat_world',
+    is_enabled: 1,
+    is_official: 1,
+    trust_score: 98.0,
+    license_notes: 'Global breaking events and in-depth investigative reports.',
+    last_fetched_at: '2026-08-25T14:10:00Z',
+    fetch_interval_minutes: 30,
+  },
+  {
+    id: 'src_aljazeera_world',
+    name: 'Al Jazeera International',
+    feed_url: 'https://www.aljazeera.com/xml/rss/all.xml',
+    website_url: 'https://www.aljazeera.com',
+    category_default_id: 'cat_world',
+    is_enabled: 1,
+    is_official: 1,
+    trust_score: 95.5,
+    license_notes: 'Middle East, Global South, and UN diplomatic affairs.',
+    last_fetched_at: '2026-08-25T13:50:00Z',
     fetch_interval_minutes: 30,
   },
 ];
@@ -147,78 +225,90 @@ export const initialSources: Source[] = [
 export const initialArticles: Article[] = [
   {
     id: 'art_cbn_mpr_2025',
-    slug: 'cbn-retains-mpr-at-26-75-signals-cautious-optimism-on-inflation',
-    title: 'CBN Retains MPR at 26.75%, Signals Cautious Optimism on Inflation Trajectory',
-    summary: 'The Central Bank of Nigeria has decided to hold the Monetary Policy Rate (MPR) at 26.75% following its latest Monetary Policy Committee meeting in Abuja.',
+    slug: 'cbn-keeps-interest-rate-at-26-75-money-hustle',
+    title: 'CBN Holds Interest Rate at 26.75% as Naira Stabilizes Across Autonomous Windows',
+    summary: 'The Monetary Policy Committee has retained the benchmark Monetary Policy Rate (MPR) at 26.75%, supporting lending stability for manufacturers and small enterprise operators.',
     content: `
-<p>The Monetary Policy Committee (MPC) of the Central Bank of Nigeria (CBN) has decided to hold the Monetary Policy Rate (MPR) at 26.75%, maintaining a stance of cautious optimism as headline inflation metrics begin showing signs of month-on-month deceleration across core food baskets.</p>
+<h3>The Scoop</h3>
+<p>The Monetary Policy Committee (MPC) of the Central Bank of Nigeria (CBN) has unanimously resolved to retain the benchmark Monetary Policy Rate (MPR) at 26.75%. The policy outcome was delivered by CBN Governor Olayemi Cardoso at the apex bank headquarters in Abuja following thorough deliberation on inflation indicators and currency dynamics.</p>
+<p>The committee maintained the asymmetric corridor at +500/-100 basis points around the MPR, the Cash Reserve Ratio (CRR) for commercial deposit banks at 45.0%, and the liquidity ratio at 30.0%.</p>
 
-<p>Announcing the unanimous decision following the two-day committee meeting in Abuja, CBN Governor Olayemi Cardoso stated that while structural pressures remain in transportation and power logistics, previous rate hikes have successfully stabilized the foreign exchange market and curbed speculative arbitrage on the Naira.</p>
+<h3>The Stakes</h3>
+<p>For entrepreneurs, hustle builders, and everyday businesses across Nigeria, the rate pause provides a steady borrowing cost environment, averting sudden jumps in commercial loan repayments while reinforcing foreign portfolio inflows into local capital markets.</p>
 
-<blockquote>"Our priority remains firmly anchored on restoring purchasing power and maintaining exchange rate stability. The committee observed encouraging moderation in the rate of price increases, particularly in metropolitan centers," Cardoso told journalists during the post-MPC press briefing.</blockquote>
-
-<h3>Key Resolutions by the Committee:</h3>
+<h3>The Stats</h3>
+<p>Key resolutions and verified numbers from the MPC briefing:</p>
 <ul>
   <li><strong>Monetary Policy Rate (MPR):</strong> Retained at 26.75%</li>
-  <li><strong>Asymmetric Corridor:</strong> Kept at +500/-100 basis points around the MPR</li>
-  <li><strong>Cash Reserve Ratio (CRR):</strong> Maintained at 45.0% for commercial deposit banks</li>
-  <li><strong>Liquidity Ratio:</strong> Left unchanged at 30.0%</li>
+  <li><strong>Cash Reserve Ratio (CRR):</strong> 45.0% for commercial deposit money banks</li>
+  <li><strong>Daily FX Window Volume:</strong> Autonomous FX trading averaged $340M with rising remittances</li>
+  <li><strong>Headline Inflation Outlook:</strong> Food and energy price pressure projected to moderate through the quarter</li>
 </ul>
-
-<p>Financial analysts in Lagos noted that retaining the benchmark rate will allow businesses to plan capital expenditures with greater predictability while preventing unnecessary disruption to ongoing credit expansion in the manufacturing and agro-processing sectors.</p>
-
-<p>The foreign exchange market reacted positively to the announcement, with turnover at the Nigerian Autonomous Foreign Exchange Market (NAFEM) crossing $320 million on Tuesday as diaspora remittances and institutional foreign portfolio inflows continued their upward trend.</p>
+<blockquote>"Our foremost mandate is anchoring exchange rate stability and safeguarding the domestic purchasing power of working families," affirmed CBN Governor Olayemi Cardoso.</blockquote>
     `,
-    category_id: 'cat_business',
+    category_id: 'cat_money_hustle',
+    category_name: 'Money Hustle',
+    category_slug: 'money-hustle',
     image_url: 'https://images.unsplash.com/photo-1541888946425-d0fbb18f15f6?auto=format&fit=crop&w=1200&q=80',
-    image_caption: 'Central Bank of Nigeria Headquarters in Abuja, Federal Capital Territory.',
-    image_credit: 'CBN Media Archives / Editorial License',
+    image_caption: 'Central Bank of Nigeria Headquarters in the Central Business District, Abuja.',
+    image_credit: 'CBN Corporate Communications / Editorial License',
     image_license: 'Public Interest Information Use',
-    author_name: 'Tunde Akinsola',
-    author_role: 'Chief Economics Correspondent',
-    author_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    author_name: 'Dr. Kelechi Nwosu',
+    author_role: 'Chief Financial Analyst & Money Hustle Editor',
+    author_avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
     is_top_story: 1,
     is_trending: 1,
     is_breaking: 0,
-    views_count: 14820,
-    reading_time_minutes: 5,
+    views_count: 16420,
+    reading_time_minutes: 4,
     source_id: 'src_cbn_press',
     source_name: 'Central Bank of Nigeria',
     source_original_url: 'https://www.cbn.gov.ng',
-    published_at: '2026-08-18T13:45:00Z',
-    updated_at: '2026-08-18T14:10:00Z',
+    published_at: '2026-08-25T13:45:00Z',
+    updated_at: '2026-08-25T14:10:00Z',
     status: 'published',
   },
   {
-    id: 'art_trade_surplus_q1',
-    slug: 'nigerias-trade-surplus-hits-n6-3tn-in-q1',
-    title: "Nigeria's Trade Surplus Hits ₦6.3tn in Q1 Amid Surging Non-Oil Exports",
-    summary: 'The National Bureau of Statistics reports a substantial merchandise trade surplus driven by fertilizer, agricultural products and refined hydrocarbons.',
+    id: 'art_electoral_reform_review',
+    slug: 'fg-inaugurates-committee-to-review-1999-constitution-and-electoral-laws',
+    title: 'FG Inaugurates High-Powered Committee to Review 1999 Constitution and Electoral Laws',
+    summary: 'The Federal Government has launched a multi-stakeholder panel to harmonize public recommendations on state policing, local government financial autonomy, and electronic polling unit transmission.',
     content: `
-<p>Nigeria recorded a total foreign merchandise trade surplus of ₦6.32 trillion in the first quarter of the fiscal year, according to the latest Foreign Trade Statistics released by the National Bureau of Statistics (NBS).</p>
+<h3>The Scoop</h3>
+<p>The Federal Government of Nigeria on Tuesday officially inaugurated a 24-member inter-agency committee tasked with harmonizing public memorandums on constitutional restructuring, state police framework, and electoral transparency.</p>
+<p>Presiding over the ceremony at the State House Banquet Hall in Abuja, senior administration officials emphasized that modernizing the legal framework will deepen democratic institutions and bolster civic trust.</p>
 
-<p>The positive trade balance was primarily bolstered by strong performances in manufactured fertilizers, sesame seeds, cashew nuts, and domestic petroleum derivatives that have progressively replaced costly refined imports.</p>
+<h3>The Stakes</h3>
+<p>Constitutional reviews address long-standing demands for decentralized community policing, fiscal federalism, and foolproof electronic transmission of election polling unit results.</p>
 
-<p>European and Asian markets remained Nigeria's top trade destinations, with the Netherlands, India, and Spain accounting for a combined 34% of total export receipts recorded during the review period.</p>
+<h3>The Stats</h3>
+<p>Key parameters of the reform committee mandate:</p>
+<ul>
+  <li><strong>Timeline:</strong> Interim draft due to the National Assembly within 90 days</li>
+  <li><strong>Key Focus Areas:</strong> State policing guidelines, local council financial autonomy, and diaspora voting framework</li>
+  <li><strong>Public Hearings:</strong> Townhall consultations scheduled across all six geopolitical zones</li>
+</ul>
     `,
-    category_id: 'cat_business',
-    image_url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80',
-    image_caption: 'Container cargo loading terminal at the Lekki Deep Sea Port, Lagos.',
-    image_credit: 'Nigerian Ports Authority / Lekki Port PR',
-    image_license: 'Editorial Reference',
-    author_name: 'Ngozi Okonjo-Eze',
-    author_role: 'Trade & Financial Markets Reporter',
-    author_avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+    category_id: 'cat_naija_news',
+    category_name: 'Naija News',
+    category_slug: 'naija-news',
+    image_url: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
+    image_caption: 'National Assembly Complex in the Three Arms Zone, Abuja.',
+    image_credit: 'Federal Ministry of Information / VON Archive',
+    image_license: 'Official Government Information',
+    author_name: 'Oluwaseun Adeyemi',
+    author_role: 'Senior Bureau Chief & National Affairs Correspondent',
+    author_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     is_top_story: 0,
-    is_trending: 1,
-    is_breaking: 0,
-    views_count: 9450,
+    is_trending: 0,
+    is_breaking: 1,
+    views_count: 9840,
     reading_time_minutes: 4,
-    source_id: 'src_punch_breaking',
-    source_name: 'National Bureau of Statistics / Punch',
-    source_original_url: 'https://punchng.com',
-    published_at: '2026-08-18T11:20:00Z',
-    updated_at: '2026-08-18T11:20:00Z',
+    source_id: 'src_von_news',
+    source_name: 'Voice of Nigeria',
+    source_original_url: 'https://von.gov.ng',
+    published_at: '2026-08-25T12:00:00Z',
+    updated_at: '2026-08-25T12:30:00Z',
     status: 'published',
   },
   {
@@ -227,126 +317,171 @@ export const initialArticles: Article[] = [
     title: 'Lookman Nominated for African Footballer of the Year After Stellar Europa League Run',
     summary: 'Super Eagles forward Ademola Lookman leads the nominations following his historic European hat-trick and exceptional national team contributions.',
     content: `
-<p>Super Eagles forward Ademola Lookman has been shortlisted as a prime contender for the prestigious CAF African Footballer of the Year award, recognizing a breathtaking season that culminated in European glory and standout national team outings.</p>
+<h3>The Scoop</h3>
+<p>Super Eagles attacking sensation Ademola Lookman has been officially nominated by the Confederation of African Football (CAF) as a frontrunner for the African Footballer of the Year award.</p>
+<p>The nomination rewards a historic season in which Lookman became the first player to score a hat-trick in a one-legged European final, securing Atalanta's Europa League triumph.</p>
 
-<p>The 26-year-old winger made international football history with an electrifying hat-trick in Dublin, driving Atalanta to their first European title in over six decades while cementing his status as one of Africa's most dangerous attacking threats.</p>
+<h3>The Stakes</h3>
+<p>Lookman's global recognition underscores the rising prominence of Nigerian talent in world football and keeps Nigeria at the pinnacle of African football awards following Victor Osimhen's previous triumph.</p>
 
-<p>Nigerian football fans across Lagos, Abuja, and Kano have celebrated the recognition, expressing confidence that Lookman will follow in the footsteps of Victor Osimhen to bring the continental crown home for a consecutive year.</p>
+<h3>The Stats</h3>
+<p>Key records and match statistics from Ademola Lookman's milestone year:</p>
+<ul>
+  <li><strong>Europa League Final:</strong> 3 goals vs Bayer Leverkusen in Dublin</li>
+  <li><strong>National Team:</strong> 3 goals and key assists during the AFCON campaign</li>
+  <li><strong>Club Form:</strong> 17 goals and 10 assists across all competitions in Serie A</li>
+</ul>
     `,
     category_id: 'cat_sports',
+    category_name: 'Sports',
+    category_slug: 'sports',
     image_url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
-    image_caption: 'Nigerian football fans cheering during an international fixture in Uyo.',
-    image_credit: 'NFF Media / Open Editorial License',
+    image_caption: 'Nigerian football supporters cheering during an international match in Uyo.',
+    image_credit: 'NFF Media / Open Sports Editorial',
     image_license: 'Fair Use Sports Journalism',
-    author_name: 'Segun Odegbami Jr.',
-    author_role: 'Senior Sports Editor',
-    author_avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+    author_name: 'Chidi Okafor',
+    author_role: 'Sports Lead & African Football Bureau',
+    author_avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
     is_top_story: 0,
     is_trending: 1,
     is_breaking: 0,
-    views_count: 18920,
+    views_count: 22100,
     reading_time_minutes: 3,
-    source_id: 'src_channels_tv',
-    source_name: 'Channels TV Sports',
-    source_original_url: 'https://www.channelstv.com',
-    published_at: '2026-08-18T09:15:00Z',
-    updated_at: '2026-08-18T09:15:00Z',
+    source_id: 'src_bbc_sport',
+    source_name: 'BBC Sport / Channels TV',
+    source_original_url: 'https://www.bbc.com/sport',
+    published_at: '2026-08-25T11:15:00Z',
+    updated_at: '2026-08-25T11:15:00Z',
     status: 'published',
   },
   {
-    id: 'art_electoral_reform_review',
-    slug: 'fg-inaugurates-committee-to-review-1999-constitution-and-electoral-laws',
-    title: 'FG Inaugurates High-Powered Committee to Review 1999 Constitution and Electoral Laws',
-    summary: 'The Federal Government has launched a comprehensive stakeholder committee to review constitutional provisions on state policing, local government autonomy and electronic voting.',
+    id: 'art_world_un_climate_accord',
+    slug: 'global-green-energy-investment-surpasses-two-trillion-world-summit',
+    title: 'Global Clean Energy Investment Surpasses $2 Trillion at Historic UN Climate Summit',
+    summary: 'International leaders and development finance institutions pledge unprecedented funding for emerging economy grids and decentralized solar infrastructure.',
     content: `
-<p>The Federal Government of Nigeria on Tuesday officially inaugurated a 24-member inter-agency committee tasked with harmonizing public memorandums on constitutional restructuring, state police framework, and electoral transparency.</p>
+<h3>The Scoop</h3>
+<p>Global capital allocation toward renewable power generation, battery energy storage systems, and decentralized mini-grids has crossed the $2 trillion threshold annually, according to official reports released at the United Nations Climate and Energy Assembly.</p>
+<p>Major development finance corporations, sovereign wealth funds, and bilateral syndicates affirmed new multi-billion dollar debt relief facilities tied directly to clean technology deployment in Africa and Asia.</p>
 
-<p>Presiding over the ceremony at the State House Banquet Hall in Abuja, senior administration officials emphasized that modernizing the legal framework will deepen democratic institutions and bolster public trust ahead of upcoming civic engagements.</p>
+<h3>The Stakes</h3>
+<p>For developing markets, accelerated energy funding unlocks cheap distributed power for agricultural cold chains, rural hospitals, and micro-factories without bloating public debt.</p>
 
-<p>The committee is expected to submit its interim legislative draft to the National Assembly joint committees within 90 days for national debate and public hearings.</p>
+<h3>The Stats</h3>
+<p>Key metrics from the UN Climate and Energy report:</p>
+<ul>
+  <li><strong>Total Global Clean Tech Allocation:</strong> $2.15 Trillion in 2026</li>
+  <li><strong>Solar Capacity Growth:</strong> +36% year-on-year installation rate across the Global South</li>
+  <li><strong>Concessional Finance Window:</strong> $45 Billion committed for African clean energy projects</li>
+</ul>
+<blockquote>"Transitioning to abundant renewable energy is no longer just an environmental ideal; it is the single most potent economic growth engine of our generation," stated the UN Environment Directorate.</blockquote>
     `,
-    category_id: 'cat_politics',
-    image_url: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
-    image_caption: 'National Assembly Complex in the Three Arms Zone, Abuja.',
-    image_credit: 'Federal Ministry of Information / VON Archive',
-    image_license: 'Official Government Information',
-    author_name: 'Abubakar Danladi',
-    author_role: 'State House Bureau Chief',
-    author_avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-    is_top_story: 0,
-    is_trending: 0,
-    is_breaking: 1,
-    views_count: 7340,
-    reading_time_minutes: 4,
-    source_id: 'src_von_news',
-    source_name: 'Voice of Nigeria',
-    source_original_url: 'https://von.gov.ng',
-    published_at: '2026-08-18T12:00:00Z',
-    updated_at: '2026-08-18T12:30:00Z',
-    status: 'published',
-  },
-  {
-    id: 'art_dangote_fuel_distribution',
-    slug: 'dangote-refinery-expands-pms-distribution-easing-fuel-supply',
-    title: 'Dangote Refinery Expands PMS Distribution Nationwide, Easing Fuel Supply Constraints',
-    summary: 'Direct gantry and coastal vessel loading at the 650,000 bpd Lekki refinery surpasses 25 million litres daily to independent marketers.',
-    content: `
-<p>The 650,000 barrels-per-day Dangote Petroleum Refinery has expanded its nationwide delivery operations for Premium Motor Spirit (PMS), dispatching over 25 million litres per day via both coastal marine vessels and modern road gantry loading arms.</p>
-
-<p>Major Energies Marketers Association of Nigeria (MEMAN) and Independent Petroleum Marketers Association of Nigeria (IPMAN) confirmed seamless product evacuation, which has led to stable pump prices across retail outlets in Lagos, Ogun, Oyo, and Abuja.</p>
-
-<p>The facility is expected to initiate cross-border exports to West African neighbours under the African Continental Free Trade Area (AfCFTA) framework by the third quarter of the year.</p>
-    `,
-    category_id: 'cat_energy',
-    image_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80',
-    image_caption: 'Industrial refining infrastructure at the Lekki Free Trade Zone.',
-    image_credit: 'Dangote Industries Media / Creative Commons',
-    image_license: 'Commercial Editorial License',
-    author_name: 'Chinedu Eze',
-    author_role: 'Energy & Infrastructure Analyst',
-    author_avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
+    category_id: 'cat_world',
+    category_name: 'World',
+    category_slug: 'world',
+    image_url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+    image_caption: 'Earth satellite visualization representing interconnected global infrastructure.',
+    image_credit: 'NASA Earth Observatory / Public Domain',
+    image_license: 'Public Domain Creative Commons',
+    author_name: 'Amina Bello-Garba',
+    author_role: 'Foreign Correspondent & World Affairs Desk',
+    author_avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
     is_top_story: 0,
     is_trending: 1,
     is_breaking: 0,
-    views_count: 12400,
+    views_count: 14580,
     reading_time_minutes: 4,
-    source_id: 'src_punch_breaking',
-    source_name: 'The Punch / Vanguard',
-    source_original_url: 'https://punchng.com',
-    published_at: '2026-08-18T10:00:00Z',
-    updated_at: '2026-08-18T10:45:00Z',
+    source_id: 'src_reuters_world',
+    source_name: 'Reuters / BBC World',
+    source_original_url: 'https://www.reuters.com',
+    published_at: '2026-08-25T10:30:00Z',
+    updated_at: '2026-08-25T10:30:00Z',
     status: 'published',
   },
   {
-    id: 'art_yaba_tech_funding_2025',
-    slug: 'nigerian-tech-startups-secure-record-green-energy-funding',
-    title: 'Nigerian Tech Startups Secure Record $180m in Q2 Clean Energy and Fintech Rounds',
-    summary: 'Lagos and Abuja-based technology hubs demonstrate renewed venture capital momentum across decentralized solar fintech and logistics AI.',
+    id: 'art_techcabal_fintech_hustle',
+    slug: 'nigerian-fintechs-cross-border-payment-volumes-hit-new-milestone',
+    title: 'Nigerian Fintechs Tap Cross-Border Trade as Instant FX Settlement Surges 65%',
+    summary: 'Lagos-based payment innovators and digital remittance hubs expand merchant corridors across Ghana, Kenya, and the UK with instant local currency payouts.',
     content: `
-<p>Nigerian technology enterprises secured over $180 million in combined seed and Series A/B venture equity and debt financing in the second quarter, marking a healthy rebound in institutional African startup funding.</p>
+<h3>The Scoop</h3>
+<p>African cross-border payments processed by Nigerian digital fintech infrastructure hit an all-time high of $4.8 billion this quarter, according to data from TechCabal Insights and commercial settlement networks.</p>
+<p>Direct API integrations with Pan-African settlement switches have reduced payment friction for remote digital hustlers, freelance creators, and import-export merchants trading across regional borders.</p>
 
-<p>Renewable energy financing platforms and B2B digital commerce enablers captured the largest share of foreign direct investment, with global funds citing Nigeria's high mobile penetration and strong technical talent pool.</p>
+<h3>The Stakes</h3>
+<p>Seamless cross-border payouts allow Nigerian tech creators, e-commerce vendors, and freelancers to earn globally in foreign currency while receiving instant fair-rate conversion into their local accounts.</p>
 
-<p>Ecosystem leaders in Yaba, Lagos, noted that policy clarity on digital asset licensing and local currency payment switches has contributed significantly to investor confidence.</p>
+<h3>The Stats</h3>
+<p>Key highlights from the cross-border payment report:</p>
+<ul>
+  <li><strong>Quarterly Volume:</strong> $4.8 Billion settled across West and East African corridors</li>
+  <li><strong>Average Transaction Time:</strong> Reduced from 48 hours to under 35 seconds</li>
+  <li><strong>Active Hustle Merchants:</strong> Over 420,000 Nigerian digital sellers accepting direct international client payments</li>
+</ul>
     `,
-    category_id: 'cat_tech',
-    image_url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80',
-    image_caption: 'Software developers and technology founders collaborating at a tech hub in Yaba, Lagos.',
-    image_credit: 'Techpoint Africa / Creative Commons',
+    category_id: 'cat_money_hustle',
+    category_name: 'Money Hustle',
+    category_slug: 'money-hustle',
+    image_url: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80',
+    image_caption: 'Digital payment technology and modern financial analytics interface.',
+    image_credit: 'TechCabal Media / Creative Commons',
     image_license: 'Editorial Attribution',
-    author_name: 'Simi Adeleke',
-    author_role: 'Technology & Venture Capital Lead',
-    author_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    author_name: 'Dr. Kelechi Nwosu',
+    author_role: 'Chief Financial Analyst & Money Hustle Editor',
+    author_avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
     is_top_story: 0,
-    is_trending: 0,
+    is_trending: 1,
     is_breaking: 0,
-    views_count: 5120,
+    views_count: 11200,
     reading_time_minutes: 3,
-    source_id: 'src_premium_times',
-    source_name: 'Premium Times Tech',
-    source_original_url: 'https://www.premiumtimesng.com',
-    published_at: '2026-08-18T08:30:00Z',
-    updated_at: '2026-08-18T08:30:00Z',
+    source_id: 'src_techcabal',
+    source_name: 'TechCabal',
+    source_original_url: 'https://techcabal.com',
+    published_at: '2026-08-25T09:20:00Z',
+    updated_at: '2026-08-25T09:20:00Z',
+    status: 'published',
+  },
+  {
+    id: 'art_trade_surplus_q1',
+    slug: 'nigerias-trade-surplus-hits-n6-3tn-in-q1',
+    title: "Nigeria's Trade Surplus Hits ₦6.3tn in Q1 Amid Surging Non-Oil Agricultural & Fertilizer Exports",
+    summary: 'The National Bureau of Statistics reports a substantial merchandise trade surplus driven by urea fertilizer, processed cashew, sesame seeds and refined products.',
+    content: `
+<h3>The Scoop</h3>
+<p>Nigeria recorded a total foreign merchandise trade surplus of ₦6.32 trillion in the first quarter of the fiscal year, according to the latest Foreign Trade Statistics report published by the National Bureau of Statistics (NBS).</p>
+<p>Total export receipts surged by over 42% year-on-year, propelled by rapid expansions in non-oil agricultural produce, chemical fertilizers, and locally refined petroleum products.</p>
+
+<h3>The Stakes</h3>
+<p>A swelling trade surplus bolsters Nigeria's external foreign reserves, reinforces exchange rate resilience for the Naira, and signals steady diversification away from crude oil monoculture.</p>
+
+<h3>The Stats</h3>
+<p>Highlights from the National Bureau of Statistics trade balance data:</p>
+<ul>
+  <li><strong>Total Trade Surplus:</strong> ₦6.32 Trillion for Q1</li>
+  <li><strong>Top Export Commodities:</strong> Manufactured urea fertilizer, raw sesame seeds, processed cashew nuts, and domestic petroleum derivatives</li>
+  <li><strong>Key Trade Partners:</strong> The Netherlands, India, and Spain accounted for 34% of total export shipments</li>
+</ul>
+    `,
+    category_id: 'cat_money_hustle',
+    category_name: 'Money Hustle',
+    category_slug: 'money-hustle',
+    image_url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80',
+    image_caption: 'Container cargo loading terminal at the Lekki Deep Sea Port, Lagos.',
+    image_credit: 'Nigerian Ports Authority / Lekki Port PR',
+    image_license: 'Editorial Reference',
+    author_name: 'Damilola Adeleke',
+    author_role: 'Trade & Markets Bureau Directorate',
+    author_avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+    is_top_story: 0,
+    is_trending: 1,
+    is_breaking: 0,
+    views_count: 10450,
+    reading_time_minutes: 4,
+    source_id: 'src_punch_news',
+    source_name: 'The Punch / BusinessDay',
+    source_original_url: 'https://punchng.com',
+    published_at: '2026-08-25T08:15:00Z',
+    updated_at: '2026-08-25T08:15:00Z',
     status: 'published',
   },
 ];

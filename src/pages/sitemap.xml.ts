@@ -23,7 +23,7 @@ export const GET: APIRoute = ({ url }) => {
     `),
     ...articles.map((art) => `
     <url>
-      <loc>${origin}/article/${art.slug}</loc>
+      <loc>${origin}/news/${art.slug}</loc>
       <lastmod>${new Date(art.updated_at || art.published_at).toISOString()}</lastmod>
       <changefreq>daily</changefreq>
       <priority>0.9</priority>

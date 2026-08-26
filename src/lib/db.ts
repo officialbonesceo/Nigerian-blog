@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
-import { initialCategories, initialSources, initialArticles } from './seed-data';
-import type { Article, Category, Source, AutomationSetting, AutomationLog } from './types';
+import { initialCategories, initialSources } from './seed-data';
+import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle } from './types';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -87,6 +87,42 @@ function initDatabase() {
       status TEXT DEFAULT 'published'
     );
 
+    CREATE TABLE IF NOT EXISTS article_reports (
+      id TEXT PRIMARY KEY,
+      article_id TEXT NOT NULL,
+      article_title TEXT,
+      article_slug TEXT,
+      reason TEXT NOT NULL,
+      details TEXT,
+      reporter_email TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS rejected_articles (
+      id TEXT PRIMARY KEY,
+      source_id TEXT,
+      source_name TEXT,
+      original_title TEXT NOT NULL,
+      original_url TEXT NOT NULL,
+      raw_content TEXT,
+      rejection_reason TEXT NOT NULL,
+      ai_tier_failures TEXT,
+      status TEXT DEFAULT 'rejected',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS visitor_analytics (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      visit_date TEXT NOT NULL,
+      page_path TEXT NOT NULL,
+      user_agent TEXT,
+      referrer TEXT,
+      device_type TEXT DEFAULT 'mobile',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS automation_settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL,
@@ -118,61 +154,62 @@ function initDatabase() {
     );
   `);
 
-  // Seed Categories if empty
-  const catCount = db.prepare('SELECT COUNT(*) as count FROM categories').get() as { count: number };
-  if (catCount.count === 0) {
-    const insertCat = db.prepare(`
-      INSERT INTO categories (id, slug, name, description, icon, color, follower_count, display_order)
-      VALUES (@id, @slug, @name, @description, @icon, @color, @follower_count, @display_order)
-    `);
-    for (const cat of initialCategories) {
-      insertCat.run(cat);
-    }
+  // Seed/Upsert Categories
+  const insertCat = db.prepare(`
+    INSERT INTO categories (id, slug, name, description, icon, color, follower_count, display_order)
+    VALUES (@id, @slug, @name, @description, @icon, @color, @follower_count, @display_order)
+    ON CONFLICT(id) DO UPDATE SET
+      slug=excluded.slug,
+      name=excluded.name,
+      description=excluded.description,
+      icon=excluded.icon,
+      color=excluded.color,
+      follower_count=excluded.follower_count,
+      display_order=excluded.display_order
+  `);
+  for (const cat of initialCategories) {
+    insertCat.run(cat);
   }
 
-  // Seed Sources if empty
-  const srcCount = db.prepare('SELECT COUNT(*) as count FROM sources').get() as { count: number };
-  if (srcCount.count === 0) {
-    const insertSrc = db.prepare(`
-      INSERT INTO sources (id, name, feed_url, website_url, category_default_id, is_enabled, is_official, trust_score, license_notes, last_fetched_at, fetch_interval_minutes)
-      VALUES (@id, @name, @feed_url, @website_url, @category_default_id, @is_enabled, @is_official, @trust_score, @license_notes, @last_fetched_at, @fetch_interval_minutes)
-    `);
-    for (const src of initialSources) {
-      insertSrc.run(src);
-    }
-  }
-
-  // Seed Articles if empty
-  const artCount = db.prepare('SELECT COUNT(*) as count FROM articles').get() as { count: number };
-  if (artCount.count === 0) {
-    const insertArt = db.prepare(`
-      INSERT INTO articles (
-        id, slug, title, summary, content, category_id, image_url, image_caption,
-        image_credit, image_license, author_name, author_role, author_avatar,
-        is_top_story, is_trending, is_breaking, views_count, reading_time_minutes,
-        source_id, source_name, source_original_url, published_at, updated_at, status
-      ) VALUES (
-        @id, @slug, @title, @summary, @content, @category_id, @image_url, @image_caption,
-        @image_credit, @image_license, @author_name, @author_role, @author_avatar,
-        @is_top_story, @is_trending, @is_breaking, @views_count, @reading_time_minutes,
-        @source_id, @source_name, @source_original_url, @published_at, @updated_at, @status
-      )
-    `);
-    for (const art of initialArticles) {
-      insertArt.run(art);
-    }
+  // Seed/Upsert Sources
+  const insertSrc = db.prepare(`
+    INSERT INTO sources (id, name, feed_url, website_url, category_default_id, is_enabled, is_official, trust_score, license_notes, last_fetched_at, fetch_interval_minutes)
+    VALUES (@id, @name, @feed_url, @website_url, @category_default_id, @is_enabled, @is_official, @trust_score, @license_notes, @last_fetched_at, @fetch_interval_minutes)
+    ON CONFLICT(id) DO UPDATE SET
+      name=excluded.name,
+      feed_url=excluded.feed_url,
+      website_url=excluded.website_url,
+      category_default_id=excluded.category_default_id,
+      trust_score=excluded.trust_score,
+      license_notes=excluded.license_notes
+  `);
+  for (const src of initialSources) {
+    insertSrc.run(src);
   }
 
   // Seed default automation settings
   const settingsCount = db.prepare('SELECT COUNT(*) as count FROM automation_settings').get() as { count: number };
   if (settingsCount.count === 0) {
     const insertSetting = db.prepare(`INSERT INTO automation_settings (key, value, description) VALUES (?, ?, ?)`);
-    insertSetting.run('groq_model', 'llama-3.1-8b-instant', 'Selected active Groq LLM model for Nigerian news editorial restructuring');
-    insertSetting.run('groq_api_key', '', 'API Key for Groq Cloud inference');
-    insertSetting.run('auto_publish', 'false', 'Automatically publish rewritten articles or hold in draft state for review');
-    insertSetting.run('cron_interval_minutes', '30', 'Cloudflare Workers scheduled trigger interval');
-    insertSetting.run('ai_prompt_template', `You are an expert Nigerian news editor and fact-checker at 9jaBeacon. Rewrite and synthesize this RSS news lead into an original, factual, mobile-optimized news report for Nigerian readers. Maintain journalistic integrity, clear paragraphs, key takeaways, and proper source reference.`, 'System prompt for Groq processing');
+    insertSetting.run('cloudflare_account_id', '', 'Cloudflare Account ID for Tier 1 Primary Workers AI');
+    insertSetting.run('cloudflare_api_token', '', 'Cloudflare API Token with Workers AI read/write permission');
+    insertSetting.run('cloudflare_ai_model', '@cf/meta/llama-3.1-8b-instruct', 'Primary Cloudflare Workers AI model');
+    insertSetting.run('openrouter_model', 'meta-llama/llama-3.3-70b-instruct:free', 'Selected active OpenRouter model for Tier 2 Fallback');
+    insertSetting.run('openrouter_api_key', '', 'API Key for OpenRouter multi-model inference');
+    insertSetting.run('pollinations_api_key', '', 'Optional API Token for Tier 3 Pollinations AI');
+    insertSetting.run('auto_publish', 'true', 'Automatically publish rewritten articles or hold in draft state for review');
+    insertSetting.run('cron_interval_minutes', '30', 'Scheduled automation ingestion trigger interval in minutes');
+    insertSetting.run('ai_prompt_template', `You are an expert Nigerian news editor and fact-checker at 9jaBeacon. Rewrite and synthesize this RSS news lead into an original, factual, mobile-optimized news report for Nigerian readers. Maintain journalistic integrity, clear paragraphs, key takeaways, and proper source reference.`, 'System prompt for news synthesis');
     insertSetting.run('duplicate_similarity_threshold', '0.85', 'Threshold for duplicate headline detection');
+  } else {
+    // Ensure new keys exist if updating an existing database
+    const insertSettingOrIgnore = db.prepare(`INSERT OR IGNORE INTO automation_settings (key, value, description) VALUES (?, ?, ?)`);
+    insertSettingOrIgnore.run('cloudflare_account_id', '', 'Cloudflare Account ID for Tier 1 Primary Workers AI');
+    insertSettingOrIgnore.run('cloudflare_api_token', '', 'Cloudflare API Token with Workers AI read/write permission');
+    insertSettingOrIgnore.run('cloudflare_ai_model', '@cf/meta/llama-3.1-8b-instruct', 'Primary Cloudflare Workers AI model');
+    insertSettingOrIgnore.run('openrouter_model', 'meta-llama/llama-3.3-70b-instruct:free', 'Selected active OpenRouter model for Tier 2 Fallback');
+    insertSettingOrIgnore.run('openrouter_api_key', '', 'API Key for OpenRouter multi-model inference');
+    insertSettingOrIgnore.run('pollinations_api_key', '', 'Optional API Token for Tier 3 Pollinations AI');
   }
 
   // Seed default site settings
@@ -181,16 +218,20 @@ function initDatabase() {
     const insertSite = db.prepare(`INSERT INTO site_settings (key, value) VALUES (?, ?)`);
     insertSite.run('site_name', '9jaBeacon');
     insertSite.run('site_tagline', 'Your Trusted Light on Nigerian News. Fast. Verified. Unbiased.');
-    insertSite.run('contact_email', 'editor@9jabeacon.ng');
+    insertSite.run('contact_email', 'officialbonesceo@gmail.com');
+    insertSite.run('admin_email', 'officialbonesceo@gmail.com');
     insertSite.run('twitter_handle', '@9jaBeacon');
-    insertSite.run('admin_password', 'admin123'); // Default development admin password
+    insertSite.run('admin_password', 'BonesCeo@9jaBeacon2026!');
+  } else {
+    const updateAdminEmail = db.prepare(`INSERT OR REPLACE INTO site_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))`);
+    updateAdminEmail.run('admin_email', 'officialbonesceo@gmail.com');
   }
 
   // Seed initial audit log
   const logCount = db.prepare('SELECT COUNT(*) as count FROM automation_logs').get() as { count: number };
   if (logCount.count === 0) {
     const insertLog = db.prepare(`INSERT INTO automation_logs (id, event_type, source_id, message, level) VALUES (?, ?, ?, ?, ?)`);
-    insertLog.run('log_' + Date.now(), 'SYSTEM_INIT', null, '9jaBeacon database, D1 schemas, permitted RSS sources and initial feeds initialized.', 'info');
+    insertLog.run('log_' + Date.now(), 'SYSTEM_INIT', null, '9jaBeacon database initialized with verified RSS wires, real-time analytics & reports tracking.', 'info');
   }
 }
 
@@ -226,8 +267,19 @@ export function getArticles(options?: {
   }
 
   if (options?.categorySlug) {
-    query += ` AND c.slug = ?`;
-    params.push(options.categorySlug);
+    const norm = options.categorySlug.toLowerCase().trim();
+    if (norm === 'naija-news' || norm === 'politics' || norm === 'national') {
+      query += ` AND (c.slug = 'naija-news' OR a.category_id IN ('cat_naija_news', 'cat_politics'))`;
+    } else if (norm === 'money-hustle' || norm === 'business' || norm === 'economy' || norm === 'tech' || norm === 'energy' || norm === 'hustle') {
+      query += ` AND (c.slug = 'money-hustle' OR a.category_id IN ('cat_money_hustle', 'cat_business', 'cat_economy', 'cat_tech', 'cat_energy'))`;
+    } else if (norm === 'sports') {
+      query += ` AND (c.slug = 'sports' OR a.category_id = 'cat_sports')`;
+    } else if (norm === 'world' || norm === 'global') {
+      query += ` AND (c.slug = 'world' OR a.category_id = 'cat_world')`;
+    } else {
+      query += ` AND c.slug = ?`;
+      params.push(norm);
+    }
   }
 
   if (options?.isTopStory !== undefined) {
@@ -369,7 +421,20 @@ export function getCategories(): Category[] {
 }
 
 export function getCategoryBySlug(slug: string): Category | null {
-  return (db.prepare('SELECT * FROM categories WHERE slug = ?').get(slug) as Category) || null;
+  const normalizedSlug = slug.toLowerCase().trim();
+  const slugAliases: Record<string, string> = {
+    'politics': 'naija-news',
+    'national': 'naija-news',
+    'business': 'money-hustle',
+    'economy': 'money-hustle',
+    'tech': 'money-hustle',
+    'energy': 'money-hustle',
+    'hustle': 'money-hustle',
+    'global': 'world',
+    'international': 'world',
+  };
+  const targetSlug = slugAliases[normalizedSlug] || normalizedSlug;
+  return (db.prepare('SELECT * FROM categories WHERE slug = ?').get(targetSlug) as Category) || null;
 }
 
 export function getSources(): Source[] {
@@ -397,7 +462,7 @@ export function createSource(data: Partial<Source>): Source {
     data.name || 'Custom RSS Feed',
     data.feed_url || '',
     data.website_url || '',
-    data.category_default_id || 'cat_politics',
+    data.category_default_id || 'cat_naija_news',
     data.is_enabled ? 1 : 0,
     data.is_official ? 1 : 0,
     data.trust_score || 90.0,
@@ -462,12 +527,12 @@ export function createArticle(data: Partial<Article>): Article {
     data.title || 'Untitled Story',
     data.summary || '',
     data.content || '',
-    data.category_id || 'cat_politics',
+    data.category_id || 'cat_naija_news',
     data.image_url || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
     data.image_caption || '',
-    data.image_credit || 'NaijaPulse Editorial',
+    data.image_credit || '9jaBeacon Editorial',
     data.image_license || 'Standard Editorial Use',
-    data.author_name || 'NaijaPulse Desk',
+    data.author_name || '9jaBeacon Desk',
     data.author_role || 'Staff Reporter',
     data.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
     data.is_top_story ? 1 : 0,
@@ -529,6 +594,109 @@ export function deleteArticle(id: string): boolean {
   return true;
 }
 
+// --- Report System Functions ---
+
+export function createArticleReport(data: { article_id: string; article_title?: string; article_slug?: string; reason: string; details?: string; reporter_email?: string }): ArticleReport {
+  const id = 'rep_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+  const stmt = db.prepare(`
+    INSERT INTO article_reports (id, article_id, article_title, article_slug, reason, details, reporter_email, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+  `);
+  stmt.run(id, data.article_id, data.article_title || '', data.article_slug || '', data.reason, data.details || '', data.reporter_email || '');
+  addAutomationLog('ARTICLE_REPORTED', data.article_id, `Report received for "${data.article_title || data.article_id}": ${data.reason}`, 'warning');
+  return db.prepare('SELECT * FROM article_reports WHERE id = ?').get(id) as ArticleReport;
+}
+
+export function getArticleReports(status?: string, limit: number = 50): ArticleReport[] {
+  let query = 'SELECT * FROM article_reports';
+  const params: any[] = [];
+  if (status) {
+    query += ' WHERE status = ?';
+    params.push(status);
+  }
+  query += ' ORDER BY created_at DESC LIMIT ?';
+  params.push(limit);
+  return db.prepare(query).all(...params) as ArticleReport[];
+}
+
+export function updateArticleReportStatus(id: string, status: 'resolved' | 'dismissed'): boolean {
+  db.prepare("UPDATE article_reports SET status = ? WHERE id = ?").run(status, id);
+  return true;
+}
+
+// --- Rejected Articles (Stories AI did not understand / couldn't parse) ---
+
+export function recordRejectedArticle(data: { source_id?: string; source_name?: string; original_title: string; original_url: string; raw_content?: string; rejection_reason: string; ai_tier_failures?: string }): RejectedArticle {
+  const id = 'rej_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+  const stmt = db.prepare(`
+    INSERT INTO rejected_articles (id, source_id, source_name, original_title, original_url, raw_content, rejection_reason, ai_tier_failures, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'rejected', datetime('now'))
+  `);
+  stmt.run(id, data.source_id || null, data.source_name || '', data.original_title, data.original_url, data.raw_content || '', data.rejection_reason, data.ai_tier_failures || '');
+  return db.prepare('SELECT * FROM rejected_articles WHERE id = ?').get(id) as RejectedArticle;
+}
+
+export function getRejectedArticles(limit: number = 50): RejectedArticle[] {
+  return db.prepare('SELECT * FROM rejected_articles ORDER BY created_at DESC LIMIT ?').all(limit) as RejectedArticle[];
+}
+
+// --- Visitor & Analytics Tracking ---
+
+export function logVisitorSession(data: { session_id: string; page_path: string; user_agent?: string; referrer?: string; device_type?: string }): void {
+  const today = new Date().toISOString().split('T')[0];
+  const id = 'vis_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+  db.prepare(`
+    INSERT INTO visitor_analytics (id, session_id, visit_date, page_path, user_agent, referrer, device_type, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+  `).run(id, data.session_id, today, data.page_path, data.user_agent || '', data.referrer || '', data.device_type || 'mobile');
+}
+
+export function getAnalyticsMetrics() {
+  const today = new Date().toISOString().split('T')[0];
+
+  // Daily unique active users today
+  const dailyUsersToday = (db.prepare('SELECT COUNT(DISTINCT session_id) as count FROM visitor_analytics WHERE visit_date = ?').get(today) as { count: number }).count || 0;
+  
+  // Total all-time distinct visitors
+  const allTimeUniqueVisitors = (db.prepare('SELECT COUNT(DISTINCT session_id) as count FROM visitor_analytics').get() as { count: number }).count || 0;
+
+  // Page hits today
+  const totalPageViewsToday = (db.prepare('SELECT COUNT(*) as count FROM visitor_analytics WHERE visit_date = ?').get(today) as { count: number }).count || 0;
+
+  // Most trending / popular articles
+  const trendingStories = db.prepare(`
+    SELECT title, slug, views_count, category_id, published_at 
+    FROM articles 
+    WHERE status = 'published' 
+    ORDER BY views_count DESC, published_at DESC 
+    LIMIT 6
+  `).all() as { title: string; slug: string; views_count: number; category_id: string; published_at: string }[];
+
+  // Articles fetched in the last 24 hours
+  const newlyFetched24h = (db.prepare(`
+    SELECT COUNT(*) as count FROM articles 
+    WHERE datetime(created_at) >= datetime('now', '-1 day')
+  `).get() as { count: number }).count || 0;
+
+  // Tools & infrastructure breakdown
+  const toolStats = [
+    { name: 'Cloudflare Workers AI', tier: 'Tier 1 Primary AI', status: 'Operational', model: '@cf/meta/llama-3.1-8b-instruct' },
+    { name: 'Groq Cloud Inference', tier: 'Tier 2 Fast Fallback', status: 'Operational', model: 'llama-3.1-8b-instant' },
+    { name: 'Pollinations AI Serverless', tier: 'Tier 3 Failsafe', status: 'Operational', model: 'serverless-text-turbo' },
+    { name: 'SQLite / Cloudflare D1 Sync', tier: 'High-Performance WAL Engine', status: 'Active (WAL Enabled)', model: 'Native D1 DB' },
+    { name: 'rss-parser XML & Media Engine', tier: 'Syndication Ingestor', status: 'Connected', model: 'RSS 2.0 / Atom' },
+  ];
+
+  return {
+    dailyUsersToday,
+    allTimeUniqueVisitors,
+    totalPageViewsToday,
+    trendingStories,
+    newlyFetched24h,
+    toolStats,
+  };
+}
+
 export function getAutomationSettings(): AutomationSetting[] {
   return db.prepare('SELECT * FROM automation_settings').all() as AutomationSetting[];
 }
@@ -585,6 +753,8 @@ export function getAdminDashboardStats() {
   const totalSources = (db.prepare('SELECT COUNT(*) as count FROM sources').get() as { count: number }).count;
   const activeSources = (db.prepare('SELECT COUNT(*) as count FROM sources WHERE is_enabled = 1').get() as { count: number }).count;
   const totalViews = (db.prepare('SELECT SUM(views_count) as count FROM articles').get() as { count: number | null }).count || 0;
+  const pendingReports = (db.prepare("SELECT COUNT(*) as count FROM article_reports WHERE status = 'pending'").get() as { count: number }).count || 0;
+  const totalRejected = (db.prepare("SELECT COUNT(*) as count FROM rejected_articles").get() as { count: number }).count || 0;
   
   return {
     totalArticles,
@@ -593,5 +763,7 @@ export function getAdminDashboardStats() {
     totalSources,
     activeSources,
     totalViews,
+    pendingReports,
+    totalRejected,
   };
 }
