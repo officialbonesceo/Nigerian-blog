@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import Parser from 'rss-parser';
 import { db } from '../src/lib/db';
 import { uploadToCloudinaryDetailed, verifyCloudinaryConnection } from '../src/lib/cloudinary';
+import { executeD1Query } from '../src/lib/d1-sync';
 import {
   synthesizeNewsArticle,
   generateEditorialNewsImage,
@@ -363,6 +364,44 @@ async function main() {
           `Synthesized & published "${aiResult.title.slice(0, 50)}..." via ${aiResult.provider} (${aiResult.modelUsed}).`,
           'info'
         );
+
+        // Direct Cloudflare D1 Edge Sync (Updates live website with 0 rebuilds required!)
+        if (aiConfig.cloudflareAccountId && aiConfig.cloudflareApiToken) {
+          try {
+            const d1Sql = `
+              INSERT OR REPLACE INTO articles (
+                id, slug, title, summary, content, category_id,
+                image_url, image_caption, image_credit, image_license,
+                author_name, author_role, author_avatar,
+                is_top_story, is_trending, is_breaking, views_count,
+                reading_time_minutes, source_id, source_name,
+                source_original_url, published_at, updated_at, status
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+            const d1Params = [
+              articleId, slug, aiResult.title, aiResult.summary, aiResult.content, categoryId,
+              finalImageUrl, imageCaption, imageCredit, source.license_notes || 'Editorial Fair Attribution',
+              desk.name, desk.role, desk.avatar,
+              sourceIngestedCount === 0 && Math.random() > 0.7 ? 1 : 0,
+              Math.random() > 0.5 ? 1 : 0,
+              Math.random() > 0.85 ? 1 : 0,
+              Math.floor(Math.random() * 40) + 12,
+              aiResult.readingTimeMinutes || 4,
+              source.id, source.name, item.link,
+              new Date().toISOString(), new Date().toISOString(), 'published'
+            ];
+            const d1Res = await executeD1Query(d1Sql, d1Params, {
+              accountId: aiConfig.cloudflareAccountId,
+              apiToken: aiConfig.cloudflareApiToken,
+              databaseNameOrId: 'naijablog',
+            });
+            if (d1Res.success) {
+              console.log(`     ⚡ D1 Cloud Sync:  ✅ Synced directly to Cloudflare D1 (naijablog)`);
+            }
+          } catch (d1Err: any) {
+            console.warn(`     ⚡ D1 Cloud Sync:  ⚠️ ${d1Err.message}`);
+          }
+        }
       } catch (insertErr: any) {
         console.error(`     ❌ Database insertion error for article:`, insertErr.message);
       }
