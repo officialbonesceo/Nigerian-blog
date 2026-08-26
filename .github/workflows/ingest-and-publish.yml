@@ -1,6 +1,9 @@
 name: 9jaBeacon AI News Ingestion
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     # Runs once every 3 hours (conserves workflow & API limits)
     - cron: '0 */3 * * *'
@@ -41,7 +44,7 @@ jobs:
           NODE_ENV: production
         run: npx tsx scripts/ingest.ts
 
-      - name: 🚀 Commit and Push Updated News Database (Zero Build Trigger)
+      - name: 🚀 Commit and Push Updated News Database
         run: |
           git config --global user.name "9jaBeacon Bot"
           git config --global user.email "bot@9jabeacon.ng"
@@ -49,7 +52,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No new news articles were published this cycle."
           else
-            # [skip ci] prevents Cloudflare Pages from rebuilding and wasting monthly build minutes!
-            git commit -m "chore(news): autonomous 3-hour AI news sync [skip ci]"
+            echo "New AI news articles ingested! Committing and publishing to live site..."
+            git commit -m "chore(news): auto-publish fresh AI Nigerian news"
             git push origin main
           fi
