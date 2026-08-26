@@ -154,6 +154,10 @@ async function runIngestionPipeline(env: WorkerEnv): Promise<void> {
             imageUrl = await generateImage(env, source.category_default_id || 'cat_politics');
           }
 
+          if (imageUrl) {
+            imageUrl = await uploadToCloudinaryWorker(imageUrl);
+          }
+
           await env.DB.prepare(`
             INSERT INTO articles (
               id, slug, title, summary, content, category_id,
@@ -351,4 +355,28 @@ async function logEvent(
       'INSERT INTO automation_logs (id, event_type, source_id, message, level, created_at) VALUES (?, ?, ?, ?, ?, datetime("now"))'
     ).bind(logId, eventType, sourceId || null, message, level).run();
   } catch {}
+}
+
+async function uploadToCloudinaryWorker(fileOrUrl: string): Promise<string> {
+  if (!fileOrUrl || fileOrUrl.includes('res.cloudinary.com')) {
+    return fileOrUrl;
+  }
+  try {
+    const formData = new FormData();
+    formData.append('file', fileOrUrl);
+    formData.append('upload_preset', 'voxawell');
+    formData.append('folder', '9jabeacon/articles');
+
+    const res = await fetch('https://api.cloudinary.com/v1_1/phwka7ak/image/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    if (res.ok) {
+      const data = await res.json() as any;
+      if (data.secure_url) {
+        return data.secure_url;
+      }
+    }
+  } catch {}
+  return fileOrUrl;
 }

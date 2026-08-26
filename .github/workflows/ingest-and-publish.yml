@@ -35,6 +35,8 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free' }}
           POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME || 'phwka7ak' }}
+          CLOUDINARY_UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET || 'voxawell' }}
           NODE_ENV: production
         run: npx tsx scripts/ingest.ts
 
@@ -46,6 +48,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No new news articles were published this cycle."
           else
-            git commit -m "chore(news): autonomous 2-hour AI news sync [skip ci]"
+            git commit -m "chore(news): autonomous 2-hour AI news sync"
             git push origin main
           fi

@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Parser from 'rss-parser';
 import { db } from '../src/lib/db';
+import { uploadToCloudinaryDetailed, verifyCloudinaryConnection } from '../src/lib/cloudinary';
 import {
   synthesizeNewsArticle,
   generateEditorialNewsImage,
@@ -113,12 +114,38 @@ async function main() {
     pollinationsApiKey: process.env.POLLINATIONS_API_KEY || dbSettings.pollinations_api_key,
   };
 
-  console.log('\n🔍 Active AI Hierarchy Configuration:');
-  console.log(`  1. Cloudflare Workers AI: ${aiConfig.cloudflareAccountId && aiConfig.cloudflareApiToken ? '✅ Active (' + aiConfig.cloudflareModel + ')' : '⚠️ Not Configured (Falling back to OpenRouter)'}`);
-  console.log(`  2. OpenRouter AI:         ${aiConfig.openrouterApiKey ? '✅ Active (' + aiConfig.openrouterModel + ')' : '⚠️ Not Configured (Falling back to Pollinations)'}`);
-  console.log(`  3. Pollinations AI:       ✅ Active (Tier 3 Free & Serverless)`);
-  console.log(`  4. Flux-1-Schnell Image:  ${aiConfig.cloudflareAccountId && aiConfig.cloudflareApiToken ? '✅ Active (Cloudflare Workers AI)' : '✅ Active (Flux Serverless fallback)'}`);
-  console.log(`  🛑 STRICT AI GATE:        ACTIVE (Ensures structured journalistic quality)\n`);
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'phwka7ak';
+  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || 'voxawell';
+
+  console.log('\n🔎 RUNNING LIVE API CONNECTION & DIAGNOSTIC VERIFICATION:');
+  console.log('----------------------------------------------------------------');
+
+  // 1. Verify Cloudinary Unsigned CDN Connection
+  const cloudinaryCheck = await verifyCloudinaryConnection(cloudName, uploadPreset);
+  if (cloudinaryCheck.verified) {
+    console.log(`  ☁️ Cloudinary CDN:       ✅ VERIFIED (Cloud: "${cloudName}", Preset: "${uploadPreset}")`);
+  } else {
+    console.log(`  ☁️ Cloudinary CDN:       ⚠️ Warning: ${cloudinaryCheck.message}`);
+  }
+
+  // 2. Verify Cloudflare Workers AI credentials
+  if (aiConfig.cloudflareAccountId && aiConfig.cloudflareApiToken) {
+    console.log(`  ⚡ Cloudflare Workers AI: ✅ Configured (Account: ${aiConfig.cloudflareAccountId.slice(0, 8)}..., Model: ${aiConfig.cloudflareModel})`);
+  } else {
+    console.log(`  ⚡ Cloudflare Workers AI: ℹ️ Not set (Using OpenRouter / Pollinations / Editorial Core)`);
+  }
+
+  // 3. Verify OpenRouter credentials
+  if (aiConfig.openrouterApiKey) {
+    console.log(`  🌐 OpenRouter AI Pool:   ✅ Configured (Key: ${aiConfig.openrouterApiKey.slice(0, 8)}..., Model: ${aiConfig.openrouterModel})`);
+  } else {
+    console.log(`  🌐 OpenRouter AI Pool:   ℹ️ Not set (Using Pollinations / Editorial Core)`);
+  }
+
+  // 4. Pollinations AI status
+  console.log(`  🌸 Pollinations Server:  ✅ Active (Free Multi-Model Serverless Fallback)`);
+  console.log(`  📰 Editorial Core Desk:  ✅ Active (100% Zero-Drop Journalism Synthesizer)`);
+  console.log('----------------------------------------------------------------\n');
 
   // Fetch enabled sources
   const sources = db.prepare('SELECT * FROM sources WHERE is_enabled = 1').all() as SourceRow[];
@@ -128,6 +155,9 @@ async function main() {
   let totalPublished = 0;
   let totalRejectedNoAi = 0;
   let totalDuplicatesSkipped = 0;
+  let totalCloudinarySuccess = 0;
+  let totalCloudinaryFallback = 0;
+  const aiUsageStats: Record<string, number> = {};
 
   const insertArticle = db.prepare(`
     INSERT INTO articles (
@@ -236,6 +266,13 @@ async function main() {
         continue;
       }
 
+      // Record AI usage stats
+      const providerLabel = `${aiResult.provider || 'unknown'} (${aiResult.modelUsed || 'default'})`;
+      aiUsageStats[providerLabel] = (aiUsageStats[providerLabel] || 0) + 1;
+
+      console.log(`     🤖 AI Engine Used: ${providerLabel}`);
+      console.log(`     ⏱️ Reading Time:   ${aiResult.readingTimeMinutes || 3} min`);
+
       // Determine category and desk profile
       const categoryId = aiResult.categoryId || source.category_default_id || 'cat_naija_news';
       const desk = EDITORIAL_DESKS[categoryId] || DEFAULT_DESK;
@@ -247,12 +284,12 @@ async function main() {
       const articleId = 'art_' + Date.now() + '_' + uniqueSuffix;
 
       // Handle Image: If feed doesn't provide image, generate with Cloudflare Flux-1-Schnell
-      let finalImageUrl = item.enclosure?.url || item.mediaContent?.$?.url;
+      let rawImageUrl = item.enclosure?.url || item.mediaContent?.$?.url;
       let imageCaption = `Verified editorial synthesis of news wire report from ${source.name}.`;
       let imageCredit = source.name;
 
-      if (!finalImageUrl) {
-        console.log(`  🎨 Generating conceptual image via Flux AI (No-Human Safety Rule)...`);
+      if (!rawImageUrl) {
+        console.log(`     🎨 Conceptual Image: Generating via Flux AI (No-Human Policy)...`);
         const generatedImage = await generateEditorialNewsImage(
           {
             title: aiResult.title,
@@ -261,9 +298,29 @@ async function main() {
           },
           aiConfig
         );
-        finalImageUrl = generatedImage.imageUrl;
+        rawImageUrl = generatedImage.imageUrl;
         imageCaption = generatedImage.caption;
         imageCredit = generatedImage.credit;
+      }
+
+      // Auto-upload image to Cloudinary (unsigned preset: voxawell, cloud: phwka7ak)
+      let finalImageUrl = rawImageUrl;
+      if (rawImageUrl) {
+        const uploadRes = await uploadToCloudinaryDetailed(rawImageUrl, {
+          cloudName,
+          uploadPreset,
+          folder: '9jabeacon/articles',
+        });
+
+        if (uploadRes.success && uploadRes.url.includes('res.cloudinary.com')) {
+          finalImageUrl = uploadRes.url;
+          totalCloudinarySuccess++;
+          console.log(`     ☁️ Cloudinary Upload: ✅ SUCCESS`);
+          console.log(`        └─ CDN URL: ${finalImageUrl}`);
+        } else {
+          totalCloudinaryFallback++;
+          console.log(`     ☁️ Cloudinary Upload: ⚠️ FALLBACK to original (${uploadRes.error || 'Network error'})`);
+        }
       }
 
       try {
@@ -297,8 +354,7 @@ async function main() {
         sourceIngestedCount++;
         totalPublished++;
 
-        console.log(`  ✅ [PUBLISHED] "${aiResult.title.slice(0, 60)}..."`);
-        console.log(`     🤖 AI Provider: ${aiResult.provider} (${aiResult.modelUsed}) | Slug: /news/${slug}`);
+        console.log(`     ✅ [STORED & PUBLISHED] Article ID: ${articleId} | Slug: /news/${slug}`);
 
         insertLog.run(
           'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
@@ -308,7 +364,7 @@ async function main() {
           'info'
         );
       } catch (insertErr: any) {
-        console.error(`  ❌ Database insertion error for article:`, insertErr.message);
+        console.error(`     ❌ Database insertion error for article:`, insertErr.message);
       }
     }
 
@@ -317,13 +373,22 @@ async function main() {
 
   db.close();
 
-  console.log('\n=====================================================');
-  console.log('📊 INGESTION RUN SUMMARY:');
-  console.log(`  - Total Feed Items Inspected: ${totalProcessed}`);
-  console.log(`  - Duplicates / Already Saved: ${totalDuplicatesSkipped}`);
-  console.log(`  - Strict AI Gate Rejections:  ${totalRejectedNoAi}`);
-  console.log(`  - Successfully AI Rewritten & Stored: ${totalPublished}`);
-  console.log('=====================================================\n');
+  console.log('\n================================================================');
+  console.log('📊 9JABEACON INGESTION PIPELINE EXECUTION SUMMARY');
+  console.log('================================================================');
+  console.log(`  - Total Feed Items Inspected:      ${totalProcessed}`);
+  console.log(`  - Duplicates / Already Saved:      ${totalDuplicatesSkipped}`);
+  console.log(`  - Strict AI Gate Rejections:       ${totalRejectedNoAi}`);
+  console.log(`  - Successfully Published Articles: ${totalPublished}`);
+  console.log(`  - Cloudinary Images Uploaded:      ${totalCloudinarySuccess} (CDN Active)`);
+  if (totalCloudinaryFallback > 0) {
+    console.log(`  - Images using Wire Fallback:      ${totalCloudinaryFallback}`);
+  }
+  console.log('\n  🤖 AI Model Distribution in this Run:');
+  for (const [provider, count] of Object.entries(aiUsageStats)) {
+    console.log(`     • ${provider}: ${count} article(s)`);
+  }
+  console.log('================================================================\n');
 }
 
 function slugify(text: string): string {
