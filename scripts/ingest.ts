@@ -7,10 +7,10 @@
  *          BusinessDay, Central Bank of Nigeria, CNBC Markets, Al Jazeera, Channels TV
  */
 
-import Database from 'better-sqlite3';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Parser from 'rss-parser';
+import { db } from '../src/lib/db';
 import {
   synthesizeNewsArticle,
   generateEditorialNewsImage,
@@ -95,9 +95,6 @@ async function main() {
   console.log('📅 Execution Time:', new Date().toISOString());
   console.log('📂 Database File:', dbPath);
   console.log('=====================================================');
-
-  const db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
 
   // Load automation settings from database
   const settingsRows = db.prepare('SELECT key, value FROM automation_settings').all() as { key: string; value: string }[];

@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { initialCategories, initialSources } from './seed-data';
+import { initialCategories, initialSources, initialArticles } from './seed-data';
 import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle } from './types';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -185,6 +185,27 @@ function initDatabase() {
   `);
   for (const src of initialSources) {
     insertSrc.run(src);
+  }
+
+  // Seed default articles if empty
+  const articlesCount = db.prepare('SELECT COUNT(*) as count FROM articles').get() as { count: number };
+  if (articlesCount.count === 0 && initialArticles && initialArticles.length > 0) {
+    const insertArt = db.prepare(`
+      INSERT OR IGNORE INTO articles (
+        id, slug, title, summary, content, category_id, image_url, image_caption,
+        image_credit, image_license, author_name, author_role, author_avatar,
+        is_top_story, is_trending, is_breaking, views_count, reading_time_minutes,
+        source_id, source_name, source_original_url, published_at, updated_at, status
+      ) VALUES (
+        @id, @slug, @title, @summary, @content, @category_id, @image_url, @image_caption,
+        @image_credit, @image_license, @author_name, @author_role, @author_avatar,
+        @is_top_story, @is_trending, @is_breaking, @views_count, @reading_time_minutes,
+        @source_id, @source_name, @source_original_url, @published_at, @updated_at, @status
+      )
+    `);
+    for (const art of initialArticles) {
+      insertArt.run(art);
+    }
   }
 
   // Seed default automation settings
