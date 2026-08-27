@@ -187,6 +187,14 @@ function initDatabase() {
     insertSrc.run(src);
   }
 
+  // Clean up and normalize any legacy/misaligned category IDs into the 4 primary desks
+  try {
+    db.prepare(`UPDATE articles SET category_id = 'cat_naija_news' WHERE category_id IN ('cat_politics', 'cat_national', 'cat_crime', 'cat_metro') OR category_id IS NULL OR category_id = ''`).run();
+    db.prepare(`UPDATE articles SET category_id = 'cat_money_hustle' WHERE category_id IN ('cat_business', 'cat_economy', 'cat_tech', 'cat_energy', 'cat_hustle')`).run();
+    db.prepare(`UPDATE articles SET category_id = 'cat_sports' WHERE category_id IN ('cat_football', 'sports', 'football')`).run();
+    db.prepare(`UPDATE articles SET category_id = 'cat_world' WHERE category_id IN ('cat_global', 'cat_diaspora', 'world', 'global')`).run();
+  } catch {}
+
   // Seed default articles if empty
   const articlesCount = db.prepare('SELECT COUNT(*) as count FROM articles').get() as { count: number };
   if (articlesCount.count === 0 && initialArticles && initialArticles.length > 0) {

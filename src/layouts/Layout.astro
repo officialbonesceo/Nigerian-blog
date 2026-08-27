@@ -292,7 +292,7 @@ const siteName = siteSettings.site_name || '9jaBeacon';
       .reader-size-xl .article-content { font-size: 1.4rem; }
     </style>
   </head>
-  <body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased pb-20 md:pb-6 selection:bg-emerald-600 selection:text-white transition-colors duration-200">
+  <body class="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased pb-28 md:pb-12 selection:bg-emerald-600 selection:text-white transition-colors duration-200 overflow-x-hidden">
     <!-- Top Reading Progress Indicator (Visible on scroll) -->
     <div id="reading-progress-bar" class="fixed top-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 z-50 transition-all duration-75 w-0"></div>
 
@@ -300,7 +300,7 @@ const siteName = siteSettings.site_name || '9jaBeacon';
     <Header siteName={siteName} categories={categories} />
 
     <!-- Main Content Container -->
-    <main class="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 pt-3 pb-8">
+    <main class="flex-1 w-full max-w-4xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4 pb-8 overflow-hidden">
       <slot />
     </main>
 
@@ -314,6 +314,14 @@ const siteName = siteSettings.site_name || '9jaBeacon';
     <div id="toast-container" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-2 transition-all"></div>
 
     <script is:inline>
+      // Global Image Fallback Handler (Catches all broken or missing image loads seamlessly)
+      document.addEventListener('error', function(e) {
+        if (e.target && e.target.tagName === 'IMG' && !e.target.dataset.hasFallback) {
+          e.target.dataset.hasFallback = 'true';
+          e.target.src = '/fallback-image.svg';
+        }
+      }, true);
+
       // Global Theme Toggler
       window.toggleTheme = function() {
         const isDark = document.documentElement.classList.contains('dark');

@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import ArticleCard from '../../components/ArticleCard.astro';
 import BookmarkButton from '../../components/BookmarkButton.astro';
 import { getArticleBySlug, getRelatedArticles, getArticles, getSiteSettings } from '../../lib/db';
+import { DEFAULT_FALLBACK_IMAGE_URL } from '../../lib/fallback-image';
 
 export async function getStaticPaths() {
   const articles = getArticles({ limit: 1000 });
@@ -220,7 +221,7 @@ formattedContent = formattedContent
     <!-- 3. FEATURED MEDIA HERO -->
     <figure class="rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 shadow-md">
       <img
-        src={article.image_url}
+        src={article.image_url || DEFAULT_FALLBACK_IMAGE_URL}
         alt={article.title}
         class="w-full aspect-[16/9] object-cover"
         loading="eager"

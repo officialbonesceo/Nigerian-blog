@@ -81,32 +81,36 @@ export const POLLINATIONS_MODELS_CASCADE = [
   'mistral',
 ];
 
-const SYSTEM_PROMPT = `You are a Senior Nigerian Investigative News Editor at 9jaBeacon ("Your Trusted Light on Nigerian News").
-Your job is to rewrite raw RSS wire leads into original, engaging, high-quality, and factual news articles for Nigerian audiences.
+const SYSTEM_PROMPT = `You are a Senior Nigerian Investigative News Editor & Chief Correspondent at 9jaBeacon ("Your Trusted Light on Nigerian News").
+Your job is to transform raw RSS wire leads into comprehensive, engaging, educational, and easy-to-understand news articles tailored for Nigerian readers.
 
-EDITORIAL STRUCTURE RULES:
-1. Provide a fresh, objective, high-impact headline.
-2. Provide a 2-sentence executive summary.
-3. Structure the news content using standard journalistic headings in clean HTML format:
-   - <h3>The Scoop</h3> followed by 1-2 paragraphs detailing the breaking event, statements, and key developments.
-   - <h3>The Stakes</h3> followed by 1-2 paragraphs explaining the economic, political, or civic impact on ordinary Nigerian citizens, businesses, or policymakers.
-   - <h3>The Stats</h3> followed by verified facts, data points, background context, and key quotes (in <blockquote>).
-4. Assign the most relevant category ID from: 'cat_politics', 'cat_business', 'cat_entertainment', 'cat_sports', 'cat_tech', 'cat_crime', 'cat_metro'.
-5. Estimate reading time in minutes (integer between 2 and 6).
-6. Provide 3-5 key takeaways as bullet points.
-7. Return ONLY a valid JSON object with NO markdown code fences or conversational text.
+EDITORIAL DEPTH & CLARITY MANDATES:
+1. Write clearly and comprehensively. Avoid short, vague stubs. Readers need enough context and background to fully understand what happened and why it matters.
+2. Structure the news content using standard journalistic headings in clean, well-formatted HTML (minimum 350-500 words total):
+   - <h3>The Scoop</h3>: 2-3 substantial paragraphs clearly breaking down what happened, the official announcements, decisions taken, key figures involved, and immediate developments.
+   - <h3>The Stakes</h3>: 2 paragraphs explaining the direct economic, civic, financial, or political impact on ordinary Nigerian citizens, households, entrepreneurs, workers, or policies.
+   - <h3>The Stats</h3>: Bullet points (<ul><li>) of verified figures, budget numbers, historical dates, timeline context, and key direct quotes (in <blockquote>).
+3. Assign the article STRICTLY to ONE of the four primary 9jaBeacon editorial desks:
+   - 'cat_naija_news': Nigerian national politics, federal/state government, governance, security, infrastructure, legal rulings, and domestic citizen affairs.
+   - 'cat_money_hustle': Business, economy, Naira exchange rates, fintech, banking, SME opportunities, inflation, side hustles, crude oil/refining, and investments.
+   - 'cat_sports': Football (Super Eagles, NPFL, Premier League, Champions League, African players abroad), combat sports, boxing, athletics, and global tournaments.
+   - 'cat_world': International diplomacy, geopolitical events, global science & tech, foreign elections, and African diaspora developments.
+4. Provide a clear, informative 2-sentence executive summary that explains the core event without jargon.
+5. Provide 3-5 practical key takeaways as bullet points.
+6. Estimate reading time in minutes (integer between 3 and 6).
+7. Return ONLY a valid JSON object matching the schema below, with NO markdown code fences or conversational text.
 
 JSON Schema:
 {
-  "title": "Rewritten Headline",
-  "summary": "Concise 2-sentence overview for Nigerian readers.",
-  "content": "<h3>The Scoop</h3><p>First paragraph detailing the breaking event and immediate decisions...</p><p>Second paragraph with details...</p><h3>The Stakes</h3><p>Analysis of how this decision impacts Nigerian citizens, households, or markets...</p><h3>The Stats</h3><p>Specific data, resolutions, key quotes, and background timeline...</p>",
-  "category_id": "cat_business",
+  "title": "Clear, High-Impact Rewritten Headline",
+  "summary": "Clear 2-sentence summary outlining what happened and the immediate public impact.",
+  "content": "<h3>The Scoop</h3><p>Comprehensive opening paragraph detailing the core event...</p><p>Second paragraph providing background context, official statements, and chronological developments...</p><h3>The Stakes</h3><p>In-depth analysis of how this decision directly affects Nigerian households, market operators, or national security...</p><p>Broader implications for regional stability or economic growth...</p><h3>The Stats</h3><ul><li><strong>Key Figure:</strong> Verified number or date</li><li><strong>Timeline:</strong> Milestone progress</li></ul><blockquote>\\\"Direct official quotation summarizing the development,\\\" remarked the spokesperson.</blockquote>",
+  "category_id": "cat_naija_news",
   "reading_time_minutes": 4,
   "key_takeaways": [
-    "First crucial fact",
-    "Second key insight",
-    "Third important outcome"
+    "First crucial insight or resolution",
+    "Second key economic or political impact",
+    "Third practical takeaway for citizens and readers"
   ]
 }`;
 
@@ -421,27 +425,21 @@ export async function generateEditorialNewsImage(
  */
 function buildSafeConceptualPrompt(categoryId: string): string {
   switch (categoryId) {
+    case 'cat_money_hustle':
     case 'cat_business':
+    case 'cat_tech':
       return `Central Bank of Nigeria architectural facade, modern skyscraper finance district in Lagos Victoria Island, stacks of crisp Nigerian Naira currency notes, golden balance scale, stock market trading graph display, high-end financial still life, architectural photography`;
     
-    case 'cat_politics':
-      return `Nigerian National Assembly complex architectural exterior in Abuja under dramatic sky, gavel on wooden desk, green and white Nigerian flag emblem embossed on official mahogany lectern, empty legislative boardroom`;
-
-    case 'cat_tech':
-      return `Glowing quantum microchip processor on dark circuit board, futuristic data server room racks with fiber optic green lights, modern smartphone with clean holographic UI interface, technology concept`;
-
     case 'cat_sports':
       return `Modern national football stadium arena pitch under floodlights, soccer ball resting on manicured green grass, trophy on glass pedestal, athletics track stadium, sports photography`;
 
-    case 'cat_entertainment':
-      return `Cinematic movie camera on tripod in studio, theatrical spotlight beams on empty stage, film clapperboard and audio mixer desk, creative media still life`;
+    case 'cat_world':
+      return `Global diplomacy summit hall with international national flags, United Nations assembly room, digital earth globe with fiber optic network connections, world affairs concept`;
 
-    case 'cat_crime':
-      return `Legal courtroom interior, polished wooden judge bench with wooden gavel, law books, handcuffs resting on leather binder, justice concept photography`;
-
-    case 'cat_metro':
+    case 'cat_naija_news':
+    case 'cat_politics':
     default:
-      return `Aerial view of Lagos Lekki-Ikoyi link bridge at twilight, modern Nigerian urban highway infrastructure with light trails, architectural cityscape of Abuja, modern Nigerian landmark`;
+      return `Nigerian National Assembly complex architectural exterior in Abuja under dramatic sky, gavel on wooden desk, green and white Nigerian flag emblem embossed on official mahogany lectern, empty legislative boardroom`;
   }
 }
 
@@ -486,13 +484,20 @@ function parseAiJsonResponse(
       return null;
     }
 
-    const validCategories = ['cat_politics', 'cat_business', 'cat_entertainment', 'cat_sports', 'cat_tech', 'cat_crime', 'cat_metro'];
-    let categoryId = obj.category_id || fallbackInput.categoryDefault || 'cat_politics';
-    if (!validCategories.includes(categoryId)) {
-      categoryId = fallbackInput.categoryDefault || 'cat_politics';
+    // Strictly normalize into one of the 4 primary desks
+    const rawCat = (obj.category_id || fallbackInput.categoryDefault || 'cat_naija_news').toLowerCase();
+    let categoryId = 'cat_naija_news';
+    if (rawCat.includes('money') || rawCat.includes('hustle') || rawCat.includes('business') || rawCat.includes('tech') || rawCat.includes('economy')) {
+      categoryId = 'cat_money_hustle';
+    } else if (rawCat.includes('sport') || rawCat.includes('football')) {
+      categoryId = 'cat_sports';
+    } else if (rawCat.includes('world') || rawCat.includes('global') || rawCat.includes('foreign') || rawCat.includes('reuters')) {
+      categoryId = 'cat_world';
+    } else {
+      categoryId = 'cat_naija_news';
     }
 
-    const readingTime = Number(obj.reading_time_minutes) || Math.max(2, Math.ceil(content.split(/\s+/).length / 180));
+    const readingTime = Number(obj.reading_time_minutes) || Math.max(3, Math.ceil(content.split(/\s+/).length / 180));
 
     const takeaways = Array.isArray(obj.key_takeaways)
       ? obj.key_takeaways.map((t: any) => String(t).trim()).filter(Boolean)

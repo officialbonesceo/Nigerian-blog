@@ -346,6 +346,10 @@ async function main() {
         }
       }
 
+      if (!finalImageUrl) {
+        finalImageUrl = '/fallback-image.svg';
+      }
+
       try {
         insertArticle.run({
           id: articleId,
