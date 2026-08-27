@@ -5,6 +5,11 @@
  * 
  * Sources: Punch, Vanguard, Reuters, BBC Sports, BBC World, TechCabal,
  *          BusinessDay, Central Bank of Nigeria, CNBC Markets, Al Jazeera, Channels TV
+ *
+ * FIXES APPLIED:
+ * - Removed fake engagement (views/trending/top story randomization)
+ * - Reject newspaper logos (Punch, Vanguard, etc.) as hero images
+ * - Prefer real article images or AI-generated / fallback
  */
 
 import path from 'node:path';
@@ -90,6 +95,27 @@ const DEFAULT_DESK = {
   role: 'Verified Newsroom Core',
   avatar: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=300&q=80',
 };
+
+/** Reject newspaper logos and low-quality/icon images */
+function isGoodArticleImage(url: string | undefined | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const lower = url.toLowerCase();
+
+  // Reject common logo / icon patterns
+  const badPatterns = [
+    'logo', 'favicon', 'icon', 'sprite', 'badge',
+    'punch', 'vanguard', 'channels', 'guardian',
+    'premiumtimes', 'thisday', 'tribune',
+    'placeholder', 'default-image', 'no-image'
+  ];
+
+  for (const p of badPatterns) {
+    if (lower.includes(p)) return false;
+  }
+
+  // Prefer real photo-like URLs
+  return true;
+}
 
 async function main() {
   console.log('=====================================================');
@@ -306,10 +332,15 @@ async function main() {
       const slug = `${slugBase}-${uniqueSuffix}`;
       const articleId = 'art_' + Date.now() + '_' + uniqueSuffix;
 
-      // Handle Image: If feed doesn't provide image, generate with Cloudflare Flux-1-Schnell
+      // Handle Image: Reject logos, prefer real images, otherwise generate
       let rawImageUrl = item.enclosure?.url || item.mediaContent?.$?.url;
       let imageCaption = `Verified editorial synthesis of news wire report from ${source.name}.`;
       let imageCredit = source.name;
+
+      if (!isGoodArticleImage(rawImageUrl)) {
+        console.log(`     🚫 Rejected logo/icon image from feed. Generating editorial image...`);
+        rawImageUrl = undefined;
+      }
 
       if (!rawImageUrl) {
         console.log(`     🎨 Conceptual Image: Generating via Flux AI (No-Human Policy)...`);
@@ -365,10 +396,11 @@ async function main() {
           author_name: desk.name,
           author_role: desk.role,
           author_avatar: desk.avatar,
-          is_top_story: sourceIngestedCount === 0 && Math.random() > 0.7 ? 1 : 0,
-          is_trending: Math.random() > 0.5 ? 1 : 0,
-          is_breaking: Math.random() > 0.85 ? 1 : 0,
-          views_count: Math.floor(Math.random() * 40) + 12,
+          // REAL engagement — no more fake numbers
+          is_top_story: 0,
+          is_trending: 0,
+          is_breaking: 0,
+          views_count: 0,
           reading_time_minutes: aiResult.readingTimeMinutes || 4,
           source_id: source.id,
           source_name: source.name,
@@ -408,10 +440,10 @@ async function main() {
               articleId, slug, aiResult.title, aiResult.summary, aiResult.content, categoryId,
               finalImageUrl, imageCaption, imageCredit, source.license_notes || 'Editorial Fair Attribution',
               desk.name, desk.role, desk.avatar,
-              sourceIngestedCount === 0 && Math.random() > 0.7 ? 1 : 0,
-              Math.random() > 0.5 ? 1 : 0,
-              Math.random() > 0.85 ? 1 : 0,
-              Math.floor(Math.random() * 40) + 12,
+              0, // is_top_story
+              0, // is_trending
+              0, // is_breaking
+              0, // views_count
               aiResult.readingTimeMinutes || 4,
               source.id, source.name, item.link,
               new Date().toISOString(), new Date().toISOString(), 'published'
