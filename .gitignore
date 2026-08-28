@@ -9,7 +9,8 @@ dist/
 .env.production
 .env.development
 
-# SQLite local database locks and Wal if temporary (9jabeacon.db is committed by GitHub workflow for content)
+# Ephemeral local SQLite build/ingestion database
+9jabeacon.db
 9jabeacon.db-wal
 9jabeacon.db-shm
 
