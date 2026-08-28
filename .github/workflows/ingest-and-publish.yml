@@ -2,7 +2,6 @@ name: 9jaBeacon AI News Ingestion
 
 on:
   schedule:
-    # Check sources every 3 hours; publishing is still controlled by the pipeline.
     - cron: '0 */3 * * *'
   workflow_dispatch:
 
@@ -27,31 +26,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
+          check-latest: false
 
       - name: 📦 Install Dependencies
         run: npm install --no-audit --no-fund
 
-      - name: ☁️ Pull D1 into ephemeral build database
+      - name: ☁️ Pull current D1 into ephemeral build database
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID || secrets.CLOUDFLARE_D1_DATABASE || 'naijablog' }}
         run: npx tsx scripts/sync-d1-to-local.ts
 
-      - name: 👥 Normalize transparent editorial desk profiles
+      - name: 🤖 Execute AI news ingestion pipeline
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID || secrets.CLOUDFLARE_D1_DATABASE || 'naijablog' }}
-        run: npx tsx scripts/normalize-editorial-profiles.ts
-
-      - name: 🤖 Execute AI ingestion pipeline
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID || secrets.CLOUDFLARE_D1_DATABASE || 'naijablog' }}
-          CLOUDFLARE_D1_DATABASE: ${{ secrets.CLOUDFLARE_D1_DATABASE || 'naijablog' }}
+          CLOUDFLARE_D1_DATABASE: ${{ secrets.CLOUDFLARE_D1_DATABASE || secrets.CLOUDFLARE_D1_DATABASE_ID || 'naijablog' }}
           CLOUDFLARE_AI_MODEL: ${{ secrets.CLOUDFLARE_AI_MODEL || '@cf/meta/llama-3.1-8b-instruct' }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free' }}
@@ -61,14 +53,21 @@ jobs:
           NODE_ENV: production
         run: npx tsx scripts/ingest.ts
 
-      - name: 👥 Re-normalize editorial profiles after ingestion
+      - name: ☁️ Write newly ingested data to D1
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID || secrets.CLOUDFLARE_D1_DATABASE || 'naijablog' }}
+        run: npx tsx scripts/sync-local-changes-to-d1.ts
+
+      - name: 👥 Normalize transparent editorial desk profiles in D1
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID || secrets.CLOUDFLARE_D1_DATABASE || 'naijablog' }}
         run: npx tsx scripts/normalize-editorial-profiles.ts
 
-      - name: ☁️ Refresh static build snapshot from D1
+      - name: ☁️ Pull final D1 snapshot for static build
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -84,10 +83,15 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler pages deploy dist --project-name 9jabeacon-news --branch main
 
-      - name: 🧹 Confirm no database file is tracked
+      - name: 🧹 Safety check — database must never be tracked
         run: |
           if git ls-files --error-unmatch 9jabeacon.db >/dev/null 2>&1; then
             echo 'ERROR: 9jabeacon.db is still tracked by Git.'
             exit 1
           fi
-          echo 'OK: 9jabeacon.db is not tracked and no database commit/push is performed.'
+          if git diff --exit-code -- 9jabeacon.db >/dev/null 2>&1; then
+            echo 'OK: no tracked database changes.'
+          else
+            echo 'ERROR: unexpected database diff detected.'
+            exit 1
+          fi
