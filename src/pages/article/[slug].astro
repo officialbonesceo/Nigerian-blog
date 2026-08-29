@@ -1,18 +1,6 @@
 ---
-import { getArticles } from '../../lib/db';
-
-export async function getStaticPaths() {
-  const articles = getArticles({ limit: 1000 });
-  return articles.map((art) => ({
-    params: { slug: art.slug },
-  }));
-}
-
+export const prerender = false;
 const { slug } = Astro.params;
-
-if (slug) {
-  return Astro.redirect(`/news/${slug}`);
-}
-
+if (slug) return Astro.redirect(`/news/${slug}`);
 return Astro.redirect('/');
 ---
