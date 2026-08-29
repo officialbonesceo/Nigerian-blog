@@ -1,10 +1,7 @@
-# Cloudflare Pages Configuration for 9jaBeacon Frontend
 name = "9jabeacon-news"
-pages_build_output_dir = "dist"
-compatibility_date = "2024-09-23"
+compatibility_date = "2026-08-29"
 compatibility_flags = ["nodejs_compat"]
 
-# Cloudflare D1 Database Binding
 [[d1_databases]]
 binding = "DB"
 database_name = "naijablog"
@@ -15,4 +12,3 @@ migrations_dir = "migrations"
 ENVIRONMENT = "production"
 SITE_NAME = "9jaBeacon"
 SITE_URL = "https://9jabeacon.pages.dev"
-
