@@ -1,6 +1,8 @@
 name: 9jaBeacon AI News Ingestion
 
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: '0 */3 * * *'
   workflow_dispatch:
@@ -59,11 +61,9 @@ jobs:
 
       - name: 🤖 Execute AI news ingestion pipeline
         env:
-          # Workers AI uses the dedicated AI token only.
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_AI_MODEL: ${{ secrets.CLOUDFLARE_AI_MODEL || '@cf/meta/llama-3.1-8b-instruct' }}
-          # D1 access uses the dedicated D1 token only.
           CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           CLOUDFLARE_D1_DATABASE: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
