@@ -1,5 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle } from './types';
+import type { Article,Category,Source,AutomationSetting,AutomationLog,ArticleReport,RejectedArticle } from './types';
 export type RuntimeLocals={runtime?:{env?:{DB?:D1Database}}};
 export function getD1(locals:RuntimeLocals):D1Database{const db=locals.runtime?.env?.DB;if(!db)throw new Error('Cloudflare D1 binding DB is not available.');return db}
 const select=`SELECT a.*,c.name AS category_name,c.slug AS category_slug FROM articles a LEFT JOIN categories c ON a.category_id=c.id`;
@@ -10,7 +10,7 @@ export async function getRelatedArticles(db:D1Database,id:string,categoryId:stri
 export async function getTopStory(db:D1Database){return await db.prepare(`${select} WHERE a.status='published' AND a.is_top_story=1 ORDER BY a.published_at DESC LIMIT 1`).first<Article>()}
 export async function getMostReadArticles(db:D1Database,limit=4){return(await db.prepare(`${select} WHERE a.status='published' ORDER BY a.views_count DESC,a.published_at DESC LIMIT ?`).bind(limit).all<Article>()).results}
 export async function getBreakingArticles(db:D1Database,limit=3){return(await db.prepare(`${select} WHERE a.status='published' AND a.is_breaking=1 ORDER BY a.published_at DESC LIMIT ?`).bind(limit).all<Article>()).results}
-export async function getCategories(db:D1Database){return(await db.prepare('SELECT * FROM categories ORDER BY display_order ASC,name ASC').all<Category>()).results}
+export async function getCategories(db:D1Database){const rows=await db.prepare('SELECT * FROM categories').all<any>();return rows.results.sort((a:any,b:any)=>Number(a.display_order??a.sort_order??0)-Number(b.display_order??b.sort_order??0)||String(a.name).localeCompare(String(b.name))) as Category[]}
 export async function getCategoryBySlug(db:D1Database,slug:string){return await db.prepare('SELECT * FROM categories WHERE slug=? LIMIT 1').bind(slug).first<Category>()}
 export async function getSiteSettings(db:D1Database){const r=(await db.prepare('SELECT key,value FROM site_settings').all<{key:string;value:string}>()).results;return Object.fromEntries(r.map(x=>[x.key,x.value]))}
 export async function getAutomationSettings(db:D1Database){return(await db.prepare('SELECT * FROM automation_settings ORDER BY key').all<AutomationSetting>()).results}
