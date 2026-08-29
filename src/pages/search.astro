@@ -1,15 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ArticleCard from '../components/ArticleCard.astro';
-import { getD1, getArticles } from '../lib/runtime-db';
+import { getD1, searchArticles } from '../lib/runtime-db';
+const query=(Astro.url.searchParams.get('q')||'').trim();
 const d1=getD1(Astro.locals);
-const q=(Astro.url.searchParams.get('q')||'').trim();
-const all=await getArticles(d1,{limit:200});
-const articles=q?all.filter(a=>`${a.title} ${a.summary} ${a.content} ${a.category_name}`.toLowerCase().includes(q.toLowerCase())):all.slice(0,30);
+const results=query?await searchArticles(d1,query,50):[];
 ---
-<Layout title={q?`Search: ${q} - 9jaBeacon`:'Search Nigerian News - 9jaBeacon'} description="Search Nigerian news directly from the live 9jaBeacon D1 database." activeNav="search">
-<form class="mb-5 flex gap-2" method="get"><input name="q" value={q} placeholder="Search CBN, fuel, Dangote, politics..." class="min-w-0 flex-1 h-12 px-4 rounded-2xl bg-slate-900 border border-slate-800 text-white outline-none focus:border-emerald-500"/><button class="px-4 rounded-2xl bg-emerald-600 text-white font-bold">Search</button></form>
-<div class="flex items-center justify-between mb-3"><h1 class="text-lg font-black">{q?`Results for “${q}”`:'Latest stories'}</h1><span class="text-xs text-slate-500">{articles.length} results</span></div>
-<div class="space-y-2.5">{articles.map(a=><ArticleCard article={a}/>)}</div>
-{articles.length===0&&<div class="p-8 text-center rounded-2xl bg-slate-900 border border-slate-800 text-slate-400">No matching stories yet.</div>}
+<Layout title={query?`Search: ${query} - 9jaBeacon`:'Search Nigerian News - 9jaBeacon'} description="Search Nigerian news directly from the live 9jaBeacon database." activeNav="search">
+<section class="space-y-5"><form class="flex gap-2" method="get"><input name="q" value={query} placeholder="Search CBN, fuel price, Dangote, Super Eagles..." class="flex-1 h-12 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm outline-none focus:border-emerald-500"/><button class="px-5 rounded-2xl bg-emerald-600 text-white text-sm font-bold">Search</button></form>{query?<h1 class="text-lg font-black text-slate-900 dark:text-white">Results for “{query}” <span class="text-sm text-slate-500">({results.length})</span></h1>:<p class="text-sm text-slate-500">Search the latest stories stored in D1.</p>}{results.length?<div class="space-y-2.5">{results.map(article=><ArticleCard article={article}/>)}</div>:query?<div class="p-8 text-center rounded-2xl border border-slate-200 dark:border-slate-800 text-sm text-slate-500">No published stories matched your search.</div>:null}</section>
 </Layout>
