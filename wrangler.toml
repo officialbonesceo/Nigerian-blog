@@ -2,11 +2,8 @@ name = "9jabeacon-news"
 compatibility_date = "2026-08-29"
 compatibility_flags = ["nodejs_compat"]
 
-[[d1_databases]]
-binding = "DB"
-database_name = "naijablog"
-database_id = "naijablog"
-migrations_dir = "migrations"
+# Production D1 is bound to this Pages project in Cloudflare.
+# Do not put credentials or a guessed database ID in source control.
 
 [vars]
 ENVIRONMENT = "production"
