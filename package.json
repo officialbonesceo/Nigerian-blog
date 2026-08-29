@@ -13,11 +13,10 @@
     "sync:d1": "tsx scripts/sync-d1-to-local.ts"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.4",
-    "@astrojs/cloudflare": "^7.0.2",
-    "@astrojs/node": "8.3.4",
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/tailwind": "^5.1.5",
-    "astro": "^4.16.18",
+    "astro": "^5.18.1",
     "better-sqlite3": "^11.8.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",
@@ -29,12 +28,12 @@
     "typescript": "^5.7.3"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250214.0",
+    "@cloudflare/workers-types": "^4.20260829.0",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.13.4",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "tsx": "^4.23.12",
-    "wrangler": "^3.109.2"
+    "wrangler": "^4.73.0"
   }
 }
