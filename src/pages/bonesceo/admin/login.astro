@@ -1,13 +1,13 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { getSiteSettings } from '../../../lib/db';
+import { getD1, getSiteSettings } from '../../../lib/runtime-db';
 
-const settings = getSiteSettings();
+const db = getD1(Astro.locals);
+const settings = await getSiteSettings(db);
 const siteName = settings.site_name || '9jaBeacon';
-const targetEmail = settings.admin_email || 'officialbonesceo@gmail.com';
 ---
 
-<Layout title={`BonesCEO Admin Login - ${siteName}`}>
+<Layout title={`Admin Login - ${siteName}`}>
   <div class="max-w-md mx-auto my-12 p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-6">
     <div class="text-center space-y-2">
       <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white mx-auto shadow-lg shadow-emerald-500/20">
@@ -15,11 +15,11 @@ const targetEmail = settings.admin_email || 'officialbonesceo@gmail.com';
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         </svg>
       </div>
-      <h1 class="text-2xl font-black text-white tracking-tight font-display">BonesCEO Portal</h1>
-      <p class="text-xs text-slate-400">Authenticated Editorial & Automation Command Center</p>
+      <h1 class="text-2xl font-black text-white tracking-tight font-display">Editorial Command Portal</h1>
+      <p class="text-xs text-slate-400">Authenticated News Desk & Automation Control Center</p>
       <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-[11px] font-mono mt-1">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-        Locked strictly to {targetEmail}
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>Secure Administrator Access</span>
       </div>
     </div>
 
@@ -39,12 +39,12 @@ const targetEmail = settings.admin_email || 'officialbonesceo@gmail.com';
           <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 12s.7 2.3 1.9 4.7l3.7-2.9z"/>
           <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 16.4C3.7 20.1 7.5 23 12 23z"/>
         </svg>
-        <span>Sign In with Google ({targetEmail})</span>
+        <span id="google-btn-text">Sign In with Google (officialbonesceo@gmail.com)</span>
       </button>
 
       <div class="flex items-center gap-3">
         <div class="flex-1 h-px bg-slate-800"></div>
-        <span class="text-[10px] uppercase font-bold text-slate-500 font-mono">Or Credentials</span>
+        <span class="text-[10px] uppercase font-bold text-slate-500 font-mono">Or With Credentials</span>
         <div class="flex-1 h-px bg-slate-800"></div>
       </div>
     </div>
@@ -57,20 +57,25 @@ const targetEmail = settings.admin_email || 'officialbonesceo@gmail.com';
           type="email"
           id="admin-email"
           required
-          value={targetEmail}
+          value="officialbonesceo@gmail.com"
+          placeholder="admin@9jabeacon.com"
           class="w-full h-11 px-3.5 bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl text-sm text-white outline-none transition-all font-mono"
         />
       </div>
 
       <div>
-        <label for="admin-password" class="block text-xs font-semibold text-slate-300 mb-1.5">Secure Password Key</label>
+        <div class="flex items-center justify-between mb-1.5">
+          <label for="admin-password" class="block text-xs font-semibold text-slate-300">Admin Password</label>
+          <button type="button" id="toggle-password-btn" class="text-[11px] text-slate-400 hover:text-emerald-400 cursor-pointer">Show</button>
+        </div>
         <input
           type="password"
           id="admin-password"
           required
-          placeholder="••••••••••••••••"
+          placeholder="Enter administrator password"
           class="w-full h-11 px-3.5 bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl text-sm text-white outline-none transition-all font-mono"
         />
+        <p class="text-[11px] text-slate-500 mt-1">Supports your Cloudflare Secret, D1 Database password, or Master Setup Key.</p>
       </div>
 
       <button
@@ -90,7 +95,22 @@ const targetEmail = settings.admin_email || 'officialbonesceo@gmail.com';
 <script is:inline>
   const form = document.getElementById('bonesceo-login-form');
   const googleBtn = document.getElementById('btn-google-login');
+  const googleBtnText = document.getElementById('google-btn-text');
   const errorBox = document.getElementById('login-error-box');
+  const togglePassBtn = document.getElementById('toggle-password-btn');
+  const passInput = document.getElementById('admin-password');
+
+  togglePassBtn?.addEventListener('click', () => {
+    if (passInput) {
+      if (passInput.type === 'password') {
+        passInput.type = 'text';
+        togglePassBtn.textContent = 'Hide';
+      } else {
+        passInput.type = 'password';
+        togglePassBtn.textContent = 'Show';
+      }
+    }
+  });
 
   function showError(msg) {
     if (errorBox) {
@@ -99,43 +119,75 @@ const targetEmail = settings.admin_email || 'officialbonesceo@gmail.com';
     }
   }
 
+  function hideError() {
+    if (errorBox) {
+      errorBox.classList.add('hidden');
+    }
+  }
+
+  // Check if already authenticated via token
+  (async function checkExistingAuth() {
+    const existingToken = localStorage.getItem('bonesceo_auth_token');
+    if (existingToken) {
+      try {
+        const res = await fetch('/api/admin/verify-session?token=' + encodeURIComponent(existingToken));
+        const data = await res.json();
+        if (data.authenticated) {
+          window.location.href = '/bonesceo/admin?token=' + encodeURIComponent(existingToken);
+        }
+      } catch {}
+    }
+  })();
+
   // Google Sign-In Handler
   googleBtn?.addEventListener('click', async () => {
+    hideError();
+    const typedEmail = document.getElementById('admin-email')?.value?.trim() || 'officialbonesceo@gmail.com';
+
     try {
-      googleBtn.disabled = true;
-      googleBtn.textContent = 'Verifying Google Account...';
-      
+      if (googleBtn) googleBtn.disabled = true;
+      if (googleBtnText) googleBtnText.textContent = 'Verifying Account...';
+
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           auth_type: 'google',
-          email: 'officialbonesceo@gmail.com',
+          email: typedEmail,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
-        localStorage.setItem('bonesceo_auth_token', data.token);
-        localStorage.setItem('bonesceo_auth_user', data.email);
-        window.location.href = data.redirectUrl || '/bonesceo/admin';
+        if (data.token) localStorage.setItem('bonesceo_auth_token', data.token);
+        if (data.email) localStorage.setItem('bonesceo_auth_user', data.email);
+        const destination = data.redirectUrl || ('/bonesceo/admin?token=' + encodeURIComponent(data.token));
+        window.location.href = destination;
       } else {
-        showError(data.error || 'Google login authorization failed.');
-        googleBtn.disabled = false;
-        googleBtn.innerHTML = `<span>Sign In with Google</span>`;
+        showError(data.error || 'Authorization failed. Please enter your administrator email and password.');
+        if (googleBtn) googleBtn.disabled = false;
+        if (googleBtnText) googleBtnText.textContent = 'Sign In with Google (officialbonesceo@gmail.com)';
       }
     } catch (err) {
-      showError('Network error during Google sign-in. Please try again.');
-      googleBtn.disabled = false;
+      showError('Network error during authentication. Please try with credentials.');
+      if (googleBtn) googleBtn.disabled = false;
+      if (googleBtnText) googleBtnText.textContent = 'Sign In with Google (officialbonesceo@gmail.com)';
     }
   });
 
   // Email/Password Form Handler
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = document.getElementById('admin-email')?.value;
+    hideError();
+
+    const email = document.getElementById('admin-email')?.value?.trim() || 'officialbonesceo@gmail.com';
     const password = document.getElementById('admin-password')?.value;
     const submitBtn = document.getElementById('btn-login-submit');
+
+    if (!email || !password) {
+      showError('Please enter both your email and password.');
+      return;
+    }
 
     try {
       if (submitBtn) {
@@ -146,14 +198,15 @@ const targetEmail = settings.admin_email || 'officialbonesceo@gmail.com';
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, auth_type: 'credentials' }),
       });
 
       const data = await res.json();
       if (data.success) {
-        localStorage.setItem('bonesceo_auth_token', data.token);
-        localStorage.setItem('bonesceo_auth_user', data.email);
-        window.location.href = data.redirectUrl || '/bonesceo/admin';
+        if (data.token) localStorage.setItem('bonesceo_auth_token', data.token);
+        if (data.email) localStorage.setItem('bonesceo_auth_user', data.email);
+        const destination = data.redirectUrl || ('/bonesceo/admin?token=' + encodeURIComponent(data.token));
+        window.location.href = destination;
       } else {
         showError(data.error || 'Invalid administrator login credentials.');
         if (submitBtn) {

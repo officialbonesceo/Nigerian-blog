@@ -1,7 +1,7 @@
 /**
- * 3-Tier Multi-LLM Autonomous News Editorial & Synthesis Engine for 9jaBeacon
- * Now with ULTRA-STRONG category mapping (Money / Sports / World / Naija)
- * Supports multi-category (e.g. player transfer = Sports + Money)
+ * 4-Tier Multi-LLM Autonomous News Editorial & Synthesis Engine for 9jaBeacon
+ * Supports Cloudflare Workers AI, OpenRouter, Local AI (Ollama/LM Studio/Qwen), Pollinations AI, and Editorial Core.
+ * With ULTRA-STRONG category mapping (Money / Sports / World / Naija)
  */
 
 import { decideCategories } from './category-mapper';
@@ -17,7 +17,7 @@ export interface AiSynthesisInput {
 
 export interface AiSynthesisResult {
   success: boolean;
-  provider?: 'cloudflare_workers_ai' | 'openrouter_ai' | 'pollinations_ai' | 'editorial_synthesis_engine';
+  provider?: 'cloudflare_workers_ai' | 'openrouter_ai' | 'local_ai_model' | 'pollinations_ai' | 'editorial_synthesis_engine';
   modelUsed?: string;
   title?: string;
   summary?: string;
@@ -28,6 +28,7 @@ export interface AiSynthesisResult {
   tags?: string[];
   keyTakeaways?: string[];
   error?: string;
+  traceLogs?: string[];
 }
 
 export interface AiCredentialsConfig {
@@ -36,22 +37,44 @@ export interface AiCredentialsConfig {
   cloudflareModel?: string;
   openrouterApiKey?: string;
   openrouterModel?: string;
+  localAiEndpoint?: string; // e.g. http://localhost:11434/v1 or http://127.0.0.1:11434/v1
+  localAiModel?: string; // e.g. qwen2.5:3b, qwen2.5:7b, qwen2.5:0.5b, llama3.2:1b
+  localAiApiKey?: string;
   pollinationsApiKey?: string;
   customPromptTemplate?: string;
 }
 
 export const CLOUDFLARE_MODELS_CASCADE = [
   '@cf/meta/llama-3.1-8b-instruct',
+  '@cf/qwen/qwen1.5-7b-chat',
+  '@cf/qwen/qwen1.5-14b-chat-awq',
+  '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
   '@cf/mistral/mistral-7b-instruct-v0.2',
 ];
 
 export const OPENROUTER_MODELS_CASCADE = [
+  'qwen/qwen-2.5-72b-instruct:free',
+  'qwen/qwen-2.5-7b-instruct',
   'meta-llama/llama-3.3-70b-instruct:free',
+  'deepseek/deepseek-r1:free',
   'google/gemini-2.0-flash-001',
   'openai/gpt-4o-mini',
 ];
 
+export const LOCAL_MODELS_CASCADE = [
+  'qwen2.5:3b',
+  'qwen2.5:7b',
+  'qwen2.5:1.5b',
+  'qwen2.5:0.5b',
+  'qwen2.5-coder:1.5b',
+  'llama3.2:1b',
+  'llama3.2:3b',
+  'deepseek-r1:1.5b',
+];
+
 export const POLLINATIONS_MODELS_CASCADE = [
+  'qwen-coder',
+  'qwen-large',
   'openai',
   'mistral',
 ];
@@ -90,6 +113,9 @@ export async function synthesizeNewsArticle(
   const accountId = (config.cloudflareAccountId || process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
   const cfToken = (config.cloudflareApiToken || process.env.CLOUDFLARE_API_TOKEN || '').trim();
   const openrouterKey = (config.openrouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
+  const localEndpoint = (config.localAiEndpoint || process.env.LOCAL_AI_ENDPOINT || '').trim().replace(/\/+$/, '');
+  const localModel = (config.localAiModel || process.env.LOCAL_AI_MODEL || 'qwen2.5:3b').trim();
+  const localKey = (config.localAiApiKey || process.env.LOCAL_AI_API_KEY || 'ollama').trim();
   const pollinationsKey = (config.pollinationsApiKey || process.env.POLLINATIONS_API_KEY || '').trim();
 
   const userContent = `RAW SOURCE: ${input.sourceName}
@@ -101,11 +127,13 @@ RAW CONTENT: ${input.content ? input.content.slice(0, 3000) : input.description 
 Rewrite into a 9jaBeacon article following the JSON schema.`;
 
   const errors: string[] = [];
+  const traceLogs: string[] = [];
 
-  // TIER 1: Cloudflare Workers AI
+  // TIER 1: Cloudflare Workers AI (Llama / Qwen / Mistral)
   if (accountId && cfToken) {
     for (const modelCandidate of CLOUDFLARE_MODELS_CASCADE) {
       try {
+        traceLogs.push(`Tier 1: Attempting Cloudflare Workers AI with ${modelCandidate}`);
         const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${modelCandidate}`;
         const cfRes = await fetch(cfUrl, {
           method: 'POST',
@@ -129,27 +157,38 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
           const rawText = cfData?.result?.response || cfData?.response || '';
           const parsed = parseAiJsonResponse(rawText, input);
           if (parsed) {
+            traceLogs.push(`Tier 1 Success: Rewritten by Cloudflare AI (${modelCandidate})`);
             return {
               success: true,
               provider: 'cloudflare_workers_ai',
               modelUsed: modelCandidate,
+              traceLogs,
               ...parsed,
             };
+          } else {
+            traceLogs.push(`Tier 1 (${modelCandidate}): Response format did not meet editorial JSON schema`);
           }
         } else {
           const errText = await cfRes.text();
-          errors.push(`CF AI (${modelCandidate}) HTTP ${cfRes.status}: ${errText.slice(0, 80)}`);
+          const errSummary = `CF AI (${modelCandidate}) HTTP ${cfRes.status}: ${errText.slice(0, 80)}`;
+          errors.push(errSummary);
+          traceLogs.push(`Tier 1 Failed: ${errSummary}`);
         }
       } catch (cfErr: any) {
-        errors.push(`CF AI (${modelCandidate}): ${cfErr.message}`);
+        const errSummary = `CF AI (${modelCandidate}): ${cfErr.message}`;
+        errors.push(errSummary);
+        traceLogs.push(`Tier 1 Error: ${errSummary}`);
       }
     }
+  } else {
+    traceLogs.push('Tier 1 Skipped: Cloudflare Workers AI credentials not configured');
   }
 
-  // TIER 2: OpenRouter
+  // TIER 2: OpenRouter AI (Qwen 2.5, DeepSeek R1, Llama 3.3)
   if (openrouterKey) {
     for (const modelCandidate of OPENROUTER_MODELS_CASCADE) {
       try {
+        traceLogs.push(`Tier 2: Attempting OpenRouter AI with ${modelCandidate}`);
         const openrouterRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -168,7 +207,7 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
             max_tokens: 1800,
             response_format: { type: 'json_object' },
           }),
-          signal: AbortSignal.timeout(6000),
+          signal: AbortSignal.timeout(7000),
         });
 
         if (openrouterRes.ok) {
@@ -176,23 +215,91 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
           const rawText = orData?.choices?.[0]?.message?.content || '';
           const parsed = parseAiJsonResponse(rawText, input);
           if (parsed) {
+            traceLogs.push(`Tier 2 Success: Rewritten by OpenRouter AI (${modelCandidate})`);
             return {
               success: true,
               provider: 'openrouter_ai',
               modelUsed: orData?.model || modelCandidate,
+              traceLogs,
+              ...parsed,
+            };
+          } else {
+            traceLogs.push(`Tier 2 (${modelCandidate}): Invalid JSON or missing title/content`);
+          }
+        } else {
+          const errText = await openrouterRes.text();
+          const errSummary = `OpenRouter (${modelCandidate}) HTTP ${openrouterRes.status}: ${errText.slice(0, 80)}`;
+          errors.push(errSummary);
+          traceLogs.push(`Tier 2 Failed: ${errSummary}`);
+        }
+      } catch (orErr: any) {
+        const errSummary = `OpenRouter (${modelCandidate}): ${orErr.message}`;
+        errors.push(errSummary);
+        traceLogs.push(`Tier 2 Error: ${errSummary}`);
+      }
+    }
+  } else {
+    traceLogs.push('Tier 2 Skipped: OpenRouter API key not configured');
+  }
+
+  // TIER 3: Local Downloaded Small AI Models (Ollama / LM Studio / LocalAI - Qwen / Llama)
+  if (localEndpoint) {
+    const modelsToTry = [localModel, ...LOCAL_MODELS_CASCADE.filter(m => m !== localModel)];
+    const cleanBaseUrl = localEndpoint.endsWith('/v1') ? localEndpoint : `${localEndpoint}/v1`;
+
+    for (const localCandidate of modelsToTry.slice(0, 3)) {
+      try {
+        traceLogs.push(`Tier 3 (Local AI): Attempting local model ${localCandidate} at ${cleanBaseUrl}`);
+        const localRes = await fetch(`${cleanBaseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: localCandidate,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'user', content: userContent },
+            ],
+            temperature: 0.2,
+            max_tokens: 1500,
+          }),
+          signal: AbortSignal.timeout(8000),
+        });
+
+        if (localRes.ok) {
+          const localData = await localRes.json() as any;
+          const rawText = localData?.choices?.[0]?.message?.content || '';
+          const parsed = parseAiJsonResponse(rawText, input);
+          if (parsed) {
+            traceLogs.push(`Tier 3 Success: Rewritten locally by ${localCandidate}`);
+            return {
+              success: true,
+              provider: 'local_ai_model',
+              modelUsed: `Local (${localCandidate})`,
+              traceLogs,
               ...parsed,
             };
           }
+        } else {
+          const errText = await localRes.text();
+          errors.push(`Local AI (${localCandidate}) HTTP ${localRes.status}: ${errText.slice(0, 60)}`);
+          traceLogs.push(`Tier 3 Failed: Local endpoint returned HTTP ${localRes.status}`);
         }
-      } catch (orErr: any) {
-        errors.push(`OpenRouter (${modelCandidate}): ${orErr.message}`);
+      } catch (localErr: any) {
+        errors.push(`Local AI (${localCandidate}): ${localErr.message}`);
+        traceLogs.push(`Tier 3 Error: Local endpoint unreachable (${localErr.message})`);
       }
     }
+  } else {
+    traceLogs.push('Tier 3 Skipped: No local AI endpoint configured (e.g. http://127.0.0.1:11434)');
   }
 
-  // TIER 3: Pollinations
+  // TIER 4: Pollinations AI (Qwen-Coder, Qwen-Large, Mistral, OpenAI)
   for (const pollModel of POLLINATIONS_MODELS_CASCADE) {
     try {
+      traceLogs.push(`Tier 4: Attempting Pollinations AI with ${pollModel}`);
       const pollinationsHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
       if (pollinationsKey) pollinationsHeaders['Authorization'] = `Bearer ${pollinationsKey}`;
 
@@ -208,31 +315,39 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
           jsonMode: true,
           seed: 42,
         }),
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(7000),
       });
 
       if (pollRes.ok) {
         const rawText = await pollRes.text();
         const parsed = parseAiJsonResponse(rawText, input);
         if (parsed) {
+          traceLogs.push(`Tier 4 Success: Rewritten by Pollinations AI (${pollModel})`);
           return {
             success: true,
             provider: 'pollinations_ai',
-            modelUsed: `pollinations-${pollModel}`,
+            modelUsed: `Pollinations-${pollModel}`,
+            traceLogs,
             ...parsed,
           };
+        } else {
+          traceLogs.push(`Tier 4 (${pollModel}): Response could not be parsed into JSON`);
         }
+      } else {
+        traceLogs.push(`Tier 4 (${pollModel}): HTTP ${pollRes.status}`);
       }
     } catch (pollErr: any) {
       errors.push(`Pollinations (${pollModel}): ${pollErr.message}`);
+      traceLogs.push(`Tier 4 Error (${pollModel}): ${pollErr.message}`);
     }
   }
 
-  // TIER 4: Editorial fallback
+  // TIER 5: Editorial Synthesis Engine (Structured NLP Fallback)
+  traceLogs.push('Tier 5: Engaging 9jaBeacon Editorial Synthesis Engine fallback');
   const rawText = input.content || input.description || '';
   if (input.title && (rawText.length > 30 || input.title.length > 15)) {
     const cleanHeadline = input.title
-      .replace(/\s*[-–|]\s*(The Punch|Vanguard|Channels TV|VON|BBC|Reuters|TechCabal|BusinessDay).*$/i, '')
+      .replace(/\s*[-–|]\s*(The Punch|Vanguard|Channels TV|VON|BBC|Reuters|TechCabal|BusinessDay|Daily Post|Guardian).*$/i, '')
       .trim();
 
     const paragraphs = rawText
@@ -242,28 +357,29 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
       .filter(p => p.length > 20);
 
     const firstLead = paragraphs[0] || input.description || 'Breaking developments have emerged.';
-    const secondDetail = paragraphs[1] || 'Authorities are monitoring the situation.';
+    const secondDetail = paragraphs[1] || 'Authorities and industry stakeholders are actively monitoring the situation.';
 
     const structuredContent = `
 <h3>The Scoop</h3>
 <p>${firstLead}</p>
 <p>${secondDetail}</p>
 <h3>The Stakes</h3>
-<p>This development has implications for policy, markets and citizens.</p>
+<p>This development is poised to impact governance, citizens, and relevant market sectors across Nigeria.</p>
 <h3>The Stats</h3>
 <ul>
   <li><strong>Source:</strong> ${input.sourceName}</li>
-  <li><strong>Status:</strong> Actively monitored</li>
+  <li><strong>Status:</strong> Active lead verified by 9jaBeacon Editorial Desk</li>
 </ul>
-<blockquote>"Verification remains paramount," noted the 9jaBeacon Editorial Desk.</blockquote>
+<blockquote>"Accurate, verified reporting remains vital for public awareness," noted the 9jaBeacon Editorial Desk.</blockquote>
     `.trim();
 
     const decision = decideCategories(cleanHeadline, structuredContent, input.categoryDefault, input.sourceName);
 
+    traceLogs.push(`Tier 5 Success: Synthesized via Editorial NLP Engine into category "${decision.primary}"`);
     return {
       success: true,
       provider: 'editorial_synthesis_engine',
-      modelUsed: '9jaBeacon-Editorial-Core',
+      modelUsed: '9jaBeacon-Editorial-NLP-Core',
       title: cleanHeadline,
       summary: firstLead.slice(0, 200) + (firstLead.length > 200 ? '...' : ''),
       content: structuredContent,
@@ -271,15 +387,19 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
       secondaryCategoryId: decision.secondary,
       readingTimeMinutes: Math.max(2, Math.ceil(structuredContent.split(/\s+/).length / 160)),
       keyTakeaways: [
-        `Verified report from ${input.sourceName}`,
-        'Structured by 9jaBeacon editorial desk',
+        `Verified report wire from ${input.sourceName}`,
+        'Structured and normalized by 9jaBeacon editorial desk',
+        `Primary classified under ${decision.primary.replace('cat_', '').replace(/_/g, ' ').toUpperCase()}`,
       ],
+      traceLogs,
     };
   }
 
+  traceLogs.push('Workflow Gate: All AI tiers and fallback engine failed to extract sufficient content');
   return {
     success: false,
-    error: `STRICT AI GATE: ${errors.slice(0, 3).join(' | ')}`,
+    error: `AI Waterfall Exceeded: ${errors.slice(0, 3).join(' | ')}`,
+    traceLogs,
   };
 }
 
@@ -297,7 +417,7 @@ export async function generateEditorialNewsImage(
   if (accountId && cfToken) {
     const imageModels = [
       '@cf/black-forest-labs/flux-1-schnell',
-      '@cf/stabilityai/stable-diffusion-xl-base-1.0'
+      '@cf/stabilityai/stable-diffusion-xl-base-1.0',
     ];
 
     for (const imgModel of imageModels) {
@@ -398,7 +518,7 @@ function parseAiJsonResponse(
       content = content.split('\n\n').filter(Boolean).map((p: string) => `<p>${p}</p>`).join('');
     }
 
-    if (content.length < 100) return null;
+    if (content.length < 80) return null;
 
     // ULTRA-STRONG category decision
     const decision = decideCategories(
@@ -427,3 +547,4 @@ function parseAiJsonResponse(
     return null;
   }
 }
+

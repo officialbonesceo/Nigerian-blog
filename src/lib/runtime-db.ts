@@ -1,7 +1,78 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Article,Category,Source,AutomationSetting,AutomationLog,ArticleReport,RejectedArticle } from './types';
-export type RuntimeLocals={runtime?:{env?:{DB?:D1Database}}};
-export function getD1(locals:RuntimeLocals):D1Database{const db=locals.runtime?.env?.DB;if(!db)throw new Error('Cloudflare D1 binding DB is not available.');return db}
+import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle } from './types';
+import { db as localSqliteDb } from './db';
+
+export type RuntimeLocals = { runtime?: { env?: { DB?: D1Database } } } | Record<string, unknown> | null | undefined;
+
+let localD1Adapter: D1Database | null = null;
+
+function createLocalD1Adapter(): D1Database {
+  if (localD1Adapter) return localD1Adapter;
+
+  localD1Adapter = {
+    prepare(query: string) {
+      let boundArgs: unknown[] = [];
+      const stmtObj = {
+        bind(...args: unknown[]) {
+          boundArgs = args;
+          return stmtObj;
+        },
+        async all<T = unknown>() {
+          const stmt = localSqliteDb.prepare(query);
+          const results = (boundArgs.length ? stmt.all(...boundArgs) : stmt.all()) as T[];
+          return { results, success: true, meta: { changes: 0 } };
+        },
+        async first<T = unknown>(colName?: string) {
+          const stmt = localSqliteDb.prepare(query);
+          const row = (boundArgs.length ? stmt.get(...boundArgs) : stmt.get()) as Record<string, unknown> | undefined;
+          if (!row) return null;
+          if (colName) return (row[colName] ?? null) as T;
+          return row as T;
+        },
+        async run() {
+          const stmt = localSqliteDb.prepare(query);
+          const info = boundArgs.length ? stmt.run(...boundArgs) : stmt.run();
+          return {
+            success: true,
+            meta: {
+              changes: info.changes,
+              last_row_id: Number(info.lastInsertRowid),
+              served_by: 'local-sqlite',
+              duration: 1,
+            },
+          };
+        },
+        async raw<T = unknown>() {
+          const stmt = localSqliteDb.prepare(query);
+          return (boundArgs.length ? stmt.raw(true).all(...boundArgs) : stmt.raw(true).all()) as T[];
+        },
+      };
+      return stmtObj as any;
+    },
+    async batch(statements: any[]) {
+      const results: any[] = [];
+      for (const stmt of statements) {
+        results.push(await stmt.run());
+      }
+      return results as any;
+    },
+    async exec(query: string) {
+      localSqliteDb.exec(query);
+      return { count: 1, duration: 1 };
+    },
+    dump() {
+      throw new Error('dump is not supported in local SQLite fallback');
+    },
+  } as unknown as D1Database;
+
+  return localD1Adapter;
+}
+
+export function getD1(locals?: RuntimeLocals): D1Database {
+  const envDb = (locals as any)?.runtime?.env?.DB;
+  if (envDb) return envDb;
+  return createLocalD1Adapter();
+}
 const select=`SELECT a.*,c.name AS category_name,c.slug AS category_slug FROM articles a LEFT JOIN categories c ON a.category_id=c.id`;
 export async function getArticles(db:D1Database,o:{categoryId?:string;categorySlug?:string;limit?:number;offset?:number;status?:string;isTopStory?:boolean;isTrending?:boolean;isBreaking?:boolean}={}):Promise<Article[]>{let q=`${select} WHERE a.status=?`,v:unknown[]=[o.status||'published'];if(o.categoryId){q+=' AND a.category_id=?';v.push(o.categoryId)}if(o.categorySlug){q+=' AND c.slug=?';v.push(o.categorySlug)}if(o.isTopStory!==undefined){q+=' AND a.is_top_story=?';v.push(o.isTopStory?1:0)}if(o.isTrending!==undefined){q+=' AND a.is_trending=?';v.push(o.isTrending?1:0)}if(o.isBreaking!==undefined){q+=' AND a.is_breaking=?';v.push(o.isBreaking?1:0)}q+=' ORDER BY a.published_at DESC LIMIT ? OFFSET ?';v.push(Math.min(Math.max(o.limit??20,1),200),Math.max(o.offset??0,0));return(await db.prepare(q).bind(...v).all<Article>()).results}
 export async function searchArticles(db:D1Database,term:string,limit=50){const q=`${select} WHERE a.status='published' AND (a.title LIKE ? OR a.summary LIKE ? OR a.content LIKE ?) ORDER BY a.published_at DESC LIMIT ?`;const x=`%${term.replace(/[%_]/g,'\\$&')}%`;return(await db.prepare(q).bind(x,x,x,Math.min(Math.max(limit,1),100)).all<Article>()).results}

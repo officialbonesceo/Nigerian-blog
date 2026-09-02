@@ -138,10 +138,12 @@ function initDatabase() {
 
     CREATE TABLE IF NOT EXISTS automation_logs (
       id TEXT PRIMARY KEY,
-      event_type TEXT NOT NULL,
+      event_type TEXT,
+      action TEXT,
       source_id TEXT,
       message TEXT NOT NULL,
       level TEXT DEFAULT 'info',
+      status TEXT DEFAULT 'info',
       created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -153,6 +155,11 @@ function initDatabase() {
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);
+
+  try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN action TEXT`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN status TEXT DEFAULT 'info'`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN event_type TEXT`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN level TEXT DEFAULT 'info'`).run(); } catch {}
 
   // Seed/Upsert Categories
   const insertCat = db.prepare(`

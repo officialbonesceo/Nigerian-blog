@@ -1,17 +1,1053 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { getD1,getAdminDashboardStats,getSources,getArticles,getAnalyticsMetrics } from '../../../lib/runtime-db';
-const db=getD1(Astro.locals);
-const [stats,sources,articles,analytics]=await Promise.all([getAdminDashboardStats(db),getSources(db),getArticles(db,{limit:20,status:'published'}),getAnalyticsMetrics(db)]);
-const cookie=Astro.request.headers.get('cookie')||'';
-if(!cookie.includes('bonesceo_session=')) return Astro.redirect('/bonesceo/admin/login');
+import {
+  getD1,
+  getAdminDashboardStats,
+  getSources,
+  getArticles,
+  getAnalyticsMetrics,
+  getAutomationLogs,
+  getAutomationSettings,
+  getRejectedArticles,
+  getSiteSettings,
+} from '../../../lib/runtime-db';
+import { verifyAdminToken, getEnvSecret } from '../../../lib/auth';
+
+const db = getD1(Astro.locals);
+
+const cookie = Astro.request.headers.get('cookie') || '';
+const authHeader = Astro.request.headers.get('authorization') || '';
+const url = new URL(Astro.request.url);
+const queryToken = url.searchParams.get('token') || '';
+
+let token = '';
+const match = cookie.match(/bonesceo_session=([^;]+)/);
+if (match) {
+  token = match[1];
+} else if (authHeader.startsWith('Bearer ')) {
+  token = authHeader.slice(7).trim();
+} else if (queryToken) {
+  token = queryToken;
+}
+
+const siteSettings = await getSiteSettings(db);
+const secretKey =
+  getEnvSecret(Astro.locals, 'ADMIN_SECRET_KEY', 'admin_secret_key', 'SECRET_KEY') ||
+  siteSettings.admin_secret_key ||
+  '9jaBeacon_bonesceo_secret_key_2026_super_secure';
+
+const tokenVerification = token ? verifyAdminToken(token, secretKey) : { valid: false };
+const isSessionValid = tokenVerification.valid;
+
+// If a valid queryToken is present, set the cookie header on response so subsequent requests are authenticated
+if (queryToken && isSessionValid) {
+  const isHttps = Astro.request.url.startsWith('https://') || Astro.request.headers.get('x-forwarded-proto') === 'https';
+  Astro.response.headers.set(
+    'Set-Cookie',
+    `bonesceo_session=${queryToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`
+  );
+}
+
+// Redirect to login only if neither valid token nor cookie is present
+if (!isSessionValid && !cookie.includes('bonesceo_session=') && !queryToken) {
+  return Astro.redirect('/bonesceo/admin/login');
+}
+
+const [stats, sources, articles, analytics, logs, autoSettings, rejectedList] = await Promise.all([
+  getAdminDashboardStats(db),
+  getSources(db),
+  getArticles(db, { limit: 40, status: 'published' }),
+  getAnalyticsMetrics(db),
+  getAutomationLogs(db, 80),
+  getAutomationSettings(db),
+  getRejectedArticles(db, 40),
+]);
+
+const settingsMap: Record<string, string> = {};
+for (const s of autoSettings) {
+  settingsMap[s.key] = s.value;
+}
 ---
-<Layout title="9jaBeacon Admin" activeNav="menu">
-<div class="space-y-5">
-<header class="p-5 rounded-2xl bg-slate-900 border border-slate-800"><p class="text-xs text-emerald-400 font-bold uppercase tracking-wider">9jaBeacon Command Hub</p><h1 class="text-2xl font-black mt-1">Editorial Admin</h1><p class="text-xs text-slate-400 mt-2">Live data from Cloudflare D1. No repository database.</p></header>
-<div class="grid grid-cols-2 sm:grid-cols-5 gap-2">{[['Published',stats.publishedArticles],['Sources',stats.enabledSources],['Pending reports',stats.pendingReports],['Rejected',stats.rejectedArticles],['Article views',stats.articleViews]].map(([label,value])=><div class="p-3 rounded-xl bg-slate-900 border border-slate-800"><div class="text-xl font-black">{value}</div><div class="text-[10px] text-slate-500">{label}</div></div>)}</div>
-<section class="p-4 rounded-2xl bg-slate-900 border border-slate-800"><h2 class="font-bold mb-3">Latest published</h2><div class="space-y-2">{articles.map(a=><a href={`/news/${a.slug}`} class="block p-3 rounded-xl bg-slate-950 hover:bg-slate-800"><div class="text-sm font-semibold">{a.title}</div><div class="text-[10px] text-slate-500 mt-1">{a.source_name||'9jaBeacon'} · {a.published_at}</div></a>)}</div></section>
-<section class="p-4 rounded-2xl bg-slate-900 border border-slate-800"><h2 class="font-bold mb-3">Sources</h2><div class="grid gap-2">{sources.map(s=><div class="flex items-center justify-between p-2 rounded-lg bg-slate-950"><span class="text-xs">{s.name}</span><span class="text-[10px] text-emerald-400">{s.is_enabled?'Enabled':'Disabled'}</span></div>)}</div></section>
-<section class="p-4 rounded-2xl bg-slate-900 border border-slate-800"><h2 class="font-bold">Analytics</h2><p class="text-xs text-slate-400 mt-2">Today: {analytics.todayVisits} · Total events: {analytics.totalVisits} · Unique sessions: {analytics.uniqueVisitors}</p></section>
-</div>
+
+<Layout title="9jaBeacon Editorial Command & AI Hub" activeNav="menu">
+  <div class="space-y-6 pb-20">
+    <!-- Header -->
+    <header class="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/60">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span> LIVE D1 DATABASE
+          </span>
+          <span class="text-xs text-slate-400 font-medium">9jaBeacon Editorial Engine</span>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white mt-1">Autonomous News & AI Command Hub</h1>
+        <p class="text-xs md:text-sm text-slate-400 mt-1 max-w-2xl">
+          Multi-tier LLM synthesis (Cloudflare Workers AI &rarr; OpenRouter Qwen &rarr; Local AI &rarr; Pollinations &rarr; Editorial NLP) with real-time telemetry logs.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <a
+          href="/"
+          target="_blank"
+          class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition border border-slate-700 inline-flex items-center gap-1.5"
+        >
+          <span>View Live Site</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+        <button
+          id="quickCrawlBtn"
+          onclick="triggerCrawlWorkflow()"
+          class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition shadow-lg shadow-emerald-500/20 inline-flex items-center gap-1.5 cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <span>Run AI Workflow</span>
+        </button>
+        <button
+          onclick="logoutAdmin()"
+          title="Sign Out of Admin Portal"
+          class="px-3 py-2 text-xs font-semibold rounded-xl bg-red-950/50 hover:bg-red-900/80 text-red-300 border border-red-900/60 transition inline-flex items-center gap-1.5 cursor-pointer"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- High Level Metrics Bar -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+        <div class="text-2xl font-black text-white">{stats.publishedArticles}</div>
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Published News</div>
+      </div>
+      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+        <div class="text-2xl font-black text-emerald-400">{stats.enabledSources} <span class="text-xs text-slate-500 font-normal">/ {sources.length}</span></div>
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Active Wire Feeds</div>
+      </div>
+      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+        <div class="text-2xl font-black text-cyan-400">{logs.length}</div>
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Workflow Logs</div>
+      </div>
+      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+        <div class="text-2xl font-black text-amber-400">{stats.rejectedArticles}</div>
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Rejected Queue</div>
+      </div>
+      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+        <div class="text-2xl font-black text-purple-400">{stats.articleViews}</div>
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Total Page Views</div>
+      </div>
+      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
+        <div class="text-2xl font-black text-blue-400">{analytics.todayVisits}</div>
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Today Visits</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto no-scrollbar">
+      <button
+        onclick="switchAdminTab('crawler')"
+        id="tab-btn-crawler"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        <span>Workflow & Crawler</span>
+      </button>
+      <button
+        onclick="switchAdminTab('logs')"
+        id="tab-btn-logs"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span>Workflow Logs ({logs.length})</span>
+      </button>
+      <button
+        onclick="switchAdminTab('ai-config')"
+        id="tab-btn-ai-config"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span>AI & Local Models Config</span>
+      </button>
+      <button
+        onclick="switchAdminTab('sources')"
+        id="tab-btn-sources"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+        <span>RSS Sources ({sources.length})</span>
+      </button>
+      <button
+        onclick="switchAdminTab('articles')"
+        id="tab-btn-articles"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+        <span>Published Articles ({articles.length})</span>
+      </button>
+      <button
+        onclick="switchAdminTab('rejected')"
+        id="tab-btn-rejected"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <span>Rejected Leads ({rejectedList.length})</span>
+      </button>
+      <button
+        onclick="switchAdminTab('security')"
+        id="tab-btn-security"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        <span>Admin & Security Credentials</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: WORKFLOW & CRAWLER -->
+    <div id="tab-content-crawler" class="admin-tab-content space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Execution Control Card -->
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span>Trigger Autonomous Crawl</span>
+          </h2>
+          <p class="text-xs text-slate-400">
+            Pulls raw RSS leads, sends them through the 4-tier AI cascade (or local Qwen), rewrites headline and content, assigns categories with reasoning, generates visuals, and publishes directly to Cloudflare D1.
+          </p>
+
+          <div class="space-y-3 pt-2">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Target Source:</label>
+              <select id="crawlSourceSelect" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                <option value="">⚡ All Enabled Sources ({sources.filter(s => s.is_enabled).length})</option>
+                {sources.map(s => (
+                  <option value={s.id}>{s.name} ({s.category_name || 'General'})</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Items Per Source (Batch size):</label>
+              <select id="crawlBatchSize" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                <option value="2">2 items per feed (Fast verification)</option>
+                <option value="4" selected>4 items per feed (Recommended)</option>
+                <option value="8">8 items per feed (Deep batch)</option>
+              </select>
+            </div>
+
+            <button
+              id="startCrawlBtn"
+              onclick="triggerCrawlWorkflow()"
+              class="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer mt-3"
+            >
+              <svg id="crawlSpinner" class="w-4 h-4 hidden animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              <span id="crawlBtnText">Execute Editorial Workflow</span>
+            </button>
+          </div>
+
+          <!-- Active AI Waterfall Indicator -->
+          <div class="pt-3 border-t border-slate-800/80 space-y-2">
+            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active AI Synthesis Waterfall:</div>
+            <div class="space-y-1.5 text-xs text-slate-300">
+              <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="w-5 h-5 rounded-full bg-blue-950 text-blue-400 text-[10px] font-bold flex items-center justify-center">1</span>
+                <div>
+                  <div class="font-semibold text-white">Cloudflare Workers AI</div>
+                  <div class="text-[10px] text-slate-400">Llama 3.1 8B &bull; Qwen 1.5 7B &bull; DeepSeek Qwen 32B</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="w-5 h-5 rounded-full bg-purple-950 text-purple-400 text-[10px] font-bold flex items-center justify-center">2</span>
+                <div>
+                  <div class="font-semibold text-white">OpenRouter AI</div>
+                  <div class="text-[10px] text-slate-400">Qwen 2.5 72B &bull; DeepSeek R1 &bull; Llama 3.3 70B</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="w-5 h-5 rounded-full bg-amber-950 text-amber-400 text-[10px] font-bold flex items-center justify-center">3</span>
+                <div>
+                  <div class="font-semibold text-white">Local Small AI Models (Ollama/LM Studio)</div>
+                  <div class="text-[10px] text-slate-400">{settingsMap.local_ai_model || 'qwen2.5:3b'} @ {settingsMap.local_ai_endpoint || 'http://127.0.0.1:11434'}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="w-5 h-5 rounded-full bg-emerald-950 text-emerald-400 text-[10px] font-bold flex items-center justify-center">4</span>
+                <div>
+                  <div class="font-semibold text-white">Pollinations Multi-LLM</div>
+                  <div class="text-[10px] text-slate-400">Qwen-Coder &bull; Mistral &bull; OpenAI</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold flex items-center justify-center">5</span>
+                <div>
+                  <div class="font-semibold text-white">9jaBeacon Editorial NLP Core</div>
+                  <div class="text-[10px] text-slate-400">Deterministic Scoop/Stakes/Stats formatter & category engine</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Workflow Execution Terminal -->
+        <div class="lg:col-span-2 p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+              <span class="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span>
+              <span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+              <span class="text-xs font-mono text-slate-400 ml-2">editorial-workflow.log</span>
+            </div>
+            <button
+              onclick="clearTerminalLog()"
+              class="text-[11px] text-slate-500 hover:text-slate-300 transition"
+            >
+              Clear Console
+            </button>
+          </div>
+
+          <div id="workflowTerminal" class="h-96 overflow-y-auto font-mono text-xs text-slate-300 space-y-1.5 p-2 bg-slate-900/50 rounded-xl border border-slate-800/60">
+            <div class="text-emerald-400"># 9jaBeacon Autonomous Workflow Console Ready.</div>
+            <div class="text-slate-500">// Click "Execute Editorial Workflow" to start real-time ingestion and synthesis.</div>
+            {logs.slice(0, 15).map(l => (
+              <div class="text-[11px] flex items-start gap-2">
+                <span class="text-slate-500 whitespace-nowrap">[{new Date(l.created_at).toLocaleTimeString()}]</span>
+                <span class={l.level === 'error' ? 'text-red-400 font-bold' : l.level === 'warning' ? 'text-amber-400' : 'text-slate-300'}>
+                  {l.message}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div id="workflowStatusBadge" class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs flex items-center justify-between">
+            <span class="text-slate-400">Workflow Status:</span>
+            <span id="workflowStatusText" class="font-bold text-emerald-400">Idle &bull; Ready to crawl</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: WORKFLOW LOGS & AUDIT TRAIL -->
+    <div id="tab-content-logs" class="admin-tab-content hidden space-y-4">
+      <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-white">Full Automation & AI Telemetry Logs</h2>
+            <p class="text-xs text-slate-400">Every decision, AI model call, classification score, and rejection reason recorded with high fidelity.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              id="logSearchInput"
+              onkeyup="filterLogsTable()"
+              placeholder="Search logs by keyword..."
+              class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+            />
+            <button
+              onclick="refreshLogsView()"
+              class="px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
+            >
+              Refresh
+            </button>
+            <button
+              onclick="clearAllLogsFromDb()"
+              class="px-3 py-1.5 text-xs font-semibold rounded-xl bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800/60 transition"
+            >
+              Clear Logs
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-xs" id="logsTable">
+            <thead class="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3 whitespace-nowrap">Timestamp</th>
+                <th class="p-3 whitespace-nowrap">Event / Action</th>
+                <th class="p-3 whitespace-nowrap">Source</th>
+                <th class="p-3">Message / Rationale</th>
+                <th class="p-3 whitespace-nowrap">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 font-mono">
+              {logs.map(l => (
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="p-3 text-slate-400 whitespace-nowrap text-[11px]">{new Date(l.created_at).toLocaleTimeString()} ({new Date(l.created_at).toLocaleDateString()})</td>
+                  <td class="p-3 font-semibold text-white whitespace-nowrap">{l.event_type || 'WORKFLOW_EVENT'}</td>
+                  <td class="p-3 text-slate-300 whitespace-nowrap">{l.source_name || 'System'}</td>
+                  <td class="p-3 text-slate-200">{l.message}</td>
+                  <td class="p-3 whitespace-nowrap">
+                    <span class={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      l.level === 'error' ? 'bg-red-950 text-red-400 border border-red-800' :
+                      l.level === 'warning' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
+                      'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                    }`}>
+                      {l.level.toUpperCase()}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: AI & LOCAL MODELS CONFIG -->
+    <div id="tab-content-ai-config" class="admin-tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Configuration Form -->
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+            <span>Multi-LLM & Local Fallback Setup</span>
+          </h2>
+          <p class="text-xs text-slate-400">
+            Configure your AI synthesis providers. When Cloudflare or OpenRouter hit rate limits, the system seamlessly falls back to your local downloaded small models (Qwen, Ollama, LM Studio) or Pollinations.
+          </p>
+
+          <form id="aiSettingsForm" class="space-y-4 pt-2">
+            <!-- Local AI Section -->
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-amber-900/40 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span> Local AI Fallback (Qwen / Ollama / LM Studio)
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">Offline Capable</span>
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">Local AI Endpoint URL:</label>
+                <input
+                  type="text"
+                  name="local_ai_endpoint"
+                  value={settingsMap.local_ai_endpoint || 'http://127.0.0.1:11434'}
+                  placeholder="e.g. http://127.0.0.1:11434 or http://localhost:1234/v1"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+                />
+                <p class="text-[10px] text-slate-500 mt-1">Supports Ollama, LM Studio, or LocalAI OpenAI-compatible API.</p>
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">Local Model Tag:</label>
+                <input
+                  type="text"
+                  name="local_ai_model"
+                  value={settingsMap.local_ai_model || 'qwen2.5:3b'}
+                  placeholder="e.g. qwen2.5:3b, qwen2.5:7b, qwen2.5:0.5b, llama3.2:1b"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+                />
+              </div>
+            </div>
+
+            <!-- Cloudflare Workers AI -->
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+              <span class="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-blue-400"></span> Cloudflare Workers AI
+              </span>
+              <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">Cloudflare Account ID:</label>
+                <input
+                  type="text"
+                  name="cloudflare_account_id"
+                  value={settingsMap.cloudflare_account_id || ''}
+                  placeholder="Paste Cloudflare Account ID"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-blue-400"
+                />
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">Cloudflare API Token:</label>
+                <input
+                  type="password"
+                  name="cloudflare_api_token"
+                  value={settingsMap.cloudflare_api_token || ''}
+                  placeholder="Workers AI API Token"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-blue-400"
+                />
+              </div>
+            </div>
+
+            <!-- OpenRouter AI -->
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+              <span class="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-purple-400"></span> OpenRouter AI (Qwen 2.5 72B / DeepSeek)
+              </span>
+              <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">OpenRouter API Key:</label>
+                <input
+                  type="password"
+                  name="openrouter_api_key"
+                  value={settingsMap.openrouter_api_key || ''}
+                  placeholder="sk-or-v1-..."
+                  class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-purple-400"
+                />
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+              <button
+                type="submit"
+                class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition cursor-pointer"
+              >
+                Save AI Configuration
+              </button>
+              <button
+                type="button"
+                onclick="runAiDiagnostics()"
+                class="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition cursor-pointer border border-slate-700 inline-flex items-center gap-1.5"
+              >
+                <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span>Test Waterfall</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- AI Diagnostics & Live Test Output -->
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 flex flex-col justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              <span>AI Waterfall Diagnostic Test</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Runs a sample Nigerian business wire through the cascade and verifies each tier's response time and JSON schema validity.
+            </p>
+
+            <div id="aiTestResultBox" class="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs text-slate-300">
+              <div class="text-slate-500">// Press "Test Waterfall" to execute live end-to-end multi-LLM test...</div>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800/80 text-xs space-y-2">
+            <div class="font-bold text-slate-300">Why Fallback AI Matters:</div>
+            <p class="text-slate-400 text-[11px] leading-relaxed">
+              If internet access fluctuates or cloud quotas expire, your local downloaded small AI models (e.g. Qwen 2.5 3B / Ollama) step in without crashing the news pipeline.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: SOURCES -->
+    <div id="tab-content-sources" class="admin-tab-content hidden space-y-4">
+      <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white">Configured Nigerian & Global RSS Sources</h2>
+            <p class="text-xs text-slate-400">Manage wire feeds, toggle ingestion status, and test feed responsiveness.</p>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+              <tr>
+                <th class="p-3">Source Name</th>
+                <th class="p-3">Feed URL</th>
+                <th class="p-3">Default Category</th>
+                <th class="p-3">Last Fetched</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60">
+              {sources.map(s => (
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="p-3 font-bold text-white whitespace-nowrap">{s.name}</td>
+                  <td class="p-3 text-slate-400 font-mono text-[11px] max-w-xs truncate">{s.feed_url}</td>
+                  <td class="p-3 text-slate-300">{s.category_name || 'General'}</td>
+                  <td class="p-3 text-slate-400 whitespace-nowrap">{s.last_fetched_at ? new Date(s.last_fetched_at).toLocaleTimeString() : 'Never'}</td>
+                  <td class="p-3 whitespace-nowrap">
+                    <span class={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      s.is_enabled ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-400'
+                    }`}>
+                      {s.is_enabled ? 'ACTIVE' : 'DISABLED'}
+                    </span>
+                  </td>
+                  <td class="p-3 text-right whitespace-nowrap">
+                    <button
+                      onclick={`triggerCrawlForSingleSource('${s.id}')`}
+                      class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold transition"
+                    >
+                      Fetch Now
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: PUBLISHED ARTICLES -->
+    <div id="tab-content-articles" class="admin-tab-content hidden space-y-4">
+      <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white">Published Articles Inventory</h2>
+            <p class="text-xs text-slate-400">All stories currently live on 9jaBeacon with synthesis attributions.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {articles.map(a => (
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition space-y-2">
+              <div class="flex items-start justify-between gap-2">
+                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-emerald-400 border border-slate-800">
+                  {a.category_name || a.category_id}
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">{a.views_count || 0} views</span>
+              </div>
+              <h3 class="font-bold text-sm text-white line-clamp-2 hover:text-emerald-400 transition">
+                <a href={`/news/${a.slug}`} target="_blank">{a.title}</a>
+              </h3>
+              <p class="text-xs text-slate-400 line-clamp-2">{a.summary}</p>
+              <div class="pt-2 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-900">
+                <span>Wire: {a.source_name || 'Direct'}</span>
+                <span class="text-slate-400">{a.author_role}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: REJECTED LEADS QUEUE -->
+    <div id="tab-content-rejected" class="admin-tab-content hidden space-y-4">
+      <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white">Unresolved & Rejected Leads Queue</h2>
+            <p class="text-xs text-slate-400">Leads that could not be verified, parsed, or synthesized by AI models. Logged safely to prevent bad publishes.</p>
+          </div>
+        </div>
+
+        {rejectedList.length === 0 ? (
+          <div class="p-8 text-center text-slate-500 text-xs">No rejected leads found. All stories have synthesized cleanly.</div>
+        ) : (
+          <div class="space-y-3">
+            {rejectedList.map(r => (
+              <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="font-bold text-xs text-white">{r.original_title}</div>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-950 text-red-400 border border-red-800 whitespace-nowrap">
+                    REJECTED
+                  </span>
+                </div>
+                <div class="text-[11px] text-red-300 font-mono bg-red-950/20 p-2 rounded border border-red-900/40">
+                  Reason: {r.rejection_reason}
+                </div>
+                {r.ai_tier_failures && (
+                  <div class="text-[10px] text-slate-400 font-mono">
+                    AI Trace: {r.ai_tier_failures}
+                  </div>
+                )}
+                <div class="text-[10px] text-slate-500 flex items-center justify-between pt-1">
+                  <span>Source: {r.source_name || 'Unknown'} &bull; {new Date(r.created_at).toLocaleString()}</span>
+                  {r.original_url && (
+                    <a href={r.original_url} target="_blank" class="text-slate-400 hover:text-white underline">
+                      View Original Lead
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+
+    <!-- TAB 7: ADMIN & SECURITY CREDENTIALS -->
+    <div id="tab-content-security" class="admin-tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Credentials Manager -->
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>Administrator Access Credentials</span>
+            </h2>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+              D1 & Cloudflare Synced
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Manage your admin access credentials. Changing your password here will immediately persist it to your Cloudflare D1 database and keep it synchronized across all workers.
+          </p>
+
+          <form id="adminCredentialsForm" class="space-y-4 pt-2">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Primary Admin Email</label>
+              <input
+                type="email"
+                id="secAdminEmail"
+                name="admin_email"
+                value={siteSettings.admin_email || 'officialbonesceo@gmail.com'}
+                required
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+              />
+              <p class="text-[11px] text-slate-500 mt-1">Authorized for 1-click Google Sign-in and standard password authentication.</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Update Admin Password</label>
+              <input
+                type="password"
+                id="secAdminPassword"
+                name="admin_password"
+                placeholder="Enter new administrator password"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+              />
+              <p class="text-[11px] text-slate-500 mt-1">Leave blank to keep your current password, or enter a new one to update immediately.</p>
+            </div>
+
+            <div id="credSaveStatus" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+
+            <button
+              type="submit"
+              id="saveCredsBtn"
+              class="w-full px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+            >
+              <span>Update Credentials in D1 Database</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Cloudflare Secrets Guide & Status -->
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            <span>Cloudflare Secrets Integration Guide</span>
+          </h2>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            The platform automatically checks Cloudflare runtime secrets and bindings on every request.
+          </p>
+
+          <div class="space-y-2.5 text-xs">
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="font-mono text-emerald-400 font-bold">ADMIN_PASSWORD</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">Secret / D1 Setting</span>
+              </div>
+              <p class="text-[11px] text-slate-400">Cloudflare Worker Secret for root administrator credentials.</p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="font-mono text-emerald-400 font-bold">ADMIN_EMAIL</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">officialbonesceo@gmail.com</span>
+              </div>
+              <p class="text-[11px] text-slate-400">Configured owner email address with administrator privileges.</p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="font-mono text-purple-400 font-bold">ADMIN_SECRET_KEY</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">HMAC-SHA256 Token Salt</span>
+              </div>
+              <p class="text-[11px] text-slate-400">Used for signing session tokens and cookie verification.</p>
+            </div>
+          </div>
+
+          <div class="pt-2 flex items-center justify-between text-xs border-t border-slate-800">
+            <span class="text-slate-400">Session Status:</span>
+            <span class="text-emerald-400 font-mono font-bold">Active & Authenticated</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline>
+    function switchAdminTab(tabName) {
+      document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+        btn.classList.remove('bg-emerald-500', 'text-slate-950', 'shadow-md', 'shadow-emerald-500/20');
+        btn.classList.add('bg-slate-900', 'text-slate-300', 'border', 'border-slate-800');
+      });
+
+      const targetContent = document.getElementById('tab-content-' + tabName);
+      const targetBtn = document.getElementById('tab-btn-' + tabName);
+
+      if (targetContent) targetContent.classList.remove('hidden');
+      if (targetBtn) {
+        targetBtn.classList.remove('bg-slate-900', 'text-slate-300', 'border', 'border-slate-800');
+        targetBtn.classList.add('bg-emerald-500', 'text-slate-950', 'shadow-md', 'shadow-emerald-500/20');
+      }
+    }
+
+    function appendTerminal(msg, type = 'info') {
+      const term = document.getElementById('workflowTerminal');
+      if (!term) return;
+      const timeStr = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = 'text-[11px] flex items-start gap-2';
+
+      let colorClass = 'text-slate-300';
+      if (type === 'success') colorClass = 'text-emerald-400 font-semibold';
+      else if (type === 'error') colorClass = 'text-red-400 font-bold';
+      else if (type === 'warning') colorClass = 'text-amber-400';
+
+      div.innerHTML = `<span class="text-slate-500 whitespace-nowrap">[${timeStr}]</span> <span class="${colorClass}">${msg}</span>`;
+      term.appendChild(div);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function clearTerminalLog() {
+      const term = document.getElementById('workflowTerminal');
+      if (term) term.innerHTML = '<div class="text-slate-500">// Console cleared.</div>';
+    }
+
+    async function triggerCrawlWorkflow() {
+      const btn = document.getElementById('startCrawlBtn');
+      const spinner = document.getElementById('crawlSpinner');
+      const btnText = document.getElementById('crawlBtnText');
+      const statusText = document.getElementById('workflowStatusText');
+      const sourceSelect = document.getElementById('crawlSourceSelect');
+      const batchSelect = document.getElementById('crawlBatchSize');
+
+      const sourceId = sourceSelect ? sourceSelect.value : '';
+      const limit = batchSelect ? Number(batchSelect.value) : 4;
+
+      if (btn) btn.disabled = true;
+      if (spinner) spinner.classList.remove('hidden');
+      if (btnText) btnText.textContent = 'Running Ingestion & Multi-LLM Rewrite...';
+      if (statusText) {
+        statusText.textContent = 'Executing AI Synthesis Waterfall...';
+        statusText.className = 'font-bold text-amber-400 animate-pulse';
+      }
+
+      appendTerminal(`🚀 Launching workflow: Source=${sourceId || 'ALL'} | Limit=${limit} leads/feed`, 'info');
+
+      try {
+        const res = await fetch('/api/admin/trigger-crawl', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_id: sourceId || undefined, limit_per_source: limit }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          appendTerminal(`✅ Ingestion Complete in ${data.durationSeconds || 0}s! Published: ${data.totalIngested} articles, Rejected: ${data.totalRejectedNoAi}`, 'success');
+
+          if (data.logs && Array.isArray(data.logs)) {
+            data.logs.forEach(l => {
+              appendTerminal(`[${l.action}] ${l.message}`, l.status === 'error' ? 'error' : l.status === 'warning' ? 'warning' : 'info');
+            });
+          }
+
+          if (statusText) {
+            statusText.textContent = `Completed! ${data.totalIngested} published.`;
+            statusText.className = 'font-bold text-emerald-400';
+          }
+        } else {
+          appendTerminal(`❌ Ingestion error: ${data.error}`, 'error');
+          if (statusText) {
+            statusText.textContent = `Error: ${data.error}`;
+            statusText.className = 'font-bold text-red-400';
+          }
+        }
+      } catch (err) {
+        appendTerminal(`❌ Network exception: ${err.message}`, 'error');
+        if (statusText) {
+          statusText.textContent = `Failed: ${err.message}`;
+          statusText.className = 'font-bold text-red-400';
+        }
+      } finally {
+        if (btn) btn.disabled = false;
+        if (spinner) spinner.classList.add('hidden');
+        if (btnText) btnText.textContent = 'Execute Editorial Workflow';
+      }
+    }
+
+    async function triggerCrawlForSingleSource(sourceId) {
+      const sel = document.getElementById('crawlSourceSelect');
+      if (sel) sel.value = sourceId;
+      switchAdminTab('crawler');
+      triggerCrawlWorkflow();
+    }
+    window.triggerCrawlForSingleSource = triggerCrawlForSingleSource;
+
+    async function saveAiConfig(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const settings = Object.fromEntries(formData.entries());
+
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'automation', settings }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('AI and Local Model Configuration saved successfully!');
+        } else {
+          alert('Error saving settings: ' + data.error);
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      }
+    }
+    document.getElementById('aiSettingsForm')?.addEventListener('submit', saveAiConfig);
+
+    async function runAiDiagnostics() {
+      const box = document.getElementById('aiTestResultBox');
+      if (!box) return;
+
+      box.innerHTML = '<div class="text-amber-400 animate-pulse">// Querying Multi-LLM Waterfall (Cloudflare -> OpenRouter -> Local Qwen -> Pollinations -> Editorial Core)...</div>';
+
+      try {
+        const res = await fetch('/api/admin/test-ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          let traceHtml = (data.traceLogs || []).map(t => `<div class="text-[10px] text-slate-400">&bull; ${t}</div>`).join('');
+          box.innerHTML = `
+            <div class="text-emerald-400 font-bold">✔ AI Synthesis Succeeded in ${data.durationMs}ms</div>
+            <div class="text-xs text-white font-bold mt-1">Provider: <span class="text-cyan-400">${data.provider}</span> (${data.modelUsed})</div>
+            <div class="text-xs text-slate-300 mt-1">Classified Category: <span class="text-emerald-400 font-bold">${data.category}</span></div>
+            <div class="text-xs text-slate-200 mt-1">Generated Title: "${data.headline}"</div>
+            <div class="mt-2 pt-2 border-t border-slate-800 space-y-1">
+              <div class="text-[10px] font-bold text-slate-500 uppercase">Execution Trace:</div>
+              ${traceHtml}
+            </div>
+          `;
+        } else {
+          box.innerHTML = `<div class="text-red-400 font-bold">✖ AI Synthesis Failed</div><div class="text-xs text-slate-300 mt-1">${data.error}</div>`;
+        }
+      } catch (err) {
+        box.innerHTML = `<div class="text-red-400 font-bold">✖ Network Error</div><div class="text-xs text-slate-300 mt-1">${err.message}</div>`;
+      }
+    }
+
+    async function refreshLogsView() {
+      try {
+        const res = await fetch('/api/admin/logs?limit=80');
+        const data = await res.json();
+        if (data.success && data.logs) {
+          const tbody = document.querySelector('#logsTable tbody');
+          if (tbody) {
+            tbody.innerHTML = data.logs.map(l => `
+              <tr class="hover:bg-slate-800/40 transition">
+                <td class="p-3 text-slate-400 whitespace-nowrap text-[11px]">${new Date(l.created_at).toLocaleTimeString()}</td>
+                <td class="p-3 font-semibold text-white whitespace-nowrap">${l.event_type || 'EVENT'}</td>
+                <td class="p-3 text-slate-300 whitespace-nowrap">${l.source_name || 'System'}</td>
+                <td class="p-3 text-slate-200">${l.message}</td>
+                <td class="p-3 whitespace-nowrap">
+                  <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    l.level === 'error' ? 'bg-red-950 text-red-400 border border-red-800' :
+                    l.level === 'warning' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
+                    'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                  }">
+                    ${(l.level || 'info').toUpperCase()}
+                  </span>
+                </td>
+              </tr>
+            `).join('');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to refresh logs:', err);
+      }
+    }
+
+    async function clearAllLogsFromDb() {
+      if (!confirm('Are you sure you want to clear all automation logs?')) return;
+      try {
+        const res = await fetch('/api/admin/logs', { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          refreshLogsView();
+          clearTerminalLog();
+        }
+      } catch (err) {
+        alert('Failed to clear logs: ' + err.message);
+      }
+    }
+
+    function filterLogsTable() {
+      const q = (document.getElementById('logSearchInput')?.value || '').toLowerCase();
+      const rows = document.querySelectorAll('#logsTable tbody tr');
+      rows.forEach(r => {
+        const text = r.textContent?.toLowerCase() || '';
+        r.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+
+    async function saveAdminCredentials(e) {
+      e.preventDefault();
+      const email = document.getElementById('secAdminEmail')?.value?.trim();
+      const password = document.getElementById('secAdminPassword')?.value?.trim();
+      const statusBox = document.getElementById('credSaveStatus');
+      const btn = document.getElementById('saveCredsBtn');
+
+      if (!email) {
+        alert('Admin email is required.');
+        return;
+      }
+
+      const payload = { admin_email: email };
+      if (password) {
+        payload.admin_password = password;
+      }
+
+      try {
+        if (btn) btn.textContent = 'Updating D1 Database...';
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'site', settings: payload }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (statusBox) {
+            statusBox.textContent = '✅ Administrator credentials updated successfully in Cloudflare D1 database!';
+            statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-950/80 border border-emerald-800 text-emerald-300 block';
+          }
+          if (document.getElementById('secAdminPassword')) {
+            document.getElementById('secAdminPassword').value = '';
+          }
+        } else {
+          if (statusBox) {
+            statusBox.textContent = '❌ Update failed: ' + (data.error || 'Unknown error');
+            statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-red-950/80 border border-red-800 text-red-300 block';
+          }
+        }
+      } catch (err) {
+        if (statusBox) {
+          statusBox.textContent = '❌ Network error: ' + err.message;
+          statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-red-950/80 border border-red-800 text-red-300 block';
+        }
+      } finally {
+        if (btn) btn.textContent = 'Update Credentials in D1 Database';
+      }
+    }
+    window.saveAdminCredentials = saveAdminCredentials;
+    document.getElementById('adminCredentialsForm')?.addEventListener('submit', saveAdminCredentials);
+
+    async function logoutAdmin() {
+      if (!confirm('Are you sure you want to sign out of the Admin Hub?')) return;
+      try {
+        await fetch('/api/admin/logout', { method: 'POST' });
+      } catch {}
+      localStorage.removeItem('bonesceo_auth_token');
+      localStorage.removeItem('bonesceo_auth_user');
+      window.location.href = '/bonesceo/admin/login';
+    }
+
+    // Auto-verify session and ensure cookie is synced
+    (async function syncAdminAuth() {
+      const token = localStorage.getItem('bonesceo_auth_token');
+      if (token) {
+        try {
+          await fetch('/api/admin/verify-session?token=' + encodeURIComponent(token));
+        } catch {}
+      }
+    })();
+  </script>
 </Layout>
