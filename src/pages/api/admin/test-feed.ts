@@ -1,9 +1,13 @@
 import type { APIRoute } from 'astro';
 import { fetchAndParseRssFeed } from '../../../lib/rss-parser';
 
+interface TestFeedBody {
+  feed_url?: string;
+}
+
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const body = await request.json();
+    const body = (await request.json().catch(() => ({}))) as TestFeedBody;
     const feedUrl = body.feed_url;
 
     if (!feedUrl) {

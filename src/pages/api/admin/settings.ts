@@ -1,3 +1,31 @@
 import type { APIRoute } from 'astro';
-import { getD1,updateAutomationSetting,updateSiteSetting } from '../../../lib/runtime-db';
-export const POST:APIRoute=async({request,locals})=>{try{const b=await request.json();if(!b.settings||typeof b.settings!=='object')return new Response(JSON.stringify({error:'Settings object is required'}),{status:400});const db=getD1(locals);if(b.type==='automation')for(const[k,v]of Object.entries(b.settings))await updateAutomationSetting(db,k,String(v));else if(b.type==='site')for(const[k,v]of Object.entries(b.settings))await updateSiteSetting(db,k,String(v));return new Response(JSON.stringify({success:true}),{headers:{'Content-Type':'application/json'}})}catch(e:any){return new Response(JSON.stringify({error:e.message}),{status:500})}};
+import { getD1, updateAutomationSetting, updateSiteSetting } from '../../../lib/runtime-db';
+
+interface SettingsBody {
+  type?: 'automation' | 'site';
+  settings?: Record<string, unknown>;
+}
+
+export const POST: APIRoute = async ({ request, locals }) => {
+  try {
+    const b = (await request.json().catch(() => ({}))) as SettingsBody;
+    if (!b.settings || typeof b.settings !== 'object') {
+      return new Response(JSON.stringify({ error: 'Settings object is required' }), { status: 400 });
+    }
+    const db = getD1(locals);
+    if (b.type === 'automation') {
+      for (const [k, v] of Object.entries(b.settings)) {
+        await updateAutomationSetting(db, k, String(v));
+      }
+    } else if (b.type === 'site') {
+      for (const [k, v] of Object.entries(b.settings)) {
+        await updateSiteSetting(db, k, String(v));
+      }
+    }
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+  }
+};

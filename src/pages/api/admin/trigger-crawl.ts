@@ -1,14 +1,28 @@
 import type { APIRoute } from 'astro';
-import { getSources, getSourceById, createArticle, addAutomationLog, updateSource, getAutomationSettings, recordRejectedArticle } from '../../../lib/db';
+import {
+  getD1,
+  getSources,
+  getSourceById,
+  createArticle,
+  addAutomationLog,
+  updateSource,
+  getAutomationSettings,
+  recordRejectedArticle,
+} from '../../../lib/runtime-db';
 import { fetchAndParseRssFeed } from '../../../lib/rss-parser';
 import { synthesizeNewsArticle, generateEditorialNewsImage, type AiCredentialsConfig } from '../../../lib/ai-engine';
 
-export const POST: APIRoute = async ({ request }) => {
+interface TriggerCrawlBody {
+  source_id?: string;
+}
+
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
-    const body = await request.json().catch(() => ({}));
+    const db = getD1(locals);
+    const body = (await request.json().catch(() => ({}))) as TriggerCrawlBody;
     const sourceId = body.source_id;
 
-    const autoSettings = getAutomationSettings();
+    const autoSettings = await getAutomationSettings(db);
     const settingsMap: Record<string, string> = {};
     for (const s of autoSettings) {
       settingsMap[s.key] = s.value;
@@ -23,7 +37,9 @@ export const POST: APIRoute = async ({ request }) => {
       pollinationsApiKey: settingsMap.pollinations_api_key,
     };
 
-    const sourcesToCrawl = sourceId ? [getSourceById(sourceId)].filter(Boolean) : getSources().filter((s: any) => s.is_enabled);
+    const sourcesToCrawl = sourceId
+      ? [await getSourceById(db, sourceId)].filter((s): s is NonNullable<typeof s> => Boolean(s))
+      : (await getSources(db)).filter((s: any) => s.is_enabled);
 
     let totalIngested = 0;
     let totalRejectedNoAi = 0;
@@ -31,12 +47,12 @@ export const POST: APIRoute = async ({ request }) => {
 
     for (const source of sourcesToCrawl) {
       if (!source) continue;
-      addAutomationLog('CRAWL_TRIGGERED', source.id, `Manual crawl triggered for source: ${source.name}`, 'info');
+      await addAutomationLog(db, 'CRAWL_TRIGGERED', source.id, `Manual crawl triggered for source: ${source.name}`, 'info');
 
       const parsed = await fetchAndParseRssFeed(source.feed_url);
       if (!parsed.success || !parsed.items) {
-        addAutomationLog('CRAWL_ERROR', source.id, `Failed to parse feed: ${parsed.error}`, 'error');
-        recordRejectedArticle({
+        await addAutomationLog(db, 'CRAWL_ERROR', source.id, `Failed to parse feed: ${parsed.error}`, 'error');
+        await recordRejectedArticle(db, {
           source_id: source.id,
           source_name: source.name,
           original_title: `Feed parse error for ${source.name}`,
@@ -70,7 +86,7 @@ export const POST: APIRoute = async ({ request }) => {
           if (!aiResult.success || !aiResult.title || !aiResult.content) {
             rejectedFromSource++;
             totalRejectedNoAi++;
-            recordRejectedArticle({
+            await recordRejectedArticle(db, {
               source_id: source.id,
               source_name: source.name,
               original_title: item.title || 'Untitled Lead',
@@ -79,7 +95,8 @@ export const POST: APIRoute = async ({ request }) => {
               rejection_reason: aiResult.error || 'AI Synthesis Failed: Content unclear or unparseable by all 3 LLM tiers',
               ai_tier_failures: `Tier 1: Cloudflare -> Tier 2: OpenRouter -> Tier 3: Pollinations (${aiResult.error || 'No response'})`,
             });
-            addAutomationLog(
+            await addAutomationLog(
+              db,
               'AI_GATE_REJECTED',
               source.id,
               `Story "${(item.title || '').slice(0, 45)}..." recorded in Unresolved/Rejected tab: AI could not verify/synthesize.`,
@@ -109,7 +126,7 @@ export const POST: APIRoute = async ({ request }) => {
             imageCredit = genImg.credit;
           }
 
-          createArticle({
+          await createArticle(db, {
             title: aiResult.title,
             summary: aiResult.summary || item.description,
             content: aiResult.content,
@@ -133,7 +150,8 @@ export const POST: APIRoute = async ({ request }) => {
           ingestedFromSource++;
           totalIngested++;
 
-          addAutomationLog(
+          await addAutomationLog(
+            db,
             'ARTICLE_PUBLISHED',
             source.id,
             `Synthesized & published "${aiResult.title.slice(0, 45)}..." via ${aiResult.provider}`,
@@ -144,8 +162,8 @@ export const POST: APIRoute = async ({ request }) => {
         }
       }
 
-      updateSource(source.id, { last_fetched_at: new Date().toISOString() });
-      addAutomationLog('CRAWL_COMPLETE', source.id, `Completed ingestion for ${source.name}: ${ingestedFromSource} published, ${rejectedFromSource} logged in rejected queue.`, 'info');
+      await updateSource(db, source.id, { last_fetched_at: new Date().toISOString() });
+      await addAutomationLog(db, 'CRAWL_COMPLETE', source.id, `Completed ingestion for ${source.name}: ${ingestedFromSource} published, ${rejectedFromSource} logged in rejected queue.`, 'info');
       results.push({
         source: source.name,
         success: true,

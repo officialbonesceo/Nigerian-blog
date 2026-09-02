@@ -2,10 +2,11 @@
 import type { Category } from '../lib/types';
 
 interface Props {
+  siteName?: string;
   categories: Category[];
 }
 
-const { categories = [] } = Astro.props;
+const { siteName = '9jaBeacon', categories = [] } = Astro.props;
 ---
 
 <!-- Drawer Backdrop -->
@@ -27,7 +28,7 @@ const { categories = [] } = Astro.props;
           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
         </svg>
       </div>
-      <span class="font-bold text-slate-900 dark:text-white tracking-tight">9jaBeacon Menu</span>
+      <span class="font-bold text-slate-900 dark:text-white tracking-tight">{siteName} Menu</span>
     </div>
     <button
       id="btn-close-drawer"

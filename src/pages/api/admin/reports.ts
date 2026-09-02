@@ -1,4 +1,51 @@
 import type { APIRoute } from 'astro';
 import { getD1 } from '../../../lib/runtime-db';
-export const GET:APIRoute=async({url,locals})=>{try{const db=getD1(locals);if(url.searchParams.get('type')==='rejected'){const rejected=(await db.prepare('SELECT r.*,s.name AS source_name FROM rejected_articles r LEFT JOIN sources s ON r.source_id=s.id ORDER BY r.created_at DESC LIMIT 50').all()).results;return new Response(JSON.stringify({success:true,rejected}),{headers:{'Content-Type':'application/json'}})}const reports=(await db.prepare('SELECT * FROM article_reports ORDER BY created_at DESC LIMIT 50').all()).results;return new Response(JSON.stringify({success:true,reports}),{headers:{'Content-Type':'application/json'}})}catch(e:any){return new Response(JSON.stringify({success:false,error:e.message}),{status:500})}};
-export const POST:APIRoute=async({request,locals})=>{try{const b=await request.json().catch(()=>({}));if(!b.id||!b.status)return new Response(JSON.stringify({success:false,error:'Report ID and status required.'}),{status:400});const r=await getD1(locals).prepare('UPDATE article_reports SET status=? WHERE id=?').bind(String(b.status),String(b.id)).run();return new Response(JSON.stringify({success:r.meta.changes>0}),{headers:{'Content-Type':'application/json'}})}catch(e:any){return new Response(JSON.stringify({success:false,error:e.message}),{status:500})}};
+
+interface ReportStatusBody {
+  id?: string;
+  status?: string;
+}
+
+export const GET: APIRoute = async ({ url, locals }) => {
+  try {
+    const db = getD1(locals);
+    if (url.searchParams.get('type') === 'rejected') {
+      const rejected = (
+        await db
+          .prepare(
+            'SELECT r.*, s.name AS source_name FROM rejected_articles r LEFT JOIN sources s ON r.source_id = s.id ORDER BY r.created_at DESC LIMIT 50'
+          )
+          .all()
+      ).results;
+      return new Response(JSON.stringify({ success: true, rejected }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const reports = (
+      await db.prepare('SELECT * FROM article_reports ORDER BY created_at DESC LIMIT 50').all()
+    ).results;
+    return new Response(JSON.stringify({ success: true, reports }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ success: false, error: e.message }), { status: 500 });
+  }
+};
+
+export const POST: APIRoute = async ({ request, locals }) => {
+  try {
+    const b = (await request.json().catch(() => ({}))) as ReportStatusBody;
+    if (!b.id || !b.status) {
+      return new Response(JSON.stringify({ success: false, error: 'Report ID and status required.' }), { status: 400 });
+    }
+    const r = await getD1(locals)
+      .prepare('UPDATE article_reports SET status=? WHERE id=?')
+      .bind(String(b.status), String(b.id))
+      .run();
+    return new Response(JSON.stringify({ success: (r.meta.changes ?? 0) > 0 }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ success: false, error: e.message }), { status: 500 });
+  }
+};
