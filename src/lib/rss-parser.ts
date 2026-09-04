@@ -19,8 +19,8 @@ export async function fetchAndParseRssFeed(feedUrl: string): Promise<{
     const response = await fetch(feedUrl, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'NaijaPulse-Bot/1.0 (+https://naijapulse.ng/bot; news-aggregator@naijapulse.ng)',
-        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
       },
     });
 

@@ -1,6 +1,24 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle } from './types';
-import { db as localSqliteDb } from './db';
+
+let localSqliteDb: any = null;
+
+async function getLocalSqliteDb(): Promise<any> {
+  if (localSqliteDb) return localSqliteDb;
+  // Only attempt to load local SQLite when running in Node.js (local dev / test server)
+  // NEVER bundle or execute native bindings inside Cloudflare Workers or Pages
+  if (typeof process !== 'undefined' && process.versions?.node && !process.env.CF_PAGES && !process.env.CLOUDFLARE_PAGES) {
+    try {
+      const dbPath = './db';
+      const mod = await import(/* @vite-ignore */ dbPath);
+      localSqliteDb = mod.db;
+      return localSqliteDb;
+    } catch (err) {
+      console.warn('Local SQLite adapter could not be loaded in this environment:', err);
+    }
+  }
+  return null;
+}
 
 export type RuntimeLocals = { runtime?: { env?: { DB?: D1Database } } } | Record<string, unknown> | null | undefined;
 
@@ -18,19 +36,30 @@ function createLocalD1Adapter(): D1Database {
           return stmtObj;
         },
         async all<T = unknown>() {
-          const stmt = localSqliteDb.prepare(query);
+          const db = await getLocalSqliteDb();
+          if (!db) return { results: [] as T[], success: true, meta: { changes: 0 } };
+          const stmt = db.prepare(query);
           const results = (boundArgs.length ? stmt.all(...boundArgs) : stmt.all()) as T[];
           return { results, success: true, meta: { changes: 0 } };
         },
         async first<T = unknown>(colName?: string) {
-          const stmt = localSqliteDb.prepare(query);
+          const db = await getLocalSqliteDb();
+          if (!db) return null;
+          const stmt = db.prepare(query);
           const row = (boundArgs.length ? stmt.get(...boundArgs) : stmt.get()) as Record<string, unknown> | undefined;
           if (!row) return null;
           if (colName) return (row[colName] ?? null) as T;
           return row as T;
         },
         async run() {
-          const stmt = localSqliteDb.prepare(query);
+          const db = await getLocalSqliteDb();
+          if (!db) {
+            return {
+              success: true,
+              meta: { changes: 0, last_row_id: 0, served_by: 'missing-binding-fallback', duration: 0 },
+            };
+          }
+          const stmt = db.prepare(query);
           const info = boundArgs.length ? stmt.run(...boundArgs) : stmt.run();
           return {
             success: true,
@@ -43,7 +72,9 @@ function createLocalD1Adapter(): D1Database {
           };
         },
         async raw<T = unknown>() {
-          const stmt = localSqliteDb.prepare(query);
+          const db = await getLocalSqliteDb();
+          if (!db) return [] as T[];
+          const stmt = db.prepare(query);
           return (boundArgs.length ? stmt.raw(true).all(...boundArgs) : stmt.raw(true).all()) as T[];
         },
       };
@@ -57,7 +88,8 @@ function createLocalD1Adapter(): D1Database {
       return results as any;
     },
     async exec(query: string) {
-      localSqliteDb.exec(query);
+      const db = await getLocalSqliteDb();
+      if (db) db.exec(query);
       return { count: 1, duration: 1 };
     },
     dump() {

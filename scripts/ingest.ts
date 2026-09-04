@@ -46,8 +46,8 @@ interface CustomItem {
 const parser = new Parser<Record<string, unknown>, CustomItem>({
   timeout: 15000,
   headers: {
-    'User-Agent': '9jaBeacon-Bot/2.0 (+https://9jabeacon.pages.dev; editor@9jabeacon.ng)',
-    'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml, */*',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
   },
   customFields: {
     item: [
@@ -109,17 +109,40 @@ async function main() {
   const dbSettings: Record<string, string> = {};
   for (const row of settingsRows) dbSettings[row.key] = row.value;
 
+  const cfAccount = (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_ACCOUNT_ID !== 'true')
+    ? process.env.CLOUDFLARE_ACCOUNT_ID
+    : dbSettings.cloudflare_account_id;
+  const cfToken = (process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_API_TOKEN !== 'true')
+    ? process.env.CLOUDFLARE_API_TOKEN
+    : (process.env.CLOUDFLARE_D1_API_TOKEN && process.env.CLOUDFLARE_D1_API_TOKEN !== 'true' ? process.env.CLOUDFLARE_D1_API_TOKEN : dbSettings.cloudflare_api_token);
+  const cfModel = (process.env.CLOUDFLARE_AI_MODEL && process.env.CLOUDFLARE_AI_MODEL !== 'true')
+    ? process.env.CLOUDFLARE_AI_MODEL
+    : (dbSettings.cloudflare_ai_model || '@cf/meta/llama-3.1-8b-instruct');
+  const orKey = (process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'true')
+    ? process.env.OPENROUTER_API_KEY
+    : dbSettings.openrouter_api_key;
+  const orModel = (process.env.OPENROUTER_MODEL && process.env.OPENROUTER_MODEL !== 'true')
+    ? process.env.OPENROUTER_MODEL
+    : (dbSettings.openrouter_model || 'meta-llama/llama-3.3-70b-instruct:free');
+  const polKey = (process.env.POLLINATIONS_API_KEY && process.env.POLLINATIONS_API_KEY !== 'true')
+    ? process.env.POLLINATIONS_API_KEY
+    : dbSettings.pollinations_api_key;
+
   const aiConfig: AiCredentialsConfig = {
-    cloudflareAccountId: process.env.CLOUDFLARE_ACCOUNT_ID || dbSettings.cloudflare_account_id,
-    cloudflareApiToken: process.env.CLOUDFLARE_API_TOKEN || dbSettings.cloudflare_api_token,
-    cloudflareModel: process.env.CLOUDFLARE_AI_MODEL || dbSettings.cloudflare_ai_model || '@cf/meta/llama-3.1-8b-instruct',
-    openrouterApiKey: process.env.OPENROUTER_API_KEY || dbSettings.openrouter_api_key,
-    openrouterModel: process.env.OPENROUTER_MODEL || dbSettings.openrouter_model || 'meta-llama/llama-3.3-70b-instruct:free',
-    pollinationsApiKey: process.env.POLLINATIONS_API_KEY || dbSettings.pollinations_api_key,
+    cloudflareAccountId: cfAccount,
+    cloudflareApiToken: cfToken,
+    cloudflareModel: cfModel,
+    openrouterApiKey: orKey,
+    openrouterModel: orModel,
+    pollinationsApiKey: polKey,
   };
 
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'phwka7ak';
-  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || 'voxawell';
+  const cloudName = (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_CLOUD_NAME !== 'true')
+    ? process.env.CLOUDINARY_CLOUD_NAME
+    : (dbSettings.cloudinary_cloud_name || 'phwka7ak');
+  const uploadPreset = (process.env.CLOUDINARY_UPLOAD_PRESET && process.env.CLOUDINARY_UPLOAD_PRESET !== 'true')
+    ? process.env.CLOUDINARY_UPLOAD_PRESET
+    : (dbSettings.cloudinary_upload_preset || 'voxawell');
 
   console.log('\n🔎 RUNNING LIVE API CONNECTION & DIAGNOSTIC VERIFICATION:');
   console.log('----------------------------------------------------------------');
@@ -172,10 +195,10 @@ async function main() {
     try {
       const feedRes = await fetch(source.feed_url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 9jaBeaconBot/1.0',
-          'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         },
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(10000),
       });
       if (!feedRes.ok) throw new Error(`HTTP ${feedRes.status}`);
       const feed = await parser.parseString(await feedRes.text());

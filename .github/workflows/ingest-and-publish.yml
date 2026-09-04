@@ -39,8 +39,8 @@ jobs:
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Missing CLOUDFLARE_API_TOKEN (Workers AI)'; exit 1; }
-          test -n "$CLOUDFLARE_D1_API_TOKEN" || { echo 'Missing CLOUDFLARE_D1_API_TOKEN'; exit 1; }
+          TOKEN="${CLOUDFLARE_D1_API_TOKEN:-$CLOUDFLARE_API_TOKEN}"
+          test -n "$TOKEN" || { echo 'Missing Cloudflare API Token. Please set CLOUDFLARE_API_TOKEN or CLOUDFLARE_D1_API_TOKEN in GitHub Secrets.'; exit 1; }
           test -n "$CLOUDFLARE_D1_DATABASE_ID" || { echo 'Missing CLOUDFLARE_D1_DATABASE_ID'; exit 1; }
           echo 'Required ingestion secrets are present.'
 
@@ -52,7 +52,8 @@ jobs:
       - name: ☁️ Pull current D1 into ephemeral ingestion database
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           NODE_ENV: production
           ALLOW_SEED_ARTICLES: 'false'
@@ -63,15 +64,15 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_AI_MODEL: ${{ secrets.CLOUDFLARE_AI_MODEL || '@cf/meta/llama-3.1-8b-instruct' }}
           CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_AI_MODEL: ${{ secrets.CLOUDFLARE_AI_MODEL }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           CLOUDFLARE_D1_DATABASE: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free' }}
+          OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL }}
           POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
-          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME || 'phwka7ak' }}
-          CLOUDINARY_UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET || 'voxawell' }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
           NODE_ENV: production
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'
@@ -80,7 +81,7 @@ jobs:
       - name: ☁️ Write newly ingested data to D1
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           ALLOW_SEED_ARTICLES: 'false'
@@ -90,7 +91,7 @@ jobs:
       - name: 👥 Normalize editorial desk profiles in D1
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
         run: npx tsx scripts/normalize-editorial-profiles.ts

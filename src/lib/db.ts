@@ -161,6 +161,7 @@ function initDatabase() {
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN event_type TEXT`).run(); } catch {}
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN level TEXT DEFAULT 'info'`).run(); } catch {}
 
+  if (process.env.ALLOW_SEED_DATA === 'true') {
   // Seed/Upsert Categories
   const insertCat = db.prepare(`
     INSERT INTO categories (id, slug, name, description, icon, color, follower_count, display_order)
@@ -222,7 +223,7 @@ function initDatabase() {
       insertArt.run(art);
     }
   }
-
+  }
   // Seed default automation settings
   const settingsCount = db.prepare('SELECT COUNT(*) as count FROM automation_settings').get() as { count: number };
   if (settingsCount.count === 0) {

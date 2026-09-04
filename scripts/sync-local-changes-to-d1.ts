@@ -1,9 +1,9 @@
 import { db } from '../src/lib/db';
 import { executeD1Query } from '../src/lib/d1-sync';
 
-const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '';
-const apiToken = process.env.CLOUDFLARE_API_TOKEN || '';
-const databaseId = process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_D1_DATABASE || '';
+const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+const apiToken = (process.env.CLOUDFLARE_D1_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '').trim();
+const databaseId = (process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_D1_DATABASE || process.env.CLOUDFLARE_DATABASE_ID || '').trim();
 const LOOKBACK_HOURS = 24;
 
 type Row = Record<string, unknown>;
@@ -91,7 +91,7 @@ async function getRemoteSourceIds(): Promise<Set<string>> {
 
 async function main() {
   if (!accountId || !apiToken || !databaseId) {
-    throw new Error('CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and CLOUDFLARE_D1_DATABASE_ID are required.');
+    throw new Error('CLOUDFLARE_ACCOUNT_ID, Cloudflare API Token (CLOUDFLARE_D1_API_TOKEN or CLOUDFLARE_API_TOKEN), and CLOUDFLARE_D1_DATABASE_ID are required.');
   }
 
   // The ingestion engine uses SQLite for its Node.js runtime. This is the

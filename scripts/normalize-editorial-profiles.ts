@@ -2,9 +2,9 @@ import { db } from '../src/lib/db';
 import { executeD1Query } from '../src/lib/d1-sync';
 import { EDITORIAL_PROFILES, DEFAULT_EDITORIAL_PROFILE } from './editorial-profiles';
 
-const cloudflareAccountId = process.env.CLOUDFLARE_ACCOUNT_ID || '';
-const cloudflareApiToken = process.env.CLOUDFLARE_API_TOKEN || '';
-const databaseId = process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_D1_DATABASE || '';
+const cloudflareAccountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+const cloudflareApiToken = (process.env.CLOUDFLARE_D1_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '').trim();
+const databaseId = (process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_D1_DATABASE || process.env.CLOUDFLARE_DATABASE_ID || '').trim();
 
 function normalizeLocal() {
   const update = db.prepare(`UPDATE articles SET author_name = ?, author_role = ?, author_avatar = ? WHERE category_id = ?`);
