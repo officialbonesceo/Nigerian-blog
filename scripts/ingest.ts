@@ -12,6 +12,7 @@
 
 import Parser from 'rss-parser';
 import { db } from '../src/lib/db';
+import { initialCategories, initialSources } from '../src/lib/seed-data';
 import { uploadToCloudinaryDetailed, verifyCloudinaryConnection } from '../src/lib/cloudinary';
 import {
   synthesizeNewsArticle,
@@ -153,7 +154,39 @@ async function main() {
   console.log(`  🌸 Pollinations Server:   ${aiConfig.pollinationsApiKey ? '✅ Configured' : 'ℹ️ Optional fallback'}`);
   console.log('----------------------------------------------------------------\n');
 
-  const sources = db.prepare('SELECT * FROM sources WHERE is_enabled = 1').all() as SourceRow[];
+  // Ensure categories exist in database
+  const catCount = (db.prepare('SELECT COUNT(*) as count FROM categories').get() as { count: number }).count;
+  if (catCount === 0) {
+    console.log('⚠️ Categories table empty. Seeding essential 9jaBeacon news desks...');
+    const insertCat = db.prepare(`
+      INSERT OR IGNORE INTO categories (id, slug, name, description, icon, color, follower_count, display_order)
+      VALUES (@id, @slug, @name, @description, @icon, @color, @follower_count, @display_order)
+    `);
+    for (const cat of initialCategories) {
+      insertCat.run(cat);
+    }
+  }
+
+  // Ensure active verified news sources exist
+  let sources = db.prepare('SELECT * FROM sources WHERE is_enabled = 1').all() as SourceRow[];
+  if (!sources.length) {
+    console.log('⚠️ No active sources found in database. Initializing verified Nigerian news RSS feeds...');
+    const insertSrc = db.prepare(`
+      INSERT OR IGNORE INTO sources (id, name, feed_url, website_url, category_default_id, is_enabled, is_official, trust_score, license_notes, fetch_interval_minutes)
+      VALUES (@id, @name, @feed_url, @website_url, @category_default_id, @is_enabled, @is_official, @trust_score, @license_notes, @fetch_interval_minutes)
+    `);
+    for (const src of initialSources) {
+      insertSrc.run({
+        ...src,
+        is_enabled: src.is_enabled ?? 1,
+        is_official: src.is_official ?? 0,
+        trust_score: src.trust_score ?? 95,
+        license_notes: src.license_notes ?? '',
+        fetch_interval_minutes: src.fetch_interval_minutes ?? 30,
+      });
+    }
+    sources = db.prepare('SELECT * FROM sources WHERE is_enabled = 1').all() as SourceRow[];
+  }
   console.log(`📡 Loaded ${sources.length} active verified RSS news feeds.`);
 
   const MAX_ARTICLES_PER_RUN = 10;
@@ -171,12 +204,12 @@ async function main() {
       id, slug, title, summary, content, category_id, image_url, image_caption,
       image_credit, image_license, author_name, author_role, author_avatar,
       is_top_story, is_trending, is_breaking, views_count, reading_time_minutes,
-      source_id, source_name, source_original_url, published_at, updated_at, status
+      source_id, source_name, source_original_url, published_at, updated_at, created_at, status
     ) VALUES (
       @id, @slug, @title, @summary, @content, @category_id, @image_url, @image_caption,
       @image_credit, @image_license, @author_name, @author_role, @author_avatar,
       @is_top_story, @is_trending, @is_breaking, @views_count, @reading_time_minutes,
-      @source_id, @source_name, @source_original_url, @published_at, @updated_at, @status
+      @source_id, @source_name, @source_original_url, @published_at, @updated_at, @created_at, @status
     )
   `);
 
@@ -282,7 +315,7 @@ async function main() {
           author_role: desk.role, author_avatar: desk.avatar, is_top_story: 0, is_trending: 0, is_breaking: 0,
           views_count: 0, reading_time_minutes: aiResult.readingTimeMinutes || 4, source_id: source.id,
           source_name: source.name, source_original_url: item.link, published_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(), status: 'published',
+          updated_at: new Date().toISOString(), created_at: new Date().toISOString(), status: 'published',
         });
         totalPublished++;
         console.log(`     ✅ [STORED] ${articleId} | /news/${slug}`);

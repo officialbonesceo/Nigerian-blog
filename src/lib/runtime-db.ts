@@ -1,5 +1,7 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle } from './types';
+import { initialCategories, initialArticles } from './seed-data';
+import { executeD1Query } from './d1-sync';
 
 let localSqliteDb: any = null;
 
@@ -100,21 +102,191 @@ function createLocalD1Adapter(): D1Database {
   return localD1Adapter;
 }
 
+function createRemoteD1RestAdapter(accountId: string, apiToken: string, databaseId: string): D1Database {
+  return {
+    prepare(query: string) {
+      let boundArgs: unknown[] = [];
+      const stmtObj = {
+        bind(...args: unknown[]) {
+          boundArgs = args;
+          return stmtObj;
+        },
+        async first<T = unknown>(colName?: string) {
+          const res = await executeD1Query(query, boundArgs, { accountId, apiToken, databaseNameOrId: databaseId });
+          const firstResult = Array.isArray(res.result) ? res.result[0] : res.result;
+          const rows = Array.isArray(firstResult?.results) ? firstResult.results : [];
+          if (!rows.length) return null;
+          return (colName ? rows[0][colName] : rows[0]) as T;
+        },
+        async all<T = unknown>() {
+          const res = await executeD1Query(query, boundArgs, { accountId, apiToken, databaseNameOrId: databaseId });
+          const firstResult = Array.isArray(res.result) ? res.result[0] : res.result;
+          const results = (Array.isArray(firstResult?.results) ? firstResult.results : []) as T[];
+          return { success: res.success, results, meta: firstResult?.meta || {} };
+        },
+        async run() {
+          const res = await executeD1Query(query, boundArgs, { accountId, apiToken, databaseNameOrId: databaseId });
+          const firstResult = Array.isArray(res.result) ? res.result[0] : res.result;
+          return { success: res.success, meta: firstResult?.meta || { changes: 1 } };
+        },
+        async raw<T = unknown>() {
+          const res = await executeD1Query(query, boundArgs, { accountId, apiToken, databaseNameOrId: databaseId });
+          const firstResult = Array.isArray(res.result) ? res.result[0] : res.result;
+          return (Array.isArray(firstResult?.results) ? firstResult.results.map((r: any) => Object.values(r)) : []) as T[];
+        },
+      };
+      return stmtObj as any;
+    },
+    async batch(statements: any[]) {
+      const results: any[] = [];
+      for (const s of statements) results.push(await s.run());
+      return results as any;
+    },
+    async exec(query: string) {
+      await executeD1Query(query, [], { accountId, apiToken, databaseNameOrId: databaseId });
+      return { count: 1, duration: 1 };
+    },
+    dump() {
+      throw new Error('dump is not supported');
+    }
+  } as unknown as D1Database;
+}
+
 export function getD1(locals?: RuntimeLocals): D1Database {
-  const envDb = (locals as any)?.runtime?.env?.DB;
-  if (envDb) return envDb;
+  const runtimeEnv: any = (locals as any)?.runtime?.env || (typeof process !== 'undefined' ? process.env : {});
+  
+  // 1. Direct standard D1 binding names in Cloudflare Pages
+  const envDb = runtimeEnv?.DB || runtimeEnv?.D1 || runtimeEnv?.DATABASE || runtimeEnv?.database || runtimeEnv?.['9jabeacon-db'];
+  if (envDb && typeof envDb.prepare === 'function') return envDb;
+
+  // 2. Duck typing: inspect all properties of runtime.env for an object with .prepare()
+  if (runtimeEnv && typeof runtimeEnv === 'object') {
+    for (const key of Object.keys(runtimeEnv)) {
+      if (runtimeEnv[key] && typeof runtimeEnv[key]?.prepare === 'function') {
+        return runtimeEnv[key] as D1Database;
+      }
+    }
+  }
+
+  // 3. Cloudflare REST API fallback if API secrets are present
+  const cfAccount = (runtimeEnv?.CLOUDFLARE_ACCOUNT_ID || (typeof process !== 'undefined' ? process.env?.CLOUDFLARE_ACCOUNT_ID : '') || '').trim();
+  const cfToken = (runtimeEnv?.CLOUDFLARE_D1_API_TOKEN || runtimeEnv?.CLOUDFLARE_API_TOKEN || (typeof process !== 'undefined' ? (process.env?.CLOUDFLARE_D1_API_TOKEN || process.env?.CLOUDFLARE_API_TOKEN) : '') || '').trim();
+  const cfDb = (runtimeEnv?.CLOUDFLARE_D1_DATABASE_ID || runtimeEnv?.CLOUDFLARE_D1_DATABASE || (typeof process !== 'undefined' ? (process.env?.CLOUDFLARE_D1_DATABASE_ID || process.env?.CLOUDFLARE_D1_DATABASE) : '') || '').trim();
+  if (cfAccount && cfToken && cfDb) {
+    return createRemoteD1RestAdapter(cfAccount, cfToken, cfDb);
+  }
+
+  // 4. Local SQLite adapter for local dev / Node.js
   return createLocalD1Adapter();
 }
-const select=`SELECT a.*,c.name AS category_name,c.slug AS category_slug FROM articles a LEFT JOIN categories c ON a.category_id=c.id`;
-export async function getArticles(db:D1Database,o:{categoryId?:string;categorySlug?:string;limit?:number;offset?:number;status?:string;isTopStory?:boolean;isTrending?:boolean;isBreaking?:boolean}={}):Promise<Article[]>{let q=`${select} WHERE a.status=?`,v:unknown[]=[o.status||'published'];if(o.categoryId){q+=' AND a.category_id=?';v.push(o.categoryId)}if(o.categorySlug){q+=' AND c.slug=?';v.push(o.categorySlug)}if(o.isTopStory!==undefined){q+=' AND a.is_top_story=?';v.push(o.isTopStory?1:0)}if(o.isTrending!==undefined){q+=' AND a.is_trending=?';v.push(o.isTrending?1:0)}if(o.isBreaking!==undefined){q+=' AND a.is_breaking=?';v.push(o.isBreaking?1:0)}q+=' ORDER BY a.published_at DESC LIMIT ? OFFSET ?';v.push(Math.min(Math.max(o.limit??20,1),200),Math.max(o.offset??0,0));return(await db.prepare(q).bind(...v).all<Article>()).results}
-export async function searchArticles(db:D1Database,term:string,limit=50){const q=`${select} WHERE a.status='published' AND (a.title LIKE ? OR a.summary LIKE ? OR a.content LIKE ?) ORDER BY a.published_at DESC LIMIT ?`;const x=`%${term.replace(/[%_]/g,'\\$&')}%`;return(await db.prepare(q).bind(x,x,x,Math.min(Math.max(limit,1),100)).all<Article>()).results}
-export async function getArticleBySlug(db:D1Database,slug:string){const row=await db.prepare(`${select} WHERE a.slug=? LIMIT 1`).bind(slug).first<Article>();if(row)db.prepare('UPDATE articles SET views_count=COALESCE(views_count,0)+1 WHERE id=?').bind(row.id).run().catch(()=>{});return row??null}
-export async function getRelatedArticles(db:D1Database,id:string,categoryId:string,limit=3){return(await db.prepare(`${select} WHERE a.status='published' AND a.id!=? AND a.category_id=? ORDER BY a.published_at DESC LIMIT ?`).bind(id,categoryId,limit).all<Article>()).results}
-export async function getTopStory(db:D1Database){return await db.prepare(`${select} WHERE a.status='published' AND a.is_top_story=1 ORDER BY a.published_at DESC LIMIT 1`).first<Article>()}
-export async function getMostReadArticles(db:D1Database,limit=4){return(await db.prepare(`${select} WHERE a.status='published' ORDER BY a.views_count DESC,a.published_at DESC LIMIT ?`).bind(limit).all<Article>()).results}
-export async function getBreakingArticles(db:D1Database,limit=3){return(await db.prepare(`${select} WHERE a.status='published' AND a.is_breaking=1 ORDER BY a.published_at DESC LIMIT ?`).bind(limit).all<Article>()).results}
-export async function getCategories(db:D1Database){const rows=await db.prepare('SELECT * FROM categories').all<any>();return rows.results.sort((a:any,b:any)=>Number(a.display_order??a.sort_order??0)-Number(b.display_order??b.sort_order??0)||String(a.name).localeCompare(String(b.name))) as Category[]}
-export async function getCategoryBySlug(db:D1Database,slug:string){return await db.prepare('SELECT * FROM categories WHERE slug=? LIMIT 1').bind(slug).first<Category>()}
+
+const select = `SELECT a.*,c.name AS category_name,c.slug AS category_slug FROM articles a LEFT JOIN categories c ON a.category_id=c.id`;
+
+export async function getArticles(
+  db: D1Database,
+  o: { categoryId?: string; categorySlug?: string; limit?: number; offset?: number; status?: string; isTopStory?: boolean; isTrending?: boolean; isBreaking?: boolean } = {}
+): Promise<Article[]> {
+  let q = `${select} WHERE a.status=?`;
+  const v: unknown[] = [o.status || 'published'];
+  if (o.categoryId) { q += ' AND a.category_id=?'; v.push(o.categoryId); }
+  if (o.categorySlug) { q += ' AND c.slug=?'; v.push(o.categorySlug); }
+  if (o.isTopStory !== undefined) { q += ' AND a.is_top_story=?'; v.push(o.isTopStory ? 1 : 0); }
+  if (o.isTrending !== undefined) { q += ' AND a.is_trending=?'; v.push(o.isTrending ? 1 : 0); }
+  if (o.isBreaking !== undefined) { q += ' AND a.is_breaking=?'; v.push(o.isBreaking ? 1 : 0); }
+  q += ' ORDER BY a.published_at DESC LIMIT ? OFFSET ?';
+  v.push(Math.min(Math.max(o.limit ?? 20, 1), 200), Math.max(o.offset ?? 0, 0));
+
+  let results: Article[] = [];
+  try {
+    const res = await db.prepare(q).bind(...v).all<Article>();
+    results = res.results || [];
+  } catch {}
+
+  if (!results.length && (!o.status || o.status === 'published')) {
+    let fallback = [...initialArticles] as Article[];
+    if (o.categoryId) fallback = fallback.filter((a) => a.category_id === o.categoryId);
+    if (o.categorySlug) fallback = fallback.filter((a) => a.category_slug === o.categorySlug || a.category_id === o.categorySlug);
+    if (o.isTopStory !== undefined) fallback = fallback.filter((a) => Boolean(a.is_top_story) === Boolean(o.isTopStory));
+    if (o.isTrending !== undefined) fallback = fallback.filter((a) => Boolean(a.is_trending) === Boolean(o.isTrending));
+    if (o.isBreaking !== undefined) fallback = fallback.filter((a) => Boolean(a.is_breaking) === Boolean(o.isBreaking));
+    results = fallback.slice(o.offset || 0, (o.offset || 0) + (o.limit || 20));
+  }
+  return results;
+}
+
+export async function searchArticles(db: D1Database, term: string, limit = 50) {
+  const q = `${select} WHERE a.status='published' AND (a.title LIKE ? OR a.summary LIKE ? OR a.content LIKE ?) ORDER BY a.published_at DESC LIMIT ?`;
+  const x = `%${term.replace(/[%_]/g, '\\$&')}%`;
+  try {
+    const res = await db.prepare(q).bind(x, x, x, Math.min(Math.max(limit, 1), 100)).all<Article>();
+    if (res.results?.length) return res.results;
+  } catch {}
+  const lower = term.toLowerCase();
+  return (initialArticles as Article[]).filter((a) =>
+    a.title.toLowerCase().includes(lower) || a.summary.toLowerCase().includes(lower)
+  ).slice(0, limit);
+}
+
+export async function getArticleBySlug(db: D1Database, slug: string) {
+  try {
+    const row = await db.prepare(`${select} WHERE a.slug=? LIMIT 1`).bind(slug).first<Article>();
+    if (row) {
+      db.prepare('UPDATE articles SET views_count=COALESCE(views_count,0)+1 WHERE id=?').bind(row.id).run().catch(() => {});
+      return row;
+    }
+  } catch {}
+  return (initialArticles as Article[]).find((a) => a.slug === slug) ?? null;
+}
+
+export async function getRelatedArticles(db: D1Database, id: string, categoryId: string, limit = 3) {
+  try {
+    const res = await db.prepare(`${select} WHERE a.status='published' AND a.id!=? AND a.category_id=? ORDER BY a.published_at DESC LIMIT ?`).bind(id, categoryId, limit).all<Article>();
+    if (res.results?.length) return res.results;
+  } catch {}
+  return (initialArticles as Article[]).filter((a) => a.id !== id && a.category_id === categoryId).slice(0, limit);
+}
+
+export async function getTopStory(db: D1Database) {
+  try {
+    const row = await db.prepare(`${select} WHERE a.status='published' AND a.is_top_story=1 ORDER BY a.published_at DESC LIMIT 1`).first<Article>();
+    if (row) return row;
+  } catch {}
+  return (initialArticles as Article[]).find((a) => a.is_top_story === 1) || (initialArticles as Article[])[0] || null;
+}
+
+export async function getMostReadArticles(db: D1Database, limit = 4) {
+  try {
+    const res = await db.prepare(`${select} WHERE a.status='published' ORDER BY a.views_count DESC,a.published_at DESC LIMIT ?`).bind(limit).all<Article>();
+    if (res.results?.length) return res.results;
+  } catch {}
+  return [...(initialArticles as Article[])].sort((a, b) => (b.views_count || 0) - (a.views_count || 0)).slice(0, limit);
+}
+
+export async function getBreakingArticles(db: D1Database, limit = 3) {
+  try {
+    const res = await db.prepare(`${select} WHERE a.status='published' AND a.is_breaking=1 ORDER BY a.published_at DESC LIMIT ?`).bind(limit).all<Article>();
+    if (res.results?.length) return res.results;
+  } catch {}
+  return (initialArticles as Article[]).filter((a) => a.is_breaking === 1).slice(0, limit);
+}
+
+export async function getCategories(db: D1Database) {
+  try {
+    const rows = await db.prepare('SELECT * FROM categories').all<any>();
+    if (rows.results?.length) {
+      return rows.results.sort((a: any, b: any) => Number(a.display_order ?? a.sort_order ?? 0) - Number(b.display_order ?? b.sort_order ?? 0) || String(a.name).localeCompare(String(b.name))) as Category[];
+    }
+  } catch {}
+  return initialCategories;
+}
+
+export async function getCategoryBySlug(db: D1Database, slug: string) {
+  try {
+    const row = await db.prepare('SELECT * FROM categories WHERE slug=? LIMIT 1').bind(slug).first<Category>();
+    if (row) return row;
+  } catch {}
+  return initialCategories.find((c) => c.slug === slug) ?? null;
+}
 export async function getSiteSettings(db:D1Database){const r=(await db.prepare('SELECT key,value FROM site_settings').all<{key:string;value:string}>()).results;return Object.fromEntries(r.map(x=>[x.key,x.value]))}
 export async function getAutomationSettings(db:D1Database){return(await db.prepare('SELECT * FROM automation_settings ORDER BY key').all<AutomationSetting>()).results}
 export async function getSources(db:D1Database){return(await db.prepare('SELECT s.*,c.name AS category_name FROM sources s LEFT JOIN categories c ON s.category_default_id=c.id ORDER BY s.name').all<Source>()).results}

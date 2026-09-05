@@ -4,7 +4,6 @@ import { executeD1Query } from '../src/lib/d1-sync';
 const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
 const apiToken = (process.env.CLOUDFLARE_D1_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '').trim();
 const databaseId = (process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_D1_DATABASE || process.env.CLOUDFLARE_DATABASE_ID || '').trim();
-const LOOKBACK_HOURS = 24;
 
 type Row = Record<string, unknown>;
 
@@ -94,16 +93,14 @@ async function main() {
     throw new Error('CLOUDFLARE_ACCOUNT_ID, Cloudflare API Token (CLOUDFLARE_D1_API_TOKEN or CLOUDFLARE_API_TOKEN), and CLOUDFLARE_D1_DATABASE_ID are required.');
   }
 
-  // The ingestion engine uses SQLite for its Node.js runtime. This is the
-  // controlled write-through boundary: only recent rows are sent to D1.
-  const cutoff = new Date(Date.now() - LOOKBACK_HOURS * 60 * 60 * 1000).toISOString();
+  // Query all local articles. Using INSERT OR IGNORE guarantees that existing
+  // articles are preserved while all new synthesized articles are reliably inserted.
+  const articles = db.prepare('SELECT * FROM articles ORDER BY published_at DESC').all() as Row[];
+  const rejections = db.prepare('SELECT * FROM rejected_articles ORDER BY created_at DESC LIMIT 50').all() as Row[];
+  const logs = db.prepare('SELECT * FROM automation_logs ORDER BY created_at DESC LIMIT 50').all() as Row[];
+  const sources = db.prepare('SELECT id, last_fetched_at FROM sources WHERE last_fetched_at IS NOT NULL').all() as Row[];
 
-  const articles = db.prepare('SELECT * FROM articles WHERE created_at >= ? ORDER BY created_at ASC').all(cutoff) as Row[];
-  const rejections = db.prepare('SELECT * FROM rejected_articles WHERE created_at >= ? ORDER BY created_at ASC').all(cutoff) as Row[];
-  const logs = db.prepare('SELECT * FROM automation_logs WHERE created_at >= ? ORDER BY created_at ASC').all(cutoff) as Row[];
-  const sources = db.prepare('SELECT id, last_fetched_at FROM sources WHERE last_fetched_at >= ?').all(cutoff) as Row[];
-
-  console.log(`☁️ D1 write-through: ${articles.length} recent articles, ${rejections.length} rejections, ${logs.length} logs, ${sources.length} source timestamps.`);
+  console.log(`☁️ D1 write-through: ${articles.length} local articles, ${rejections.length} rejections, ${logs.length} logs, ${sources.length} sources to verify.`);
 
   await run('SELECT 1');
 

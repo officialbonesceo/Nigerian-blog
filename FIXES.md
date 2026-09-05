@@ -22,6 +22,17 @@ System falls back to AI-generated editorial image or `/fallback-image.svg`.
 - Email locked to `officialbonesceo@gmail.com`
 - Google login path remains (but is not real OAuth yet)
 
+### 5. Cloudflare Pages & Worker Build Fix
+- Fixed Cloudflare build failure (`Could not locate the bindings file` / `better-sqlite3.node` bundling error).
+- Configured Vite `ssr.external: ['better-sqlite3']` and dynamic import in `runtime-db.ts` so native Node.js binaries are never packaged into `dist/_worker.js`.
+- Generated `.nvmrc` locking Node version to 22.
+
+### 6. GitHub Actions Automation Workflow Fix
+- Fixed secret validation in `.github/workflows/ingest-and-publish.yml` to support either `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_D1_API_TOKEN`.
+- Updated RSS fetch User-Agent to standard modern browser headers so feeds like Punch and Vanguard do not return 403 or redirect loops.
+- Added self-healing in `sync-d1-to-local.ts` to automatically populate base categories in D1 if empty instead of failing the workflow.
+- Aligned columns between D1 and local SQLite tables to eliminate insertion errors.
+
 ## 🔄 Still Recommended (Bigger Work)
 
 ### Full SQLite → Cloudflare D1 Migration

@@ -37,8 +37,8 @@ export async function executeD1Query(
   options: D1QueryOptions = {}
 ): Promise<{ success: boolean; result?: any; error?: string }> {
   const accountId = (options.accountId || process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
-  const apiToken = (options.apiToken || process.env.CLOUDFLARE_API_TOKEN || '').trim();
-  const configuredDatabase = (options.databaseNameOrId || process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_D1_DATABASE || '').trim();
+  const apiToken = (options.apiToken || process.env.CLOUDFLARE_D1_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '').trim();
+  const configuredDatabase = (options.databaseNameOrId || process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_D1_DATABASE || process.env.CLOUDFLARE_DATABASE_ID || '').trim();
 
   if (!accountId || !apiToken || !configuredDatabase) {
     return { success: false, error: 'Missing Cloudflare D1 credentials/database identifier.' };
