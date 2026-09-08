@@ -2,10 +2,11 @@
 import type { Article } from '../lib/types';
 
 interface Props {
-  articles: Article[];
+  articles?: Article[];
 }
 
 const { articles = [] } = Astro.props;
+if (!articles || articles.length === 0) return null;
 ---
 
 <section class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800/80">
@@ -39,9 +40,9 @@ const { articles = [] } = Astro.props;
             {art.title}
           </h4>
           <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
-            <span>{art.category_name}</span>
+            <span>{art.category_name || 'General'}</span>
             <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-            <span>{art.views_count.toLocaleString()} reads</span>
+            <span>{(art.views_count ?? 0).toLocaleString()} reads</span>
           </div>
         </div>
       </a>

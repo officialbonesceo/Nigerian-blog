@@ -9,12 +9,10 @@ interface Props {
 const { article } = Astro.props;
 
 // Format publish date
-const pubDate = new Date(article.published_at || Date.now());
-const formattedDate = pubDate.toLocaleDateString('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-});
+const rawDate = article.published_at ? new Date(article.published_at) : new Date();
+const formattedDate = !isNaN(rawDate.getTime())
+  ? rawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  : 'Today';
 
 const imageUrl = article.image_url || DEFAULT_FALLBACK_IMAGE_URL;
 ---

@@ -4,19 +4,125 @@ import TrendingBar from '../components/TrendingBar.astro';
 import TopStoryCard from '../components/TopStoryCard.astro';
 import ArticleCard from '../components/ArticleCard.astro';
 import MostReadSection from '../components/MostReadSection.astro';
-import { getD1, getTopStory, getArticles, getMostReadArticles, getBreakingArticles } from '../lib/runtime-db';
+import {
+  getD1,
+  getTopStory,
+  getArticles,
+  getMostReadArticles,
+  getBreakingArticles,
+} from '../lib/runtime-db';
+
+import type { Article } from '../lib/types';
+
+export const prerender = false;
 
 const d1 = getD1(Astro.locals);
-const [topStory, latestArticles, mostRead, breakingNews] = await Promise.all([
-  getTopStory(d1), getArticles(d1, { limit: 8 }), getMostReadArticles(d1, 4), getBreakingArticles(d1, 1)
-]);
-const filteredLatest = latestArticles.filter((art) => art.id !== topStory?.id).slice(0, 5);
+
+let topStory: Article | null = null;
+let latestArticles: Article[] = [];
+let mostRead: Article[] = [];
+let breakingNews: Article[] = [];
+
+try {
+  const [top, latest, read, breaking] = await Promise.all([
+    getTopStory(d1),
+    getArticles(d1, { limit: 10 }),
+    getMostReadArticles(d1, 5),
+    getBreakingArticles(d1, 1),
+  ]);
+  topStory = top;
+  latestArticles = latest || [];
+  mostRead = read || [];
+  breakingNews = breaking || [];
+} catch (e) {
+  console.error('[index.astro] Error loading articles:', e);
+}
+
+// Ensure there is always an effective top story if any articles exist
+const effectiveTopStory = topStory || (latestArticles.length > 0 ? latestArticles[0] : null);
+const filteredLatest = latestArticles
+  .filter((art) => art.id !== effectiveTopStory?.id)
+  .slice(0, 6);
 ---
+
 <Layout title="9jaBeacon - Your Trusted Light on Nigerian News" activeNav="home">
-  {breakingNews[0] && <div class="mb-3 p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 flex items-center gap-2"><span class="px-2 py-0.5 rounded bg-red-600 text-white text-[9px] font-black uppercase">BREAKING</span><a href={`/news/${breakingNews[0].slug}`} class="text-xs font-semibold text-red-200 truncate">{breakingNews[0].title}</a></div>}
+  <!-- Breaking News Ticker -->
+  {breakingNews[0] && (
+    <div class="mb-3 p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 flex items-center gap-2">
+      <span class="px-2 py-0.5 rounded bg-red-600 text-white text-[9px] font-black uppercase tracking-wider shrink-0 animate-pulse">
+        BREAKING
+      </span>
+      <a href={`/news/${breakingNews[0].slug}`} class="text-xs font-semibold text-red-200 truncate hover:text-white transition-colors">
+        {breakingNews[0].title}
+      </a>
+    </div>
+  )}
+
   <TrendingBar />
-  {topStory && <div class="mt-2 mb-6"><TopStoryCard article={topStory} /></div>}
-  <section class="mt-4 space-y-3"><div class="flex items-center justify-between"><h2 class="text-base sm:text-lg font-black text-slate-900 dark:text-white">Latest News</h2><a href="/category/naija-news" class="text-xs font-semibold text-emerald-600">View all →</a></div><div class="space-y-2.5">{filteredLatest.map((article) => <ArticleCard article={article} />)}</div></section>
-  <MostReadSection articles={mostRead} />
-  <section class="mt-10 p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3"><h3 class="text-sm font-bold text-slate-900 dark:text-white">Why 9jaBeacon?</h3><p class="text-xs text-slate-500 dark:text-slate-400">Fast. Verified. Built for Nigerian readers. News is delivered directly from our Cloudflare D1 database.</p></section>
+
+  <!-- Top Story Spotlight -->
+  {effectiveTopStory ? (
+    <div class="mt-2 mb-6">
+      <TopStoryCard article={effectiveTopStory} />
+    </div>
+  ) : (
+    <div class="mt-4 mb-6 p-8 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-3">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+        </svg>
+      </div>
+      <h2 class="text-lg font-bold text-white">Curating Fresh Nigerian Headlines</h2>
+      <p class="text-xs text-slate-400 max-w-md mx-auto">
+        Autonomous AI editorial crawlers are fetching and verifying real-time reports from top wire services. Check back in moments or visit the news categories below.
+      </p>
+      <div class="pt-2 flex justify-center gap-2 flex-wrap">
+        <a href="/category/naija-news" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500">
+          Naija News
+        </a>
+        <a href="/category/politics" class="px-3.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700">
+          Politics
+        </a>
+        <a href="/category/business-economy" class="px-3.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700">
+          Business
+        </a>
+      </div>
+    </div>
+  )}
+
+  <!-- Latest News Feed -->
+  {filteredLatest.length > 0 && (
+    <section class="mt-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-black text-white flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          Latest News
+        </h2>
+        <a href="/category/naija-news" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
+          View all →
+        </a>
+      </div>
+      <div class="space-y-2.5">
+        {filteredLatest.map((article) => (
+          <ArticleCard article={article} />
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- Most Read Section -->
+  {mostRead.length > 0 && (
+    <MostReadSection articles={mostRead} />
+  )}
+
+  <!-- Footer Information -->
+  <section class="mt-10 p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+      <h3 class="text-sm font-bold text-white">Why 9jaBeacon?</h3>
+    </div>
+    <p class="text-xs text-slate-400 leading-relaxed">
+      Fast. Verified. Built for Nigerian readers. Powered by Cloudflare D1 high-performance serverless storage, resilient multi-tier AI synthesis, and direct wire attribution.
+    </p>
+  </section>
 </Layout>

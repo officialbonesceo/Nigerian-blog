@@ -1,0 +1,173 @@
+---
+interface Props {
+  title: string;
+  url: string;
+  summary?: string;
+}
+
+const { title, url, summary = '' } = Astro.props;
+
+const encodedUrl = encodeURIComponent(url);
+const encodedTitle = encodeURIComponent(title);
+const encodedText = encodeURIComponent(`${title}\n\nRead more: ${url}`);
+
+const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
+const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`;
+const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitle}`;
+---
+
+<div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+  <div class="flex items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
+      <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+      </svg>
+      <span class="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">Shareable Story URL</span>
+    </div>
+    <span class="text-[11px] text-slate-400">Canonical link</span>
+  </div>
+
+  <!-- Share Buttons Row -->
+  <div class="flex flex-wrap items-center gap-2">
+    <!-- WhatsApp -->
+    <a
+      href={whatsappUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+      title="Share to WhatsApp"
+    >
+      <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+        <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.698.053-1.11-.079-.267-.085-.595-.213-1.042-.407-1.895-.824-3.125-2.735-3.218-2.862-.095-.125-.768-1.021-.768-1.947 0-.925.485-1.38.658-1.57.172-.189.376-.236.501-.236.126 0 .252.002.361.007.116.006.27-.044.423.324.157.377.534 1.303.58 1.398.047.095.078.206.016.332-.063.127-.094.206-.188.316-.094.111-.198.248-.282.333-.095.095-.193.198-.083.388.11.189.489.807 1.05 1.307.724.644 1.334.844 1.523.938.189.095.3.079.412-.047.11-.127.472-.55.598-.739.125-.189.25-.157.422-.094.172.063 1.096.517 1.284.611.189.095.314.142.361.221.046.079.046.457-.098.862z"/>
+      </svg>
+      <span>WhatsApp</span>
+    </a>
+
+    <!-- X / Twitter -->
+    <a
+      href={twitterUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+      title="Share to X (Twitter)"
+    >
+      <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+      </svg>
+      <span>Post</span>
+    </a>
+
+    <!-- Facebook -->
+    <a
+      href={facebookUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+      title="Share to Facebook"
+    >
+      <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+        <path d="M9 8H6v4h3v12h5V12h3.642L18 8h-4V6.333C14 5.374 14.5 5 15.556 5H18V0h-3.808C10.595 0 9 1.583 9 4.615V8z"/>
+      </svg>
+      <span>Facebook</span>
+    </a>
+
+    <!-- Telegram -->
+    <a
+      href={telegramUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+      title="Share to Telegram"
+    >
+      <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.94z"/>
+      </svg>
+      <span>Telegram</span>
+    </a>
+
+    <!-- Native Web Share API Button -->
+    <button
+      id="btn-native-web-share"
+      data-title={title}
+      data-url={url}
+      data-summary={summary}
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all active:scale-95 cursor-pointer ml-auto"
+      title="More share options"
+    >
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+      </svg>
+      <span>More</span>
+    </button>
+  </div>
+
+  <!-- Direct URL Copy Box -->
+  <div class="flex items-center gap-2 pt-1">
+    <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 font-mono overflow-hidden">
+      <svg class="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+      </svg>
+      <span id="canonical-url-display" class="truncate select-all">{url}</span>
+    </div>
+    <button
+      id="btn-copy-canonical-url"
+      data-url={url}
+      class="shrink-0 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+    >
+      <svg id="copy-icon" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+      </svg>
+      <span id="copy-label">Copy URL</span>
+    </button>
+  </div>
+</div>
+
+<script is:inline>
+  // Copy URL action
+  const copyBtn = document.getElementById('btn-copy-canonical-url');
+  const copyLabel = document.getElementById('copy-label');
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const urlToCopy = copyBtn.getAttribute('data-url') || window.location.href;
+      try {
+        await navigator.clipboard.writeText(urlToCopy);
+        if (copyLabel) copyLabel.textContent = 'Copied! ✓';
+        if (copyBtn) {
+          copyBtn.classList.remove('bg-emerald-600/20', 'text-emerald-400');
+          copyBtn.classList.add('bg-emerald-500', 'text-white');
+        }
+        setTimeout(() => {
+          if (copyLabel) copyLabel.textContent = 'Copy URL';
+          if (copyBtn) {
+            copyBtn.classList.remove('bg-emerald-500', 'text-white');
+            copyBtn.classList.add('bg-emerald-600/20', 'text-emerald-400');
+          }
+        }, 2500);
+      } catch (err) {
+        // Fallback prompt
+        window.prompt('Copy this link:', urlToCopy);
+      }
+    });
+  }
+
+  // Web Share API action
+  const shareBtn = document.getElementById('btn-native-web-share');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      const title = shareBtn.getAttribute('data-title') || document.title;
+      const url = shareBtn.getAttribute('data-url') || window.location.href;
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, url });
+        } catch (err) {
+          // Ignore abort
+        }
+      } else {
+        // Fallback to copy
+        copyBtn?.click();
+      }
+    });
+  }
+</script>
