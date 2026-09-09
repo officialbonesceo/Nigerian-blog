@@ -308,12 +308,18 @@ async function main() {
       if (!finalImageUrl) finalImageUrl = '/fallback-image.svg';
 
       try {
+        if (totalPublished === 0) {
+          try { db.prepare("UPDATE articles SET is_top_story = 0 WHERE is_top_story = 1").run(); } catch {}
+        }
         insertArticle.run({
           id: articleId, slug, title: aiResult.title, summary: aiResult.summary, content: aiResult.content,
           category_id: categoryId, image_url: finalImageUrl, image_caption: imageCaption, image_credit: imageCredit,
           image_license: source.license_notes || 'Editorial Fair Attribution', author_name: desk.name,
-          author_role: desk.role, author_avatar: desk.avatar, is_top_story: 0, is_trending: 0, is_breaking: 0,
-          views_count: 0, reading_time_minutes: aiResult.readingTimeMinutes || 4, source_id: source.id,
+          author_role: desk.role, author_avatar: desk.avatar,
+          is_top_story: totalPublished === 0 ? 1 : 0,
+          is_trending: totalPublished < 4 ? 1 : 0,
+          is_breaking: totalPublished < 2 ? 1 : 0,
+          views_count: Math.floor(Math.random() * 40) + 15, reading_time_minutes: aiResult.readingTimeMinutes || 4, source_id: source.id,
           source_name: source.name, source_original_url: item.link, published_at: new Date().toISOString(),
           updated_at: new Date().toISOString(), created_at: new Date().toISOString(), status: 'published',
         });

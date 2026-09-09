@@ -154,24 +154,70 @@ function createRemoteD1RestAdapter(accountId: string, apiToken: string, database
 
 export function getD1(locals?: RuntimeLocals): D1Database {
   const runtimeEnv: any = (locals as any)?.runtime?.env || (typeof process !== 'undefined' ? process.env : {});
+  const altEnv: any = (locals as any)?.env;
   
-  // 1. Direct standard D1 binding names in Cloudflare Pages
-  const envDb = runtimeEnv?.DB || runtimeEnv?.D1 || runtimeEnv?.DATABASE || runtimeEnv?.database || runtimeEnv?.['9jabeacon-db'];
-  if (envDb && typeof envDb.prepare === 'function') return envDb;
+  // 1. Direct standard D1 binding names in Cloudflare Pages & Workers
+  const candidates = [
+    runtimeEnv?.DB,
+    runtimeEnv?.naijablog,
+    runtimeEnv?.D1,
+    runtimeEnv?.DATABASE,
+    runtimeEnv?.database,
+    runtimeEnv?.['9jabeacon-db'],
+    runtimeEnv?.['9jabeacon-d1'],
+    runtimeEnv?.['9jabeacon_db'],
+    runtimeEnv?.['9jabeacon_d1'],
+    altEnv?.DB,
+    altEnv?.naijablog,
+    altEnv?.D1,
+    altEnv?.DATABASE,
+    (globalThis as any)?.__env__?.DB,
+    (globalThis as any)?.DB,
+  ];
 
-  // 2. Duck typing: inspect all properties of runtime.env for an object with .prepare()
-  if (runtimeEnv && typeof runtimeEnv === 'object') {
-    for (const key of Object.keys(runtimeEnv)) {
-      if (runtimeEnv[key] && typeof runtimeEnv[key]?.prepare === 'function') {
-        return runtimeEnv[key] as D1Database;
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object' && typeof candidate.prepare === 'function') {
+      return candidate as D1Database;
+    }
+  }
+
+  // 2. Duck typing: inspect all properties of runtime.env, altEnv, or locals for an object with .prepare()
+  for (const envSource of [runtimeEnv, altEnv, locals]) {
+    if (envSource && typeof envSource === 'object') {
+      for (const key of Object.keys(envSource)) {
+        const candidate = envSource[key];
+        if (candidate && typeof candidate === 'object' && typeof candidate.prepare === 'function') {
+          return candidate as D1Database;
+        }
       }
     }
   }
 
-  // 3. Cloudflare REST API fallback if API secrets are present
-  const cfAccount = (runtimeEnv?.CLOUDFLARE_ACCOUNT_ID || (typeof process !== 'undefined' ? process.env?.CLOUDFLARE_ACCOUNT_ID : '') || '').trim();
-  const cfToken = (runtimeEnv?.CLOUDFLARE_D1_API_TOKEN || runtimeEnv?.CLOUDFLARE_API_TOKEN || (typeof process !== 'undefined' ? (process.env?.CLOUDFLARE_D1_API_TOKEN || process.env?.CLOUDFLARE_API_TOKEN) : '') || '').trim();
-  const cfDb = (runtimeEnv?.CLOUDFLARE_D1_DATABASE_ID || runtimeEnv?.CLOUDFLARE_D1_DATABASE || (typeof process !== 'undefined' ? (process.env?.CLOUDFLARE_D1_DATABASE_ID || process.env?.CLOUDFLARE_D1_DATABASE) : '') || '').trim();
+  // 3. Cloudflare REST API fallback if API secrets are present in environment variables
+  const cfAccount = (
+    runtimeEnv?.CLOUDFLARE_ACCOUNT_ID ||
+    altEnv?.CLOUDFLARE_ACCOUNT_ID ||
+    (typeof process !== 'undefined' ? process.env?.CLOUDFLARE_ACCOUNT_ID : '') ||
+    ''
+  ).trim();
+  const cfToken = (
+    runtimeEnv?.CLOUDFLARE_D1_API_TOKEN ||
+    runtimeEnv?.CLOUDFLARE_API_TOKEN ||
+    altEnv?.CLOUDFLARE_D1_API_TOKEN ||
+    altEnv?.CLOUDFLARE_API_TOKEN ||
+    (typeof process !== 'undefined' ? (process.env?.CLOUDFLARE_D1_API_TOKEN || process.env?.CLOUDFLARE_API_TOKEN) : '') ||
+    ''
+  ).trim();
+  const cfDb = (
+    runtimeEnv?.CLOUDFLARE_D1_DATABASE_ID ||
+    runtimeEnv?.CLOUDFLARE_D1_DATABASE ||
+    runtimeEnv?.CLOUDFLARE_DATABASE_ID ||
+    altEnv?.CLOUDFLARE_D1_DATABASE_ID ||
+    altEnv?.CLOUDFLARE_D1_DATABASE ||
+    (typeof process !== 'undefined' ? (process.env?.CLOUDFLARE_D1_DATABASE_ID || process.env?.CLOUDFLARE_D1_DATABASE || process.env?.CLOUDFLARE_DATABASE_ID) : '') ||
+    ''
+  ).trim();
+
   if (cfAccount && cfToken && cfDb) {
     return createRemoteD1RestAdapter(cfAccount, cfToken, cfDb);
   }
@@ -182,14 +228,227 @@ export function getD1(locals?: RuntimeLocals): D1Database {
 
 const select = `SELECT a.*,c.name AS category_name,c.slug AS category_slug FROM articles a LEFT JOIN categories c ON a.category_id=c.id`;
 
+async function syncLocalArticlesToD1(db: D1Database) {
+  try {
+    const localDb = await getLocalSqliteDb();
+    if (!localDb) return;
+    const localArticles = localDb.prepare("SELECT * FROM articles ORDER BY published_at DESC").all() as any[];
+    if (localArticles && localArticles.length > 0) {
+      for (const art of localArticles) {
+        await db.prepare(`INSERT OR REPLACE INTO articles (
+          id, slug, title, summary, content, category_id, image_url, image_caption,
+          image_credit, image_license, author_name, author_role, author_avatar,
+          is_top_story, is_trending, is_breaking, views_count, reading_time_minutes,
+          source_id, source_name, source_original_url, published_at, updated_at, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+          art.id, art.slug, art.title, art.summary, art.content, art.category_id, art.image_url, art.image_caption,
+          art.image_credit, art.image_license, art.author_name, art.author_role, art.author_avatar,
+          art.is_top_story ? 1 : 0, art.is_trending ? 1 : 0, art.is_breaking ? 1 : 0, art.views_count || 0, art.reading_time_minutes || 4,
+          art.source_id, art.source_name, art.source_original_url, art.published_at || new Date().toISOString(), art.updated_at || new Date().toISOString(), art.status || 'published'
+        ).run().catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.warn('syncLocalArticlesToD1 notice:', err);
+  }
+}
+
+let tablesChecked = false;
+export async function ensureTablesExist(db: D1Database) {
+  if (tablesChecked) return;
+  try {
+    await db.prepare("SELECT 1 FROM articles LIMIT 1").first();
+    await syncLocalArticlesToD1(db);
+    tablesChecked = true;
+  } catch (err: any) {
+    const msg = String(err?.message || err);
+    if (msg.includes('no such table')) {
+      console.log('Initializing missing database tables in D1...');
+      try {
+        const statements = [
+          `CREATE TABLE IF NOT EXISTS categories (
+            id TEXT PRIMARY KEY,
+            slug TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            icon TEXT DEFAULT 'newspaper',
+            color TEXT DEFAULT '#008751',
+            follower_count INTEGER DEFAULT 1250,
+            display_order INTEGER DEFAULT 0
+          )`,
+          `CREATE TABLE IF NOT EXISTS sources (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            feed_url TEXT NOT NULL,
+            website_url TEXT NOT NULL,
+            category_default_id TEXT,
+            is_enabled INTEGER DEFAULT 1,
+            is_official INTEGER DEFAULT 0,
+            trust_score REAL DEFAULT 95.0,
+            license_notes TEXT,
+            last_fetched_at TEXT,
+            fetch_interval_minutes INTEGER DEFAULT 30,
+            created_at TEXT DEFAULT (datetime('now'))
+          )`,
+          `CREATE TABLE IF NOT EXISTS articles (
+            id TEXT PRIMARY KEY,
+            slug TEXT UNIQUE NOT NULL,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            content TEXT NOT NULL,
+            category_id TEXT NOT NULL,
+            image_url TEXT,
+            image_caption TEXT,
+            image_credit TEXT,
+            image_license TEXT,
+            author_name TEXT DEFAULT '9jaBeacon Editorial Team',
+            author_role TEXT DEFAULT 'Editorial Contributor',
+            author_avatar TEXT,
+            is_top_story INTEGER DEFAULT 0,
+            is_trending INTEGER DEFAULT 0,
+            is_breaking INTEGER DEFAULT 0,
+            views_count INTEGER DEFAULT 0,
+            reading_time_minutes INTEGER DEFAULT 4,
+            source_id TEXT,
+            source_name TEXT,
+            source_original_url TEXT,
+            published_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            created_at TEXT DEFAULT (datetime('now')),
+            status TEXT DEFAULT 'published'
+          )`,
+          `CREATE TABLE IF NOT EXISTS automation_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            description TEXT,
+            updated_at TEXT DEFAULT (datetime('now'))
+          )`,
+          `CREATE TABLE IF NOT EXISTS automation_logs (
+            id TEXT PRIMARY KEY,
+            action TEXT NOT NULL,
+            source_id TEXT,
+            message TEXT NOT NULL,
+            status TEXT DEFAULT 'info',
+            created_at TEXT DEFAULT (datetime('now'))
+          )`,
+          `CREATE TABLE IF NOT EXISTS article_reports (
+            id TEXT PRIMARY KEY,
+            article_id TEXT NOT NULL,
+            article_title TEXT,
+            article_slug TEXT,
+            reason TEXT NOT NULL,
+            details TEXT,
+            reporter_email TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT DEFAULT (datetime('now'))
+          )`,
+          `CREATE TABLE IF NOT EXISTS rejected_articles (
+            id TEXT PRIMARY KEY,
+            source_id TEXT,
+            source_name TEXT,
+            original_title TEXT NOT NULL,
+            original_url TEXT NOT NULL,
+            raw_content TEXT,
+            rejection_reason TEXT NOT NULL,
+            ai_tier_failures TEXT,
+            status TEXT DEFAULT 'rejected',
+            created_at TEXT DEFAULT (datetime('now'))
+          )`,
+          `CREATE TABLE IF NOT EXISTS site_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT DEFAULT (datetime('now'))
+          )`
+        ];
+
+        for (const stmt of statements) {
+          try {
+            await db.prepare(stmt).run();
+          } catch (stmtErr) {
+            console.warn('Statement failed in D1 init:', stmtErr);
+          }
+        }
+
+        // Seed default categories
+        for (const cat of initialCategories) {
+          await db.prepare(`INSERT OR IGNORE INTO categories (id, slug, name, description, icon, color, follower_count, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+            cat.id, cat.slug, cat.name, cat.description, cat.icon, cat.color, cat.follower_count || 1250, cat.display_order || 0
+          ).run().catch(() => {});
+        }
+
+        // Seed default sources
+        for (const src of initialSources) {
+          await db.prepare(`INSERT OR IGNORE INTO sources (id, name, feed_url, website_url, category_default_id, is_enabled, is_official, trust_score, license_notes, last_fetched_at, fetch_interval_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+            src.id, src.name, src.feed_url, src.website_url, src.category_default_id, src.is_enabled ?? 1, src.is_official ?? 0, src.trust_score ?? 95, src.license_notes ?? '', src.last_fetched_at ?? null, src.fetch_interval_minutes ?? 30
+          ).run().catch(() => {});
+        }
+
+        // Seed initial articles if empty
+        for (const art of initialArticles) {
+          await db.prepare(`INSERT OR IGNORE INTO articles (
+            id, slug, title, summary, content, category_id, image_url, image_caption,
+            image_credit, image_license, author_name, author_role, author_avatar,
+            is_top_story, is_trending, is_breaking, views_count, reading_time_minutes,
+            source_id, source_name, source_original_url, published_at, updated_at, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+            art.id, art.slug, art.title, art.summary, art.content, art.category_id, art.image_url, art.image_caption,
+            art.image_credit, art.image_license, art.author_name, art.author_role, art.author_avatar,
+            art.is_top_story || 0, art.is_trending || 0, art.is_breaking || 0, art.views_count || 0, art.reading_time_minutes || 4,
+            art.source_id, art.source_name, art.source_original_url, art.published_at || new Date().toISOString(), art.updated_at || new Date().toISOString(), art.status || 'published'
+          ).run().catch(() => {});
+        }
+
+        await syncLocalArticlesToD1(db);
+        tablesChecked = true;
+      } catch (createErr) {
+        console.warn('Could not auto-create missing tables in D1:', createErr);
+      }
+    }
+  }
+}
+
+function formatArticle(art: any): Article {
+  let catName = art.category_name;
+  let catSlug = art.category_slug;
+  if (!catName || catName === 'Money Hustle' || art.category_id === 'cat_money_hustle' || art.category_id === 'business') {
+    if (art.category_id === 'cat_money_hustle' || art.category_id === 'business' || catSlug === 'business' || catSlug === 'money-hustle') {
+      catName = 'Business';
+      catSlug = 'business';
+    } else if (art.category_id === 'cat_sports' || catSlug === 'sports') {
+      catName = 'Sports';
+      catSlug = 'sports';
+    } else if (art.category_id === 'cat_world' || catSlug === 'world') {
+      catName = 'World';
+      catSlug = 'world';
+    } else {
+      catName = catName || 'Naija News';
+      catSlug = catSlug || 'naija-news';
+    }
+  }
+  return {
+    ...art,
+    views_count: art.views_count ?? 0,
+    category_name: catName,
+    category_slug: catSlug,
+  };
+}
+
 export async function getArticles(
   db: D1Database,
   o: { categoryId?: string; categorySlug?: string; limit?: number; offset?: number; status?: string; isTopStory?: boolean; isTrending?: boolean; isBreaking?: boolean } = {}
 ): Promise<Article[]> {
+  await ensureTablesExist(db);
   let q = `${select} WHERE (a.status=? OR a.status IS NULL)`;
   const v: unknown[] = [o.status || 'published'];
   if (o.categoryId) { q += ' AND a.category_id=?'; v.push(o.categoryId); }
-  if (o.categorySlug) { q += ' AND c.slug=?'; v.push(o.categorySlug); }
+  if (o.categorySlug) {
+    if (o.categorySlug === 'business' || o.categorySlug === 'money-hustle') {
+      q += " AND (c.slug='business' OR c.slug='money-hustle' OR a.category_id='cat_money_hustle' OR a.category_id='cat_business')";
+    } else {
+      q += ' AND c.slug=?';
+      v.push(o.categorySlug);
+    }
+  }
   if (o.isTopStory !== undefined) { q += ' AND a.is_top_story=?'; v.push(o.isTopStory ? 1 : 0); }
   if (o.isTrending !== undefined) { q += ' AND a.is_trending=?'; v.push(o.isTrending ? 1 : 0); }
   if (o.isBreaking !== undefined) { q += ' AND a.is_breaking=?'; v.push(o.isBreaking ? 1 : 0); }
@@ -199,24 +458,59 @@ export async function getArticles(
   let results: Article[] = [];
   try {
     const res = await db.prepare(q).bind(...v).all<Article>();
-    results = (res?.results || []).map((art) => ({
-      ...art,
-      views_count: art.views_count ?? 0,
-      category_name: art.category_name || 'General News',
-      category_slug: art.category_slug || 'naija-news',
-    }));
+    if (res?.results?.length) {
+      results = res.results.map(formatArticle);
+    }
   } catch (err) {
     console.warn('getArticles query warning:', err);
+  }
+
+  // Resilient fallback: direct query without join in case categories table is empty or had schema mismatch
+  if (!results.length) {
+    try {
+      let directQ = "SELECT * FROM articles WHERE (status=? OR status IS NULL)";
+      const directV: unknown[] = [o.status || 'published'];
+      if (o.categoryId) { directQ += ' AND category_id=?'; directV.push(o.categoryId); }
+      if (o.categorySlug) {
+        if (o.categorySlug === 'business' || o.categorySlug === 'money-hustle') {
+          directQ += " AND (category_id='cat_money_hustle' OR category_id='cat_business' OR category_id='business')";
+        } else if (o.categorySlug === 'sports') {
+          directQ += " AND (category_id='cat_sports' OR category_id='sports')";
+        } else if (o.categorySlug === 'world') {
+          directQ += " AND (category_id='cat_world' OR category_id='world')";
+        } else {
+          directQ += " AND (category_id='cat_naija_news' OR category_id='naija-news')";
+        }
+      }
+      if (o.isTopStory !== undefined) { directQ += ' AND is_top_story=?'; directV.push(o.isTopStory ? 1 : 0); }
+      if (o.isTrending !== undefined) { directQ += ' AND is_trending=?'; directV.push(o.isTrending ? 1 : 0); }
+      if (o.isBreaking !== undefined) { directQ += ' AND is_breaking=?'; directV.push(o.isBreaking ? 1 : 0); }
+      directQ += ' ORDER BY published_at DESC LIMIT ? OFFSET ?';
+      directV.push(Math.min(Math.max(o.limit ?? 20, 1), 200), Math.max(o.offset ?? 0, 0));
+
+      const directRes = await db.prepare(directQ).bind(...directV).all<Article>();
+      if (directRes?.results?.length) {
+        results = directRes.results.map(formatArticle);
+      }
+    } catch (directErr) {
+      console.warn('getArticles direct query warning:', directErr);
+    }
   }
 
   if (!results.length && (!o.status || o.status === 'published')) {
     let fallback = [...initialArticles] as Article[];
     if (o.categoryId) fallback = fallback.filter((a) => a.category_id === o.categoryId);
-    if (o.categorySlug) fallback = fallback.filter((a) => a.category_slug === o.categorySlug || a.category_id === o.categorySlug);
+    if (o.categorySlug) {
+      if (o.categorySlug === 'business' || o.categorySlug === 'money-hustle') {
+        fallback = fallback.filter((a) => a.category_slug === 'business' || a.category_slug === 'money-hustle' || a.category_id === 'cat_money_hustle');
+      } else {
+        fallback = fallback.filter((a) => a.category_slug === o.categorySlug || a.category_id === o.categorySlug);
+      }
+    }
     if (o.isTopStory !== undefined) fallback = fallback.filter((a) => Boolean(a.is_top_story) === Boolean(o.isTopStory));
     if (o.isTrending !== undefined) fallback = fallback.filter((a) => Boolean(a.is_trending) === Boolean(o.isTrending));
     if (o.isBreaking !== undefined) fallback = fallback.filter((a) => Boolean(a.is_breaking) === Boolean(o.isBreaking));
-    results = fallback.slice(o.offset || 0, (o.offset || 0) + (o.limit || 20));
+    results = fallback.slice(o.offset || 0, (o.offset || 0) + (o.limit || 20)).map(formatArticle);
   }
   return results;
 }
@@ -227,92 +521,121 @@ export async function searchArticles(db: D1Database, term: string, limit = 50) {
   try {
     const res = await db.prepare(q).bind(x, x, x, Math.min(Math.max(limit, 1), 100)).all<Article>();
     if (res?.results?.length) {
-      return res.results.map((art) => ({
-        ...art,
-        views_count: art.views_count ?? 0,
-        category_name: art.category_name || 'General News',
-        category_slug: art.category_slug || 'naija-news',
-      }));
+      return res.results.map(formatArticle);
+    }
+    const directRes = await db.prepare("SELECT * FROM articles WHERE (status='published' OR status IS NULL) AND (title LIKE ? OR summary LIKE ? OR content LIKE ?) ORDER BY published_at DESC LIMIT ?").bind(x, x, x, Math.min(Math.max(limit, 1), 100)).all<Article>();
+    if (directRes?.results?.length) {
+      return directRes.results.map(formatArticle);
     }
   } catch {}
   const lower = term.toLowerCase();
   return (initialArticles as Article[]).filter((a) =>
     a.title.toLowerCase().includes(lower) || a.summary.toLowerCase().includes(lower)
-  ).slice(0, limit);
+  ).slice(0, limit).map(formatArticle);
 }
 
 export async function getArticleBySlug(db: D1Database, slug: string) {
   try {
-    const row = await db.prepare(`${select} WHERE a.slug=? LIMIT 1`).bind(slug).first<Article>();
+    let row = await db.prepare(`${select} WHERE a.slug=? LIMIT 1`).bind(slug).first<Article>();
+    if (!row) {
+      row = await db.prepare("SELECT * FROM articles WHERE slug=? LIMIT 1").bind(slug).first<Article>();
+    }
     if (row) {
       db.prepare('UPDATE articles SET views_count=COALESCE(views_count,0)+1 WHERE id=?').bind(row.id).run().catch(() => {});
-      return {
-        ...row,
-        views_count: (row.views_count ?? 0) + 1,
-        category_name: row.category_name || 'General News',
-        category_slug: row.category_slug || 'naija-news',
-      };
+      return formatArticle({ ...row, views_count: (row.views_count ?? 0) + 1 });
     }
-  } catch {}
+  } catch (err) {
+    console.warn('getArticleBySlug error:', err);
+  }
   const fallback = (initialArticles as Article[]).find((a) => a.slug === slug);
-  return fallback ? { ...fallback, views_count: fallback.views_count ?? 0 } : null;
+  return fallback ? formatArticle(fallback) : null;
 }
 
-export async function getRelatedArticles(db: D1Database, id: string, categoryId: string, limit = 3) {
+export async function getRelatedArticles(db: D1Database, id: string, categoryId: string, limit = 5) {
   try {
     const res = await db.prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) AND a.id!=? AND a.category_id=? ORDER BY a.published_at DESC LIMIT ?`).bind(id, categoryId, limit).all<Article>();
-    if (res?.results?.length) {
-      return res.results.map((art) => ({
-        ...art,
-        views_count: art.views_count ?? 0,
-        category_name: art.category_name || 'General News',
-      }));
+    let list = (res?.results || []).map(formatArticle);
+    if (list.length < limit) {
+      const existingIds = [id, ...list.map((a) => a.id)];
+      const placeholders = existingIds.map(() => '?').join(',');
+      const more = await db.prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) AND a.id NOT IN (${placeholders}) ORDER BY a.published_at DESC LIMIT ?`).bind(...existingIds, limit - list.length).all<Article>();
+      if (more?.results?.length) {
+        list = list.concat(more.results.map(formatArticle));
+      }
     }
+    if (list.length > 0) return list.slice(0, limit);
   } catch {}
-  return (initialArticles as Article[]).filter((a) => a.id !== id && a.category_id === categoryId).slice(0, limit);
+  const filtered = (initialArticles as Article[]).filter((a) => a.id !== id && a.category_id === categoryId);
+  const remaining = (initialArticles as Article[]).filter((a) => a.id !== id && a.category_id !== categoryId);
+  return [...filtered, ...remaining].slice(0, limit).map(formatArticle);
 }
 
 export async function getTopStory(db: D1Database) {
+  await ensureTablesExist(db);
   try {
-    const row = await db.prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) AND (a.is_top_story=1 OR a.is_trending=1) ORDER BY a.published_at DESC LIMIT 1`).first<Article>();
-    if (row) {
-      return {
-        ...row,
-        views_count: row.views_count ?? 0,
-        category_name: row.category_name || 'Top News',
-      };
+    // 1. First get the latest published article
+    const latest = await db.prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) ORDER BY a.published_at DESC LIMIT 1`).first<Article>();
+    
+    // 2. Check if there is an article explicitly flagged as top story
+    const topRow = await db.prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) AND a.is_top_story=1 ORDER BY a.published_at DESC LIMIT 1`).first<Article>();
+    
+    if (topRow && latest) {
+      const topTime = new Date(topRow.published_at).getTime();
+      const latestTime = new Date(latest.published_at).getTime();
+      // If top story is fresh (within 24 hours of latest article), feature it
+      if (latestTime - topTime < 24 * 60 * 60 * 1000) {
+        return formatArticle(topRow);
+      }
+      // If top story is older than 24 hours compared to latest, feature the freshest real news
+      return formatArticle(latest);
     }
-  } catch {}
+
+    if (latest) return formatArticle(latest);
+    if (topRow) return formatArticle(topRow);
+
+    // 3. Resilient direct query on articles table without join
+    const directRow = await db.prepare("SELECT * FROM articles WHERE (status='published' OR status IS NULL) ORDER BY published_at DESC LIMIT 1").first<Article>();
+    if (directRow) return formatArticle(directRow);
+  } catch (err) {
+    console.warn('getTopStory query error:', err);
+  }
   const fallback = (initialArticles as Article[]).find((a) => a.is_top_story === 1) || (initialArticles as Article[])[0] || null;
-  return fallback ? { ...fallback, views_count: fallback.views_count ?? 0 } : null;
+  return fallback ? formatArticle(fallback) : null;
 }
 
 export async function getMostReadArticles(db: D1Database, limit = 4) {
+  await ensureTablesExist(db);
   try {
     const res = await db.prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) ORDER BY a.views_count DESC, a.published_at DESC LIMIT ?`).bind(limit).all<Article>();
     if (res?.results?.length) {
-      return res.results.map((art) => ({
-        ...art,
-        views_count: art.views_count ?? 0,
-        category_name: art.category_name || 'General News',
-      }));
+      return res.results.map(formatArticle);
+    }
+    const directRes = await db.prepare("SELECT * FROM articles WHERE (status='published' OR status IS NULL) ORDER BY views_count DESC, published_at DESC LIMIT ?").bind(limit).all<Article>();
+    if (directRes?.results?.length) {
+      return directRes.results.map(formatArticle);
     }
   } catch {}
-  return [...(initialArticles as Article[])].sort((a, b) => (b.views_count || 0) - (a.views_count || 0)).slice(0, limit);
+  return [...(initialArticles as Article[])].sort((a, b) => (b.views_count || 0) - (a.views_count || 0)).slice(0, limit).map(formatArticle);
 }
 
 export async function getBreakingArticles(db: D1Database, limit = 3) {
+  await ensureTablesExist(db);
   try {
     const res = await db.prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) AND a.is_breaking=1 ORDER BY a.published_at DESC LIMIT ?`).bind(limit).all<Article>();
     if (res?.results?.length) {
-      return res.results.map((art) => ({
-        ...art,
-        views_count: art.views_count ?? 0,
-        category_name: art.category_name || 'Breaking News',
-      }));
+      return res.results.map((art) => ({ ...formatArticle(art), category_name: 'Breaking News' }));
+    }
+    // If no article explicitly flagged as breaking, pick the freshest real news from DB!
+    const latestRes = await db.prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) ORDER BY a.published_at DESC LIMIT ?`).bind(limit).all<Article>();
+    if (latestRes?.results?.length) {
+      return latestRes.results.map((art) => ({ ...formatArticle(art), category_name: 'Breaking News' }));
+    }
+    const directRes = await db.prepare("SELECT * FROM articles WHERE (status='published' OR status IS NULL) ORDER BY published_at DESC LIMIT ?").bind(limit).all<Article>();
+    if (directRes?.results?.length) {
+      return directRes.results.map((art) => ({ ...formatArticle(art), category_name: 'Breaking News' }));
     }
   } catch {}
-  return (initialArticles as Article[]).filter((a) => a.is_breaking === 1).slice(0, limit);
+  return [];
 }
 
 export async function getCategories(db: D1Database) {
@@ -326,11 +649,23 @@ export async function getCategories(db: D1Database) {
 }
 
 export async function getCategoryBySlug(db: D1Database, slug: string) {
-  try {
-    const row = await db.prepare('SELECT * FROM categories WHERE slug=? LIMIT 1').bind(slug).first<Category>();
-    if (row) return row;
-  } catch {}
-  return initialCategories.find((c) => c.slug === slug) ?? null;
+  const searchSlugs = (slug === 'business' || slug === 'money-hustle') ? ['business', 'money-hustle'] : [slug];
+  for (const s of searchSlugs) {
+    try {
+      const row = await db.prepare('SELECT * FROM categories WHERE slug=? LIMIT 1').bind(s).first<Category>();
+      if (row) {
+        if (s === 'money-hustle' || slug === 'business') {
+          return { ...row, name: 'Business', slug: 'business' };
+        }
+        return row;
+      }
+    } catch {}
+  }
+  const found = initialCategories.find((c) => c.slug === slug || ((slug === 'business' || slug === 'money-hustle') && (c.slug === 'business' || c.slug === 'money-hustle')));
+  if (found && (slug === 'business' || found.slug === 'money-hustle')) {
+    return { ...found, name: 'Business', slug: 'business' };
+  }
+  return found ?? null;
 }
 
 export async function getSiteSettings(db: D1Database): Promise<Record<string, string>> {
@@ -583,4 +918,52 @@ export async function createArticleReport(db: D1Database, input: Record<string, 
 
 export async function updateArticleReportStatus(db: D1Database, id: string, status: string) {
   return (await db.prepare('UPDATE article_reports SET status=? WHERE id=?').bind(status, id).run()).meta.changes > 0;
+}
+
+export async function getDatabaseDiagnostics(locals?: RuntimeLocals) {
+  const runtimeEnv: any = (locals as any)?.runtime?.env || (typeof process !== 'undefined' ? process.env : {});
+  const altEnv: any = (locals as any)?.env;
+  
+  const hasDirectBinding = Boolean(
+    runtimeEnv?.DB || runtimeEnv?.naijablog || runtimeEnv?.D1 || runtimeEnv?.DATABASE ||
+    altEnv?.DB || altEnv?.naijablog || (globalThis as any)?.DB
+  );
+
+  const cfAccount = Boolean(runtimeEnv?.CLOUDFLARE_ACCOUNT_ID || process.env?.CLOUDFLARE_ACCOUNT_ID);
+  const cfToken = Boolean(runtimeEnv?.CLOUDFLARE_D1_API_TOKEN || runtimeEnv?.CLOUDFLARE_API_TOKEN || process.env?.CLOUDFLARE_D1_API_TOKEN || process.env?.CLOUDFLARE_API_TOKEN);
+  const cfDb = Boolean(runtimeEnv?.CLOUDFLARE_D1_DATABASE_ID || runtimeEnv?.CLOUDFLARE_D1_DATABASE || runtimeEnv?.CLOUDFLARE_DATABASE_ID || process.env?.CLOUDFLARE_D1_DATABASE_ID);
+  const hasRestApiSecrets = cfAccount && cfToken && cfDb;
+
+  const db = getD1(locals);
+  let mode: 'cloudflare_d1_binding' | 'cloudflare_d1_rest' | 'local_sqlite' = 'local_sqlite';
+  if (hasDirectBinding) mode = 'cloudflare_d1_binding';
+  else if (hasRestApiSecrets) mode = 'cloudflare_d1_rest';
+
+  let articleCount = 0;
+  let latestArticle: { id: string; title: string; published_at: string; source_name?: string } | null = null;
+  let sourceCount = 0;
+  let queryError: string | null = null;
+
+  try {
+    await ensureTablesExist(db);
+    const c = await db.prepare("SELECT COUNT(*) as count FROM articles WHERE status='published' OR status IS NULL").first<{ count: number }>();
+    articleCount = c?.count ?? 0;
+    const latest = await db.prepare("SELECT id, title, published_at, source_name FROM articles WHERE status='published' OR status IS NULL ORDER BY published_at DESC LIMIT 1").first<any>();
+    if (latest) latestArticle = latest;
+    const s = await db.prepare("SELECT COUNT(*) as count FROM sources").first<{ count: number }>();
+    sourceCount = s?.count ?? 0;
+  } catch (err: any) {
+    queryError = err?.message || String(err);
+  }
+
+  return {
+    mode,
+    hasDirectBinding,
+    hasRestApiSecrets,
+    articleCount,
+    sourceCount,
+    latestArticle,
+    queryError,
+    activeRuntime: typeof process !== 'undefined' && process.release?.name === 'node' ? 'Node.js / Local' : 'Cloudflare Workers / Pages',
+  };
 }

@@ -17,15 +17,15 @@ const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
 const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitle}`;
 ---
 
-<div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+<div class="p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
   <div class="flex items-center justify-between gap-2">
     <div class="flex items-center gap-2">
-      <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
       </svg>
-      <span class="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">Shareable Story URL</span>
+      <span class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-mono">Shareable Story URL</span>
     </div>
-    <span class="text-[11px] text-slate-400">Canonical link</span>
+    <span class="text-[11px] text-slate-500 dark:text-slate-400">Canonical link</span>
   </div>
 
   <!-- Share Buttons Row -->
@@ -35,7 +35,7 @@ const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitl
       href={whatsappUrl}
       target="_blank"
       rel="noopener noreferrer"
-      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
       title="Share to WhatsApp"
     >
       <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -49,7 +49,7 @@ const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitl
       href={twitterUrl}
       target="_blank"
       rel="noopener noreferrer"
-      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
       title="Share to X (Twitter)"
     >
       <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -63,7 +63,7 @@ const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitl
       href={facebookUrl}
       target="_blank"
       rel="noopener noreferrer"
-      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
       title="Share to Facebook"
     >
       <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -77,7 +77,7 @@ const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitl
       href={telegramUrl}
       target="_blank"
       rel="noopener noreferrer"
-      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
       title="Share to Telegram"
     >
       <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -92,7 +92,7 @@ const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitl
       data-title={title}
       data-url={url}
       data-summary={summary}
-      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all active:scale-95 cursor-pointer ml-auto"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all active:scale-95 cursor-pointer ml-auto"
       title="More share options"
     >
       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -104,8 +104,8 @@ const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitl
 
   <!-- Direct URL Copy Box -->
   <div class="flex items-center gap-2 pt-1">
-    <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 font-mono overflow-hidden">
-      <svg class="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-300 font-mono overflow-hidden">
+      <svg class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
       </svg>
       <span id="canonical-url-display" class="truncate select-all">{url}</span>
@@ -113,7 +113,7 @@ const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitl
     <button
       id="btn-copy-canonical-url"
       data-url={url}
-      class="shrink-0 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+      class="shrink-0 px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
     >
       <svg id="copy-icon" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -124,6 +124,16 @@ const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitl
 </div>
 
 <script is:inline>
+  // Sync URL with window.location
+  if (typeof window !== 'undefined' && window.location) {
+    const loc = window.location.href;
+    const disp = document.getElementById('canonical-url-display');
+    if (disp && loc) disp.textContent = loc;
+    const copyB = document.getElementById('btn-copy-canonical-url');
+    if (copyB && loc) copyB.setAttribute('data-url', loc);
+    const shareB = document.getElementById('btn-native-web-share');
+    if (shareB && loc) shareB.setAttribute('data-url', loc);
+  }
   // Copy URL action
   const copyBtn = document.getElementById('btn-copy-canonical-url');
   const copyLabel = document.getElementById('copy-label');

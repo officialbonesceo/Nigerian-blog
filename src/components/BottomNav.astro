@@ -53,12 +53,12 @@ const { activeNav = 'home' } = Astro.props;
       <span class="text-[10px] font-bold tracking-tight whitespace-nowrap">Naija News</span>
     </a>
 
-    <!-- 3. MONEY HUSTLE TAB -->
+    <!-- 3. BUSINESS TAB -->
     <a
-      href="/category/money-hustle"
-      data-tab="money-hustle"
+      href="/category/business"
+      data-tab="business"
       class={`nav-tab-item relative z-10 flex flex-col items-center justify-center h-[54px] px-1 flex-1 rounded-2xl transition-colors duration-200 group ${
-        activeNav === 'money-hustle' || activeNav === 'business' || activeNav === 'economy' || activeNav === 'tech'
+        activeNav === 'business' || activeNav === 'money-hustle' || activeNav === 'economy' || activeNav === 'tech'
           ? 'is-active text-white'
           : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
       }`}
@@ -66,7 +66,7 @@ const { activeNav = 'home' } = Astro.props;
       <svg class="w-5 h-5 transition-transform duration-200 group-active:scale-90 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
       </svg>
-      <span class="text-[10px] font-bold tracking-tight whitespace-nowrap">Money Hustle</span>
+      <span class="text-[10px] font-bold tracking-tight whitespace-nowrap">Business</span>
     </a>
 
     <!-- 4. SPORTS TAB -->
@@ -121,8 +121,8 @@ const { activeNav = 'home' } = Astro.props;
         targetEl = document.querySelector('.nav-tab-item[data-tab="home"]');
       } else if (path.includes('naija-news') || path.includes('politics')) {
         targetEl = document.querySelector('.nav-tab-item[data-tab="naija-news"]');
-      } else if (path.includes('money-hustle') || path.includes('business') || path.includes('economy') || path.includes('tech') || path.includes('energy')) {
-        targetEl = document.querySelector('.nav-tab-item[data-tab="money-hustle"]');
+      } else if (path.includes('business') || path.includes('money-hustle') || path.includes('economy') || path.includes('tech') || path.includes('energy')) {
+        targetEl = document.querySelector('.nav-tab-item[data-tab="business"]');
       } else if (path.includes('sports')) {
         targetEl = document.querySelector('.nav-tab-item[data-tab="sports"]');
       } else if (path.includes('world')) {

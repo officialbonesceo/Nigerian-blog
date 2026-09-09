@@ -48,7 +48,27 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
   <meta name="description" content={description} />
   <link rel="canonical" href={computedCanonical} />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <meta name="theme-color" content="#020617" />
+  <meta name="theme-color" content="#008751" />
+
+  <!-- Theme Initialization Script (Prevents flash of wrong theme) -->
+  <script is:inline>
+    (function() {
+      try {
+        const storedTheme = localStorage.getItem('9jabeacon_theme') || localStorage.getItem('theme');
+        if (storedTheme === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else if (storedTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 
   <!-- Open Graph -->
   <meta property="og:site_name" content={siteName} />
@@ -75,7 +95,7 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
 
   <link rel="sitemap" href="/sitemap.xml" />
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 antialiased overflow-x-hidden">
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden transition-colors duration-150">
   <Header siteName={siteName} categories={categories} />
   <DrawerMenu siteName={siteName} categories={categories} />
   <main class="w-full max-w-4xl mx-auto px-4 sm:px-6 pb-24 pt-3">

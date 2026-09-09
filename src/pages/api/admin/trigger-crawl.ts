@@ -11,6 +11,7 @@ import {
 } from '../../../lib/runtime-db';
 import { fetchAndParseRssFeed } from '../../../lib/rss-parser';
 import { synthesizeNewsArticle, generateEditorialNewsImage, type AiCredentialsConfig } from '../../../lib/ai-engine';
+import { postToBuffer, type BufferConfig } from '../../../lib/buffer';
 
 interface TriggerCrawlBody {
   source_id?: string;
@@ -50,6 +51,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
       localAiApiKey: settingsMap.local_ai_api_key || 'ollama',
       pollinationsApiKey: settingsMap.pollinations_api_key,
     };
+
+    const bufferConfig: BufferConfig = {
+      accessToken: (settingsMap.buffer_access_token || (typeof process !== 'undefined' ? process.env?.BUFFER_ACCESS_TOKEN : '') || '').trim(),
+      facebookProfileId: (settingsMap.buffer_profile_ids_facebook || (typeof process !== 'undefined' ? process.env?.BUFFER_FACEBOOK_PROFILE_ID : '') || '').trim(),
+      instagramProfileId: (settingsMap.buffer_profile_ids_instagram || (typeof process !== 'undefined' ? process.env?.BUFFER_INSTAGRAM_PROFILE_ID : '') || '').trim(),
+      autoPostEnabled: settingsMap.buffer_auto_post_enabled === 'true' || settingsMap.buffer_auto_post_enabled === '1',
+      maxPostsPerWorkflow: Math.max(Number(settingsMap.buffer_max_posts_per_workflow || 5), 1),
+    };
+    let bufferPostsSent = 0;
 
     const sourcesToCrawl = sourceId
       ? [await getSourceById(db, sourceId)].filter((s): s is NonNullable<typeof s> => Boolean(s))
@@ -203,17 +213,21 @@ export const POST: APIRoute = async ({ request, locals }) => {
             imageCredit = genImg.credit;
           }
 
-          const authorRole = aiResult.provider === 'cloudflare_workers_ai'
-            ? `Synthesized with Cloudflare AI (${aiResult.modelUsed})`
-            : aiResult.provider === 'openrouter_ai'
-            ? `Synthesized with OpenRouter AI (${aiResult.modelUsed})`
-            : aiResult.provider === 'local_ai_model'
-            ? `Synthesized with Local AI Model (${aiResult.modelUsed})`
-            : aiResult.provider === 'pollinations_ai'
-            ? `Synthesized with Pollinations AI (${aiResult.modelUsed})`
-            : 'Synthesized with 9jaBeacon Editorial Core';
+          let authorName = '9jaBeacon Editorial Team';
+          let authorRole = 'National Affairs & Governance Desk';
 
-          await createArticle(db, {
+          if (categoryId === 'cat_money_hustle' || categoryId === 'cat_business') {
+            authorName = '9jaBeacon Finance Team';
+            authorRole = 'Markets, Banking & Economy Desk';
+          } else if (categoryId === 'cat_sports') {
+            authorName = '9jaBeacon Sports Desk';
+            authorRole = 'Sports & Athletics Desk';
+          } else if (categoryId === 'cat_world') {
+            authorName = '9jaBeacon World News Desk';
+            authorRole = 'Global Foreign Affairs Desk';
+          }
+
+          const publishedArticle = await createArticle(db, {
             title: aiResult.title,
             summary: aiResult.summary || item.description,
             content: aiResult.content,
@@ -225,7 +239,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
             source_id: source.id,
             source_name: source.name,
             source_original_url: item.link,
-            author_name: '9jaBeacon Editorial Desk',
+            author_name: authorName,
             author_role: authorRole,
             is_top_story: 0,
             is_trending: 1,
@@ -236,6 +250,58 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
           ingestedFromSource++;
           totalIngested++;
+
+          // Autonomous Buffer Social Posting (up to 5 per workflow)
+          if (
+            publishedArticle &&
+            bufferConfig.autoPostEnabled &&
+            bufferConfig.accessToken &&
+            bufferPostsSent < bufferConfig.maxPostsPerWorkflow
+          ) {
+            try {
+              const siteDomain = (settingsMap.site_url || 'https://9jabeacon.pages.dev').replace(/\/+$/, '');
+              const canonicalUrl = `${siteDomain}/news/${publishedArticle.slug}`;
+              const categoryName = categoryId === 'cat_money_hustle' ? 'Business' : categoryId === 'cat_sports' ? 'Sports' : categoryId === 'cat_world' ? 'World' : 'Naija News';
+
+              const postRes = await postToBuffer(bufferConfig, {
+                title: publishedArticle.title,
+                summary: publishedArticle.summary || aiResult.summary || '',
+                categoryName,
+                canonicalUrl,
+                imageUrl: finalImageUrl,
+              });
+
+              if (postRes.success) {
+                bufferPostsSent++;
+                await recordLog(
+                  db,
+                  'BUFFER_POST',
+                  source.id,
+                  source.name,
+                  `[Buffer Social Auto-Post ${bufferPostsSent}/${bufferConfig.maxPostsPerWorkflow}] Successfully dispatched to Facebook & Instagram: "${publishedArticle.title.slice(0, 45)}..."`,
+                  'info'
+                );
+              } else {
+                await recordLog(
+                  db,
+                  'BUFFER_NOTICE',
+                  source.id,
+                  source.name,
+                  `Buffer dispatch skipped: ${postRes.error}`,
+                  'warning'
+                );
+              }
+            } catch (bufErr: any) {
+              await recordLog(
+                db,
+                'BUFFER_ERROR',
+                source.id,
+                source.name,
+                `Buffer dispatch error: ${bufErr.message}`,
+                'warning'
+              );
+            }
+          }
 
           await recordLog(
             db,

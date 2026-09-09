@@ -3,9 +3,14 @@ pages_build_output_dir = "dist"
 compatibility_date = "2026-08-29"
 compatibility_flags = ["nodejs_compat"]
 
-# D1 Database binding 'DB' is configured directly in the Cloudflare Pages Dashboard Settings > Bindings.
+# Cloudflare D1 Database Binding for Cloudflare Pages
+[[d1_databases]]
+binding = "DB"
+database_name = "naijablog"
+database_id = "naijablog"
 
 [vars]
 ENVIRONMENT = "production"
 SITE_NAME = "9jaBeacon"
 SITE_URL = "https://9jabeacon.pages.dev"
+
