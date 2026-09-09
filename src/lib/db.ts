@@ -161,7 +161,6 @@ function initDatabase() {
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN event_type TEXT`).run(); } catch {}
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN level TEXT DEFAULT 'info'`).run(); } catch {}
 
-  if (process.env.ALLOW_SEED_DATA === 'true') {
   // Seed/Upsert Categories
   const insertCat = db.prepare(`
     INSERT INTO categories (id, slug, name, description, icon, color, follower_count, display_order)
@@ -203,26 +202,27 @@ function initDatabase() {
     db.prepare(`UPDATE articles SET category_id = 'cat_world' WHERE category_id IN ('cat_global', 'cat_diaspora', 'world', 'global')`).run();
   } catch {}
 
-  // Seed default articles if empty
-  const articlesCount = db.prepare('SELECT COUNT(*) as count FROM articles').get() as { count: number };
-  if (articlesCount.count === 0 && initialArticles && initialArticles.length > 0) {
-    const insertArt = db.prepare(`
-      INSERT OR IGNORE INTO articles (
-        id, slug, title, summary, content, category_id, image_url, image_caption,
-        image_credit, image_license, author_name, author_role, author_avatar,
-        is_top_story, is_trending, is_breaking, views_count, reading_time_minutes,
-        source_id, source_name, source_original_url, published_at, updated_at, status
-      ) VALUES (
-        @id, @slug, @title, @summary, @content, @category_id, @image_url, @image_caption,
-        @image_credit, @image_license, @author_name, @author_role, @author_avatar,
-        @is_top_story, @is_trending, @is_breaking, @views_count, @reading_time_minutes,
-        @source_id, @source_name, @source_original_url, @published_at, @updated_at, @status
-      )
-    `);
-    for (const art of initialArticles) {
-      insertArt.run(art);
+  // Seed default articles ONLY if explicitly allowed
+  if (process.env.ALLOW_SEED_DATA === 'true') {
+    const articlesCount = db.prepare('SELECT COUNT(*) as count FROM articles').get() as { count: number };
+    if (articlesCount.count === 0 && initialArticles && initialArticles.length > 0) {
+      const insertArt = db.prepare(`
+        INSERT OR IGNORE INTO articles (
+          id, slug, title, summary, content, category_id, image_url, image_caption,
+          image_credit, image_license, author_name, author_role, author_avatar,
+          is_top_story, is_trending, is_breaking, views_count, reading_time_minutes,
+          source_id, source_name, source_original_url, published_at, updated_at, status
+        ) VALUES (
+          @id, @slug, @title, @summary, @content, @category_id, @image_url, @image_caption,
+          @image_credit, @image_license, @author_name, @author_role, @author_avatar,
+          @is_top_story, @is_trending, @is_breaking, @views_count, @reading_time_minutes,
+          @source_id, @source_name, @source_original_url, @published_at, @updated_at, @status
+        )
+      `);
+      for (const art of initialArticles) {
+        insertArt.run(art);
+      }
     }
-  }
   }
   // Seed default automation settings
   const settingsCount = db.prepare('SELECT COUNT(*) as count FROM automation_settings').get() as { count: number };

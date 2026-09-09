@@ -228,37 +228,11 @@ export function getD1(locals?: RuntimeLocals): D1Database {
 
 const select = `SELECT a.*,c.name AS category_name,c.slug AS category_slug FROM articles a LEFT JOIN categories c ON a.category_id=c.id`;
 
-async function syncLocalArticlesToD1(db: D1Database) {
-  try {
-    const localDb = await getLocalSqliteDb();
-    if (!localDb) return;
-    const localArticles = localDb.prepare("SELECT * FROM articles ORDER BY published_at DESC").all() as any[];
-    if (localArticles && localArticles.length > 0) {
-      for (const art of localArticles) {
-        await db.prepare(`INSERT OR REPLACE INTO articles (
-          id, slug, title, summary, content, category_id, image_url, image_caption,
-          image_credit, image_license, author_name, author_role, author_avatar,
-          is_top_story, is_trending, is_breaking, views_count, reading_time_minutes,
-          source_id, source_name, source_original_url, published_at, updated_at, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
-          art.id, art.slug, art.title, art.summary, art.content, art.category_id, art.image_url, art.image_caption,
-          art.image_credit, art.image_license, art.author_name, art.author_role, art.author_avatar,
-          art.is_top_story ? 1 : 0, art.is_trending ? 1 : 0, art.is_breaking ? 1 : 0, art.views_count || 0, art.reading_time_minutes || 4,
-          art.source_id, art.source_name, art.source_original_url, art.published_at || new Date().toISOString(), art.updated_at || new Date().toISOString(), art.status || 'published'
-        ).run().catch(() => {});
-      }
-    }
-  } catch (err) {
-    console.warn('syncLocalArticlesToD1 notice:', err);
-  }
-}
-
 let tablesChecked = false;
 export async function ensureTablesExist(db: D1Database) {
   if (tablesChecked) return;
   try {
     await db.prepare("SELECT 1 FROM articles LIMIT 1").first();
-    await syncLocalArticlesToD1(db);
     tablesChecked = true;
   } catch (err: any) {
     const msg = String(err?.message || err);
@@ -398,7 +372,6 @@ export async function ensureTablesExist(db: D1Database) {
           ).run().catch(() => {});
         }
 
-        await syncLocalArticlesToD1(db);
         tablesChecked = true;
       } catch (createErr) {
         console.warn('Could not auto-create missing tables in D1:', createErr);
