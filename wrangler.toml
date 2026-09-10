@@ -4,14 +4,10 @@ compatibility_date = "2026-08-29"
 compatibility_flags = ["nodejs_compat"]
 
 # Cloudflare D1 Database Binding for Cloudflare Pages
-# Note: Cloudflare Pages fails with 'Error 8000022: Invalid database UUID' if database_id is not a valid 36-char UUID.
-# Option 1 (Recommended for Pages): Bind in Cloudflare Dashboard:
-#   Pages Project > Settings > Functions > D1 Database Bindings > Variable name: DB > Select your D1 database.
-# Option 2: If using wrangler.toml, replace with your actual D1 UUID from `npx wrangler d1 create naijablog`:
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "naijablog"
-# database_id = "YOUR_ACTUAL_D1_UUID_HERE"
+[[d1_databases]]
+binding = "DB"
+database_name = "naijablog"
+database_id = "5ad4457f-0528-473b-a805-f505aa71eacf"
 
 [vars]
 ENVIRONMENT = "production"
