@@ -69,16 +69,41 @@ function parseXmlFeed(xml: string): RssFeedItem[] {
     const content = extractTag(itemXml, 'content:encoded') || extractTag(itemXml, 'content');
     const author = extractTag(itemXml, 'dc:creator') || extractTag(itemXml, 'author');
     
-    // Extract image enclosure or media:content if available
+    // Extract image enclosure, media:content, media:thumbnail or embedded <img>
     let enclosureUrl = extractAttribute(itemXml, 'enclosure', 'url');
     if (!enclosureUrl) {
       enclosureUrl = extractAttribute(itemXml, 'media:content', 'url');
     }
     if (!enclosureUrl) {
-      // Check for <img src="..." in description or content
-      const imgMatch = (content || description).match(/<img[^>]+src=["']([^"']+)["']/i);
-      if (imgMatch) {
+      enclosureUrl = extractAttribute(itemXml, 'media:thumbnail', 'url');
+    }
+    if (!enclosureUrl) {
+      // Check for nested <media:thumbnail url="..." />
+      const mediaThumbMatch = itemXml.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i);
+      if (mediaThumbMatch) {
+        enclosureUrl = mediaThumbMatch[1];
+      }
+    }
+    if (!enclosureUrl) {
+      // Check for <image><url>...</url></image>
+      const imgTagMatch = itemXml.match(/<image>\s*<url>([\s\S]*?)<\/url>\s*<\/image>/i);
+      if (imgTagMatch) {
+        enclosureUrl = cleanCdata(imgTagMatch[1]);
+      }
+    }
+    if (!enclosureUrl) {
+      // Check for <img src="..." in content:encoded or description
+      const imgMatch = (content || description || '').match(/<img[^>]+src=["']([^"']+)["']/i);
+      if (imgMatch && !imgMatch[1].includes('feedburner') && !imgMatch[1].includes('1x1') && !imgMatch[1].includes('doubleclick')) {
         enclosureUrl = imgMatch[1];
+      }
+    }
+
+    // Clean and validate enclosure URL
+    if (enclosureUrl) {
+      enclosureUrl = cleanCdata(enclosureUrl).trim();
+      if (!enclosureUrl.startsWith('http://') && !enclosureUrl.startsWith('https://')) {
+        enclosureUrl = undefined;
       }
     }
 

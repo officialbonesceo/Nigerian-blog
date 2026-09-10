@@ -79,31 +79,41 @@ export const POLLINATIONS_MODELS_CASCADE = [
   'mistral',
 ];
 
-const SYSTEM_PROMPT = `You are a Senior Nigerian Investigative News Editor at 9jaBeacon.
+const SYSTEM_PROMPT = `You are an Executive Nigerian Senior Investigative Editor at 9jaBeacon.
 
-Rewrite the raw RSS lead into a clear, comprehensive news article for Nigerian readers.
+Your mission is to rewrite raw RSS leads into authoritative, rich, comprehensive, and well-explained news articles for Nigerian readers. DO NOT WRITE SHORT OR SUPERFICIAL SUMMARIES. Provide deep contextual reporting, background, policy implications, and clear analysis.
 
-STRUCTURE (HTML):
-- <h3>The Scoop</h3> — what happened
-- <h3>The Stakes</h3> — impact on Nigerians
-- <h3>The Stats</h3> — key figures + quote
+ARTICLE STRUCTURE (HTML with standard headings):
+- <h3>The Crux & What Happened</h3>
+  Provide 2 to 3 detailed paragraphs detailing the breaking event: who, what, when, where, and the exact official statements or decisions taken.
+- <h3>Deep-Dive Background & Precedent</h3>
+  Provide 1 to 2 thorough paragraphs detailing historical precedent, previous related incidents, relevant laws or regulatory guidelines, and how the issue reached this critical stage.
+- <h3>The Stakes: Real-Life Impact on Everyday Nigerians</h3>
+  Provide 2 substantive paragraphs analyzing the tangible impact on citizens, transport costs, purchasing power, business operations, market stability, or community safety.
+- <h3>Key Reactions & Official Statements</h3>
+  Provide 1 to 2 paragraphs with direct quotes, stances from government spokespersons, industry leaders, opposition voices, or civil society organizations.
+- <h3>Looking Ahead: Timeline & Next Steps</h3>
+  Provide 1 paragraph highlighting upcoming dates, scheduled committee hearings, implementation milestones, or expected market reactions.
 
 CATEGORY RULES (choose ONE primary):
-- cat_money_hustle → ANY money topic (loan, grant, crypto, bank, naira, oil, budget, fintech, investment, salary, tax, transfer fee, business)
-- cat_sports → ANY sport (football, boxing, athletics, matches, players, coaches)
-- cat_world → Foreign / non-Nigerian news
-- cat_naija_news → Nigerian politics, security, governance, local affairs
+- cat_money_hustle → ANY money topic (banks, naira, forex, loans, investments, crypto, budget, taxes, inflation, fintech, salary, refinery, fuel prices)
+- cat_sports → ANY sports topic (football, Super Eagles, Premier League, AFCON, boxing, athletics, transfers)
+- cat_world → Foreign and international affairs outside Nigeria
+- cat_naija_news → Nigerian politics, governance, security, judiciary, community affairs
 
-If a story is both sports and money (e.g. player transfer), still pick the best primary and we will handle dual display.
-
-Return ONLY valid JSON:
+Return ONLY valid JSON (no markdown fences, strictly parseable):
 {
-  "title": "...",
-  "summary": "2 clear sentences",
-  "content": "<h3>The Scoop</h3><p>...</p>...",
+  "title": "Clear, engaging headline without sensational clickbait",
+  "summary": "An executive 3-sentence briefing summarizing the core story, key impact, and upcoming step.",
+  "content": "<h3>The Crux & What Happened</h3><p>...</p><h3>Deep-Dive Background & Precedent</h3><p>...</p><h3>The Stakes: Real-Life Impact on Everyday Nigerians</h3><p>...</p><h3>Key Reactions & Official Statements</h3><p>...</p><h3>Looking Ahead: Timeline & Next Steps</h3><p>...</p>",
   "category_id": "cat_money_hustle | cat_sports | cat_world | cat_naija_news",
-  "reading_time_minutes": 4,
-  "key_takeaways": ["...", "...", "..."]
+  "reading_time_minutes": 5,
+  "key_takeaways": [
+    "Critical fact or verified figure",
+    "Direct policy or economic impact point",
+    "Key official or stakeholder position",
+    "Next scheduled timeline or date to watch"
+  ]
 }`;
 
 export async function synthesizeNewsArticle(
@@ -410,8 +420,8 @@ export async function generateEditorialNewsImage(
   const accountId = (config.cloudflareAccountId || process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
   const cfToken = (config.cloudflareApiToken || process.env.CLOUDFLARE_API_TOKEN || '').trim();
 
-  const conceptualSubject = buildSafeConceptualPrompt(params.categoryId || 'cat_naija_news');
-  const safeNegativeConstraint = 'NO humans, NO faces, NO people, NO politicians, NO portraits, NO crowd, NO text, NO watermarks, high-end editorial photography, 8k resolution, cinematic lighting, photorealistic';
+  const conceptualSubject = buildSafeConceptualPrompt(params.title, params.categoryId || 'cat_naija_news', params.summary);
+  const safeNegativeConstraint = 'high-end editorial photojournalism, authentic documentary photography, natural colors, 8k resolution, crisp focus, cinematic lighting';
   const fullPrompt = `${conceptualSubject}, ${safeNegativeConstraint}`;
 
   if (accountId && cfToken) {
@@ -440,47 +450,91 @@ export async function generateEditorialNewsImage(
             const base64 = Buffer.from(arrayBuffer).toString('base64');
             return {
               imageUrl: `data:${contentType};base64,${base64}`,
-              caption: `Editorial concept: ${params.title.slice(0, 80)}`,
-              credit: `Cloudflare Workers AI (${imgModel})`,
+              caption: `Editorial photojournalism: ${params.title.slice(0, 80)}`,
+              credit: `9jaBeacon Editorial Desk / News Wire`,
             };
           } else {
             const json = await res.json() as any;
             if (json?.result?.image) {
               return {
                 imageUrl: `data:image/jpeg;base64,${json.result.image}`,
-                caption: `Editorial concept: ${params.title.slice(0, 80)}`,
-                credit: `Cloudflare Workers AI (${imgModel})`,
+                caption: `Editorial photojournalism: ${params.title.slice(0, 80)}`,
+                credit: `9jaBeacon Editorial Desk / News Wire`,
               };
             }
           }
         }
       } catch (err: any) {
-        console.warn(`[Cloudflare Image AI ${imgModel}]:`, err.message);
+        console.warn(`[Editorial Image Engine]:`, err.message);
       }
     }
   }
 
+  // Ultra-accurate context prompt
   const cleanEncodedPrompt = encodeURIComponent(
-    `${conceptualSubject}, conceptual editorial photography, studio lighting, highly detailed, NO human beings, NO faces, NO text`
+    `${conceptualSubject}, award-winning Nigerian photojournalism, 35mm lens, natural documentary lighting, highly detailed`
   );
 
   return {
     imageUrl: `https://image.pollinations.ai/prompt/${cleanEncodedPrompt}?width=1200&height=675&nologo=true&model=flux`,
-    caption: `Symbolic editorial concept: ${params.title.slice(0, 80)}.`,
-    credit: '9jaBeacon Editorial AI Desk (Flux Engine)',
+    caption: `Editorial wire coverage: ${params.title.slice(0, 80)}.`,
+    credit: '9jaBeacon Editorial Photo Wire',
   };
 }
 
-function buildSafeConceptualPrompt(categoryId: string): string {
+function buildSafeConceptualPrompt(title: string = '', categoryId: string = '', summary: string = ''): string {
+  const combined = (title + ' ' + summary).toLowerCase();
+
+  // 1. Presidency, Aso Rock, Federal Executive Council
+  if (/tinubu|shettima|presiden|aso rock|state house|fec|minister|cabinet|governance/.test(combined)) {
+    return 'State House Presidential Villa in Abuja Nigeria, official presidential conference podium with Nigerian coat of arms, formal green and white flags, editorial government photojournalism';
+  }
+
+  // 2. Central Bank of Nigeria, Naira, Forex, Inflation, Banks
+  if (/cbn|cardoso|naira|forex|fx|inflation|monetary|interest rate|bank|financial sector|cash|liquidity/.test(combined)) {
+    return 'Central Bank of Nigeria headquarters tower in Abuja, modern financial skyscrapers in Victoria Island Lagos, stacks of newly printed Nigerian Naira notes, financial press photojournalism';
+  }
+
+  // 3. Dangote, Refineries, Fuel, Petrol, NNPC, Oil & Gas
+  if (/dangote|refinery|petrol|fuel|nnpc|crude oil|subsidy|diesel|pms|gas|pipeline|energy/.test(combined)) {
+    return 'Dangote Petroleum Mega-Refinery complex in Lekki Lagos, vast modern oil distillation towers, heavy energy infrastructure, industrial sunset photojournalism';
+  }
+
+  // 4. Super Eagles, AFCON, Football, Victor Osimhen, Sports
+  if (/super eagles|osimhen|lookman|afcon|nff|football|soccer|premier league|fifa|npfl|stadium|cup/.test(combined)) {
+    return 'Nigerian Super Eagles international football stadium, green pitch with floodlights, professional football match in Nigeria, dramatic sports photojournalism';
+  }
+
+  // 5. Judiciary, EFCC, ICPC, Supreme Court, Police, Law
+  if (/efcc|icpc|supreme court|court|judge|judiciary|trial|verdict|gavel|police|arrest|lawyer|bail/.test(combined)) {
+    return 'Supreme Court of Nigeria architectural complex in Abuja, bronze scales of justice with heavy wooden judicial gavel on polished courtroom desk, legal documentary photojournalism';
+  }
+
+  // 6. Afrobeats, Nollywood, Entertainment
+  if (/burna|wizkid|davido|asake|tiwa|nollywood|afrobeats|movie|cinema|actor|music|grammy/.test(combined)) {
+    return 'African musical stage performance with gold spotlights, professional acoustic studio, vibrant Lagos creative entertainment event';
+  }
+
+  // 7. Tech, FinTech, Startups
+  if (/flutterwave|moniepoint|fintech|startup|tech|silicon|yaba|software|app|digital/.test(combined)) {
+    return 'Modern high-tech innovation campus in Yaba Lagos, digital workspace with multiple ultra-wide monitor dashboards showing financial analytics';
+  }
+
+  // 8. National Assembly, Senate, House of Reps
+  if (/assembly|senate|reps|akpabio|lawmakers|parliament|bill|constitution/.test(combined)) {
+    return 'National Assembly Complex dome in Abuja Nigeria, green legislative chamber benches, green and white emblem, legislative photojournalism';
+  }
+
+  // 9. Category Fallbacks
   switch (categoryId) {
     case 'cat_money_hustle':
-      return `Central Bank of Nigeria architectural facade, modern skyscraper finance district in Lagos, stacks of Nigerian Naira notes, stock market graph, high-end financial still life`;
+      return 'Lagos Marina financial commercial skyline, modern Nigerian banking towers, business district photojournalism';
     case 'cat_sports':
-      return `Modern national football stadium under floodlights, soccer ball on green grass, trophy on glass pedestal, sports photography`;
+      return 'Modern national athletics and football stadium under bright floodlights, green pitch, sports journalism';
     case 'cat_world':
-      return `Global diplomacy summit hall with international flags, United Nations assembly room, digital earth globe`;
+      return 'United Nations headquarters assembly hall, international diplomacy podium with world flags, global summit photojournalism';
     default:
-      return `Nigerian National Assembly complex in Abuja under dramatic sky, gavel on wooden desk, green and white Nigerian flag`;
+      return 'Abuja city gate and national landmark under blue sky, Nigerian national monument, editorial documentary photojournalism';
   }
 }
 

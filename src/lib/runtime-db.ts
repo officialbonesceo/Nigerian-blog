@@ -514,14 +514,19 @@ export async function getArticleBySlug(db: D1Database, slug: string) {
       row = await db.prepare("SELECT * FROM articles WHERE slug=? LIMIT 1").bind(slug).first<Article>();
     }
     if (row) {
-      db.prepare('UPDATE articles SET views_count=COALESCE(views_count,0)+1 WHERE id=?').bind(row.id).run().catch(() => {});
-      return formatArticle({ ...row, views_count: (row.views_count ?? 0) + 1 });
+      return formatArticle(row);
     }
   } catch (err) {
     console.warn('getArticleBySlug error:', err);
   }
   const fallback = (initialArticles as Article[]).find((a) => a.slug === slug);
   return fallback ? formatArticle(fallback) : null;
+}
+
+export async function incrementArticleView(db: D1Database, id: string) {
+  try {
+    await db.prepare('UPDATE articles SET views_count=COALESCE(views_count,0)+1 WHERE id=?').bind(id).run();
+  } catch {}
 }
 
 export async function getRelatedArticles(db: D1Database, id: string, categoryId: string, limit = 5) {
