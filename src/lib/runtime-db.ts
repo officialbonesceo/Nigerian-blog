@@ -642,16 +642,21 @@ export async function getCategoryBySlug(db: D1Database, slug: string) {
 }
 
 export async function getSiteSettings(db: D1Database): Promise<Record<string, string>> {
+  const defaults: Record<string, string> = {
+    site_name: '9jaBeacon',
+    site_url: 'https://9jabeacon.pages.dev',
+    site_description: 'Fast, verified Nigerian news and useful updates.',
+    social_facebook_url: 'https://facebook.com/9jabeacon',
+    social_tiktok_url: 'https://tiktok.com/@9jabeacon',
+    social_youtube_url: 'https://youtube.com/@9jabeacon',
+  };
   try {
     const res = await db.prepare('SELECT key, value FROM site_settings').all<{ key: string; value: string }>();
     const r = res?.results || [];
-    return Object.fromEntries(r.map((x) => [x.key, x.value]));
+    const custom = Object.fromEntries(r.map((x) => [x.key, x.value]));
+    return { ...defaults, ...custom };
   } catch {
-    return {
-      site_name: '9jaBeacon',
-      site_url: 'https://9jabeacon.pages.dev',
-      site_description: 'Fast, verified Nigerian news and useful updates.'
-    };
+    return defaults;
   }
 }
 

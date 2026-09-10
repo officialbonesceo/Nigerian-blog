@@ -69,7 +69,7 @@ for (const s of autoSettings) {
 }
 ---
 
-<Layout title="9jaBeacon Editorial Command & AI Hub" activeNav="menu">
+<Layout title="9jaBeacon Editorial Command Hub" activeNav="menu">
   <div class="space-y-6 pb-20">
     <!-- Header -->
     <header class="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -80,9 +80,9 @@ for (const s of autoSettings) {
           </span>
           <span class="text-xs text-slate-400 font-medium">9jaBeacon Editorial Engine</span>
         </div>
-        <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white mt-1">Autonomous News & AI Command Hub</h1>
+        <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white mt-1">Autonomous News & Editorial Command Hub</h1>
         <p class="text-xs md:text-sm text-slate-400 mt-1 max-w-2xl">
-          Multi-tier LLM synthesis (Cloudflare Workers AI &rarr; OpenRouter Qwen &rarr; Local AI &rarr; Pollinations &rarr; Editorial NLP) with real-time telemetry logs.
+          Multi-tier automated synthesis (Cloudflare Fast Engine &rarr; OpenRouter &rarr; Local Offline Models &rarr; Editorial NLP) with real-time telemetry logs.
         </p>
       </div>
 
@@ -101,7 +101,7 @@ for (const s of autoSettings) {
           class="px-4 py-2 text-xs font-bold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition shadow-lg shadow-emerald-500/20 inline-flex items-center gap-1.5 cursor-pointer"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-          <span>Run AI Workflow</span>
+          <span>Run Ingestion Workflow</span>
         </button>
         <button
           onclick="logoutAdmin()"
@@ -166,7 +166,7 @@ for (const s of autoSettings) {
         class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        <span>AI & Local Models Config</span>
+        <span>Editorial Engine & Social Channels</span>
       </button>
       <button
         onclick="switchAdminTab('sources')"
@@ -245,43 +245,43 @@ for (const s of autoSettings) {
             </button>
           </div>
 
-          <!-- Active AI Waterfall Indicator -->
+          <!-- Active Synthesis Engine Indicator -->
           <div class="pt-3 border-t border-slate-800/80 space-y-2">
-            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active AI Synthesis Waterfall:</div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Synthesis Engine Waterfall:</div>
             <div class="space-y-1.5 text-xs text-slate-300">
               <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800">
                 <span class="w-5 h-5 rounded-full bg-blue-950 text-blue-400 text-[10px] font-bold flex items-center justify-center">1</span>
                 <div>
-                  <div class="font-semibold text-white">Cloudflare Workers AI</div>
+                  <div class="font-semibold text-white">Cloudflare Fast Engine</div>
                   <div class="text-[10px] text-slate-400">Llama 3.1 8B &bull; Qwen 1.5 7B &bull; DeepSeek Qwen 32B</div>
                 </div>
               </div>
               <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800">
                 <span class="w-5 h-5 rounded-full bg-purple-950 text-purple-400 text-[10px] font-bold flex items-center justify-center">2</span>
                 <div>
-                  <div class="font-semibold text-white">OpenRouter AI</div>
+                  <div class="font-semibold text-white">OpenRouter Editorial Engine</div>
                   <div class="text-[10px] text-slate-400">Qwen 2.5 72B &bull; DeepSeek R1 &bull; Llama 3.3 70B</div>
                 </div>
               </div>
               <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800">
                 <span class="w-5 h-5 rounded-full bg-amber-950 text-amber-400 text-[10px] font-bold flex items-center justify-center">3</span>
                 <div>
-                  <div class="font-semibold text-white">Local Small AI Models (Ollama/LM Studio)</div>
+                  <div class="font-semibold text-white">Local Offline Models (Ollama/LM Studio)</div>
                   <div class="text-[10px] text-slate-400">{settingsMap.local_ai_model || 'qwen2.5:3b'} @ {settingsMap.local_ai_endpoint || 'http://127.0.0.1:11434'}</div>
                 </div>
               </div>
               <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800">
                 <span class="w-5 h-5 rounded-full bg-emerald-950 text-emerald-400 text-[10px] font-bold flex items-center justify-center">4</span>
                 <div>
-                  <div class="font-semibold text-white">Pollinations Multi-LLM</div>
-                  <div class="text-[10px] text-slate-400">Qwen-Coder &bull; Mistral &bull; OpenAI</div>
+                  <div class="font-semibold text-white">Pollinations Editorial Engine</div>
+                  <div class="text-[10px] text-slate-400">Qwen-Coder &bull; Mistral &bull; Fast Models</div>
                 </div>
               </div>
               <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-950 border border-slate-800">
                 <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold flex items-center justify-center">5</span>
                 <div>
                   <div class="font-semibold text-white">9jaBeacon Editorial NLP Core</div>
-                  <div class="text-[10px] text-slate-400">Deterministic Scoop/Stakes/Stats formatter & category engine</div>
+                  <div class="text-[10px] text-slate-400">In-depth contextual background, stakeholder impact & category verification</div>
                 </div>
               </div>
             </div>
@@ -392,30 +392,30 @@ for (const s of autoSettings) {
       </div>
     </div>
 
-    <!-- TAB 3: AI & LOCAL MODELS CONFIG -->
+    <!-- TAB 3: EDITORIAL ENGINE & SOCIAL CONFIG -->
     <div id="tab-content-ai-config" class="admin-tab-content hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Configuration Form -->
         <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
           <h2 class="text-base font-bold text-white flex items-center gap-2">
             <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
-            <span>Multi-LLM & Local Fallback Setup</span>
+            <span>Editorial Engine & Offline Fallback Setup</span>
           </h2>
           <p class="text-xs text-slate-400">
-            Configure your AI synthesis providers. When Cloudflare or OpenRouter hit rate limits, the system seamlessly falls back to your local downloaded small models (Qwen, Ollama, LM Studio) or Pollinations.
+            Configure your automated editorial synthesis providers. When Cloudflare or OpenRouter hit quotas, the system seamlessly falls back to your local downloaded small models (Qwen, Ollama, LM Studio) or Editorial NLP.
           </p>
 
           <form id="aiSettingsForm" class="space-y-4 pt-2">
-            <!-- Local AI Section -->
+            <!-- Local Offline Section -->
             <div class="p-3.5 rounded-xl bg-slate-950 border border-amber-900/40 space-y-3">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-amber-400"></span> Local AI Fallback (Qwen / Ollama / LM Studio)
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span> Local Offline Fallback (Qwen / Ollama / LM Studio)
                 </span>
                 <span class="text-[10px] text-slate-500 font-mono">Offline Capable</span>
               </div>
               <div>
-                <label class="block text-[11px] font-medium text-slate-300 mb-1">Local AI Endpoint URL:</label>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1">Local Endpoint URL:</label>
                 <input
                   type="text"
                   name="local_ai_endpoint"
@@ -437,10 +437,10 @@ for (const s of autoSettings) {
               </div>
             </div>
 
-            <!-- Cloudflare Workers AI -->
+            <!-- Cloudflare Fast Engine -->
             <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
               <span class="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-blue-400"></span> Cloudflare Workers AI
+                <span class="w-2 h-2 rounded-full bg-blue-400"></span> Cloudflare Fast Engine
               </span>
               <div>
                 <label class="block text-[11px] font-medium text-slate-300 mb-1">Cloudflare Account ID:</label>
@@ -458,16 +458,16 @@ for (const s of autoSettings) {
                   type="password"
                   name="cloudflare_api_token"
                   value={settingsMap.cloudflare_api_token || ''}
-                  placeholder="Workers AI API Token"
+                  placeholder="Cloudflare API Token"
                   class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-blue-400"
                 />
               </div>
             </div>
 
-            <!-- OpenRouter AI -->
+            <!-- OpenRouter Engine -->
             <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
               <span class="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-purple-400"></span> OpenRouter AI (Qwen 2.5 72B / DeepSeek)
+                <span class="w-2 h-2 rounded-full bg-purple-400"></span> OpenRouter Engine (Qwen 2.5 72B / DeepSeek)
               </span>
               <div>
                 <label class="block text-[11px] font-medium text-slate-300 mb-1">OpenRouter API Key:</label>
@@ -486,7 +486,7 @@ for (const s of autoSettings) {
                 type="submit"
                 class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition cursor-pointer"
               >
-                Save AI Configuration
+                Save Engine Configuration
               </button>
               <button
                 type="button"
@@ -494,33 +494,97 @@ for (const s of autoSettings) {
                 class="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition cursor-pointer border border-slate-700 inline-flex items-center gap-1.5"
               >
                 <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                <span>Test Waterfall</span>
+                <span>Test Pipeline</span>
               </button>
             </div>
           </form>
         </div>
 
-        <!-- AI Diagnostics & Live Test Output -->
-        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 flex flex-col justify-between">
-          <div>
-            <h3 class="text-base font-bold text-white flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-              <span>AI Waterfall Diagnostic Test</span>
-            </h3>
-            <p class="text-xs text-slate-400 mt-1">
-              Runs a sample Nigerian business wire through the cascade and verifies each tier's response time and JSON schema validity.
+        <!-- Right Column: Social Channels & Diagnostics -->
+        <div class="space-y-6">
+          <!-- Social Media Channels Form -->
+          <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+              </svg>
+              <span>Social Channels & Community Links</span>
+            </h2>
+            <p class="text-xs text-slate-400">
+              Configure your verified social media links. These links appear prominently in the site footer, navigation drawer, and article share panels.
             </p>
 
-            <div id="aiTestResultBox" class="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs text-slate-300">
-              <div class="text-slate-500">// Press "Test Waterfall" to execute live end-to-end multi-LLM test...</div>
-            </div>
+            <form id="socialSettingsForm" class="space-y-3.5 pt-1">
+              <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-[#1877F2]"></span> Facebook Page URL:
+                </label>
+                <input
+                  type="url"
+                  name="social_facebook_url"
+                  value={siteSettings.social_facebook_url || 'https://facebook.com/9jabeacon'}
+                  placeholder="https://facebook.com/your-page"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-pink-500"></span> TikTok Channel URL:
+                </label>
+                <input
+                  type="url"
+                  name="social_tiktok_url"
+                  value={siteSettings.social_tiktok_url || 'https://tiktok.com/@9jabeacon'}
+                  placeholder="https://tiktok.com/@your-handle"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-pink-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-[#FF0000]"></span> YouTube Channel URL:
+                </label>
+                <input
+                  type="url"
+                  name="social_youtube_url"
+                  value={siteSettings.social_youtube_url || 'https://youtube.com/@9jabeacon'}
+                  placeholder="https://youtube.com/@your-channel"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-red-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition cursor-pointer shadow-md shadow-emerald-500/10"
+              >
+                Save Social Channels
+              </button>
+            </form>
           </div>
 
-          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800/80 text-xs space-y-2">
-            <div class="font-bold text-slate-300">Why Fallback AI Matters:</div>
-            <p class="text-slate-400 text-[11px] leading-relaxed">
-              If internet access fluctuates or cloud quotas expire, your local downloaded small AI models (e.g. Qwen 2.5 3B / Ollama) step in without crashing the news pipeline.
-            </p>
+          <!-- Diagnostics & Live Pipeline Output -->
+          <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div>
+              <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                <span>Editorial Pipeline Diagnostic Test</span>
+              </h3>
+              <p class="text-xs text-slate-400 mt-1">
+                Runs a sample Nigerian business lead through the cascade and verifies each tier's response time and schema validity.
+              </p>
+
+              <div id="aiTestResultBox" class="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs text-slate-300">
+                <div class="text-slate-500">// Press "Test Pipeline" to execute live end-to-end multi-tier test...</div>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800/80 text-xs space-y-2">
+              <div class="font-bold text-slate-300">Why Automated Fallback Matters:</div>
+              <p class="text-slate-400 text-[11px] leading-relaxed">
+                If internet access fluctuates or cloud quotas expire, your local downloaded small models (e.g. Qwen 2.5 3B / Ollama) step in without crashing the news pipeline.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -890,7 +954,7 @@ for (const s of autoSettings) {
         });
         const data = await res.json();
         if (data.success) {
-          alert('AI and Local Model Configuration saved successfully!');
+          alert('Editorial Engine and Local Model Configuration saved successfully!');
         } else {
           alert('Error saving settings: ' + data.error);
         }
@@ -900,11 +964,35 @@ for (const s of autoSettings) {
     }
     document.getElementById('aiSettingsForm')?.addEventListener('submit', saveAiConfig);
 
+    async function saveSocialSettings(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const settings = Object.fromEntries(formData.entries());
+
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'site', settings }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Social media links saved successfully! They are now visible across the site.');
+        } else {
+          alert('Error saving social links: ' + data.error);
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      }
+    }
+    document.getElementById('socialSettingsForm')?.addEventListener('submit', saveSocialSettings);
+
     async function runAiDiagnostics() {
       const box = document.getElementById('aiTestResultBox');
       if (!box) return;
 
-      box.innerHTML = '<div class="text-amber-400 animate-pulse">// Querying Multi-LLM Waterfall (Cloudflare -> OpenRouter -> Local Qwen -> Pollinations -> Editorial Core)...</div>';
+      box.innerHTML = '<div class="text-amber-400 animate-pulse">// Querying Editorial Cascade (Cloudflare Fast -> OpenRouter -> Local Offline -> Pollinations -> Editorial Core)...</div>';
 
       try {
         const res = await fetch('/api/admin/test-ai', {
@@ -917,7 +1005,7 @@ for (const s of autoSettings) {
         if (data.success) {
           let traceHtml = (data.traceLogs || []).map(t => `<div class="text-[10px] text-slate-400">&bull; ${t}</div>`).join('');
           box.innerHTML = `
-            <div class="text-emerald-400 font-bold">✔ AI Synthesis Succeeded in ${data.durationMs}ms</div>
+            <div class="text-emerald-400 font-bold">✔ Synthesis Succeeded in ${data.durationMs}ms</div>
             <div class="text-xs text-white font-bold mt-1">Provider: <span class="text-cyan-400">${data.provider}</span> (${data.modelUsed})</div>
             <div class="text-xs text-slate-300 mt-1">Classified Category: <span class="text-emerald-400 font-bold">${data.category}</span></div>
             <div class="text-xs text-slate-200 mt-1">Generated Title: "${data.headline}"</div>
@@ -927,7 +1015,7 @@ for (const s of autoSettings) {
             </div>
           `;
         } else {
-          box.innerHTML = `<div class="text-red-400 font-bold">✖ AI Synthesis Failed</div><div class="text-xs text-slate-300 mt-1">${data.error}</div>`;
+          box.innerHTML = `<div class="text-red-400 font-bold">✖ Synthesis Failed</div><div class="text-xs text-slate-300 mt-1">${data.error}</div>`;
         }
       } catch (err) {
         box.innerHTML = `<div class="text-red-400 font-bold">✖ Network Error</div><div class="text-xs text-slate-300 mt-1">${err.message}</div>`;

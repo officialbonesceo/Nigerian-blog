@@ -1,6 +1,7 @@
 ---
 import '../index.css';
 import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
 import BottomNav from '../components/BottomNav.astro';
 import DrawerMenu from '../components/DrawerMenu.astro';
 import { getCategories, getSiteSettings, getD1 } from '../lib/runtime-db';
@@ -97,10 +98,11 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden transition-colors duration-150">
   <Header siteName={siteName} categories={categories} />
-  <DrawerMenu siteName={siteName} categories={categories} />
-  <main class="w-full max-w-4xl mx-auto px-4 sm:px-6 pb-24 pt-3">
+  <DrawerMenu siteName={siteName} categories={categories} settings={settings} />
+  <main class="w-full max-w-4xl mx-auto px-4 sm:px-6 pb-12 pt-3">
     <slot />
   </main>
+  <Footer siteName={siteName} settings={settings} categories={categories} />
   <BottomNav activeNav={activeNav} />
   <script is:inline>
     window.addEventListener('error', () => {});
