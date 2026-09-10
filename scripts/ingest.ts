@@ -19,37 +19,6 @@ import {
   generateEditorialNewsImage,
   type AiCredentialsConfig
 } from '../src/lib/ai-engine';
-import fs from 'node:fs';
-import path from 'node:path';
-import Database from 'better-sqlite3';
-
-function syncToLocalWranglerD1(data: Record<string, any>) {
-  try {
-    const dir = '.wrangler/state/v3/d1/miniflare-D1DatabaseObject';
-    if (!fs.existsSync(dir)) return;
-    const files = fs.readdirSync(dir).filter(f => f.endsWith('.sqlite'));
-    if (!files.length) return;
-    const d1Path = path.join(dir, files[0]);
-    const d1 = new Database(d1Path);
-    if (data.is_top_story === 1) {
-      try { d1.prepare("UPDATE articles SET is_top_story = 0 WHERE is_top_story = 1").run(); } catch {}
-    }
-    d1.prepare(`
-      INSERT OR REPLACE INTO articles (
-        id, slug, title, summary, content, category_id, image_url, image_caption,
-        image_credit, image_license, author_name, author_role, author_avatar,
-        is_top_story, is_trending, is_breaking, views_count, reading_time_minutes,
-        source_id, source_name, source_original_url, published_at, updated_at, status
-      ) VALUES (
-        @id, @slug, @title, @summary, @content, @category_id, @image_url, @image_caption,
-        @image_credit, @image_license, @author_name, @author_role, @author_avatar,
-        @is_top_story, @is_trending, @is_breaking, @views_count, @reading_time_minutes,
-        @source_id, @source_name, @source_original_url, @published_at, @updated_at, @status
-      )
-    `).run(data);
-    d1.close();
-  } catch {}
-}
 
 interface SourceRow {
   id: string;

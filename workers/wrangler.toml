@@ -5,10 +5,11 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 # Cloudflare D1 Database Binding
+# Note: When deploying this worker, database_id must be your real D1 UUID (from `npx wrangler d1 create naijablog`):
 [[d1_databases]]
 binding = "DB"
 database_name = "naijablog"
-database_id = "naijablog"
+database_id = "naijablog" # Replace with your real D1 UUID (e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 migrations_dir = "../migrations"
 
 # Cloudflare Cron Triggers (Every 30 minutes automated sync)
