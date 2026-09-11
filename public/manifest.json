@@ -1,0 +1,43 @@
+{
+  "name": "9jaBeacon - Verified Nigerian News",
+  "short_name": "9jaBeacon",
+  "description": "Fast, verified, and AI-synthesized Nigerian breaking news, politics, business, sports, and world events.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#059669",
+  "categories": ["news", "magazines", "politics", "business"],
+  "lang": "en-NG",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Breaking News",
+      "url": "/#breaking",
+      "description": "Latest breaking headlines across Nigeria"
+    },
+    {
+      "name": "Naija Politics & News",
+      "url": "/category/naija-news",
+      "description": "National governance and community reporting"
+    },
+    {
+      "name": "Money & Business",
+      "url": "/category/business",
+      "description": "Markets, FX, and corporate developments"
+    },
+    {
+      "name": "Sports Desk",
+      "url": "/category/sports",
+      "description": "Super Eagles, NPFL, and international football"
+    }
+  ]
+}

@@ -105,7 +105,38 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
   <Footer siteName={siteName} settings={settings} categories={categories} />
   <BottomNav activeNav={activeNav} />
   <script is:inline>
-    window.addEventListener('error', () => {});
+    // Lightweight, debounced visitor telemetry that respects database write limits
+    (function() {
+      try {
+        let sid = sessionStorage.getItem('9ja_sess_id');
+        if (!sid) {
+          sid = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+          sessionStorage.setItem('9ja_sess_id', sid);
+        }
+        const currentPath = window.location.pathname;
+        const pageKey = 'pv_' + currentPath;
+        // Only log once per session per page path to dramatically reduce DB writes
+        if (!sessionStorage.getItem(pageKey)) {
+          sessionStorage.setItem(pageKey, '1');
+          const payload = JSON.stringify({
+            session_id: sid,
+            page_path: currentPath,
+            referrer: document.referrer || null,
+            device_type: window.innerWidth < 768 ? 'mobile' : 'desktop'
+          });
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/analytics/track', new Blob([payload], { type: 'application/json' }));
+          } else {
+            fetch('/api/analytics/track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+              keepalive: true
+            }).catch(function() {});
+          }
+        }
+      } catch (e) {}
+    })();
   </script>
 </body>
 </html>

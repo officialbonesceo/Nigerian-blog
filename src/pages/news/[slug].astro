@@ -247,7 +247,40 @@ const structuredData = {
   )}
 </Layout>
 
-<script is:inline>
+<script is:inline define:vars={{ articleId: article.id }}>
+  // Track genuine article read once per session to power dynamic "Most Read" while minimizing writes
+  (function() {
+    try {
+      if (!articleId) return;
+      const readKey = 'art_read_' + articleId;
+      if (!sessionStorage.getItem(readKey)) {
+        sessionStorage.setItem(readKey, '1');
+        let sid = sessionStorage.getItem('9ja_sess_id');
+        if (!sid) {
+          sid = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+          sessionStorage.setItem('9ja_sess_id', sid);
+        }
+        const payload = JSON.stringify({
+          session_id: sid,
+          page_path: window.location.pathname,
+          article_id: articleId,
+          referrer: document.referrer || null,
+          device_type: window.innerWidth < 768 ? 'mobile' : 'desktop'
+        });
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/analytics/track', new Blob([payload], { type: 'application/json' }));
+        } else {
+          fetch('/api/analytics/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true
+          }).catch(function() {});
+        }
+      }
+    } catch (e) {}
+  })();
+
   // Ensure real canonical URL and locator sync using window.location
   if (typeof window !== 'undefined' && window.location) {
     const currentHref = window.location.href;

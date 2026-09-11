@@ -389,6 +389,43 @@ for (const s of autoSettings) {
             </tbody>
           </table>
         </div>
+
+        <!-- Logs Pagination Controls -->
+        <div class="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-3">
+            <span id="logs-pagination-info" class="text-slate-400 font-mono">
+              Showing logs
+            </span>
+            <div class="flex items-center gap-1 text-slate-400">
+              <span>Per page:</span>
+              <select id="logs-pagesize" onchange="changeLogsPageSize()" class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200">
+                <option value="15">15</option>
+                <option value="30" selected>30</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              id="logs-prev-btn"
+              onclick="changeLogsPage(-1)"
+              class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-200 font-semibold cursor-pointer"
+            >
+              &larr; Prev
+            </button>
+            <span id="logs-page-indicator" class="font-mono text-slate-400 px-2">
+              Page 1
+            </span>
+            <button
+              id="logs-next-btn"
+              onclick="changeLogsPage(1)"
+              class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-200 font-semibold cursor-pointer"
+            >
+              Next &rarr;
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -645,10 +682,43 @@ for (const s of autoSettings) {
     <!-- TAB 5: PUBLISHED ARTICLES -->
     <div id="tab-content-articles" class="admin-tab-content hidden space-y-4">
       <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 class="text-base font-bold text-white">Published Articles Inventory</h2>
-            <p class="text-xs text-slate-400">All stories currently live on 9jaBeacon with synthesis attributions.</p>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <span>Published Articles Inventory</span>
+              <span id="admin-articles-total-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800">
+                {articles.length} total
+              </span>
+            </h2>
+            <p class="text-xs text-slate-400">All stories currently live on 9jaBeacon with synthesis attributions and verified pagination.</p>
+          </div>
+
+          <!-- Controls: Search & Category Filter -->
+          <div class="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              id="admin-articles-search"
+              placeholder="Filter by title or wire..."
+              class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-44 sm:w-56"
+            />
+            <select
+              id="admin-articles-category"
+              class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="">All Categories</option>
+              <option value="naija-news">Naija News</option>
+              <option value="business">Business</option>
+              <option value="sports">Sports</option>
+              <option value="world">World</option>
+            </select>
+            <select
+              id="admin-articles-pagesize"
+              class="px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="8">8 / page</option>
+              <option value="16" selected>16 / page</option>
+              <option value="32">32 / page</option>
+            </select>
           </div>
         </div>
 
@@ -660,25 +730,62 @@ for (const s of autoSettings) {
             </button>
           </div>
         ) : (
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {articles.map(a => (
-              <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition space-y-2">
-                <div class="flex items-start justify-between gap-2">
-                  <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-emerald-400 border border-slate-800">
-                    {a.category_name || a.category_id}
-                  </span>
-                  <span class="text-[10px] text-slate-500 font-mono">{a.views_count || 0} views</span>
+          <div>
+            <div id="admin-articles-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {articles.map((a, idx) => (
+                <div
+                  class="admin-article-card p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition space-y-2"
+                  data-index={idx}
+                  data-title={(a.title || '').toLowerCase()}
+                  data-cat={(a.category_slug || a.category_id || '').toLowerCase()}
+                  data-source={(a.source_name || '').toLowerCase()}
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-emerald-400 border border-slate-800">
+                      {a.category_name || a.category_id}
+                    </span>
+                    <span class="text-[10px] text-slate-500 font-mono">{a.views_count || 0} reads</span>
+                  </div>
+                  <h3 class="font-bold text-sm text-white line-clamp-2 hover:text-emerald-400 transition">
+                    <a href={`/news/${a.slug}`} target="_blank">{a.title}</a>
+                  </h3>
+                  <p class="text-xs text-slate-400 line-clamp-2">{a.summary}</p>
+                  <div class="pt-2 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-900">
+                    <span>Wire: {a.source_name || 'Direct'}</span>
+                    <span class="text-slate-400 font-mono">{a.published_at ? new Date(a.published_at).toLocaleDateString() : 'Recent'}</span>
+                  </div>
                 </div>
-                <h3 class="font-bold text-sm text-white line-clamp-2 hover:text-emerald-400 transition">
-                  <a href={`/news/${a.slug}`} target="_blank">{a.title}</a>
-                </h3>
-                <p class="text-xs text-slate-400 line-clamp-2">{a.summary}</p>
-                <div class="pt-2 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-900">
-                  <span>Wire: {a.source_name || 'Direct'}</span>
-                  <span class="text-slate-400">{a.author_role}</span>
-                </div>
+              ))}
+            </div>
+
+            <!-- Admin Pagination Controls Bar -->
+            <div class="mt-4 pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <span id="admin-pagination-info" class="text-slate-400 font-mono">
+                Showing 1 - {Math.min(articles.length, 16)} of {articles.length} articles
+              </span>
+
+              <div class="flex items-center gap-2">
+                <button
+                  id="admin-prev-page-btn"
+                  onclick="changeAdminArticlePage(-1)"
+                  class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition cursor-pointer"
+                >
+                  &larr; Previous
+                </button>
+
+                <span id="admin-page-indicator" class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 font-mono">
+                  Page 1 of {Math.max(1, Math.ceil(articles.length / 16))}
+                </span>
+
+                <button
+                  id="admin-next-page-btn"
+                  onclick="changeAdminArticlePage(1)"
+                  class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition cursor-pointer"
+                >
+                  Next &rarr;
+                </button>
               </div>
-            ))}
+            </div>
           </div>
         )}
       </div>
@@ -697,9 +804,9 @@ for (const s of autoSettings) {
         {rejectedList.length === 0 ? (
           <div class="p-8 text-center text-slate-500 text-xs">No rejected leads found. All stories have synthesized cleanly.</div>
         ) : (
-          <div class="space-y-3">
+          <div id="rejected-leads-container" class="space-y-3">
             {rejectedList.map(r => (
-              <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+              <div class="rejected-lead-item p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
                 <div class="flex items-start justify-between gap-2">
                   <div class="font-bold text-xs text-white">{r.original_title}</div>
                   <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-950 text-red-400 border border-red-800 whitespace-nowrap">
@@ -724,6 +831,34 @@ for (const s of autoSettings) {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        <!-- Rejected Leads Pagination Controls -->
+        {rejectedList.length > 0 && (
+          <div id="rejected-pagination-bar" class="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <span id="rejected-pagination-info" class="text-slate-400 font-mono">
+              Showing leads
+            </span>
+            <div class="flex items-center gap-2">
+              <button
+                id="rejected-prev-btn"
+                onclick="changeRejectedPage(-1)"
+                class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-200 font-semibold cursor-pointer"
+              >
+                &larr; Prev
+              </button>
+              <span id="rejected-page-indicator" class="font-mono text-slate-400 px-2">
+                Page 1
+              </span>
+              <button
+                id="rejected-next-btn"
+                onclick="changeRejectedPage(1)"
+                class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-slate-200 font-semibold cursor-pointer"
+              >
+                Next &rarr;
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -1067,13 +1202,99 @@ for (const s of autoSettings) {
       }
     }
 
-    function filterLogsTable() {
+    let adminLogsCurrentPage = 1;
+    let adminLogsPageSize = 30;
+
+    function updateLogsPagination() {
       const q = (document.getElementById('logSearchInput')?.value || '').toLowerCase();
-      const rows = document.querySelectorAll('#logsTable tbody tr');
-      rows.forEach(r => {
+      const allRows = Array.from(document.querySelectorAll('#logsTable tbody tr'));
+      const matchedRows = allRows.filter(r => {
         const text = r.textContent?.toLowerCase() || '';
-        r.style.display = text.includes(q) ? '' : 'none';
+        return text.includes(q);
       });
+
+      const total = matchedRows.length;
+      const totalPages = Math.max(1, Math.ceil(total / adminLogsPageSize));
+      if (adminLogsCurrentPage > totalPages) adminLogsCurrentPage = totalPages;
+      if (adminLogsCurrentPage < 1) adminLogsCurrentPage = 1;
+
+      const startIndex = (adminLogsCurrentPage - 1) * adminLogsPageSize;
+      const endIndex = Math.min(startIndex + adminLogsPageSize, total);
+
+      allRows.forEach(r => (r.style.display = 'none'));
+      matchedRows.slice(startIndex, endIndex).forEach(r => (r.style.display = ''));
+
+      const infoEl = document.getElementById('logs-pagination-info');
+      if (infoEl) {
+        infoEl.textContent = total === 0 ? 'No logs matching filter' : `Showing ${startIndex + 1} - ${endIndex} of ${total} logs`;
+      }
+      const pageEl = document.getElementById('logs-page-indicator');
+      if (pageEl) {
+        pageEl.textContent = `Page ${adminLogsCurrentPage} of ${totalPages}`;
+      }
+      const prevBtn = document.getElementById('logs-prev-btn');
+      if (prevBtn) prevBtn.disabled = adminLogsCurrentPage <= 1;
+      const nextBtn = document.getElementById('logs-next-btn');
+      if (nextBtn) nextBtn.disabled = adminLogsCurrentPage >= totalPages;
+    }
+
+    function changeLogsPage(delta) {
+      adminLogsCurrentPage += delta;
+      updateLogsPagination();
+    }
+    window.changeLogsPage = changeLogsPage;
+
+    function changeLogsPageSize() {
+      const sel = document.getElementById('logs-pagesize');
+      if (sel) {
+        adminLogsPageSize = parseInt(sel.value, 10) || 30;
+        adminLogsCurrentPage = 1;
+        updateLogsPagination();
+      }
+    }
+    window.changeLogsPageSize = changeLogsPageSize;
+
+    let adminRejectedCurrentPage = 1;
+    const adminRejectedPageSize = 8;
+
+    function updateRejectedPagination() {
+      const items = Array.from(document.querySelectorAll('.rejected-lead-item'));
+      if (items.length === 0) return;
+      const total = items.length;
+      const totalPages = Math.max(1, Math.ceil(total / adminRejectedPageSize));
+      if (adminRejectedCurrentPage > totalPages) adminRejectedCurrentPage = totalPages;
+      if (adminRejectedCurrentPage < 1) adminRejectedCurrentPage = 1;
+
+      const startIndex = (adminRejectedCurrentPage - 1) * adminRejectedPageSize;
+      const endIndex = Math.min(startIndex + adminRejectedPageSize, total);
+
+      items.forEach((item, idx) => {
+        item.style.display = idx >= startIndex && idx < endIndex ? '' : 'none';
+      });
+
+      const infoEl = document.getElementById('rejected-pagination-info');
+      if (infoEl) {
+        infoEl.textContent = `Showing ${startIndex + 1} - ${endIndex} of ${total} rejected leads`;
+      }
+      const pageEl = document.getElementById('rejected-page-indicator');
+      if (pageEl) {
+        pageEl.textContent = `Page ${adminRejectedCurrentPage} of ${totalPages}`;
+      }
+      const prevBtn = document.getElementById('rejected-prev-btn');
+      if (prevBtn) prevBtn.disabled = adminRejectedCurrentPage <= 1;
+      const nextBtn = document.getElementById('rejected-next-btn');
+      if (nextBtn) nextBtn.disabled = adminRejectedCurrentPage >= totalPages;
+    }
+
+    function changeRejectedPage(delta) {
+      adminRejectedCurrentPage += delta;
+      updateRejectedPagination();
+    }
+    window.changeRejectedPage = changeRejectedPage;
+
+    function filterLogsTable() {
+      adminLogsCurrentPage = 1;
+      updateLogsPagination();
     }
 
     async function saveAdminCredentials(e) {
@@ -1136,6 +1357,87 @@ for (const s of autoSettings) {
       localStorage.removeItem('bonesceo_auth_user');
       window.location.href = '/bonesceo/admin/login';
     }
+
+    // Admin Articles Pagination & Search Filtering Logic
+    let adminCurrentPage = 1;
+    let adminPageSize = 16;
+    let adminFilteredCards = [];
+
+    function updateAdminArticlesView() {
+      const search = (document.getElementById('admin-articles-search')?.value || '').toLowerCase().trim();
+      const cat = (document.getElementById('admin-articles-category')?.value || '').toLowerCase().trim();
+      const pSizeVal = document.getElementById('admin-articles-pagesize')?.value;
+      if (pSizeVal) adminPageSize = parseInt(pSizeVal, 10);
+
+      const allCards = Array.from(document.querySelectorAll('.admin-article-card'));
+      adminFilteredCards = allCards.filter(card => {
+        const title = card.getAttribute('data-title') || '';
+        const cardCat = card.getAttribute('data-cat') || '';
+        const source = card.getAttribute('data-source') || '';
+        const matchesSearch = !search || title.includes(search) || source.includes(search);
+        const matchesCat = !cat || cardCat.includes(cat);
+        return matchesSearch && matchesCat;
+      });
+
+      const total = adminFilteredCards.length;
+      const totalPages = Math.max(1, Math.ceil(total / adminPageSize));
+      if (adminCurrentPage > totalPages) adminCurrentPage = totalPages;
+      if (adminCurrentPage < 1) adminCurrentPage = 1;
+
+      const startIndex = (adminCurrentPage - 1) * adminPageSize;
+      const endIndex = Math.min(startIndex + adminPageSize, total);
+
+      // Hide all first
+      allCards.forEach(card => card.style.display = 'none');
+
+      // Show only current page items
+      for (let i = startIndex; i < endIndex; i++) {
+        if (adminFilteredCards[i]) {
+          adminFilteredCards[i].style.display = '';
+        }
+      }
+
+      // Update UI indicators
+      const infoEl = document.getElementById('admin-pagination-info');
+      if (infoEl) {
+        infoEl.textContent = total === 0 ? 'No matching articles found' : `Showing ${startIndex + 1} - ${endIndex} of ${total} articles`;
+      }
+      const pageEl = document.getElementById('admin-page-indicator');
+      if (pageEl) {
+        pageEl.textContent = `Page ${adminCurrentPage} of ${totalPages}`;
+      }
+      const prevBtn = document.getElementById('admin-prev-page-btn');
+      if (prevBtn) prevBtn.disabled = adminCurrentPage <= 1;
+      const nextBtn = document.getElementById('admin-next-page-btn');
+      if (nextBtn) nextBtn.disabled = adminCurrentPage >= totalPages;
+      const badge = document.getElementById('admin-articles-total-badge');
+      if (badge) badge.textContent = `${total} matching`;
+    }
+
+    function changeAdminArticlePage(delta) {
+      adminCurrentPage += delta;
+      updateAdminArticlesView();
+    }
+    window.changeAdminArticlePage = changeAdminArticlePage;
+
+    document.getElementById('admin-articles-search')?.addEventListener('input', () => {
+      adminCurrentPage = 1;
+      updateAdminArticlesView();
+    });
+    document.getElementById('admin-articles-category')?.addEventListener('change', () => {
+      adminCurrentPage = 1;
+      updateAdminArticlesView();
+    });
+    document.getElementById('admin-articles-pagesize')?.addEventListener('change', () => {
+      adminCurrentPage = 1;
+      updateAdminArticlesView();
+    });
+
+    setTimeout(() => {
+      updateAdminArticlesView();
+      updateLogsPagination();
+      updateRejectedPagination();
+    }, 100);
 
     // Auto-verify session and ensure cookie is synced
     (async function syncAdminAuth() {

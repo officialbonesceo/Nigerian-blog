@@ -70,12 +70,12 @@ function parseXmlFeed(xml: string): RssFeedItem[] {
     const author = extractTag(itemXml, 'dc:creator') || extractTag(itemXml, 'author');
     
     // Extract image enclosure, media:content, media:thumbnail or embedded <img>
-    let enclosureUrl = extractAttribute(itemXml, 'enclosure', 'url');
+    let enclosureUrl: string | undefined = extractAttribute(itemXml, 'enclosure', 'url') || undefined;
     if (!enclosureUrl) {
-      enclosureUrl = extractAttribute(itemXml, 'media:content', 'url');
+      enclosureUrl = extractAttribute(itemXml, 'media:content', 'url') || undefined;
     }
     if (!enclosureUrl) {
-      enclosureUrl = extractAttribute(itemXml, 'media:thumbnail', 'url');
+      enclosureUrl = extractAttribute(itemXml, 'media:thumbnail', 'url') || undefined;
     }
     if (!enclosureUrl) {
       // Check for nested <media:thumbnail url="..." />

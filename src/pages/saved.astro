@@ -15,14 +15,14 @@ import Layout from '../layouts/Layout.astro';
           <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
           </svg>
-          Saved Stories
+          <span>Saved Stories</span>
         </h1>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Stored locally on your device for fast offline reading</p>
+        <p id="saved-count-indicator" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Stored locally on your device for fast offline reading</p>
       </div>
 
       <button
         id="btn-clear-all-saved"
-        class="text-xs text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors p-2 cursor-pointer"
+        class="text-xs text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors p-2 cursor-pointer font-medium"
       >
         Clear All
       </button>
@@ -30,6 +30,29 @@ import Layout from '../layouts/Layout.astro';
 
     <!-- Container for dynamic bookmarks -->
     <div id="saved-list" class="space-y-2.5"></div>
+
+    <!-- Pagination Bar -->
+    <div id="saved-pagination" class="hidden pt-4 pb-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+      <button
+        id="btn-saved-prev"
+        onclick="changeSavedPage(-1)"
+        class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+      >
+        &larr; Previous
+      </button>
+
+      <div id="saved-page-indicator" class="text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
+        Page 1
+      </div>
+
+      <button
+        id="btn-saved-next"
+        onclick="changeSavedPage(1)"
+        class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+      >
+        Next &rarr;
+      </button>
+    </div>
 
     <!-- Empty State -->
     <div id="saved-empty" class="hidden p-12 text-center bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs dark:shadow-none space-y-3">
@@ -51,9 +74,14 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script is:inline>
+  let currentSavedPage = 1;
+  const SAVED_PAGE_SIZE = 6;
+
   function renderSavedArticles() {
     const listContainer = document.getElementById('saved-list');
     const emptyState = document.getElementById('saved-empty');
+    const paginationBar = document.getElementById('saved-pagination');
+    const countIndicator = document.getElementById('saved-count-indicator');
     if (!listContainer || !emptyState) return;
 
     let saved = [];
@@ -64,11 +92,25 @@ import Layout from '../layouts/Layout.astro';
     if (saved.length === 0) {
       listContainer.innerHTML = '';
       emptyState.classList.remove('hidden');
+      if (paginationBar) paginationBar.classList.add('hidden');
+      if (countIndicator) countIndicator.textContent = 'Stored locally on your device for fast offline reading';
       return;
     }
 
     emptyState.classList.add('hidden');
-    listContainer.innerHTML = saved.map((art) => `
+    const total = saved.length;
+    const totalPages = Math.max(1, Math.ceil(total / SAVED_PAGE_SIZE));
+    if (currentSavedPage > totalPages) currentSavedPage = totalPages;
+    if (currentSavedPage < 1) currentSavedPage = 1;
+
+    const start = (currentSavedPage - 1) * SAVED_PAGE_SIZE;
+    const pageItems = saved.slice(start, start + SAVED_PAGE_SIZE);
+
+    if (countIndicator) {
+      countIndicator.textContent = `${total} saved ${total === 1 ? 'story' : 'stories'} offline (${start + 1}-${Math.min(start + SAVED_PAGE_SIZE, total)})`;
+    }
+
+    listContainer.innerHTML = pageItems.map((art) => `
       <article class="p-3 sm:p-4 rounded-xl bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs dark:shadow-none transition-all flex items-start justify-between gap-3 group">
         <div class="flex-1 min-w-0 space-y-1">
           <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-500 font-mono">
@@ -90,7 +132,26 @@ import Layout from '../layouts/Layout.astro';
         </a>
       </article>
     `).join('');
+
+    if (paginationBar) {
+      if (totalPages > 1) {
+        paginationBar.classList.remove('hidden');
+        const pageInd = document.getElementById('saved-page-indicator');
+        if (pageInd) pageInd.textContent = `Page ${currentSavedPage} of ${totalPages}`;
+        const prevBtn = document.getElementById('btn-saved-prev');
+        if (prevBtn) prevBtn.disabled = currentSavedPage <= 1;
+        const nextBtn = document.getElementById('btn-saved-next');
+        if (nextBtn) nextBtn.disabled = currentSavedPage >= totalPages;
+      } else {
+        paginationBar.classList.add('hidden');
+      }
+    }
   }
+
+  window.changeSavedPage = function(delta) {
+    currentSavedPage += delta;
+    renderSavedArticles();
+  };
 
   window.removeBookmark = function(id) {
     let saved = JSON.parse(localStorage.getItem('9jabeacon_bookmarks') || localStorage.getItem('naijapulse_bookmarks') || '[]');
@@ -105,6 +166,7 @@ import Layout from '../layouts/Layout.astro';
     if (confirm('Are you sure you want to clear all saved stories?')) {
       localStorage.removeItem('9jabeacon_bookmarks');
       localStorage.removeItem('naijapulse_bookmarks');
+      currentSavedPage = 1;
       renderSavedArticles();
       window.showToast?.('Cleared all saved stories');
     }
