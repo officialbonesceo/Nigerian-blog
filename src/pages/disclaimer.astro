@@ -1,0 +1,131 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getD1, getSiteSettings, getCategories } from '../lib/runtime-db';
+
+export const prerender = false;
+
+const db = getD1(Astro.locals);
+const [settings, categories] = await Promise.all([
+  getSiteSettings(db),
+  getCategories(db),
+]);
+
+const siteName = settings.site_name || '9jaBeacon';
+const siteUrl = (settings.site_url || 'https://9jabeacon.pages.dev').replace(/\/+$/, '');
+const contactEmail = settings.contact_email || 'editor@9jabeacon.com';
+const lastUpdated = 'September 13, 2026';
+---
+
+<Layout
+  title={`Editorial Disclaimer & Attribution Policy | ${siteName}`}
+  description={`Read the legal and editorial disclaimer for ${siteName}. Learn about our journalistic verification protocols, syndication practices, corrections policy, and fair use guidelines.`}
+  canonicalUrl={`${siteUrl}/disclaimer`}
+>
+  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6 font-mono">
+    <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Home</a>
+    <span>/</span>
+    <span class="text-slate-800 dark:text-slate-200">Editorial Disclaimer</span>
+  </nav>
+
+  <article class="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-10 shadow-xs space-y-8">
+    <header class="border-b border-slate-200 dark:border-slate-800 pb-6 space-y-2">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+        <span>Journalistic Standards & Public Disclosure</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+        Editorial Disclaimer & Attribution Policy
+      </h1>
+      <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+        Effective Date: {lastUpdated} &bull; Editorial Standards, Sourcing Transparency & Liability Limits
+      </p>
+    </header>
+
+    <div class="prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed space-y-6 text-slate-700 dark:text-slate-300">
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">1.</span> Editorial Independence & General Notice
+        </h2>
+        <p>
+          <strong>{siteName}</strong> is an independent digital news and wire aggregation publication. Our mission is to provide balanced, timely, and accessible coverage of Nigerian public affairs, business developments, sports, regional bulletins, and socio-economic updates.
+        </p>
+        <p>
+          Information published on this platform is compiled from verified wire dispatches, press conferences, official institutional bulletins, regulatory disclosures, and on-the-record public statements. While every reasonable effort is made to verify the timeliness and factual accuracy of our reports, news stories develop rapidly. Consequently, materials are published for general public informational purposes without warranty of completeness.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">2.</span> Professional & Financial Advisory Disclaimer
+        </h2>
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          <p class="font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+            Important Financial & Legal Caveat:
+          </p>
+          <p>
+            No reporting, analysis, or market commentary on {siteName} constitutes financial advice, investment guidance, stock recommendations, or legal counsel. Mentions of currencies (including the Nigerian Naira exchange rates), commodities, publicly traded entities, or regulatory fiscal policies are strictly observational reporting. Readers must conduct independent due diligence and seek advice from accredited professionals before entering into financial or legal commitments.
+          </p>
+        </div>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">3.</span> News Sourcing, Syndication & Attribution
+        </h2>
+        <p>
+          {siteName} respects the intellectual property rights of news agencies, freelance journalists, national wire services, and publishers.
+        </p>
+        <p>
+          When reporting on wire developments originated by other journalistic outlets, our editorial desk adheres to rigorous attribution standards:
+        </p>
+        <ul class="list-disc pl-6 space-y-1.5 text-slate-600 dark:text-slate-300">
+          <li>The originating agency or publisher is clearly credited in the article byline or lead paragraph (e.g. <em>"Reported via Verified Wire / [Publisher]"</em>);</li>
+          <li>A direct canonical link to the original reporting is supplied wherever available;</li>
+          <li>Third-party trademarks, publication titles, and logos referenced in reports remain the exclusive property of their respective trademark holders; their inclusion constitutes nominative fair use for identification and public commentary.</li>
+        </ul>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">4.</span> Copyright Infringement & Takedown Policy (Notice & Takedown)
+        </h2>
+        <p>
+          If you are a copyright owner, publisher, or authorized licensing agent and believe that any article, excerpt, or visual content hosted on {siteName} infringes your copyright or intellectual property rights without appropriate license or fair dealing authorization, please notify us immediately.
+        </p>
+        <p>
+          Upon receipt of a substantiated written notice containing:
+        </p>
+        <ul class="list-disc pl-6 space-y-1.5 text-slate-600 dark:text-slate-300">
+          <li>Identification of the copyrighted work claimed to have been infringed;</li>
+          <li>The specific URL link on {siteName} where the alleged material appears;</li>
+          <li>Your contact information (name, address, telephone, email);</li>
+          <li>A statement affirming your good-faith belief that the disputed use is unauthorized;</li>
+        </ul>
+        <p>
+          Our editorial team will promptly review the notice and, where warranted, take down, modify, or provide appropriate attribution within 24 to 48 hours. Notices should be emailed to: <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 font-semibold underline">{contactEmail}</a>.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">5.</span> Corrections & Retractions Policy
+        </h2>
+        <p>
+          Accuracy is central to our journalistic reputation. If an article contains an inadvertent factual error, misspelling of names, or misattributed quote, we welcome reader corrections. When a substantive correction is made, a transparent note will be appended at the conclusion of the article explaining the correction and the date it was updated.
+        </p>
+        <p>
+          Submit corrections with verified primary documentation to: <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 font-semibold underline">{contactEmail}</a>.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">6.</span> Third-Party Commentary & Public Contributions
+        </h2>
+        <p>
+          Opinions, guest editorial columns, and analytical letters expressed on {siteName} belong solely to their respective individual authors and do not necessarily represent the institutional editorial board or publishers of {siteName}.
+        </p>
+      </section>
+    </div>
+  </article>
+</Layout>

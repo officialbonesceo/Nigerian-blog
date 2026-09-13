@@ -1,0 +1,159 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getD1, getSiteSettings, getCategories } from '../lib/runtime-db';
+
+export const prerender = false;
+
+const db = getD1(Astro.locals);
+const [settings, categories] = await Promise.all([
+  getSiteSettings(db),
+  getCategories(db),
+]);
+
+const siteName = settings.site_name || '9jaBeacon';
+const siteUrl = (settings.site_url || 'https://9jabeacon.pages.dev').replace(/\/+$/, '');
+const contactEmail = settings.contact_email || 'privacy@9jabeacon.com';
+const lastUpdated = 'September 13, 2026';
+---
+
+<Layout
+  title={`Privacy Policy | ${siteName}`}
+  description={`Learn how ${siteName} respects reader privacy, handles data responsibly in compliance with the Nigeria Data Protection Act (NDPA) and global privacy standards.`}
+  canonicalUrl={`${siteUrl}/privacy`}
+>
+  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6 font-mono">
+    <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Home</a>
+    <span>/</span>
+    <span class="text-slate-800 dark:text-slate-200">Privacy Policy</span>
+  </nav>
+
+  <article class="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-10 shadow-xs space-y-8">
+    <header class="border-b border-slate-200 dark:border-slate-800 pb-6 space-y-2">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span>NDPA & Reader Privacy Compliant</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+        Privacy Policy
+      </h1>
+      <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+        Effective Date: {lastUpdated} &bull; Applicable to all digital properties of {siteName}
+      </p>
+    </header>
+
+    <div class="prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed space-y-6 text-slate-700 dark:text-slate-300">
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">1.</span> Commitment to Data Protection
+        </h2>
+        <p>
+          At <strong>{siteName}</strong> ("we", "our", or "the Publication"), protecting reader trust and personal information is a foundational editorial principle. This Privacy Policy sets forth our policies and practices regarding the collection, handling, storage, and protection of personal data in strict compliance with the <strong>Nigeria Data Protection Act 2023 (NDPA)</strong>, the <strong>General Data Protection Regulation (GDPR)</strong> where applicable, and international privacy standards.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">2.</span> Information We Collect
+        </h2>
+        <p>
+          We deliberately follow a data-minimization philosophy. We only collect information strictly required to deliver our news publication:
+        </p>
+        <div class="space-y-3 pl-2">
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider font-mono">A. Information You Voluntarily Provide</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
+              When you contact our news desk, submit an editorial correction, subscribe to breaking alerts, or send feedback via email, we receive your email address, name, and the specific contents of your communication.
+            </p>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider font-mono">B. Automatically Collected Technical & Diagnostic Data</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
+              When you load our pages, our network infrastructure collects standard, pseudonymized technical logs including device type (e.g. mobile vs. desktop), browser user-agent, referring URL, time of access, and non-identifying aggregated page visit counts. We do not correlate your IP address with personally identifiable records.
+            </p>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider font-mono">C. Client-Side Browser Storage</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
+              We utilize browser localStorage solely for client-side reading preferences: your active reading font size (small, standard, large), saved bookmarks in your "Saved Reads" list, and your light/dark display theme choice. This information remains completely on your device and is never harvested or sold.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">3.</span> How We Use Your Information
+        </h2>
+        <p>The information we collect is used strictly for legitimate operational purposes:</p>
+        <ul class="list-disc pl-6 space-y-1.5 text-slate-600 dark:text-slate-300">
+          <li>Delivering, rendering, and optimizing article loading speeds on mobile and desktop networks;</li>
+          <li>Analyzing aggregated editorial trends (e.g., determining which breaking desks receive the highest public interest to guide journalism coverage);</li>
+          <li>Responding to user-initiated editorial feedback, corrections, or tip-offs;</li>
+          <li>Detecting, preventing, and mitigating malicious traffic, abuse, or unauthorized automated crawling.</li>
+        </ul>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">4.</span> Cookies and Tracking Technologies
+        </h2>
+        <p>
+          {siteName} does not deploy intrusive invasive trackers, behavioral profiling cookies, or cross-site tracking pixels. We use essential, performance, and functional session cookies strictly necessary to maintain your security session and site preferences. You can adjust your browser settings to block or notify you about cookies at any time.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">5.</span> Zero Sale or Unauthorized Disclosure of Data
+        </h2>
+        <p>
+          <strong>We never sell, rent, lease, or monetize your personal information or browsing history to third-party data brokers, marketers, or advertisers.</strong>
+        </p>
+        <p>
+          We only share data with service providers performing contracted operational services (such as secure DNS routing and high-availability CDN delivery) bound by strict confidentiality requirements, or where required to comply with a valid court order or statutory requirement under Nigerian law.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">6.</span> Data Security & Integrity
+        </h2>
+        <p>
+          We implement industry-standard technical and organizational security controls, including automated end-to-end SSL/TLS encryption for all in-transit traffic, edge firewall protection against distributed denial-of-service (DDoS) incidents, and strict access controls on internal editorial publishing portals.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">7.</span> Your Statutory Rights
+        </h2>
+        <p>
+          Under the Nigeria Data Protection Act and international privacy frameworks, you have specific rights regarding your personal information, including:
+        </p>
+        <ul class="list-disc pl-6 space-y-1.5 text-slate-600 dark:text-slate-300">
+          <li><strong>Right of Access:</strong> You may request confirmation and a summary of any personal data we hold about you;</li>
+          <li><strong>Right to Rectification:</strong> You may request immediate correction of inaccurate or incomplete records;</li>
+          <li><strong>Right to Erasure ("Right to be Forgotten"):</strong> You may request deletion of your personal data where retention is no longer necessary;</li>
+          <li><strong>Right to Object or Restrict Processing:</strong> You may object to specific types of processing or withdraw previously given consent.</li>
+        </ul>
+        <p>
+          To exercise any of these rights, contact our Data Protection Officer at <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 font-semibold underline">{contactEmail}</a>. Requests are responded to promptly within statutory time limits.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">8.</span> Updates & Data Inquiries
+        </h2>
+        <p>
+          We may update this Privacy Policy periodically to reflect changes in regulatory directives, statutory requirements, or site features. Notice of substantial revisions will be posted prominently on our homepage or within this statement.
+        </p>
+        <p>
+          Inquiries regarding this policy should be sent to:
+          <br />
+          <strong>Privacy & Data Compliance Office</strong>: <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 font-semibold underline">{contactEmail}</a>
+        </p>
+      </section>
+    </div>
+  </article>
+</Layout>

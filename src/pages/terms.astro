@@ -1,0 +1,146 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getD1, getSiteSettings, getCategories } from '../lib/runtime-db';
+
+export const prerender = false;
+
+const db = getD1(Astro.locals);
+const [settings, categories] = await Promise.all([
+  getSiteSettings(db),
+  getCategories(db),
+]);
+
+const siteName = settings.site_name || '9jaBeacon';
+const siteUrl = (settings.site_url || 'https://9jabeacon.pages.dev').replace(/\/+$/, '');
+const contactEmail = settings.contact_email || 'legal@9jabeacon.com';
+const lastUpdated = 'September 13, 2026';
+---
+
+<Layout
+  title={`Terms of Service | ${siteName}`}
+  description={`Read the Terms of Service for ${siteName}. Learn about user rights, intellectual property, permissible usage, and editorial policies.`}
+  canonicalUrl={`${siteUrl}/terms`}
+>
+  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6 font-mono">
+    <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Home</a>
+    <span>/</span>
+    <span class="text-slate-800 dark:text-slate-200">Terms of Service</span>
+  </nav>
+
+  <article class="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-10 shadow-xs space-y-8">
+    <header class="border-b border-slate-200 dark:border-slate-800 pb-6 space-y-2">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span>Binding Agreement</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+        Terms of Service
+      </h1>
+      <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+        Effective Date: {lastUpdated} &bull; Applicable to all visitors, subscribers, and contributors
+      </p>
+    </header>
+
+    <div class="prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed space-y-6 text-slate-700 dark:text-slate-300">
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">1.</span> Acceptance of Terms
+        </h2>
+        <p>
+          By accessing, browsing, reading, or interacting with <strong>{siteName}</strong> ("the Publication", "we", "our", or "us"), accessible via website, mobile applications, RSS feeds, or associated digital distribution channels, you acknowledge that you have read, understood, and agreed to be bound by these Terms of Service. If you do not agree with any part of these terms, you must immediately cease use of our platform.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">2.</span> Editorial Scope & Information Notice
+        </h2>
+        <p>
+          {siteName} is a digital journalistic news publication and aggregation platform providing reporting, analysis, investigative briefs, and public updates on Nigerian national news, politics, business, sports, technology, and regional developments.
+        </p>
+        <p>
+          All content published is intended exclusively for general informational, educational, and journalistic purposes. Content on our platform does not constitute professional legal, financial, investment, tax, medical, or security advice. Users should consult licensed professionals before making decisions based on reports or data presented.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">3.</span> Intellectual Property & Fair Use Syndication
+        </h2>
+        <p>
+          Original journalistic copy, investigative analyses, brand logos, site designs, graphics, and compilation layouts produced by {siteName} are protected under Nigerian copyright laws, international treaties, and applicable conventions.
+        </p>
+        <p>
+          Where {siteName} references or republishes dispatches from partner wires, official government press releases, or national syndicates, full canonical attribution and direct source links are preserved. Third-party trademarks, company names, and organization logos cited in editorial reporting remain the property of their respective owners.
+        </p>
+        <p>
+          You may share article excerpts, social snippets, and headline quotes provided that:
+        </p>
+        <ul class="list-disc pl-6 space-y-1.5 text-slate-600 dark:text-slate-300">
+          <li>Direct hyperlink back to the original article on {siteName} is clearly visible;</li>
+          <li>The excerpt does not mischaracterize, manipulate, or alter the substantive meaning of the report;</li>
+          <li>Systematic, automated scraping or mass unauthorized republication of entire articles for commercial redistribution without prior written authorization is strictly prohibited.</li>
+        </ul>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">4.</span> User Conduct & Interactive Features
+        </h2>
+        <p>
+          When using search fields, reading preference toggles, newsletter sign-ups, or social sharing channels connected with {siteName}, you agree not to:
+        </p>
+        <ul class="list-disc pl-6 space-y-1.5 text-slate-600 dark:text-slate-300">
+          <li>Transmit malicious code, viruses, malware, or exploit scripts;</li>
+          <li>Engage in denial-of-service attacks, port scanning, or malicious automated queries intended to disrupt publication availability;</li>
+          <li>Post or distribute defamatory, harassing, obscene, hateful, fraudulent, or legally actionable content;</li>
+          <li>Impersonate any journalist, editor, government official, or publication representative.</li>
+        </ul>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">5.</span> External Links & Third-Party Platforms
+        </h2>
+        <p>
+          Articles and editorial references may link to external websites, government gazettes, regulatory portals, or social media networks (such as Facebook, TikTok, YouTube, or X). {siteName} does not govern or endorse the privacy practices, availability, or content of external third-party destinations. Visiting external links is done solely at your own risk.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">6.</span> Limitation of Liability
+        </h2>
+        <p>
+          To the maximum extent permitted by applicable law, {siteName}, its publishers, editors, writers, and affiliates shall not be liable for any indirect, incidental, consequential, special, or punitive damages arising from your access to, inability to access, or reliance upon information published on our platform.
+        </p>
+        <p>
+          The service is provided on an "as is" and "as available" basis without warranties of any kind, whether express or implied, including fitness for a particular purpose, non-infringement, or uninterrupted accessibility.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">7.</span> Governing Law & Jurisdiction
+        </h2>
+        <p>
+          These Terms of Service shall be governed by and construed in accordance with the substantive laws of the Federal Republic of Nigeria, without regard to conflict of law principles. Any dispute arising under these terms shall be subject to the exclusive jurisdiction of the competent courts in Nigeria.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">8.</span> Amendments & Contact
+        </h2>
+        <p>
+          We reserve the right to revise or update these Terms of Service at our sole discretion. Any changes will be published here with an updated effective date. Continued use of {siteName} following any modification constitutes full acceptance of the revised terms.
+        </p>
+        <p>
+          For legal inquiries, rights clearances, or official notices, please direct communications to:
+          <br />
+          <strong>Legal & Editorial Desk</strong>: <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 font-semibold underline">{contactEmail}</a>
+        </p>
+      </section>
+    </div>
+  </article>
+</Layout>

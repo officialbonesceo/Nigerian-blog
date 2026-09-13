@@ -1,4 +1,5 @@
 import type { RssFeedItem } from './types';
+import { isPublisherLogoOrBanner } from './editorial-image';
 
 /**
  * Lightweight, robust RSS 2.0 and Atom XML parser for Cloudflare Workers & Node runtimes
@@ -85,13 +86,6 @@ function parseXmlFeed(xml: string): RssFeedItem[] {
       }
     }
     if (!enclosureUrl) {
-      // Check for <image><url>...</url></image>
-      const imgTagMatch = itemXml.match(/<image>\s*<url>([\s\S]*?)<\/url>\s*<\/image>/i);
-      if (imgTagMatch) {
-        enclosureUrl = cleanCdata(imgTagMatch[1]);
-      }
-    }
-    if (!enclosureUrl) {
       // Check for <img src="..." in content:encoded or description
       const imgMatch = (content || description || '').match(/<img[^>]+src=["']([^"']+)["']/i);
       if (imgMatch && !imgMatch[1].includes('feedburner') && !imgMatch[1].includes('1x1') && !imgMatch[1].includes('doubleclick')) {
@@ -99,10 +93,13 @@ function parseXmlFeed(xml: string): RssFeedItem[] {
       }
     }
 
-    // Clean and validate enclosure URL
+    // Clean and validate enclosure URL - MUST NOT be a publisher logo, badge or banner
     if (enclosureUrl) {
       enclosureUrl = cleanCdata(enclosureUrl).trim();
       if (!enclosureUrl.startsWith('http://') && !enclosureUrl.startsWith('https://')) {
+        enclosureUrl = undefined;
+      } else if (isPublisherLogoOrBanner(enclosureUrl)) {
+        // Explicitly reject publisher logos, site watermarks, and headers
         enclosureUrl = undefined;
       }
     }

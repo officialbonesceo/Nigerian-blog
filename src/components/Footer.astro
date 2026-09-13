@@ -126,17 +126,20 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
     </div>
 
     <!-- Bottom Attribution & Standards -->
-    <div class="pt-6 border-t border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
+    <div class="pt-6 border-t border-slate-200 dark:border-slate-800/80 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
         <span>© {new Date().getFullYear()} 9jaBeacon. All rights reserved.</span>
       </div>
 
-      <div class="flex items-center gap-4 text-xs font-medium">
-        <a href="/search" class="hover:text-slate-900 dark:hover:text-white transition-colors">Search</a>
-        <a href="/saved" class="hover:text-slate-900 dark:hover:text-white transition-colors">Saved Reads</a>
-        <a href="/sitemap.xml" class="hover:text-slate-900 dark:hover:text-white transition-colors">Sitemap</a>
-        <a href="/bonesceo/admin" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Editorial Portal</a>
+      <!-- Legal Compliance Links -->
+      <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-medium">
+        <a id="footer-link-terms" href="/terms" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Terms of Service</a>
+        <a id="footer-link-privacy" href="/privacy" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Privacy Policy</a>
+        <a id="footer-link-disclaimer" href="/disclaimer" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Disclaimer & Attribution</a>
+        <a id="footer-link-saved" href="/saved" class="hover:text-slate-900 dark:hover:text-white transition-colors">Saved Reads</a>
+        <a id="footer-link-sitemap" href="/sitemap.xml" class="hover:text-slate-900 dark:hover:text-white transition-colors">Sitemap</a>
+        <a id="footer-link-admin" href="/bonesceo/admin" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Editorial Portal</a>
       </div>
     </div>
   </div>

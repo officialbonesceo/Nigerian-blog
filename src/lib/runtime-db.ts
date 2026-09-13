@@ -556,6 +556,22 @@ export async function getArticleBySlug(db: D1Database, slug: string) {
   return fallback ? formatArticle(fallback) : null;
 }
 
+export async function getArticleById(db: D1Database, id: string) {
+  try {
+    let row = await db.prepare(`${select} WHERE a.id=? LIMIT 1`).bind(id).first<Article>();
+    if (!row) {
+      row = await db.prepare("SELECT * FROM articles WHERE id=? LIMIT 1").bind(id).first<Article>();
+    }
+    if (row) {
+      return formatArticle(row);
+    }
+  } catch (err) {
+    console.warn('getArticleById error:', err);
+  }
+  const fallback = (initialArticles as Article[]).find((a) => a.id === id);
+  return fallback ? formatArticle(fallback) : null;
+}
+
 const recentViewIncrements = new Map<string, number>();
 export async function incrementArticleView(db: D1Database, id: string) {
   const now = Date.now();

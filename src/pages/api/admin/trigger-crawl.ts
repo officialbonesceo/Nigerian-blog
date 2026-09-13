@@ -11,6 +11,7 @@ import {
 } from '../../../lib/runtime-db';
 import { fetchAndParseRssFeed } from '../../../lib/rss-parser';
 import { synthesizeNewsArticle, generateEditorialNewsImage, type AiCredentialsConfig } from '../../../lib/ai-engine';
+import { isPublisherLogoOrBanner } from '../../../lib/editorial-image';
 import { postToBuffer, type BufferConfig } from '../../../lib/buffer';
 
 interface TriggerCrawlBody {
@@ -186,8 +187,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
           const categoryId = aiResult.categoryId || source.category_default_id || 'cat_naija_news';
 
-          // Image handling & generation
+          // Image handling & validation: Strictly reject publisher logos and avatars
           let finalImageUrl = item.enclosureUrl;
+          if (finalImageUrl && isPublisherLogoOrBanner(finalImageUrl)) {
+            finalImageUrl = undefined;
+          }
+
           let imageCaption = `Synthesized report based on wire from ${source.name}.`;
           let imageCredit = source.name;
 
@@ -197,7 +202,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
               'IMAGE_GENERATION',
               source.id,
               source.name,
-              `No media enclosure found for "${aiResult.title.slice(0, 35)}...". Synthesizing high-res editorial concept image.`,
+              `No authentic story photo found (or was publisher logo). Generating crisp 9jaBeacon editorial SVG vector card.`,
               'info'
             );
             const genImg = await generateEditorialNewsImage(

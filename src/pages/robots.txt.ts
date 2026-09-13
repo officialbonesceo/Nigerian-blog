@@ -4,8 +4,18 @@ export const GET: APIRoute = ({ url }) => {
   const robotsTxt = `
 User-agent: *
 Allow: /
+Disallow: /bonesceo/admin
 Disallow: /admin
-Disallow: /api/
+Disallow: /api/admin/
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-News
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
 
 Sitemap: ${url.origin}/sitemap.xml
 `.trim();
