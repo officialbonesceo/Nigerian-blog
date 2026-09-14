@@ -2,7 +2,8 @@
 import Layout from '../../layouts/Layout.astro';
 import ArticleCard from '../../components/ArticleCard.astro';
 import TopStoryCard from '../../components/TopStoryCard.astro';
-import { getD1, getCategoryBySlug, getArticles, getCategories } from '../../lib/runtime-db';
+import AdSlot from '../../components/AdSlot.astro';
+import { getD1, getCategoryBySlug, getArticles, getCategories, getSiteSettings } from '../../lib/runtime-db';
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/');
@@ -15,10 +16,15 @@ const pageSize = 8;
 const offset = (page - 1) * pageSize;
 
 // Fetch current page articles plus one extra to determine if next page exists
-const [allCategories, fetchedArticles] = await Promise.all([
+const [allCategories, fetchedArticles, siteSettings] = await Promise.all([
   getCategories(d1),
   getArticles(d1, { categorySlug: slug, limit: pageSize + 1, offset }),
+  getSiteSettings(d1),
 ]);
+
+const isMonetagEnabled = siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true';
+const monetagInArticleZoneId = siteSettings.monetag_in_article_zone || '';
+const monetagAdCode = siteSettings.monetag_ad_code || '';
 
 const hasNextPage = fetchedArticles.length > pageSize;
 const categoryArticles = fetchedArticles.slice(0, pageSize);
@@ -136,8 +142,18 @@ const listArticles = isFirstPage ? categoryArticles.slice(1) : categoryArticles;
 
     {listArticles.length > 0 ? (
       <div class="space-y-3">
-        {listArticles.map((art) => (
-          <ArticleCard article={art} showCategory={false} />
+        {listArticles.map((art, idx) => (
+          <>
+            <ArticleCard article={art} showCategory={false} />
+            {idx === 2 && (
+              <AdSlot
+                format="feed"
+                isMonetagEnabled={isMonetagEnabled}
+                inArticleZoneId={monetagInArticleZoneId}
+                adCodeSnippet={monetagAdCode}
+              />
+            )}
+          </>
         ))}
       </div>
     ) : (

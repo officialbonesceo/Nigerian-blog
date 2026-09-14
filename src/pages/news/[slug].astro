@@ -3,8 +3,10 @@ import Layout from '../../layouts/Layout.astro';
 import ArticleCard from '../../components/ArticleCard.astro';
 import BookmarkButton from '../../components/BookmarkButton.astro';
 import ShareBar from '../../components/ShareBar.astro';
+import AdSlot from '../../components/AdSlot.astro';
 import { getD1, getArticleBySlug, getRelatedArticles, getSiteSettings } from '../../lib/runtime-db';
 import { DEFAULT_FALLBACK_IMAGE_URL } from '../../lib/fallback-image';
+import { cleanAndFormatArticleHtml } from '../../lib/content-formatter';
 
 export const prerender = false;
 
@@ -36,6 +38,29 @@ const updatedDate = rawUp && !isNaN(rawUp.getTime())
   : null;
 
 const isUpdated = Boolean(updatedDate && article.updated_at !== article.published_at);
+
+// Clean and sanitize content (removes raw markdown asterisks, ensures bold/italics and valid HTML structure)
+const formattedArticleContent = cleanAndFormatArticleHtml(article.content);
+
+// Monetag configuration status
+const isMonetagEnabled = siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true';
+const monetagInArticleZoneId = siteSettings.monetag_in_article_zone || '';
+const monetagAdCode = siteSettings.monetag_ad_code || '';
+
+// Split content for mid-article ad insertion after 2nd-3rd paragraph or crux
+const contentBlocks = formattedArticleContent.split(/(<\/h3>|<\/p>)/i);
+let part1Content = '';
+let part2Content = '';
+
+if (contentBlocks.length >= 6) {
+  // Insert mid-way through article
+  const cutPoint = Math.floor(contentBlocks.length / 2);
+  part1Content = contentBlocks.slice(0, cutPoint).join('');
+  part2Content = contentBlocks.slice(cutPoint).join('');
+} else {
+  part1Content = formattedArticleContent;
+  part2Content = '';
+}
 
 // Structured Data (Schema.org NewsArticle)
 const structuredData = {
@@ -178,12 +203,36 @@ const structuredData = {
       </aside>
     )}
 
-    <!-- Story Content Body -->
-    <div
-      id="article-content-body"
-      class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 pt-2 text-slate-800 dark:text-slate-200"
-      set:html={article.content || '<p>Report details are being finalized by the 9jaBeacon Editorial Desk.</p>'}
-    />
+    <!-- Story Content Body (Sanitized, Formatted, with Mid-Article Native Card) -->
+    {part2Content ? (
+      <div class="space-y-4">
+        <div
+          id="article-content-body-part1"
+          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 pt-2 text-slate-800 dark:text-slate-200"
+          set:html={part1Content}
+        />
+
+        <!-- In-Article Native Card (Matches second image format) -->
+        <AdSlot
+          format="in-article"
+          isMonetagEnabled={isMonetagEnabled}
+          inArticleZoneId={monetagInArticleZoneId}
+          adCodeSnippet={monetagAdCode}
+        />
+
+        <div
+          id="article-content-body-part2"
+          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200"
+          set:html={part2Content}
+        />
+      </div>
+    ) : (
+      <div
+        id="article-content-body"
+        class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 pt-2 text-slate-800 dark:text-slate-200"
+        set:html={formattedArticleContent || '<p>Report details are being finalized by the 9jaBeacon Editorial Desk.</p>'}
+      />
+    )}
 
     <!-- Original Attribution Link -->
     {article.source_original_url && (

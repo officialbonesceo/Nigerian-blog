@@ -200,6 +200,14 @@ for (const s of autoSettings) {
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
         <span>Admin & Security Credentials</span>
       </button>
+      <button
+        onclick="switchAdminTab('monetag')"
+        id="tab-btn-monetag"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+      >
+        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Monetag Ad Integration</span>
+      </button>
     </div>
 
     <!-- TAB 1: WORKFLOW & CRAWLER -->
@@ -1123,6 +1131,140 @@ for (const s of autoSettings) {
         </div>
       </div>
     </div>
+
+    <!-- TAB 8: MONETAG ADS CONFIGURATION -->
+    <div id="tab-content-monetag" class="admin-tab-content hidden space-y-6">
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              <span>Monetag Ad Network Integration</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">
+              Configure your Monetag publisher credentials. When empty or disabled, ads will remain hidden or display verified editorial house announcements.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+              {siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true' ? '● Monetag Active' : '○ Disabled / House Fallback'}
+            </span>
+          </div>
+        </div>
+
+        <form id="monetagSettingsForm" class="space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Master Toggle -->
+            <div class="md:col-span-2 p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+              <div>
+                <label for="monetagEnabled" class="text-sm font-bold text-white block">Enable Monetag Ads</label>
+                <span class="text-xs text-slate-400">Turn ad serving on or off instantly across the entire platform.</span>
+              </div>
+              <input
+                type="checkbox"
+                id="monetagEnabled"
+                name="monetag_enabled"
+                class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-900 border-slate-700 cursor-pointer"
+                checked={siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true'}
+              />
+            </div>
+
+            <!-- In-Article Native Banner Zone ID -->
+            <div class="space-y-1.5">
+              <label for="monetagInArticleZone" class="text-xs font-bold text-slate-300 flex items-center justify-between">
+                <span>In-Article Native Banner Zone ID</span>
+                <span class="text-[10px] text-emerald-400 font-mono">Recommended: Native Banner</span>
+              </label>
+              <input
+                type="text"
+                id="monetagInArticleZone"
+                name="monetag_in_article_zone"
+                value={siteSettings.monetag_in_article_zone || ''}
+                placeholder="e.g. 1234567"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none"
+              />
+              <p class="text-[11px] text-slate-500">
+                Displayed in the middle of stories and article feeds as a clean, responsive editorial card.
+              </p>
+            </div>
+
+            <!-- Global / Direct SDK Script Tag -->
+            <div class="space-y-1.5">
+              <label for="monetagGlobalTag" class="text-xs font-bold text-slate-300 flex items-center justify-between">
+                <span>Monetag Direct / SDK Script Tag (Optional)</span>
+                <span class="text-[10px] text-slate-400 font-mono">Header / Head</span>
+              </label>
+              <input
+                type="text"
+                id="monetagGlobalTag"
+                name="monetag_global_tag"
+                value={siteSettings.monetag_global_tag || ''}
+                placeholder="e.g. //gloapi.com/pfe/current/tag.min.js?z=..."
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none"
+              />
+              <p class="text-[11px] text-slate-500">
+                Optional script source provided by Monetag for tag-based or Vignette delivery.
+              </p>
+            </div>
+
+            <!-- Custom Monetag JS Snippet / Ad Code -->
+            <div class="md:col-span-2 space-y-1.5">
+              <label for="monetagAdCode" class="text-xs font-bold text-slate-300">
+                Monetag Custom Ad Code / Embed Snippet (Optional)
+              </label>
+              <textarea
+                id="monetagAdCode"
+                name="monetag_ad_code"
+                rows="3"
+                placeholder="Paste any custom &lt;script&gt; or tag snippet provided by Monetag here..."
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none resize-y"
+              >{siteSettings.monetag_ad_code || ''}</textarea>
+              <p class="text-[11px] text-slate-500">
+                If provided, this snippet will be safely executed inside the AdSlot container when enabled.
+              </p>
+            </div>
+          </div>
+
+          <div id="monetagSaveStatus" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+
+          <button
+            type="submit"
+            id="saveMonetagBtn"
+            class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+          >
+            <span>Save Monetag Configuration</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Placement & Format Best Practices Guide -->
+      <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <span>Monetag Formats & Placement Optimization</span>
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1">
+            <span class="font-bold text-emerald-400">1. Native Banner (Best Converting)</span>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Integrates naturally with news cards (300x250 or responsive card). Zero UX penalty, 100% compliant with Google News SEO standards.
+            </p>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1">
+            <span class="font-bold text-cyan-400">2. In-Article Midpoint</span>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Placed halfway through the article body after 2-3 investigative paragraphs. Captures engaged readers when reading dwell time is highest.
+            </p>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80 space-y-1">
+            <span class="font-bold text-purple-400">3. Feed Insertion (Every 3 Stories)</span>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Styled identically to the article list cards on Homepage and Category archives, with a subtle "Sponsored Report" label.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script is:inline>
@@ -1507,6 +1649,53 @@ for (const s of autoSettings) {
     }
     window.saveAdminCredentials = saveAdminCredentials;
     document.getElementById('adminCredentialsForm')?.addEventListener('submit', saveAdminCredentials);
+
+    async function saveMonetagSettings(e) {
+      e.preventDefault();
+      const enabled = document.getElementById('monetagEnabled')?.checked;
+      const inArticleZone = document.getElementById('monetagInArticleZone')?.value?.trim();
+      const globalTag = document.getElementById('monetagGlobalTag')?.value?.trim();
+      const adCode = document.getElementById('monetagAdCode')?.value?.trim();
+      const statusBox = document.getElementById('monetagSaveStatus');
+      const btn = document.getElementById('saveMonetagBtn');
+
+      const payload = {
+        monetag_enabled: enabled ? '1' : '0',
+        monetag_in_article_zone: inArticleZone || '',
+        monetag_global_tag: globalTag || '',
+        monetag_ad_code: adCode || '',
+      };
+
+      try {
+        if (btn) btn.textContent = 'Saving Monetag Configuration...';
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'site', settings: payload }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (statusBox) {
+            statusBox.textContent = '✅ Monetag configuration successfully updated in Cloudflare D1 database!';
+            statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-950/80 border border-emerald-800 text-emerald-300 block';
+          }
+        } else {
+          if (statusBox) {
+            statusBox.textContent = '❌ Failed to save Monetag configuration: ' + (data.error || 'Unknown error');
+            statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-red-950/80 border border-red-800 text-red-300 block';
+          }
+        }
+      } catch (err) {
+        if (statusBox) {
+          statusBox.textContent = '❌ Network error: ' + err.message;
+          statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-red-950/80 border border-red-800 text-red-300 block';
+        }
+      } finally {
+        if (btn) btn.textContent = 'Save Monetag Configuration';
+      }
+    }
+    window.saveMonetagSettings = saveMonetagSettings;
+    document.getElementById('monetagSettingsForm')?.addEventListener('submit', saveMonetagSettings);
 
     async function logoutAdmin() {
       if (!confirm('Are you sure you want to sign out of the Admin Hub?')) return;

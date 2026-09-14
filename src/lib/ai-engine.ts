@@ -6,6 +6,7 @@
 
 import { decideCategories } from './category-mapper';
 import { generateEditorialSvgDataUrl } from './editorial-image';
+import { cleanAndFormatArticleHtml } from './content-formatter';
 
 export interface AiSynthesisInput {
   title: string;
@@ -74,10 +75,10 @@ export const LOCAL_MODELS_CASCADE = [
 ];
 
 export const POLLINATIONS_MODELS_CASCADE = [
-  'qwen-coder',
   'qwen-large',
-  'openai',
   'mistral',
+  'openai',
+  'qwen-coder',
 ];
 
 const SYSTEM_PROMPT = `You are an Executive Nigerian Senior Investigative Editor at 9jaBeacon.
@@ -170,7 +171,7 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
             temperature: 0.3,
             max_tokens: 2800,
           }),
-          signal: AbortSignal.timeout(6000),
+          signal: AbortSignal.timeout(18000),
         });
 
         if (cfRes.ok) {
@@ -228,7 +229,7 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
             max_tokens: 2800,
             response_format: { type: 'json_object' },
           }),
-          signal: AbortSignal.timeout(7000),
+          signal: AbortSignal.timeout(22000),
         });
 
         if (openrouterRes.ok) {
@@ -286,7 +287,7 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
             temperature: 0.2,
             max_tokens: 2800,
           }),
-          signal: AbortSignal.timeout(8000),
+          signal: AbortSignal.timeout(20000),
         });
 
         if (localRes.ok) {
@@ -336,7 +337,7 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
           jsonMode: true,
           seed: 42,
         }),
-        signal: AbortSignal.timeout(7000),
+        signal: AbortSignal.timeout(22000),
       });
 
       if (pollRes.ok) {
@@ -423,9 +424,7 @@ function parseAiJsonResponse(
 
     const summary = obj.summary || obj.description || fallbackInput.description || '';
     let content = obj.content || '';
-    if (!content.includes('<p>')) {
-      content = content.split('\n\n').filter(Boolean).map((p: string) => `<p>${p}</p>`).join('');
-    }
+    content = cleanAndFormatArticleHtml(content);
 
     if (content.length < 80) return null;
 

@@ -95,6 +95,11 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
   )}
 
   <link rel="sitemap" href="/sitemap.xml" />
+
+  <!-- Monetag Global Direct Tag (Only injected when enabled and credential provided) -->
+  {(settings.monetag_enabled === '1' || settings.monetag_enabled === 'true') && settings.monetag_global_tag && (
+    <script is:inline src={settings.monetag_global_tag} async defer></script>
+  )}
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden transition-colors duration-150">
   <Header siteName={siteName} categories={categories} />

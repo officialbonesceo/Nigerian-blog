@@ -4,12 +4,14 @@ import TrendingBar from '../components/TrendingBar.astro';
 import TopStoryCard from '../components/TopStoryCard.astro';
 import ArticleCard from '../components/ArticleCard.astro';
 import MostReadSection from '../components/MostReadSection.astro';
+import AdSlot from '../components/AdSlot.astro';
 import {
   getD1,
   getTopStory,
   getArticles,
   getMostReadArticles,
   getBreakingArticles,
+  getSiteSettings,
 } from '../lib/runtime-db';
 
 import type { Article } from '../lib/types';
@@ -27,20 +29,28 @@ let latestArticles: Article[] = [];
 let mostRead: Article[] = [];
 let breakingNews: Article[] = [];
 
+let siteSettings: Record<string, string> = {};
+
 try {
-  const [top, latest, read, breaking] = await Promise.all([
+  const [top, latest, read, breaking, settings] = await Promise.all([
     page === 1 ? getTopStory(d1) : Promise.resolve(null),
     getArticles(d1, { limit: pageSize + 1, offset }),
     getMostReadArticles(d1, 5),
     page === 1 ? getBreakingArticles(d1, 1) : Promise.resolve([]),
+    getSiteSettings(d1),
   ]);
   topStory = top;
   latestArticles = latest || [];
   mostRead = read || [];
   breakingNews = breaking || [];
+  siteSettings = settings || {};
 } catch (e) {
   console.error('[index.astro] Error loading articles:', e);
 }
+
+const isMonetagEnabled = siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true';
+const monetagInArticleZoneId = siteSettings.monetag_in_article_zone || '';
+const monetagAdCode = siteSettings.monetag_ad_code || '';
 
 const hasNextPage = latestArticles.length > pageSize;
 const currentFeed = latestArticles.slice(0, pageSize);
@@ -140,8 +150,18 @@ const filteredLatest = page === 1
         </span>
       </div>
       <div class="space-y-2.5">
-        {filteredLatest.map((article) => (
-          <ArticleCard article={article} />
+        {filteredLatest.map((article, idx) => (
+          <>
+            <ArticleCard article={article} />
+            {idx === 2 && (
+              <AdSlot
+                format="feed"
+                isMonetagEnabled={isMonetagEnabled}
+                inArticleZoneId={monetagInArticleZoneId}
+                adCodeSnippet={monetagAdCode}
+              />
+            )}
+          </>
         ))}
       </div>
 
