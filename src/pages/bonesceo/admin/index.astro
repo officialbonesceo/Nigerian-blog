@@ -1180,11 +1180,30 @@ for (const s of autoSettings) {
                 id="monetagInArticleZone"
                 name="monetag_in_article_zone"
                 value={siteSettings.monetag_in_article_zone || ''}
-                placeholder="e.g. 1234567"
+                placeholder="e.g. 11801724"
                 class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none"
               />
               <p class="text-[11px] text-slate-500">
                 Displayed in the middle of stories and article feeds as a clean, responsive editorial card.
+              </p>
+            </div>
+
+            <!-- Site Verification Code -->
+            <div class="space-y-1.5">
+              <label for="monetagVerification" class="text-xs font-bold text-slate-300 flex items-center justify-between">
+                <span>Monetag Verification Code</span>
+                <span class="text-[10px] text-cyan-400 font-mono">&lt;meta name="monetag" ...&gt;</span>
+              </label>
+              <input
+                type="text"
+                id="monetagVerification"
+                name="monetag_verification"
+                value={siteSettings.monetag_verification || '40d3b64d132d7ec42db754b9dca240b1'}
+                placeholder="e.g. 40d3b64d132d7ec42db754b9dca240b1"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none"
+              />
+              <p class="text-[11px] text-slate-500">
+                Injected into &lt;head&gt; meta tags to verify your domain ownership with Monetag.
               </p>
             </div>
 
@@ -1654,6 +1673,7 @@ for (const s of autoSettings) {
       e.preventDefault();
       const enabled = document.getElementById('monetagEnabled')?.checked;
       const inArticleZone = document.getElementById('monetagInArticleZone')?.value?.trim();
+      const verification = document.getElementById('monetagVerification')?.value?.trim();
       const globalTag = document.getElementById('monetagGlobalTag')?.value?.trim();
       const adCode = document.getElementById('monetagAdCode')?.value?.trim();
       const statusBox = document.getElementById('monetagSaveStatus');
@@ -1662,6 +1682,7 @@ for (const s of autoSettings) {
       const payload = {
         monetag_enabled: enabled ? '1' : '0',
         monetag_in_article_zone: inArticleZone || '',
+        monetag_verification: verification || '',
         monetag_global_tag: globalTag || '',
         monetag_ad_code: adCode || '',
       };

@@ -46,13 +46,12 @@ const hasMonetag = Boolean(isMonetagEnabled && (inArticleZoneId || adCodeSnippet
         {adCodeSnippet ? (
           <Fragment set:html={adCodeSnippet} />
         ) : inArticleZoneId ? (
-          <div data-monetag-zone={inArticleZoneId} class="monetag-inarticle-slot w-full text-center">
-            <!-- Monetag target zone container -->
+          <div data-zone={inArticleZoneId} class="monetag-inarticle-slot w-full text-center py-2">
             <script is:inline define:vars={{ inArticleZoneId }}>
-              (function() {
-                if (window.__monetag_loaded) return;
-                // Zone script will execute asynchronously
-              })();
+              (function(s){
+                s.dataset.zone = inArticleZoneId;
+                s.src = 'https://nap5k.com/tag.min.js';
+              })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
             </script>
           </div>
         ) : null}

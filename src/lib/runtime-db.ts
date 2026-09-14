@@ -1059,11 +1059,19 @@ export async function deleteSource(db: D1Database, id: string) {
 }
 
 export async function updateAutomationSetting(db: D1Database, k: string, v: string) {
-  await db.prepare("INSERT INTO automation_settings(key, value, updated_at) VALUES(?, ?, datetime('now')) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now')").bind(k, v).run();
+  try {
+    await db.prepare("INSERT INTO automation_settings(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(k, v).run();
+  } catch {
+    await db.prepare("INSERT OR REPLACE INTO automation_settings(key, value) VALUES(?, ?)").bind(k, v).run().catch(() => {});
+  }
 }
 
 export async function updateSiteSetting(db: D1Database, k: string, v: string) {
-  await db.prepare("INSERT INTO site_settings(key, value, updated_at) VALUES(?, ?, datetime('now')) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now')").bind(k, v).run();
+  try {
+    await db.prepare("INSERT INTO site_settings(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(k, v).run();
+  } catch (err) {
+    await db.prepare("INSERT OR REPLACE INTO site_settings(key, value) VALUES(?, ?)").bind(k, v).run().catch(() => {});
+  }
   invalidateCache('site_settings');
 }
 

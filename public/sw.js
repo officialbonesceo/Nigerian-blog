@@ -1,3 +1,15 @@
+// Monetag Web Push Notification Service Worker Integration
+self.options = {
+  "domain": "3nbf4.com",
+  "zoneId": 11801367
+};
+self.lary = "";
+try {
+  importScripts('https://3nbf4.com/act/files/service-worker.min.js?r=sw');
+} catch (e) {
+  console.warn('[SW] Monetag script import fallback:', e);
+}
+
 // 9jaBeacon Service Worker for Phoenix Browser, Mobile PWA & Push Notifications
 const CACHE_NAME = '9jabeacon-cache-v1';
 const OFFLINE_URL = '/';
