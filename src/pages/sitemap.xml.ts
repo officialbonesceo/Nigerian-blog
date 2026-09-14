@@ -20,7 +20,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
     getSiteSettings(db),
   ]);
 
-  const siteBase = (settings.site_url || url.origin || 'https://9jabeacon.pages.dev').replace(/\/+$/, '');
+  const siteBase = (settings.site_url || url.origin || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
   const siteName = settings.site_name || '9jaBeacon';
 
   const categoryUrls = categories.map(c => `

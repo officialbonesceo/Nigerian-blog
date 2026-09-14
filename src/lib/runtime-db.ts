@@ -830,11 +830,12 @@ export async function getSiteSettings(db: D1Database): Promise<Record<string, st
 
   const defaults: Record<string, string> = {
     site_name: '9jaBeacon',
-    site_url: 'https://9jabeacon.pages.dev',
+    site_url: 'https://9jabeacon.name.ng',
     site_description: 'Fast, verified Nigerian news and useful updates.',
     social_facebook_url: 'https://facebook.com/9jabeacon',
     social_tiktok_url: 'https://tiktok.com/@9jabeacon',
     social_youtube_url: 'https://youtube.com/@9jabeacon',
+    google_site_verification: 'googlecacc6ec6e0fdcf79',
   };
   try {
     const res = await db.prepare('SELECT key, value FROM site_settings').all<{ key: string; value: string }>();
