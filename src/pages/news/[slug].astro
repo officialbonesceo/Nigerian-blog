@@ -6,7 +6,7 @@ import ShareBar from '../../components/ShareBar.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import { getD1, getArticleBySlug, getRelatedArticles, getSiteSettings } from '../../lib/runtime-db';
 import { DEFAULT_FALLBACK_IMAGE_URL } from '../../lib/fallback-image';
-import { cleanAndFormatArticleHtml } from '../../lib/content-formatter';
+import { cleanAndFormatArticleHtml, partitionArticleForAds } from '../../lib/content-formatter';
 
 export const prerender = false;
 
@@ -47,20 +47,8 @@ const isMonetagEnabled = siteSettings.monetag_enabled === '1' || siteSettings.mo
 const monetagInArticleZoneId = siteSettings.monetag_in_article_zone || '';
 const monetagAdCode = siteSettings.monetag_ad_code || '';
 
-// Split content for mid-article ad insertion after 2nd-3rd paragraph or crux
-const contentBlocks = formattedArticleContent.split(/(<\/h3>|<\/p>)/i);
-let part1Content = '';
-let part2Content = '';
-
-if (contentBlocks.length >= 6) {
-  // Insert mid-way through article
-  const cutPoint = Math.floor(contentBlocks.length / 2);
-  part1Content = contentBlocks.slice(0, cutPoint).join('');
-  part2Content = contentBlocks.slice(cutPoint).join('');
-} else {
-  part1Content = formattedArticleContent;
-  part2Content = '';
-}
+// Partition content for well-spaced ad distribution in-between long news
+const articleParts = partitionArticleForAds(formattedArticleContent);
 
 // Structured Data (Schema.org NewsArticle)
 const structuredData = {
@@ -203,36 +191,50 @@ const structuredData = {
       </aside>
     )}
 
-    <!-- Story Content Body (Sanitized, Formatted, with Mid-Article Native Card) -->
-    {part2Content ? (
-      <div class="space-y-4">
-        <div
-          id="article-content-body-part1"
-          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 pt-2 text-slate-800 dark:text-slate-200"
-          set:html={part1Content}
-        />
-
-        <!-- In-Article Native Card (Matches second image format) -->
-        <AdSlot
-          format="in-article"
-          isMonetagEnabled={isMonetagEnabled}
-          inArticleZoneId={monetagInArticleZoneId}
-          adCodeSnippet={monetagAdCode}
-        />
-
-        <div
-          id="article-content-body-part2"
-          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200"
-          set:html={part2Content}
-        />
-      </div>
-    ) : (
+    <!-- Story Content Body (Sanitized, Semantic Paragraphs, with In-Between Native Ads) -->
+    <div class="space-y-6">
       <div
-        id="article-content-body"
+        id="article-content-body-lead"
         class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 pt-2 text-slate-800 dark:text-slate-200"
-        set:html={formattedArticleContent || '<p>Report details are being finalized by the 9jaBeacon Editorial Desk.</p>'}
+        set:html={articleParts.lead}
       />
-    )}
+
+      {articleParts.middle1 && (
+        <>
+          <!-- Primary Mid-Article Native Ad -->
+          <AdSlot
+            format="in-article"
+            isMonetagEnabled={isMonetagEnabled}
+            inArticleZoneId={monetagInArticleZoneId}
+            adCodeSnippet={monetagAdCode}
+          />
+
+          <div
+            id="article-content-body-middle1"
+            class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200"
+            set:html={articleParts.middle1}
+          />
+        </>
+      )}
+
+      {articleParts.middle2 && (
+        <>
+          <!-- Secondary In-Between Native Ad for Long In-Depth Reports -->
+          <AdSlot
+            format="in-article"
+            isMonetagEnabled={isMonetagEnabled}
+            inArticleZoneId={monetagInArticleZoneId}
+            adCodeSnippet={monetagAdCode}
+          />
+
+          <div
+            id="article-content-body-middle2"
+            class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200"
+            set:html={articleParts.middle2}
+          />
+        </>
+      )}
+    </div>
 
     <!-- Original Attribution Link -->
     {article.source_original_url && (

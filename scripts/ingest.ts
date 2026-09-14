@@ -189,7 +189,7 @@ async function main() {
   }
   console.log(`📡 Loaded ${sources.length} active verified RSS news feeds.`);
 
-  const MAX_ARTICLES_PER_RUN = 10;
+  const MAX_ARTICLES_PER_RUN = parseInt(process.env.MAX_ARTICLES_PER_RUN || '1', 10);
   const startTime = Date.now();
   let totalProcessed = 0;
   let totalPublished = 0;
@@ -220,9 +220,23 @@ async function main() {
 
   const updateSourceCount = db.prepare(`UPDATE sources SET last_fetched_at = ? WHERE id = ?`);
 
+  // Phase 1: Ingest feeds and collect candidates across all enabled wire sources
+  interface RankedCandidate {
+    source: SourceRow;
+    item: CustomItem;
+    score: number;
+  }
+
+  const candidatePool: RankedCandidate[] = [];
+
+  const HIGH_IMPACT_KEYWORDS = [
+    'breaking', 'cbn', 'naira', 'tinubu', 'president', 'federal', 'inflation',
+    'court', 'senate', 'police', 'subsidy', 'economy', 'budget', 'fuel',
+    'efcc', 'super eagles', 'osimhen', 'afcon', 'techcabal', 'fintech', 'tax'
+  ];
+
   for (const source of sources) {
-    if (totalPublished >= MAX_ARTICLES_PER_RUN) break;
-    console.log(`\n📻 Fetching Feed: [${source.name}] (${source.feed_url})`);
+    console.log(`\n📻 Scanning Wire Feed: [${source.name}] (${source.feed_url})`);
 
     let feedItems: CustomItem[] = [];
     try {
@@ -236,43 +250,94 @@ async function main() {
       if (!feedRes.ok) throw new Error(`HTTP ${feedRes.status}`);
       const feed = await parser.parseString(await feedRes.text());
       feedItems = feed.items || [];
-      console.log(`  📑 Found ${feedItems.length} items in feed.`);
+      console.log(`  📑 Found ${feedItems.length} items.`);
+      updateSourceCount.run(new Date().toISOString(), source.id);
     } catch (fetchErr: any) {
       console.warn(`  ⚠️ Feed fetch failed for ${source.name}: ${fetchErr.message}`);
       insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'FEED_FETCH_ERROR', source.id, `Failed to fetch feed: ${fetchErr.message}`, 'error');
       continue;
     }
 
-    for (const item of feedItems.slice(0, 3)) {
+    for (const item of feedItems.slice(0, 5)) {
       if (!item.title || !item.link) continue;
-      totalProcessed++;
+      const titleLower = item.title.toLowerCase();
+
+      // Skip obvious commercial promotions or non-news boilerplate
+      if (titleLower.includes('sponsored') || titleLower.includes('press release')) continue;
+
       const existing = db.prepare('SELECT id FROM articles WHERE source_original_url = ? OR title = ?').get(item.link, item.title);
       if (existing) {
         totalDuplicatesSkipped++;
         continue;
       }
 
-      console.log(`\n  📝 Synthesizing: "${item.title.slice(0, 60)}..."`);
-      const rawDescription = item.contentSnippet || item.content || '';
-      const rawContent = item.contentEncoded || item.content || rawDescription;
-      const aiResult = await synthesizeNewsArticle({
-        title: item.title,
-        sourceName: source.name,
-        originalUrl: item.link,
-        description: rawDescription,
-        content: rawContent,
-        categoryDefault: source.category_default_id,
-      }, aiConfig);
+      // Calculate quality & journalistic score
+      let score = (source.trust_score || 70);
 
-      if (!aiResult.success || !aiResult.title || !aiResult.content) {
-        totalRejectedNoAi++;
-        console.warn(`  🛑 [AI GATE REJECTION] ${aiResult.error || 'No AI succeeded.'}`);
-        try {
-          db.prepare(`INSERT INTO rejected_articles (id, source_id, source_name, original_title, original_url, raw_content, rejection_reason, ai_tier_failures, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .run('rej_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), source.id, source.name, item.title, item.link, rawContent || '', aiResult.error || 'AI synthesis failed', 'Cloudflare -> OpenRouter -> Pollinations (All failed)', new Date().toISOString());
-        } catch {}
-        continue;
+      // Boost for high-impact topics
+      for (const kw of HIGH_IMPACT_KEYWORDS) {
+        if (titleLower.includes(kw)) {
+          score += 15;
+        }
       }
+
+      // Boost for content depth & imagery
+      const contentLen = (item.contentEncoded || item.content || item.contentSnippet || '').length;
+      if (contentLen > 500) score += 20;
+      else if (contentLen > 200) score += 10;
+
+      if (item.enclosure?.url || item.mediaContent?.$?.url) {
+        score += 10;
+      }
+
+      // Boost for recency
+      if (item.pubDate || item.isoDate) {
+        const itemDate = new Date(item.pubDate || item.isoDate || '').getTime();
+        if (!isNaN(itemDate)) {
+          const ageHours = (Date.now() - itemDate) / (1000 * 60 * 60);
+          if (ageHours <= 6) score += 25;
+          else if (ageHours <= 18) score += 15;
+        }
+      }
+
+      candidatePool.push({ source, item, score });
+    }
+  }
+
+  // Sort candidates by highest journalistic quality score
+  candidatePool.sort((a, b) => b.score - a.score);
+  console.log(`\n🎯 Evaluated ${candidatePool.length} fresh unique leads across all feeds. Selecting top ${MAX_ARTICLES_PER_RUN} priority story.`);
+
+  // Phase 2: Synthesize and publish the curated top story
+  for (const candidate of candidatePool) {
+    if (totalPublished >= MAX_ARTICLES_PER_RUN) break;
+
+    const { source, item, score } = candidate;
+    totalProcessed++;
+
+    console.log(`\n  📝 [Score ${score}] Synthesizing Top Lead: "${item.title?.slice(0, 65)}..." (${source.name})`);
+    const rawDescription = item.contentSnippet || item.content || '';
+    const rawContent = item.contentEncoded || item.content || rawDescription;
+
+    const aiResult = await synthesizeNewsArticle({
+      title: item.title || '',
+      sourceName: source.name,
+      originalUrl: item.link || '',
+      description: rawDescription,
+      content: rawContent,
+      categoryDefault: source.category_default_id,
+    }, aiConfig);
+
+    if (!aiResult.success || !aiResult.title || !aiResult.content) {
+      totalRejectedNoAi++;
+      console.warn(`  🛑 [AI GATE REJECTION] ${aiResult.error || 'No AI succeeded.'}`);
+      try {
+        db.prepare(`INSERT INTO rejected_articles (id, source_id, source_name, original_title, original_url, raw_content, rejection_reason, ai_tier_failures, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+          .run('rej_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), source.id, source.name, item.title, item.link, rawContent || '', aiResult.error || 'AI synthesis failed', 'Cloudflare -> OpenRouter -> Pollinations (All failed)', new Date().toISOString());
+      } catch {}
+      // Continue to next ranked candidate in pool
+      continue;
+    }
 
       const providerLabel = `${aiResult.provider || 'unknown'} (${aiResult.modelUsed || 'default'})`;
       aiUsageStats[providerLabel] = (aiUsageStats[providerLabel] || 0) + 1;
@@ -332,9 +397,6 @@ async function main() {
 
       if (totalPublished >= MAX_ARTICLES_PER_RUN) break;
     }
-
-    updateSourceCount.run(new Date().toISOString(), source.id);
-  }
 
   db.close();
   const elapsedSeconds = ((Date.now() - startTime) / 1000).toFixed(1);

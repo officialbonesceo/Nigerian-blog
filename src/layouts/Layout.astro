@@ -51,6 +51,12 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="theme-color" content="#008751" />
   <meta name="monetag" content={settings.monetag_verification || '40d3b64d132d7ec42db754b9dca240b1'} />
+  {settings.google_site_verification && (
+    <meta name="google-site-verification" content={settings.google_site_verification} />
+  )}
+  {settings.bing_site_verification && (
+    <meta name="msvalidate.01" content={settings.bing_site_verification} />
+  )}
 
   <!-- Theme Initialization Script (Prevents flash of wrong theme) -->
   <script is:inline>

@@ -2,7 +2,9 @@ name: 9jaBeacon AI News Ingestion
 
 on:
   schedule:
-    - cron: '0 */3 * * *'
+    # 4 runs daily spaced evenly across 24 hours (00:00, 06:00, 12:00, 18:00 UTC)
+    # Corresponding to 01:00, 07:00, 13:00, 19:00 West Africa Time (WAT)
+    - cron: '0 0,6,12,18 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -73,6 +75,7 @@ jobs:
           POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_UPLOAD_PRESET: ${{ secrets.CLOUDINARY_UPLOAD_PRESET }}
+          MAX_ARTICLES_PER_RUN: '1'
           NODE_ENV: production
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'

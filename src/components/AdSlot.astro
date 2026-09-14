@@ -1,9 +1,9 @@
 ---
 /**
- * Monetag / House Ad Slot Component for 9jaBeacon
+ * Monetag / Native Sponsored Ad Slot Component for 9jaBeacon
  * Supports in-article native cards, sidebar sticky cards, and feed cards.
  * Non-intrusive, strictly light/dark theme matched, ad-block resilient, and zero-CLS.
- * Only renders external Monetag script if credentials exist and are enabled.
+ * High-converting fallback layout ensures zero empty voids if Monetag is loading or un-filled.
  */
 
 interface Props {
@@ -26,27 +26,30 @@ const hasMonetag = Boolean(isMonetagEnabled && (inArticleZoneId || adCodeSnippet
 ---
 
 {format === 'in-article' && (
-  <div class={`my-8 p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden not-prose ${className}`}>
-    <!-- Header tag -->
-    <div class="flex items-center justify-between gap-2 mb-3">
-      <div class="flex items-center gap-1.5">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-        <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 font-mono">
+  <div class={`my-7 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden not-prose transition-colors ${className}`}>
+    <!-- Header Tag & Disclosures -->
+    <div class="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
+      <div class="flex items-center gap-2">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
           Sponsored Spotlight
         </span>
       </div>
-      <span class="text-[9px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+      <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700">
         Ad
       </span>
     </div>
 
-    {hasMonetag ? (
-      <!-- Monetag In-Article Ad Container -->
-      <div class="min-h-[120px] flex items-center justify-center text-center overflow-hidden">
+    <!-- Monetag Execution Container (if enabled) -->
+    {hasMonetag && (
+      <div class="monetag-ad-wrapper w-full text-center overflow-hidden mb-3">
         {adCodeSnippet ? (
           <Fragment set:html={adCodeSnippet} />
         ) : inArticleZoneId ? (
-          <div data-zone={inArticleZoneId} class="monetag-inarticle-slot w-full text-center py-2">
+          <div data-zone={inArticleZoneId} class="monetag-inarticle-slot w-full text-center py-1">
             <script is:inline define:vars={{ inArticleZoneId }}>
               (function(s){
                 s.dataset.zone = inArticleZoneId;
@@ -56,118 +59,123 @@ const hasMonetag = Boolean(isMonetagEnabled && (inArticleZoneId || adCodeSnippet
           </div>
         ) : null}
       </div>
-    ) : (
-      <!-- Premium House Fallback Card (Ad-Block & Non-Configured Safe) -->
-      <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-2">
-        <div class="flex items-center gap-3.5 text-left">
-          <div class="w-12 h-12 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-            </svg>
-          </div>
-          <div>
-            <h4 class="text-sm font-bold text-slate-900 dark:text-white leading-snug">
-              Promote Your Business on 9jaBeacon
-            </h4>
-            <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-1">
-              Reach thousands of informed Nigerian decision-makers, investors, and readers daily.
-            </p>
-          </div>
-        </div>
-        <a
-          href="/contact"
-          class="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1.5 active:scale-95"
-        >
-          <span>Partner With Us</span>
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </a>
-      </div>
     )}
+
+    <!-- High-Converting Editorial Sponsored Card (Visible as primary offer or instant native background) -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
+      <div class="flex items-start gap-3.5 text-left flex-1 min-w-0">
+        <div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
+            Verified Business Opportunities & High-Yield Accounts in Nigeria
+          </h4>
+          <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+            Discover vetted fintech tools, dollar virtual cards, and verified SME opportunities curated for readers.
+          </p>
+        </div>
+      </div>
+      <a
+        href="/contact"
+        class="shrink-0 w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-95"
+      >
+        <span>Explore Offers</span>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </a>
+    </div>
   </div>
 )}
 
 {format === 'feed' && (
-  <article class={`p-3 sm:p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/40 border border-slate-200/90 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700/80 shadow-xs dark:shadow-none transition-all duration-200 overflow-hidden ${className}`}>
+  <article class={`p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs dark:shadow-none transition-all duration-200 overflow-hidden ${className}`}>
     <div class="flex items-start justify-between gap-3 sm:gap-4">
       <div class="flex-1 min-w-0 space-y-1.5">
         <div class="flex items-center gap-1.5">
-          <span class="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-500 font-mono">
+          <span class="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
             Sponsored Feature
           </span>
-          <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-500">
+          <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700">
             Ad
           </span>
         </div>
 
-        {hasMonetag ? (
-          <div class="min-h-[60px] flex items-center">
-            {adCodeSnippet ? (
-              <Fragment set:html={adCodeSnippet} />
-            ) : inArticleZoneId ? (
-              <div data-monetag-zone={inArticleZoneId} class="monetag-feed-slot w-full"></div>
-            ) : null}
-          </div>
-        ) : (
-          <div>
-            <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
-              <a href="/contact">
-                Connect Directly With Nigeria's Fastest-Growing Audience on 9jaBeacon
-              </a>
-            </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 pt-0.5">
-              Verified editorial coverage, sponsored business spotlights, and targeted digital distribution.
-            </p>
+        {hasMonetag && adCodeSnippet && (
+          <div class="monetag-feed-snippet w-full overflow-hidden my-1">
+            <Fragment set:html={adCodeSnippet} />
           </div>
         )}
+
+        <!-- Converting News-Style Headline and Hook -->
+        <div>
+          <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
+            <a href="/contact">
+              Compare Verified High-Yield Naira Accounts & Dollar Cards in Nigeria (2026)
+            </a>
+          </h3>
+          <p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 pt-1 leading-relaxed">
+            Essential guide for professionals and business owners: explore vetted fintech vaults, inflation-hedging instruments, and verified digital trade services.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <span class="text-emerald-600 dark:text-emerald-400 font-medium">9jaBeacon Partner Spotlight</span>
+          <span>•</span>
+          <a href="/contact" class="hover:underline font-semibold text-slate-700 dark:text-slate-300">Learn More &rarr;</a>
+        </div>
       </div>
 
       <!-- Right sponsored thumbnail -->
-      <a href="/contact" class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800/60 flex items-center justify-center p-2 text-emerald-600 dark:text-emerald-400">
-        <svg class="w-8 h-8 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      <a href="/contact" class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-emerald-50 dark:bg-slate-800 border border-emerald-100 dark:border-slate-700/60 flex flex-col items-center justify-center p-2 text-emerald-600 dark:text-emerald-400 group hover:bg-emerald-100/50 dark:hover:bg-slate-800/80 transition-colors">
+        <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
+        <span class="text-[9px] font-bold uppercase tracking-wider mt-1 text-slate-600 dark:text-slate-300">Featured</span>
       </a>
     </div>
   </article>
 )}
 
 {format === 'sidebar' && (
-  <aside class={`p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 ${className}`}>
-    <div class="flex items-center justify-between text-[10px] font-mono text-slate-500">
+  <aside class={`p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 ${className}`}>
+    <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">
       <span class="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Spotlight</span>
       <span>Advertisement</span>
     </div>
 
-    {hasMonetag ? (
-      <div class="min-h-[250px] flex items-center justify-center text-center overflow-hidden">
+    {hasMonetag && (
+      <div class="monetag-sidebar-wrapper w-full text-center overflow-hidden">
         {adCodeSnippet ? (
           <Fragment set:html={adCodeSnippet} />
         ) : inArticleZoneId ? (
-          <div data-monetag-zone={inArticleZoneId} class="monetag-sidebar-slot w-full"></div>
+          <div data-zone={inArticleZoneId} class="monetag-sidebar-slot w-full"></div>
         ) : null}
       </div>
-    ) : (
-      <div class="space-y-2.5 text-center p-2">
-        <div class="w-10 h-10 mx-auto rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h4 class="text-xs font-bold text-slate-900 dark:text-white">
-          9jaBeacon Verified Partner Hub
-        </h4>
-        <p class="text-[11px] text-slate-500 leading-relaxed">
-          Feature your app, fintech solution, or real-estate development here.
-        </p>
-        <a
-          href="/contact"
-          class="block w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold transition"
-        >
-          Book Space
-        </a>
-      </div>
     )}
+
+    <div class="space-y-2.5 text-center p-2">
+      <div class="w-11 h-11 mx-auto rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h4 class="text-xs font-bold text-slate-900 dark:text-slate-100">
+        9jaBeacon Verified Partner Hub
+      </h4>
+      <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+        Feature your brand, fintech platform, or property dispatch to Nigeria's premier decision-makers.
+      </p>
+      <a
+        href="/contact"
+        class="block w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold transition shadow-xs"
+      >
+        Partner With Us
+      </a>
+    </div>
   </aside>
 )}
+
