@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getD1, createArticle, updateArticle, deleteArticle } from '../../../lib/runtime-db';
+import { getD1, createArticle, updateArticle, deleteArticle, getArticlesWithCount } from '../../../lib/runtime-db';
 
 interface ArticleBody {
   id?: string;
@@ -25,6 +25,41 @@ interface ArticleBody {
   status?: string;
   [key: string]: unknown;
 }
+
+export const GET: APIRoute = async ({ request, locals }) => {
+  try {
+    const url = new URL(request.url);
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '15', 10)));
+    const offset = (page - 1) * limit;
+    const categoryId = url.searchParams.get('category_id') || undefined;
+    const search = url.searchParams.get('search') || undefined;
+
+    const db = getD1(locals);
+    const { articles, total } = await getArticlesWithCount(db, {
+      limit,
+      offset,
+      categoryId,
+      search,
+    });
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        articles,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
+      }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (e: any) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+  }
+};
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {

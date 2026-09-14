@@ -85,6 +85,11 @@ const SYSTEM_PROMPT = `You are an Executive Nigerian Senior Investigative Editor
 YOUR ABSOLUTE MANDATE: Write an in-depth, authoritative, factual, and thoroughly developed investigative report.
 LENGTH REQUIREMENT: Every article MUST be between 500 and 700 words in length. Do NOT provide brief or superficial summaries. Expand the report with rich context, historical background, socioeconomic implications for everyday Nigerians, stakeholder perspectives, a dedicated "Writer's Take", and concluding thought-provoking questions.
 
+MODULAR & RESILIENT SECTION WRITING RULE (CRITICAL):
+- Write each section as a complete, self-contained modular journalistic unit.
+- If generation stops midway or times out, every completed section must be closed and logically sound so that a downstream AI model or editor can seamlessly resume or rewrite the remaining sections without loss of coherence.
+- Do NOT make later sections reference incomplete fragments or use vague dangling references. Keep section headings explicit and structured.
+
 REQUIRED ARTICLE STRUCTURE (HTML format with headings):
 - <h3>The Crux: What Happened & Verified Developments</h3>
   Provide 2 to 3 rich, detailed paragraphs detailing the breaking event: who, what, when, where, verified statements, official actions, and the sequence of events.
@@ -358,79 +363,11 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
     }
   }
 
-  // TIER 5: Factual Wire Synthesis Engine (Zero-Hallucination Fallback)
-  traceLogs.push('Tier 5: Engaging 9jaBeacon Factual Wire Synthesis Engine');
-  const rawText = (input.content || input.description || '').trim();
-  const cleanHeadline = (input.title || '')
-    .replace(/\s*[-–|]\s*(The Punch|Vanguard|Channels TV|VON|BBC|Reuters|TechCabal|BusinessDay|Daily Post|Guardian|Sun News|The Nation).*$/i, '')
-    .trim();
-
-  // Reject leads that don't have enough verified source text to prevent AI hallucination
-  const textWithoutTags = rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  if (textWithoutTags.length < 60 && cleanHeadline.length < 25) {
-    traceLogs.push('Tier 5 Rejected: Lead text too sparse to synthesize without hallucination');
-    return {
-      success: false,
-      error: 'Insufficient wire dispatch text; rejected to protect journalistic accuracy.',
-      traceLogs,
-    };
-  }
-
-  // Extract authentic factual sentences directly from the wire dispatch
-  const sentences = textWithoutTags
-    .split(/(?<=[.?!])\s+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 20 && !s.toLowerCase().includes('click here') && !s.toLowerCase().includes('read more'));
-
-  const leadParagraph = sentences.slice(0, 2).join(' ') || cleanHeadline;
-  const detailParagraph = sentences.slice(2, 5).join(' ') || sentences[0] || 'Field dispatches and corroborating sources are compiling further operational updates.';
-  const additionalParagraph = sentences.slice(5).join(' ');
-
-  const tempCombined = `${cleanHeadline} ${textWithoutTags}`;
-  const initialDecision = decideCategories(cleanHeadline, tempCombined, input.categoryDefault, input.sourceName);
-  const cat = initialDecision.primary;
-
-  const structuredContent = `
-<h3>The Crux: Verified Wire Dispatch</h3>
-<p>${leadParagraph}</p>
-${detailParagraph ? `<p>${detailParagraph}</p>` : ''}
-${additionalParagraph ? `<p>${additionalParagraph}</p>` : ''}
-
-<h3>Key Fact Sheet & Corroborated Details</h3>
-<ul>
-  <li><strong>Source:</strong> Verified report originally filed via ${input.sourceName || 'Wire Services'}.</li>
-  <li><strong>Subject:</strong> ${cleanHeadline}</li>
-  <li><strong>Classification:</strong> ${cat.replace('cat_', '').replace(/_/g, ' ').toUpperCase()}</li>
-</ul>
-
-<h3>Editorial Take & Questions to Watch</h3>
-<p>As this development continues to unfold across Nigeria, key questions remain regarding regulatory oversight, implementation timelines, and the direct impact on stakeholders and the public.</p>
-<ul>
-  <li>What official statements or policy documents will follow this dispatch?</li>
-  <li>How will relevant institutions and civic monitors verify the milestones reported?</li>
-</ul>
-  `.trim();
-
-  const decision = decideCategories(cleanHeadline, structuredContent, input.categoryDefault, input.sourceName);
-  const wordCount = structuredContent.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
-  const readingTime = Math.max(2, Math.ceil(wordCount / 160));
-
-  traceLogs.push(`Tier 5 Success: Synthesized factual ${wordCount}-word report strictly grounded in source wire`);
+  // If all AI tiers failed, do not generate artificial preset wire articles. Return strict failure so the user/admin can rewrite or investigate.
+  traceLogs.push('All active AI tiers failed to synthesize article.');
   return {
-    success: true,
-    provider: 'factual_wire_engine',
-    modelUsed: '9jaBeacon-Factual-Grounding-Core',
-    title: cleanHeadline,
-    summary: leadParagraph.slice(0, 240) + (leadParagraph.length > 240 ? '...' : ''),
-    content: structuredContent,
-    categoryId: decision.primary,
-    secondaryCategoryId: decision.secondary,
-    readingTimeMinutes: readingTime,
-    keyTakeaways: [
-      `Grounded in verified wire dispatch from ${input.sourceName || 'National Wire'}`,
-      `Zero hallucinated claims or artificial quotes`,
-      `Categorized under ${decision.primary.replace('cat_', '').replace(/_/g, ' ').toUpperCase()}`,
-    ],
+    success: false,
+    error: `All AI synthesis tiers failed: ${errors.slice(0, 3).join('; ') || 'No AI providers available'}`,
     traceLogs,
   };
 }
@@ -454,62 +391,6 @@ export async function generateEditorialNewsImage(
     caption: `Editorial vector dispatch: ${params.title.slice(0, 80)}`,
     credit: '9jaBeacon Editorial Visual Desk',
   };
-}
-
-function buildSafeConceptualPrompt(title: string = '', categoryId: string = '', summary: string = ''): string {
-  const combined = (title + ' ' + summary).toLowerCase();
-
-  // 1. Presidency, Aso Rock, Federal Executive Council
-  if (/tinubu|shettima|presiden|aso rock|state house|fec|minister|cabinet|governance/.test(combined)) {
-    return 'State House Presidential Villa in Abuja Nigeria, official presidential conference podium with Nigerian coat of arms, formal green and white flags, editorial government photojournalism';
-  }
-
-  // 2. Central Bank of Nigeria, Naira, Forex, Inflation, Banks
-  if (/cbn|cardoso|naira|forex|fx|inflation|monetary|interest rate|bank|financial sector|cash|liquidity/.test(combined)) {
-    return 'Central Bank of Nigeria headquarters tower in Abuja, modern financial skyscrapers in Victoria Island Lagos, stacks of newly printed Nigerian Naira notes, financial press photojournalism';
-  }
-
-  // 3. Dangote, Refineries, Fuel, Petrol, NNPC, Oil & Gas
-  if (/dangote|refinery|petrol|fuel|nnpc|crude oil|subsidy|diesel|pms|gas|pipeline|energy/.test(combined)) {
-    return 'Dangote Petroleum Mega-Refinery complex in Lekki Lagos, vast modern oil distillation towers, heavy energy infrastructure, industrial sunset photojournalism';
-  }
-
-  // 4. Super Eagles, AFCON, Football, Victor Osimhen, Sports
-  if (/super eagles|osimhen|lookman|afcon|nff|football|soccer|premier league|fifa|npfl|stadium|cup/.test(combined)) {
-    return 'Nigerian Super Eagles international football stadium, green pitch with floodlights, professional football match in Nigeria, dramatic sports photojournalism';
-  }
-
-  // 5. Judiciary, EFCC, ICPC, Supreme Court, Police, Law
-  if (/efcc|icpc|supreme court|court|judge|judiciary|trial|verdict|gavel|police|arrest|lawyer|bail/.test(combined)) {
-    return 'Supreme Court of Nigeria architectural complex in Abuja, bronze scales of justice with heavy wooden judicial gavel on polished courtroom desk, legal documentary photojournalism';
-  }
-
-  // 6. Afrobeats, Nollywood, Entertainment
-  if (/burna|wizkid|davido|asake|tiwa|nollywood|afrobeats|movie|cinema|actor|music|grammy/.test(combined)) {
-    return 'African musical stage performance with gold spotlights, professional acoustic studio, vibrant Lagos creative entertainment event';
-  }
-
-  // 7. Tech, FinTech, Startups
-  if (/flutterwave|moniepoint|fintech|startup|tech|silicon|yaba|software|app|digital/.test(combined)) {
-    return 'Modern high-tech innovation campus in Yaba Lagos, digital workspace with multiple ultra-wide monitor dashboards showing financial analytics';
-  }
-
-  // 8. National Assembly, Senate, House of Reps
-  if (/assembly|senate|reps|akpabio|lawmakers|parliament|bill|constitution/.test(combined)) {
-    return 'National Assembly Complex dome in Abuja Nigeria, green legislative chamber benches, green and white emblem, legislative photojournalism';
-  }
-
-  // 9. Category Fallbacks
-  switch (categoryId) {
-    case 'cat_money_hustle':
-      return 'Lagos Marina financial commercial skyline, modern Nigerian banking towers, business district photojournalism';
-    case 'cat_sports':
-      return 'Modern national athletics and football stadium under bright floodlights, green pitch, sports journalism';
-    case 'cat_world':
-      return 'United Nations headquarters assembly hall, international diplomacy podium with world flags, global summit photojournalism';
-    default:
-      return 'Abuja city gate and national landmark under blue sky, Nigerian national monument, editorial documentary photojournalism';
-  }
 }
 
 function parseAiJsonResponse(

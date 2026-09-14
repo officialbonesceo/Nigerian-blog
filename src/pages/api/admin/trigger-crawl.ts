@@ -71,7 +71,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       'WORKFLOW_START',
       null,
       'System',
-      `Starting autonomous ingestion across ${sourcesToCrawl.length} source(s). AI Waterfall: [1] Cloudflare -> [2] OpenRouter (Qwen/DeepSeek) -> [3] Local AI (${aiConfig.localAiModel} @ ${aiConfig.localAiEndpoint}) -> [4] Pollinations -> [5] Editorial NLP`,
+      `Starting autonomous ingestion across ${sourcesToCrawl.length} source(s). AI Waterfall: [1] Cloudflare -> [2] OpenRouter (Qwen/DeepSeek) -> [3] Local AI (${aiConfig.localAiModel} @ ${aiConfig.localAiEndpoint}) -> [4] Pollinations. (Strict AI generation with modular section resilience)`,
       'info'
     );
 

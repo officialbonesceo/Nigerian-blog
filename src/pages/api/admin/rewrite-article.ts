@@ -11,6 +11,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const body = (await request.json().catch(() => ({}))) as {
       article_id?: string;
       custom_instruction?: string;
+      rewrite_mode?: 'fresh_from_headline' | 'full';
     };
 
     if (!body.article_id) {
@@ -38,14 +39,20 @@ export const POST: APIRoute = async ({ request, locals }) => {
       localAiModel: settingsMap.local_ai_model,
     };
 
+    // Determine content fed into the AI synthesizer based on rewrite_mode
+    const isFreshFromHeadline = body.rewrite_mode === 'fresh_from_headline';
+    const rawWireContent = isFreshFromHeadline
+      ? `Investigative Wire Dispatch: Focus purely on this verified headline: "${article.title}". ${body.custom_instruction ? `EDITORIAL INSTRUCTION FROM ADMIN: ${body.custom_instruction}` : ''}`
+      : `${article.content || article.summary || article.title} ${body.custom_instruction ? `\n\nEDITORIAL INSTRUCTION FROM ADMIN: ${body.custom_instruction}` : ''}`;
+
     // Synthesize authentic news content strictly grounded on the article's real topic
     const aiResult = await synthesizeNewsArticle(
       {
         title: article.title,
         sourceName: article.source_name || 'Verified Wire',
         originalUrl: (article as any).original_url || (article as any).source_url || '',
-        description: article.summary || article.title,
-        content: article.content || article.summary || article.title,
+        description: isFreshFromHeadline ? article.title : (article.summary || article.title),
+        content: rawWireContent,
         categoryDefault: article.category_id || 'cat_naija_news',
       },
       aiConfig

@@ -521,6 +521,63 @@ export async function getArticles(
   return results;
 }
 
+export async function getArticlesWithCount(
+  db: D1Database,
+  o: { categoryId?: string; search?: string; limit?: number; offset?: number; status?: string } = {}
+): Promise<{ articles: Article[]; total: number }> {
+  await ensureTablesExist(db);
+  const limit = Math.min(Math.max(o.limit ?? 15, 1), 100);
+  const offset = Math.max(o.offset ?? 0, 0);
+
+  let whereClauses: string[] = ["(status=? OR status IS NULL)"];
+  const params: unknown[] = [o.status || 'published'];
+
+  if (o.categoryId) {
+    whereClauses.push('category_id=?');
+    params.push(o.categoryId);
+  }
+
+  if (o.search) {
+    whereClauses.push('(title LIKE ? OR summary LIKE ? OR source_name LIKE ?)');
+    const term = `%${o.search}%`;
+    params.push(term, term, term);
+  }
+
+  const whereSql = whereClauses.join(' AND ');
+
+  let total = 0;
+  try {
+    const countRes = await db.prepare(`SELECT COUNT(*) as count FROM articles WHERE ${whereSql}`).bind(...params).first<{ count: number }>();
+    total = countRes?.count || 0;
+  } catch (err) {
+    console.warn('Count query warning:', err);
+  }
+
+  let articles: Article[] = [];
+  try {
+    const fetchParams = [...params, limit, offset];
+    const res = await db.prepare(`SELECT * FROM articles WHERE ${whereSql} ORDER BY published_at DESC LIMIT ? OFFSET ?`).bind(...fetchParams).all<Article>();
+    if (res?.results?.length) {
+      articles = res.results.map(formatArticle);
+    }
+  } catch (err) {
+    console.warn('Fetch articles query warning:', err);
+  }
+
+  if (articles.length === 0 && total === 0) {
+    let fallback = [...initialArticles] as Article[];
+    if (o.categoryId) fallback = fallback.filter(a => a.category_id === o.categoryId);
+    if (o.search) {
+      const s = o.search.toLowerCase();
+      fallback = fallback.filter(a => a.title?.toLowerCase().includes(s) || a.summary?.toLowerCase().includes(s));
+    }
+    total = fallback.length;
+    articles = fallback.slice(offset, offset + limit).map(formatArticle);
+  }
+
+  return { articles, total };
+}
+
 export async function searchArticles(db: D1Database, term: string, limit = 50) {
   const q = `${select} WHERE (a.status='published' OR a.status IS NULL) AND (a.title LIKE ? OR a.summary LIKE ? OR a.content LIKE ?) ORDER BY a.published_at DESC LIMIT ?`;
   const x = `%${term.replace(/[%_]/g, '\\$&')}%`;
