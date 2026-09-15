@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getD1, getArticles } from '../lib/runtime-db';
+import { getD1, getArticles, getSiteSettings } from '../lib/runtime-db';
 
 export const prerender = false;
 
@@ -13,11 +13,28 @@ function escapeXml(unsafe: string): string {
     .replace(/'/g, '&apos;');
 }
 
-export const GET: APIRoute = async ({ url, locals }) => {
+export const GET: APIRoute = async ({ url, locals, request }) => {
   try {
     const db = getD1(locals);
-    const articles = await getArticles(db, { limit: 50, status: 'published' });
-    const origin = url.origin;
+    const [articles, settings] = await Promise.all([
+      getArticles(db, { limit: 50, status: 'published' }),
+      getSiteSettings(db),
+    ]);
+
+    let origin = (settings.site_url || '').trim();
+    if (!origin) {
+      try {
+        if (url && url.origin && url.origin !== 'null') {
+          origin = url.origin;
+        } else if (request && request.url) {
+          origin = new URL(request.url).origin;
+        }
+      } catch {}
+    }
+    if (!origin || origin.includes('localhost') || origin === 'null') {
+      origin = 'https://9jabeacon.name.ng';
+    }
+    origin = origin.replace(/\/+$/, '');
 
     const itemsXml = articles.map((art) => {
       const articleUrl = `${origin}/news/${encodeURIComponent(art.slug)}`;

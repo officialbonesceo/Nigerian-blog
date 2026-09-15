@@ -291,7 +291,7 @@ export const initialSources: Source[] = [
 export const initialArticles: Article[] = [
   {
     id: 'art_cbn_mpr_2025',
-    slug: 'cbn-keeps-interest-rate-at-26-75-money-hustle',
+    slug: 'cbn-holds-interest-rate-at-26-75-naira-stabilizes',
     title: 'CBN Holds Interest Rate at 26.75% as Naira Stabilizes Across Autonomous Windows',
     summary: 'The Monetary Policy Committee has retained the benchmark Monetary Policy Rate (MPR) at 26.75%, supporting lending stability for manufacturers and small enterprise operators while prioritizing headline inflation moderation.',
     content: `
@@ -409,7 +409,7 @@ export const initialArticles: Article[] = [
   },
   {
     id: 'art_lookman_super_eagles',
-    slug: 'lookman-nominated-for-african-footballer-of-the-year-super-eagles',
+    slug: 'lookman-nominated-for-african-footballer-of-the-year',
     title: 'Lookman Nominated for African Footballer of the Year After Stellar Europa League Run',
     summary: 'Super Eagles forward Ademola Lookman leads the continental shortlist following his historic European hat-trick, exemplary national team displays, and tactical evolution across European top-flight football.',
     content: `
@@ -460,7 +460,7 @@ export const initialArticles: Article[] = [
     views_count: 215,
     reading_time_minutes: 5,
     source_id: 'src_bbc_sport',
-    source_name: 'BBC Sport / Channels TV',
+    source_name: 'BBC Sport',
     source_original_url: 'https://www.bbc.com/sport',
     published_at: '2026-08-25T11:15:00Z',
     updated_at: '2026-08-25T11:15:00Z',
@@ -517,9 +517,9 @@ export const initialArticles: Article[] = [
     is_trending: 1,
     is_breaking: 0,
     views_count: 134,
-    reading_time_minutes: 5,
+    reading_time_minutes: 4,
     source_id: 'src_reuters_world',
-    source_name: 'Reuters / BBC World',
+    source_name: 'Reuters',
     source_original_url: 'https://www.reuters.com',
     published_at: '2026-08-25T10:30:00Z',
     updated_at: '2026-08-25T10:30:00Z',
@@ -527,7 +527,7 @@ export const initialArticles: Article[] = [
   },
   {
     id: 'art_techcabal_fintech_hustle',
-    slug: 'nigerian-fintechs-cross-border-payment-volumes-hit-new-milestone',
+    slug: 'nigerian-fintechs-cross-border-payment-volumes-surge',
     title: 'Nigerian Fintechs Tap Cross-Border Trade as Instant FX Settlement Surges 65%',
     summary: 'Lagos-based payment innovators and digital remittance hubs expand merchant corridors across Ghana, Kenya, and the UK with instant local currency payouts.',
     content: `
@@ -576,7 +576,7 @@ export const initialArticles: Article[] = [
     is_trending: 1,
     is_breaking: 0,
     views_count: 96,
-    reading_time_minutes: 5,
+    reading_time_minutes: 4,
     source_id: 'src_techcabal',
     source_name: 'TechCabal',
     source_original_url: 'https://techcabal.com',
@@ -637,7 +637,7 @@ export const initialArticles: Article[] = [
     views_count: 118,
     reading_time_minutes: 5,
     source_id: 'src_punch_news',
-    source_name: 'The Punch / BusinessDay',
+    source_name: 'The Punch Newspapers',
     source_original_url: 'https://punchng.com',
     published_at: '2026-08-25T08:15:00Z',
     updated_at: '2026-08-25T08:15:00Z',

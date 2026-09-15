@@ -7,12 +7,14 @@ import {
   addAutomationLog,
   updateSource,
   getAutomationSettings,
+  getSiteSettings,
   recordRejectedArticle,
 } from '../../../lib/runtime-db';
 import { fetchAndParseRssFeed } from '../../../lib/rss-parser';
 import { synthesizeNewsArticle, generateEditorialNewsImage, type AiCredentialsConfig } from '../../../lib/ai-engine';
 import { isPublisherLogoOrBanner } from '../../../lib/editorial-image';
 import { postToBuffer, type BufferConfig } from '../../../lib/buffer';
+import { submitUrlToBing, submitToIndexNow } from '../../../lib/bing-api';
 
 interface TriggerCrawlBody {
   source_id?: string;
@@ -36,7 +38,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const limitPerSource = Math.min(Math.max(Number(body.limit_per_source || 4), 1), 10);
 
     const autoSettings = await getAutomationSettings(db);
-    const settingsMap: Record<string, string> = {};
+    const siteSettings = await getSiteSettings(db);
+    const settingsMap: Record<string, string> = { ...siteSettings };
     for (const s of autoSettings) {
       settingsMap[s.key] = s.value;
     }
@@ -303,6 +306,56 @@ export const POST: APIRoute = async ({ request, locals }) => {
                 source.id,
                 source.name,
                 `Buffer dispatch error: ${bufErr.message}`,
+                'warning'
+              );
+            }
+          }
+
+          // Automated Bing Webmaster & IndexNow Submission
+          const bingApiKey = (settingsMap.bing_api_key || '').trim();
+          const bingAutoSubmit = settingsMap.bing_auto_submit_enabled === '1' || settingsMap.bing_auto_submit_enabled === 'true';
+          if (publishedArticle && bingApiKey && bingAutoSubmit) {
+            try {
+              const siteDomain = (settingsMap.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+              const canonicalUrl = `${siteDomain}/news/${publishedArticle.slug}`;
+              const bingRes = await submitUrlToBing(canonicalUrl, {
+                apiKey: bingApiKey,
+                siteUrl: siteDomain,
+              });
+
+              if (bingRes.success) {
+                await recordLog(
+                  db,
+                  'BING_SUBMIT',
+                  source.id,
+                  source.name,
+                  `[Bing Automated Indexing] URL submitted successfully: ${canonicalUrl}`,
+                  'info'
+                );
+              } else {
+                await recordLog(
+                  db,
+                  'BING_NOTICE',
+                  source.id,
+                  source.name,
+                  `Bing URL submission notice: ${bingRes.message}`,
+                  'warning'
+                );
+              }
+
+              // IndexNow companion ping
+              const indexNowKey = (settingsMap.indexnow_key || bingApiKey).trim();
+              if (indexNowKey) {
+                const host = new URL(siteDomain).hostname;
+                await submitToIndexNow([canonicalUrl], { host, key: indexNowKey }).catch(() => {});
+              }
+            } catch (bingErr: any) {
+              await recordLog(
+                db,
+                'BING_ERROR',
+                source.id,
+                source.name,
+                `Bing automated submission error: ${bingErr.message}`,
                 'warning'
               );
             }

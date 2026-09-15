@@ -12,7 +12,7 @@ function escapeXml(unsafe: string): string {
     .replace(/'/g, '&apos;');
 }
 
-export const GET: APIRoute = async ({ url, locals }) => {
+export const GET: APIRoute = async ({ url, locals, request }) => {
   const db = getD1(locals);
   const [articles, categories, settings] = await Promise.all([
     getArticles(db, { limit: 1500 }),
@@ -20,7 +20,20 @@ export const GET: APIRoute = async ({ url, locals }) => {
     getSiteSettings(db),
   ]);
 
-  const siteBase = (settings.site_url || url.origin || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+  let siteBase = (settings.site_url || '').trim();
+  if (!siteBase) {
+    try {
+      if (url && url.origin && url.origin !== 'null') {
+        siteBase = url.origin;
+      } else if (request && request.url) {
+        siteBase = new URL(request.url).origin;
+      }
+    } catch {}
+  }
+  if (!siteBase || siteBase.includes('localhost') || siteBase === 'null') {
+    siteBase = 'https://9jabeacon.name.ng';
+  }
+  siteBase = siteBase.replace(/\/+$/, '');
   const siteName = settings.site_name || '9jaBeacon';
 
   const categoryUrls = categories.map(c => `

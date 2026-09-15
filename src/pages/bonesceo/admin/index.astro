@@ -208,6 +208,14 @@ for (const s of autoSettings) {
         <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <span>Monetag Ad Integration</span>
       </button>
+      <button
+        onclick="switchAdminTab('bing')"
+        id="tab-btn-bing"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+      >
+        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <span>Bing & IndexNow SEO API</span>
+      </button>
     </div>
 
     <!-- TAB 1: WORKFLOW & CRAWLER -->
@@ -1325,13 +1333,26 @@ for (const s of autoSettings) {
 
           <div id="monetagSaveStatus" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
 
-          <button
-            type="submit"
-            id="saveMonetagBtn"
-            class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
-          >
-            <span>Save Monetag Configuration</span>
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              id="saveMonetagBtn"
+              class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+            >
+              <span>Save Monetag Configuration</span>
+            </button>
+
+            <a
+              href="/"
+              target="_blank"
+              class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center gap-1.5"
+            >
+              <span>Test Live Homepage Feed</span>
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
         </form>
       </div>
 
@@ -1360,6 +1381,245 @@ for (const s of autoSettings) {
               Styled identically to the article list cards on Homepage and Category archives, with a subtle "Sponsored Report" label.
             </p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 8: BING WEBMASTER API & INDEXNOW AUTOMATED SUBMISSION -->
+    <div id="tab-content-bing" class="admin-tab-content hidden space-y-6">
+      <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <span>Bing Webmaster API & IndexNow SEO Engine</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Official Indexing API</span>
+              </h2>
+              <p class="text-xs text-slate-400">
+                Instantly notify Microsoft Bing and IndexNow-compatible search engines (Bing, Yahoo, Yandex, Seznam) whenever an article is published.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
+              siteSettings.bing_api_key ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+            }`}>
+              <span class={`w-2 h-2 rounded-full ${siteSettings.bing_api_key ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+              <span>{siteSettings.bing_api_key ? 'Bing Key Configured' : 'Bing Key Needed'}</span>
+            </span>
+          </div>
+        </div>
+
+        <form id="bingSettingsForm" onsubmit="saveBingSettings(event)" class="space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Left Column: Primary Credentials -->
+            <div class="space-y-4">
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label for="bing_api_key" class="text-xs font-semibold text-slate-200">
+                    Bing Webmaster API Key <span class="text-red-400">*</span>
+                  </label>
+                  <a
+                    href="https://www.bing.com/webmasters/configure/api/access"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                  >
+                    <span>Get Bing API Key</span>
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                  </a>
+                </div>
+                <input
+                  type="text"
+                  id="bing_api_key"
+                  name="bing_api_key"
+                  value={siteSettings.bing_api_key || ''}
+                  placeholder="e.g. 488735df70a24f0c978bb1c..."
+                  class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+                />
+                <p class="text-[11px] text-slate-500 mt-1">
+                  Obtained from Bing Webmaster Tools &rarr; Settings icon &rarr; API Access &rarr; API Key.
+                </p>
+              </div>
+
+              <div>
+                <label for="bing_site_url" class="block text-xs font-semibold text-slate-200 mb-1.5">
+                  Registered Site URL (Canonical Domain)
+                </label>
+                <input
+                  type="text"
+                  id="bing_site_url"
+                  name="site_url"
+                  value={siteSettings.site_url || 'https://9jabeacon.name.ng'}
+                  placeholder="https://9jabeacon.name.ng"
+                  class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+                />
+                <p class="text-[11px] text-slate-500 mt-1">
+                  Must exactly match the site domain registered and verified inside your Bing Webmaster dashboard.
+                </p>
+              </div>
+
+              <div>
+                <label for="indexnow_key" class="block text-xs font-semibold text-slate-200 mb-1.5">
+                  IndexNow Key (Optional / Cross-Engine Sync)
+                </label>
+                <input
+                  type="text"
+                  id="indexnow_key"
+                  name="indexnow_key"
+                  value={siteSettings.indexnow_key || ''}
+                  placeholder="Optional: defaults to Bing Key if left blank"
+                  class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+                />
+                <p class="text-[11px] text-slate-500 mt-1">
+                  Used for IndexNow protocol broadcasts across all participating engines simultaneously.
+                </p>
+              </div>
+            </div>
+
+            <!-- Right Column: Automated Submission Options -->
+            <div class="space-y-4">
+              <div class="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3">
+                <h4 class="text-xs font-bold text-slate-200 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span>Automated Submission Triggers</span>
+                </h4>
+
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="bing_auto_submit_enabled"
+                    name="bing_auto_submit_enabled"
+                    checked={siteSettings.bing_auto_submit_enabled !== '0'}
+                    class="mt-1 w-4 h-4 rounded text-cyan-500 focus:ring-cyan-500 border-slate-700 bg-slate-900"
+                  />
+                  <div>
+                    <span class="text-xs font-semibold text-slate-200 block">Auto-Submit New Articles Upon Publishing</span>
+                    <span class="text-[11px] text-slate-400 block leading-relaxed">
+                      Whenever the autonomous crawler or manual editor publishes a story, immediately ping Bing's single URL endpoint with 0 manual intervention.
+                    </span>
+                  </div>
+                </label>
+
+                <div class="border-t border-slate-800/60 pt-3">
+                  <label class="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="bing_include_indexnow"
+                      name="bing_include_indexnow"
+                      checked={siteSettings.bing_include_indexnow !== '0'}
+                      class="mt-1 w-4 h-4 rounded text-cyan-500 focus:ring-cyan-500 border-slate-700 bg-slate-900"
+                    />
+                    <div>
+                      <span class="text-xs font-semibold text-slate-200 block">Simultaneous IndexNow Protocol Broadcast</span>
+                      <span class="text-[11px] text-slate-400 block leading-relaxed">
+                        Broadcasts alongside Bing Webmaster API to notify Bing & partner engines instantly.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Daily Quota / Status Notice -->
+              <div class="p-4 rounded-xl bg-cyan-950/20 border border-cyan-800/40 text-xs space-y-2">
+                <span class="font-bold text-cyan-300 flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Quota & Rate Limit Information</span>
+                </span>
+                <p class="text-[11px] text-slate-300 leading-relaxed">
+                  Bing allows up to <strong>10,000 to 100,000 URLs/day</strong> depending on site trust level. If you ever hit your daily limit, new URLs will still be indexed organically via the automated XML sitemap (<code class="text-cyan-300 font-mono">/sitemap.xml</code>).
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-wrap items-center gap-3 pt-2">
+            <button
+              type="submit"
+              id="saveBingSettingsBtn"
+              class="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition shadow-md shadow-cyan-500/20 flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Save Bing Settings</span>
+            </button>
+
+            <button
+              type="button"
+              onclick="testBingConnection()"
+              id="testBingBtn"
+              class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Test API Connection</span>
+            </button>
+
+            <button
+              type="button"
+              onclick="submitAllRecentToBing()"
+              id="submitAllRecentBtn"
+              class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Submit All Recent Articles (Batch)</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Cloudflare Robots.txt Conflict Notice & Fix Guide -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-amber-500/30 space-y-3">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+            <div class="space-y-1.5 flex-1">
+              <h4 class="text-xs font-bold text-amber-300">
+                Fix Bing Tester Error: "Content-Signal: search=yes,ai-train=no..."
+              </h4>
+              <p class="text-[11px] text-slate-300 leading-relaxed">
+                Bing Webmaster's robots.txt tester flagged an error on line 30 because Cloudflare automatically prepends <code class="text-amber-300 font-mono bg-amber-950/40 px-1 py-0.5 rounded"># BEGIN Cloudflare Managed content</code> and <code class="text-amber-300 font-mono bg-amber-950/40 px-1 py-0.5 rounded">Content-Signal</code>. Bing's strict syntax parser does not recognize Cloudflare's non-standard AI header yet.
+              </p>
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-300 space-y-1.5 mt-2">
+                <span class="font-bold text-slate-100 block">How to clear the Bing error in 10 seconds (Free Cloudflare Dashboard Fix):</span>
+                <ol class="list-decimal list-inside space-y-1 text-slate-400">
+                  <li>Log in to your <a href="https://dash.cloudflare.com" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:underline">Cloudflare Dashboard</a> &rarr; select <strong class="text-slate-200">9jabeacon.name.ng</strong>.</li>
+                  <li>Go to <strong class="text-slate-200">AI</strong> &rarr; <strong class="text-slate-200">AI Crawl Control</strong> (or <strong class="text-slate-200">Security</strong> &rarr; <strong class="text-slate-200">Bots</strong>).</li>
+                  <li>Uncheck / Toggle OFF <strong class="text-slate-200">"Display Content Signals Policy"</strong> (or "Managed robots.txt").</li>
+                  <li>Click <strong class="text-cyan-400">Fetch / Test</strong> in Bing Webmaster Tools &mdash; the error will disappear immediately, leaving our pure clean <code class="text-cyan-300 font-mono">User-agent: Bingbot Allow: /</code> active.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Submission Test Box -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            <span>Manual Instant URL Submission</span>
+          </h3>
+          <p class="text-xs text-slate-400">
+            Submit any specific article or page URL to Bing immediately for urgent re-indexing.
+          </p>
+
+          <div class="flex flex-col sm:flex-row items-center gap-2">
+            <input
+              type="url"
+              id="manualSubmitUrlInput"
+              placeholder="https://9jabeacon.name.ng/news/article-slug"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+            />
+            <button
+              type="button"
+              onclick="submitSingleUrlManually()"
+              id="manualSubmitBtn"
+              class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition whitespace-nowrap cursor-pointer"
+            >
+              Submit to Bing Now
+            </button>
+          </div>
+
+          <div id="bingResultBox" class="hidden p-4 rounded-xl border text-xs font-mono transition"></div>
         </div>
       </div>
     </div>
@@ -2134,5 +2394,208 @@ for (const s of autoSettings) {
         } catch {}
       }
     })();
+
+    // ==========================================
+    // BING WEBMASTER API & INDEXNOW FUNCTIONS
+    // ==========================================
+    async function saveBingSettings(e) {
+      if (e) e.preventDefault();
+      const saveBtn = document.getElementById('saveBingSettingsBtn');
+      const originalText = saveBtn ? saveBtn.innerHTML : '';
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span>Saving...</span>';
+      }
+
+      const apiKey = document.getElementById('bing_api_key')?.value?.trim() || '';
+      const siteUrl = document.getElementById('bing_site_url')?.value?.trim() || 'https://9jabeacon.name.ng';
+      const indexNowKey = document.getElementById('indexnow_key')?.value?.trim() || '';
+      const autoSubmit = document.getElementById('bing_auto_submit_enabled')?.checked ? '1' : '0';
+      const includeIndexNow = document.getElementById('bing_include_indexnow')?.checked ? '1' : '0';
+
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'site',
+            settings: {
+              bing_api_key: apiKey,
+              site_url: siteUrl,
+              indexnow_key: indexNowKey,
+              bing_auto_submit_enabled: autoSubmit,
+              bing_include_indexnow: includeIndexNow,
+            },
+          }),
+        });
+
+        if (res.ok) {
+          showBingResult('✔ Bing Webmaster settings saved successfully!', 'success');
+        } else {
+          const data = await res.json().catch(() => ({ error: 'Failed to save' }));
+          showBingResult('✖ Error saving settings: ' + (data.error || 'Server error'), 'error');
+        }
+      } catch (err) {
+        showBingResult('✖ Network error: ' + err.message, 'error');
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = originalText;
+        }
+      }
+    }
+    window.saveBingSettings = saveBingSettings;
+
+    async function testBingConnection() {
+      const testBtn = document.getElementById('testBingBtn');
+      const apiKey = document.getElementById('bing_api_key')?.value?.trim() || '';
+      const siteUrl = document.getElementById('bing_site_url')?.value?.trim() || 'https://9jabeacon.name.ng';
+
+      if (!apiKey) {
+        showBingResult('⚠ Please enter your Bing Webmaster API Key first.', 'warning');
+        return;
+      }
+
+      if (testBtn) {
+        testBtn.disabled = true;
+        testBtn.innerText = 'Pinging Bing API...';
+      }
+
+      try {
+        const res = await fetch('/api/admin/bing-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'test_connection',
+            apiKey,
+            siteUrl,
+          }),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showBingResult(`✔ Bing API Connection Verified! Status: ${data.statusCode || 200}. Homepage successfully pinged for indexing.`, 'success');
+        } else {
+          showBingResult(`✖ Bing API verification failed: ${data.message || data.error || 'Check API Key and verified site domain'}`, 'error');
+        }
+      } catch (err) {
+        showBingResult('✖ Network error testing connection: ' + err.message, 'error');
+      } finally {
+        if (testBtn) {
+          testBtn.disabled = false;
+          testBtn.innerText = 'Test API Connection';
+        }
+      }
+    }
+    window.testBingConnection = testBingConnection;
+
+    async function submitAllRecentToBing() {
+      const batchBtn = document.getElementById('submitAllRecentBtn');
+      const apiKey = document.getElementById('bing_api_key')?.value?.trim() || '';
+      const siteUrl = document.getElementById('bing_site_url')?.value?.trim() || 'https://9jabeacon.name.ng';
+
+      if (!apiKey) {
+        showBingResult('⚠ Please enter your Bing Webmaster API Key first.', 'warning');
+        return;
+      }
+
+      if (batchBtn) {
+        batchBtn.disabled = true;
+        batchBtn.innerText = 'Submitting Recent Batch...';
+      }
+
+      try {
+        const res = await fetch('/api/admin/bing-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'submit_all_recent',
+            apiKey,
+            siteUrl,
+          }),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showBingResult(`✔ Dispatched batch of ${data.totalSubmitted || 'all'} URLs to Bing Webmaster and IndexNow!`, 'success');
+        } else {
+          showBingResult(`✖ Batch submission issue: ${data.message || data.error}`, 'error');
+        }
+      } catch (err) {
+        showBingResult('✖ Batch submission network error: ' + err.message, 'error');
+      } finally {
+        if (batchBtn) {
+          batchBtn.disabled = false;
+          batchBtn.innerText = 'Submit All Recent Articles (Batch)';
+        }
+      }
+    }
+    window.submitAllRecentToBing = submitAllRecentToBing;
+
+    async function submitSingleUrlManually() {
+      const input = document.getElementById('manualSubmitUrlInput');
+      const submitBtn = document.getElementById('manualSubmitBtn');
+      const rawUrl = input ? input.value.trim() : '';
+
+      if (!rawUrl) {
+        showBingResult('⚠ Please enter a valid URL to submit.', 'warning');
+        return;
+      }
+
+      const apiKey = document.getElementById('bing_api_key')?.value?.trim() || '';
+      const siteUrl = document.getElementById('bing_site_url')?.value?.trim() || 'https://9jabeacon.name.ng';
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Submitting...';
+      }
+
+      try {
+        const res = await fetch('/api/admin/bing-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'submit_single',
+            url: rawUrl,
+            apiKey,
+            siteUrl,
+          }),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showBingResult(`✔ URL submitted to Bing & IndexNow: ${rawUrl}`, 'success');
+          if (input) input.value = '';
+        } else {
+          showBingResult(`✖ Submission failed: ${data.message || data.error}`, 'error');
+        }
+      } catch (err) {
+        showBingResult('✖ Network error: ' + err.message, 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = 'Submit to Bing Now';
+        }
+      }
+    }
+    window.submitSingleUrlManually = submitSingleUrlManually;
+
+    function showBingResult(msg, type = 'info') {
+      const box = document.getElementById('bingResultBox');
+      if (!box) return;
+      box.classList.remove('hidden', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-red-950/80', 'border-red-800', 'text-red-300', 'bg-amber-950/80', 'border-amber-800', 'text-amber-300', 'bg-slate-900', 'border-slate-800', 'text-slate-300');
+
+      if (type === 'success') {
+        box.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+      } else if (type === 'error') {
+        box.classList.add('bg-red-950/80', 'border-red-800', 'text-red-300');
+      } else if (type === 'warning') {
+        box.classList.add('bg-amber-950/80', 'border-amber-800', 'text-amber-300');
+      } else {
+        box.classList.add('bg-slate-900', 'border-slate-800', 'text-slate-300');
+      }
+
+      box.textContent = msg;
+    }
   </script>
 </Layout>

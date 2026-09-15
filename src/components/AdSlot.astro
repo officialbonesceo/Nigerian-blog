@@ -23,6 +23,7 @@ const {
 } = Astro.props;
 
 const hasMonetag = Boolean(isMonetagEnabled && (inArticleZoneId || adCodeSnippet));
+const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}`;
 ---
 
 {format === 'in-article' && (
@@ -47,14 +48,24 @@ const hasMonetag = Boolean(isMonetagEnabled && (inArticleZoneId || adCodeSnippet
     {hasMonetag && (
       <div class="monetag-ad-wrapper w-full text-center overflow-hidden mb-3">
         {adCodeSnippet ? (
-          <Fragment set:html={adCodeSnippet} />
+          <div class="monetag-custom-snippet" set:html={adCodeSnippet} />
         ) : inArticleZoneId ? (
-          <div data-zone={inArticleZoneId} class="monetag-inarticle-slot w-full text-center py-1">
-            <script is:inline define:vars={{ inArticleZoneId }}>
-              (function(s){
-                s.dataset.zone = inArticleZoneId;
-                s.src = 'https://nap5k.com/tag.min.js';
-              })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
+          <div id={uniqueSlotId} data-zone={inArticleZoneId} class="monetag-inarticle-slot w-full text-center py-1">
+            <script is:inline define:vars={{ inArticleZoneId, uniqueSlotId }}>
+              (function() {
+                try {
+                  var container = document.getElementById(uniqueSlotId);
+                  var s = document.createElement('script');
+                  s.dataset.zone = inArticleZoneId;
+                  s.src = 'https://nap5k.com/tag.min.js';
+                  s.async = true;
+                  if (container) {
+                    container.appendChild(s);
+                  } else {
+                    document.body.appendChild(s);
+                  }
+                } catch(e) {}
+              })();
             </script>
           </div>
         ) : null}
@@ -104,9 +115,30 @@ const hasMonetag = Boolean(isMonetagEnabled && (inArticleZoneId || adCodeSnippet
           </span>
         </div>
 
-        {hasMonetag && adCodeSnippet && (
+        {hasMonetag && (
           <div class="monetag-feed-snippet w-full overflow-hidden my-1">
-            <Fragment set:html={adCodeSnippet} />
+            {adCodeSnippet ? (
+              <div set:html={adCodeSnippet} />
+            ) : inArticleZoneId ? (
+              <div id={uniqueSlotId} data-zone={inArticleZoneId} class="monetag-feed-slot w-full text-center py-1">
+                <script is:inline define:vars={{ inArticleZoneId, uniqueSlotId }}>
+                  (function() {
+                    try {
+                      var container = document.getElementById(uniqueSlotId);
+                      var s = document.createElement('script');
+                      s.dataset.zone = inArticleZoneId;
+                      s.src = 'https://nap5k.com/tag.min.js';
+                      s.async = true;
+                      if (container) {
+                        container.appendChild(s);
+                      } else {
+                        document.body.appendChild(s);
+                      }
+                    } catch(e) {}
+                  })();
+                </script>
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -150,9 +182,26 @@ const hasMonetag = Boolean(isMonetagEnabled && (inArticleZoneId || adCodeSnippet
     {hasMonetag && (
       <div class="monetag-sidebar-wrapper w-full text-center overflow-hidden">
         {adCodeSnippet ? (
-          <Fragment set:html={adCodeSnippet} />
+          <div set:html={adCodeSnippet} />
         ) : inArticleZoneId ? (
-          <div data-zone={inArticleZoneId} class="monetag-sidebar-slot w-full"></div>
+          <div id={uniqueSlotId} data-zone={inArticleZoneId} class="monetag-sidebar-slot w-full">
+            <script is:inline define:vars={{ inArticleZoneId, uniqueSlotId }}>
+              (function() {
+                try {
+                  var container = document.getElementById(uniqueSlotId);
+                  var s = document.createElement('script');
+                  s.dataset.zone = inArticleZoneId;
+                  s.src = 'https://nap5k.com/tag.min.js';
+                  s.async = true;
+                  if (container) {
+                    container.appendChild(s);
+                  } else {
+                    document.body.appendChild(s);
+                  }
+                } catch(e) {}
+              })();
+            </script>
+          </div>
         ) : null}
       </div>
     )}

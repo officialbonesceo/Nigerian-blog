@@ -154,6 +154,12 @@ function initDatabase() {
       role TEXT DEFAULT 'admin',
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug);
+    CREATE INDEX IF NOT EXISTS idx_automation_logs_created ON automation_logs(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_visitor_date ON visitor_analytics(visit_date);
   `);
 
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN action TEXT`).run(); } catch {}

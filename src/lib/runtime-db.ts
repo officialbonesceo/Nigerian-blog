@@ -365,7 +365,11 @@ export async function ensureTablesExist(db: D1Database) {
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL,
             updated_at TEXT DEFAULT (datetime('now'))
-          )`
+          )`,
+          `CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)`,
+          `CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC)`,
+          `CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`,
+          `CREATE INDEX IF NOT EXISTS idx_automation_logs_created ON automation_logs(created_at DESC)`
         ];
 
         for (const stmt of statements) {

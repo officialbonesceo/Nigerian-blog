@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { getD1, createArticle, updateArticle, deleteArticle, getArticlesWithCount } from '../../../lib/runtime-db';
+import { getD1, createArticle, updateArticle, deleteArticle, getArticlesWithCount, getSiteSettings } from '../../../lib/runtime-db';
+import { submitUrlToBing, submitToIndexNow } from '../../../lib/bing-api';
 
 interface ArticleBody {
   id?: string;
@@ -67,8 +68,38 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (!body.title || !body.content) {
       return new Response(JSON.stringify({ error: 'Title and content are required' }), { status: 400 });
     }
-    const article = await createArticle(getD1(locals), body);
-    return new Response(JSON.stringify({ success: true, article }), {
+    const db = getD1(locals);
+    const article = await createArticle(db, body);
+
+    // Automated Bing Submission if article is published
+    let bingSubmission = null;
+    if (article && (article.status === 'published' || !article.status)) {
+      try {
+        const settings = await getSiteSettings(db);
+        const bingKey = (settings.bing_api_key || '').trim();
+        const autoSubmit = settings.bing_auto_submit_enabled === '1' || settings.bing_auto_submit_enabled === 'true';
+
+        if (bingKey && autoSubmit) {
+          const siteUrl = (settings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+          const articleUrl = `${siteUrl}/news/${article.slug}`;
+          bingSubmission = await submitUrlToBing(articleUrl, {
+            apiKey: bingKey,
+            siteUrl,
+          });
+
+          // Also submit to IndexNow protocol
+          const indexNowKey = (settings.indexnow_key || bingKey).trim();
+          if (indexNowKey) {
+            const host = new URL(siteUrl).hostname;
+            await submitToIndexNow([articleUrl], { host, key: indexNowKey }).catch(() => {});
+          }
+        }
+      } catch (bingErr) {
+        console.warn('Bing automated submission error on manual publish:', bingErr);
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, article, bing: bingSubmission }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (e: any) {

@@ -106,26 +106,39 @@ export interface ArticleSections {
 /**
  * Splits an article into multiple sections for strategic ad placement
  * (Slot 1 after ~3rd paragraph, Slot 2 further down in long stories)
+ * Accurately extracts complete, well-formed HTML blocks without stripping tags
  */
 export function partitionArticleForAds(htmlContent: string): ArticleSections {
-  const blocks = htmlContent.split(/<\/p>|<\/h3>|<\/blockquote>/i).map(b => b.trim()).filter(Boolean);
+  if (!htmlContent) {
+    return {
+      lead: '',
+      middle1: '',
+      middle2: '',
+      conclusion: '',
+      totalBlocks: 0,
+    };
+  }
 
-  // If article is brief (< 4 blocks), keep as single lead
-  if (blocks.length < 4) {
+  // Match complete top-level HTML element blocks (headings, paragraphs, blockquotes, lists, divs)
+  const blockRegex = /(?:<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>|<blockquote[^>]*>[\s\S]*?<\/blockquote>|<ul[^>]*>[\s\S]*?<\/ul>|<ol[^>]*>[\s\S]*?<\/ol>|<p[^>]*>[\s\S]*?<\/p>|<div[^>]*>[\s\S]*?<\/div>)/gi;
+  const blocks = htmlContent.match(blockRegex);
+
+  // If regex found no structured blocks, fallback safely to the full content as lead
+  if (!blocks || blocks.length < 4) {
     return {
       lead: htmlContent,
       middle1: '',
       middle2: '',
       conclusion: '',
-      totalBlocks: blocks.length,
+      totalBlocks: blocks ? blocks.length : 1,
     };
   }
 
-  // If article is medium (4 - 7 blocks), place 1 ad around paragraph 2-3
+  // If article is medium (4 - 7 blocks), place 1 ad around block 2-3
   if (blocks.length <= 7) {
     const cut = Math.min(3, Math.floor(blocks.length / 2));
-    const part1 = blocks.slice(0, cut).map(b => (b.startsWith('<') ? b : `<p>${b}</p>`)).join('\n');
-    const part2 = blocks.slice(cut).map(b => (b.startsWith('<') ? b : `<p>${b}</p>`)).join('\n');
+    const part1 = blocks.slice(0, cut).join('\n\n');
+    const part2 = blocks.slice(cut).join('\n\n');
     return {
       lead: part1,
       middle1: part2,
@@ -135,13 +148,13 @@ export function partitionArticleForAds(htmlContent: string): ArticleSections {
     };
   }
 
-  // If article is long (8+ blocks), place 2 ads: one after paragraph 3, another around paragraph 7
+  // If article is long (8+ blocks), place 2 ads: one after block 3, another around 65% of the story
   const cut1 = 3;
   const cut2 = Math.min(blocks.length - 2, Math.floor(blocks.length * 0.65));
 
-  const part1 = blocks.slice(0, cut1).map(b => (b.startsWith('<') ? b : `<p>${b}</p>`)).join('\n');
-  const part2 = blocks.slice(cut1, cut2).map(b => (b.startsWith('<') ? b : `<p>${b}</p>`)).join('\n');
-  const part3 = blocks.slice(cut2).map(b => (b.startsWith('<') ? b : `<p>${b}</p>`)).join('\n');
+  const part1 = blocks.slice(0, cut1).join('\n\n');
+  const part2 = blocks.slice(cut1, cut2).join('\n\n');
+  const part3 = blocks.slice(cut2).join('\n\n');
 
   return {
     lead: part1,
