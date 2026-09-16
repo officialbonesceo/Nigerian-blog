@@ -1032,11 +1032,19 @@ export async function updateArticle(db: D1Database, id: string, input: Record<st
   if (!s.length) return false;
   s.push("updated_at=datetime('now')");
   v.push(id);
-  return (await db.prepare(`UPDATE articles SET ${s.join(',')} WHERE id=?`).bind(...v).run()).meta.changes > 0;
+  const result = (await db.prepare(`UPDATE articles SET ${s.join(',')} WHERE id=?`).bind(...v).run()).meta.changes > 0;
+  if (result) {
+    invalidateCache();
+  }
+  return result;
 }
 
 export async function deleteArticle(db: D1Database, id: string) {
-  return (await db.prepare('DELETE FROM articles WHERE id=?').bind(id).run()).meta.changes > 0;
+  const result = (await db.prepare('DELETE FROM articles WHERE id=?').bind(id).run()).meta.changes > 0;
+  if (result) {
+    invalidateCache();
+  }
+  return result;
 }
 
 export async function createSource(db: D1Database, input: Record<string, unknown>) {

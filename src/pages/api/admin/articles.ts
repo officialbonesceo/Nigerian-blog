@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getD1, createArticle, updateArticle, deleteArticle, getArticlesWithCount, getSiteSettings } from '../../../lib/runtime-db';
+import { getD1, createArticle, updateArticle, deleteArticle, getArticlesWithCount, getArticleById, getSiteSettings } from '../../../lib/runtime-db';
 import { submitUrlToBing, submitToIndexNow } from '../../../lib/bing-api';
 
 interface ArticleBody {
@@ -30,13 +30,25 @@ interface ArticleBody {
 export const GET: APIRoute = async ({ request, locals }) => {
   try {
     const url = new URL(request.url);
+    const db = getD1(locals);
+
+    const singleId = url.searchParams.get('id');
+    if (singleId) {
+      const article = await getArticleById(db, singleId);
+      if (!article) {
+        return new Response(JSON.stringify({ error: 'Article not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ success: true, article }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
     const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '15', 10)));
     const offset = (page - 1) * limit;
     const categoryId = url.searchParams.get('category_id') || undefined;
     const search = url.searchParams.get('search') || undefined;
 
-    const db = getD1(locals);
     const { articles, total } = await getArticlesWithCount(db, {
       limit,
       offset,
