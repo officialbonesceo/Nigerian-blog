@@ -22,7 +22,8 @@ const {
   isMonetagEnabled = false,
 } = Astro.props;
 
-const hasMonetag = Boolean(isMonetagEnabled && (inArticleZoneId || adCodeSnippet));
+const zoneId = inArticleZoneId || '11801792';
+const hasMonetag = Boolean(isMonetagEnabled !== false || adCodeSnippet || inArticleZoneId);
 const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}`;
 ---
 
@@ -47,16 +48,16 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
     <!-- Monetag Execution Container (if enabled) -->
     {hasMonetag && (
       <div class="monetag-ad-wrapper w-full text-center overflow-hidden mb-3">
-        {adCodeSnippet ? (
+        {adCodeSnippet && !adCodeSnippet.includes('nap5k.com') ? (
           <div class="monetag-custom-snippet" set:html={adCodeSnippet} />
-        ) : inArticleZoneId ? (
-          <div id={uniqueSlotId} data-zone={inArticleZoneId} class="monetag-inarticle-slot w-full text-center py-1">
-            <script is:inline define:vars={{ inArticleZoneId, uniqueSlotId }}>
+        ) : (
+          <div id={uniqueSlotId} data-zone={zoneId} class="monetag-inarticle-slot w-full text-center py-1">
+            <script is:inline define:vars={{ zoneId, uniqueSlotId }}>
               (function() {
                 try {
                   var container = document.getElementById(uniqueSlotId);
                   var s = document.createElement('script');
-                  s.dataset.zone = inArticleZoneId;
+                  s.dataset.zone = zoneId;
                   s.src = 'https://nap5k.com/tag.min.js';
                   s.async = true;
                   if (container) {
@@ -68,7 +69,7 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
               })();
             </script>
           </div>
-        ) : null}
+        )}
       </div>
     )}
 
@@ -117,16 +118,16 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
 
         {hasMonetag && (
           <div class="monetag-feed-snippet w-full overflow-hidden my-1">
-            {adCodeSnippet ? (
+            {adCodeSnippet && !adCodeSnippet.includes('nap5k.com') ? (
               <div set:html={adCodeSnippet} />
-            ) : inArticleZoneId ? (
-              <div id={uniqueSlotId} data-zone={inArticleZoneId} class="monetag-feed-slot w-full text-center py-1">
-                <script is:inline define:vars={{ inArticleZoneId, uniqueSlotId }}>
+            ) : (
+              <div id={uniqueSlotId} data-zone={zoneId} class="monetag-feed-slot w-full text-center py-1">
+                <script is:inline define:vars={{ zoneId, uniqueSlotId }}>
                   (function() {
                     try {
                       var container = document.getElementById(uniqueSlotId);
                       var s = document.createElement('script');
-                      s.dataset.zone = inArticleZoneId;
+                      s.dataset.zone = zoneId;
                       s.src = 'https://nap5k.com/tag.min.js';
                       s.async = true;
                       if (container) {
@@ -138,7 +139,7 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
                   })();
                 </script>
               </div>
-            ) : null}
+            )}
           </div>
         )}
 
@@ -181,16 +182,16 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
 
     {hasMonetag && (
       <div class="monetag-sidebar-wrapper w-full text-center overflow-hidden">
-        {adCodeSnippet ? (
+        {adCodeSnippet && !adCodeSnippet.includes('nap5k.com') ? (
           <div set:html={adCodeSnippet} />
-        ) : inArticleZoneId ? (
-          <div id={uniqueSlotId} data-zone={inArticleZoneId} class="monetag-sidebar-slot w-full">
-            <script is:inline define:vars={{ inArticleZoneId, uniqueSlotId }}>
+        ) : (
+          <div id={uniqueSlotId} data-zone={zoneId} class="monetag-sidebar-slot w-full">
+            <script is:inline define:vars={{ zoneId, uniqueSlotId }}>
               (function() {
                 try {
                   var container = document.getElementById(uniqueSlotId);
                   var s = document.createElement('script');
-                  s.dataset.zone = inArticleZoneId;
+                  s.dataset.zone = zoneId;
                   s.src = 'https://nap5k.com/tag.min.js';
                   s.async = true;
                   if (container) {
@@ -202,7 +203,7 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
               })();
             </script>
           </div>
-        ) : null}
+        )}
       </div>
     )}
 

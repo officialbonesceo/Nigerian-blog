@@ -153,7 +153,7 @@ const filteredLatest = page === 1
         {filteredLatest.map((article, idx) => (
           <>
             <ArticleCard article={article} />
-            {idx === 2 && (
+            {(idx === 2 || (idx === 6 && filteredLatest.length >= 7)) && (
               <AdSlot
                 format="feed"
                 isMonetagEnabled={isMonetagEnabled}

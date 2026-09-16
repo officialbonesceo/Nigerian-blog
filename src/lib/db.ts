@@ -273,9 +273,20 @@ function initDatabase() {
     insertSite.run('admin_email', 'officialbonesceo@gmail.com');
     insertSite.run('twitter_handle', '@9jaBeacon');
     insertSite.run('admin_password', 'BonesCeo@9jaBeacon2026!');
+    insertSite.run('monetag_enabled', '1');
+    insertSite.run('monetag_in_article_zone', '11801792');
+    insertSite.run('monetag_global_tag', 'https://nap5k.com/tag.min.js');
+    insertSite.run('monetag_ad_code', "<script>(function(s){s.dataset.zone='11801792',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>");
+    insertSite.run('monetag_verification', '40d3b64d132d7ec42db754b9dca240b1');
   } else {
     const updateAdminEmail = db.prepare(`INSERT OR REPLACE INTO site_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))`);
     updateAdminEmail.run('admin_email', 'officialbonesceo@gmail.com');
+    const insertSettingOrIgnore = db.prepare(`INSERT OR IGNORE INTO site_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))`);
+    insertSettingOrIgnore.run('monetag_enabled', '1');
+    insertSettingOrIgnore.run('monetag_in_article_zone', '11801792');
+    insertSettingOrIgnore.run('monetag_global_tag', 'https://nap5k.com/tag.min.js');
+    insertSettingOrIgnore.run('monetag_ad_code', "<script>(function(s){s.dataset.zone='11801792',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>");
+    insertSettingOrIgnore.run('monetag_verification', '40d3b64d132d7ec42db754b9dca240b1');
   }
 
   // Seed initial audit log

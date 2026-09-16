@@ -145,7 +145,7 @@ const listArticles = isFirstPage ? categoryArticles.slice(1) : categoryArticles;
         {listArticles.map((art, idx) => (
           <>
             <ArticleCard article={art} showCategory={false} />
-            {idx === 2 && (
+            {(idx === 2 || (idx === 6 && listArticles.length >= 7)) && (
               <AdSlot
                 format="feed"
                 isMonetagEnabled={isMonetagEnabled}

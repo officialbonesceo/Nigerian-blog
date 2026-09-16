@@ -23,7 +23,7 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
 <!-- Drawer Menu Panel -->
 <aside
   id="mobile-drawer"
-  class="fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 z-50 transform translate-x-full transition-transform duration-300 ease-out flex flex-col shadow-2xl safe-area-top safe-area-bottom"
+  class="fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 z-50 transform translate-x-full invisible pointer-events-none transition-all duration-300 ease-out flex flex-col shadow-2xl safe-area-top safe-area-bottom"
 >
   <!-- Drawer Header -->
   <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
@@ -213,8 +213,12 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
   const backdrop = document.getElementById('drawer-backdrop');
 
   function openDrawer() {
-    drawer?.classList.remove('translate-x-full');
-    backdrop?.classList.remove('hidden');
+    drawer?.classList.remove('invisible', 'pointer-events-none');
+    // slight delay or next frame so transition animates smoothly
+    requestAnimationFrame(() => {
+      drawer?.classList.remove('translate-x-full');
+      backdrop?.classList.remove('hidden');
+    });
     document.body.style.overflow = 'hidden';
   }
 
@@ -222,6 +226,11 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
     drawer?.classList.add('translate-x-full');
     backdrop?.classList.add('hidden');
     document.body.style.overflow = '';
+    setTimeout(() => {
+      if (drawer?.classList.contains('translate-x-full')) {
+        drawer?.classList.add('invisible', 'pointer-events-none');
+      }
+    }, 310);
   }
 
   openBtn?.addEventListener('click', openDrawer);

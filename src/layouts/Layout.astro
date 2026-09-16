@@ -41,7 +41,7 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
   : `${siteBase}${pagePath === '/' ? '' : pagePath}`;
 ---
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" class="dark overflow-x-hidden max-w-full">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -103,15 +103,15 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
 
   <link rel="sitemap" href="/sitemap.xml" />
 
-  <!-- Monetag Global Direct Tag (Only injected when enabled and credential provided) -->
-  {(settings.monetag_enabled === '1' || settings.monetag_enabled === 'true') && settings.monetag_global_tag && (
-    <script is:inline src={settings.monetag_global_tag} async defer></script>
+  <!-- Monetag Global Direct Ad Tag & Anti-AdBlock Script -->
+  {(settings.monetag_enabled !== '0' && settings.monetag_enabled !== 'false') && (
+    <script is:inline set:html={`(function(s){s.dataset.zone='${settings.monetag_in_article_zone || '11801792'}',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`} />
   )}
 </head>
-<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden transition-colors duration-150">
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden max-w-full relative transition-colors duration-150">
   <Header siteName={siteName} categories={categories} />
   <DrawerMenu siteName={siteName} categories={categories} settings={settings} />
-  <main class="w-full max-w-4xl mx-auto px-4 sm:px-6 pb-12 pt-3">
+  <main class="w-full max-w-4xl mx-auto px-3.5 sm:px-6 pb-12 pt-3 min-w-0 overflow-x-hidden">
     <slot />
   </main>
   <Footer siteName={siteName} settings={settings} categories={categories} />

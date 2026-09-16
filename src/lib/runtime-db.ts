@@ -840,6 +840,11 @@ export async function getSiteSettings(db: D1Database): Promise<Record<string, st
     social_tiktok_url: 'https://tiktok.com/@9jabeacon',
     social_youtube_url: 'https://youtube.com/@9jabeacon',
     google_site_verification: 'googlecacc6ec6e0fdcf79',
+    monetag_enabled: '1',
+    monetag_in_article_zone: '11801792',
+    monetag_global_tag: 'https://nap5k.com/tag.min.js',
+    monetag_ad_code: "<script>(function(s){s.dataset.zone='11801792',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>",
+    monetag_verification: '40d3b64d132d7ec42db754b9dca240b1',
   };
   try {
     const res = await db.prepare('SELECT key, value FROM site_settings').all<{ key: string; value: string }>();
