@@ -105,7 +105,11 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
 
   <!-- Monetag Global Direct Ad Tag & Anti-AdBlock Script -->
   {(settings.monetag_enabled !== '0' && settings.monetag_enabled !== 'false') && (
-    <script is:inline set:html={`(function(s){s.dataset.zone='${settings.monetag_in_article_zone || '11801792'}',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`} />
+    settings.monetag_ad_code && settings.monetag_ad_code.trim().length > 0 ? (
+      <Fragment set:html={settings.monetag_ad_code} />
+    ) : (
+      <script is:inline set:html={`(function(s){s.dataset.zone='${settings.monetag_in_article_zone || '11801792'}',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`} />
+    )
   )}
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden max-w-full relative transition-colors duration-150">

@@ -1,0 +1,4 @@
+# 9jaBeacon Authorized Digital Sellers (ads.txt)
+# Monetag / PropellerAds & Verified Ad Partners
+# https://monetag.com
+# Format: <Field #1>, <Field #2>, <Field #3>, <Field #4>

@@ -1,30 +1,27 @@
 ---
 /**
- * Monetag / Native Sponsored Ad Slot Component for 9jaBeacon
+ * Monetag & Verified Sponsored Spotlight Component for 9jaBeacon
  * Supports in-article native cards, sidebar sticky cards, and feed cards.
  * Non-intrusive, strictly light/dark theme matched, ad-block resilient, and zero-CLS.
- * High-converting fallback layout ensures zero empty voids if Monetag is loading or un-filled.
+ * Custom ad snippets (e.g. Monetag Banner tags or Google AdSense) render seamlessly.
+ * Native spotlight links to verified /contact#advertise desk.
  */
 
 interface Props {
   format?: 'in-article' | 'feed' | 'sidebar';
   className?: string;
-  inArticleZoneId?: string;
   adCodeSnippet?: string;
+  inArticleZoneId?: string;
   isMonetagEnabled?: boolean;
 }
 
 const {
   format = 'in-article',
   className = '',
-  inArticleZoneId = '',
   adCodeSnippet = '',
-  isMonetagEnabled = false,
 } = Astro.props;
 
-const zoneId = inArticleZoneId || '11801792';
-const hasMonetag = Boolean(isMonetagEnabled !== false || adCodeSnippet || inArticleZoneId);
-const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}`;
+const hasCustomSnippet = Boolean(adCodeSnippet && adCodeSnippet.trim().length > 0);
 ---
 
 {format === 'in-article' && (
@@ -40,36 +37,15 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
           Sponsored Spotlight
         </span>
       </div>
-      <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700">
-        Ad
-      </span>
+      <a href="/contact#advertise" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700 hover:text-emerald-600 transition-colors">
+        Advertise
+      </a>
     </div>
 
-    <!-- Monetag Execution Container (if enabled) -->
-    {hasMonetag && (
+    <!-- Custom Ad Code Container (if provided) -->
+    {hasCustomSnippet && (
       <div class="monetag-ad-wrapper w-full text-center overflow-hidden mb-3">
-        {adCodeSnippet && !adCodeSnippet.includes('nap5k.com') ? (
-          <div class="monetag-custom-snippet" set:html={adCodeSnippet} />
-        ) : (
-          <div id={uniqueSlotId} data-zone={zoneId} class="monetag-inarticle-slot w-full text-center py-1">
-            <script is:inline define:vars={{ zoneId, uniqueSlotId }}>
-              (function() {
-                try {
-                  var container = document.getElementById(uniqueSlotId);
-                  var s = document.createElement('script');
-                  s.dataset.zone = zoneId;
-                  s.src = 'https://nap5k.com/tag.min.js';
-                  s.async = true;
-                  if (container) {
-                    container.appendChild(s);
-                  } else {
-                    document.body.appendChild(s);
-                  }
-                } catch(e) {}
-              })();
-            </script>
-          </div>
-        )}
+        <div class="monetag-custom-snippet" set:html={adCodeSnippet} />
       </div>
     )}
 
@@ -91,7 +67,7 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
         </div>
       </div>
       <a
-        href="/contact"
+        href="/contact#advertise"
         class="shrink-0 w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-95"
       >
         <span>Explore Offers</span>
@@ -112,41 +88,20 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
             Sponsored Feature
           </span>
           <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700">
-            Ad
+            Partner
           </span>
         </div>
 
-        {hasMonetag && (
+        {hasCustomSnippet && (
           <div class="monetag-feed-snippet w-full overflow-hidden my-1">
-            {adCodeSnippet && !adCodeSnippet.includes('nap5k.com') ? (
-              <div set:html={adCodeSnippet} />
-            ) : (
-              <div id={uniqueSlotId} data-zone={zoneId} class="monetag-feed-slot w-full text-center py-1">
-                <script is:inline define:vars={{ zoneId, uniqueSlotId }}>
-                  (function() {
-                    try {
-                      var container = document.getElementById(uniqueSlotId);
-                      var s = document.createElement('script');
-                      s.dataset.zone = zoneId;
-                      s.src = 'https://nap5k.com/tag.min.js';
-                      s.async = true;
-                      if (container) {
-                        container.appendChild(s);
-                      } else {
-                        document.body.appendChild(s);
-                      }
-                    } catch(e) {}
-                  })();
-                </script>
-              </div>
-            )}
+            <div set:html={adCodeSnippet} />
           </div>
         )}
 
         <!-- Converting News-Style Headline and Hook -->
         <div>
           <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
-            <a href="/contact">
+            <a href="/contact#advertise">
               Compare Verified High-Yield Naira Accounts & Dollar Cards in Nigeria (2026)
             </a>
           </h3>
@@ -158,12 +113,12 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
         <div class="flex items-center gap-3 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
           <span class="text-emerald-600 dark:text-emerald-400 font-medium">9jaBeacon Partner Spotlight</span>
           <span>•</span>
-          <a href="/contact" class="hover:underline font-semibold text-slate-700 dark:text-slate-300">Learn More &rarr;</a>
+          <a href="/contact#advertise" class="hover:underline font-semibold text-slate-700 dark:text-slate-300">Learn More &rarr;</a>
         </div>
       </div>
 
       <!-- Right sponsored thumbnail -->
-      <a href="/contact" class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-emerald-50 dark:bg-slate-800 border border-emerald-100 dark:border-slate-700/60 flex flex-col items-center justify-center p-2 text-emerald-600 dark:text-emerald-400 group hover:bg-emerald-100/50 dark:hover:bg-slate-800/80 transition-colors">
+      <a href="/contact#advertise" class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-emerald-50 dark:bg-slate-800 border border-emerald-100 dark:border-slate-700/60 flex flex-col items-center justify-center p-2 text-emerald-600 dark:text-emerald-400 group hover:bg-emerald-100/50 dark:hover:bg-slate-800/80 transition-colors">
         <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
@@ -180,30 +135,9 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
       <span>Advertisement</span>
     </div>
 
-    {hasMonetag && (
+    {hasCustomSnippet && (
       <div class="monetag-sidebar-wrapper w-full text-center overflow-hidden">
-        {adCodeSnippet && !adCodeSnippet.includes('nap5k.com') ? (
-          <div set:html={adCodeSnippet} />
-        ) : (
-          <div id={uniqueSlotId} data-zone={zoneId} class="monetag-sidebar-slot w-full">
-            <script is:inline define:vars={{ zoneId, uniqueSlotId }}>
-              (function() {
-                try {
-                  var container = document.getElementById(uniqueSlotId);
-                  var s = document.createElement('script');
-                  s.dataset.zone = zoneId;
-                  s.src = 'https://nap5k.com/tag.min.js';
-                  s.async = true;
-                  if (container) {
-                    container.appendChild(s);
-                  } else {
-                    document.body.appendChild(s);
-                  }
-                } catch(e) {}
-              })();
-            </script>
-          </div>
-        )}
+        <div set:html={adCodeSnippet} />
       </div>
     )}
 
@@ -220,7 +154,7 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
         Feature your brand, fintech platform, or property dispatch to Nigeria's premier decision-makers.
       </p>
       <a
-        href="/contact"
+        href="/contact#advertise"
         class="block w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold transition shadow-xs"
       >
         Partner With Us
@@ -228,4 +162,3 @@ const uniqueSlotId = `monetag-slot-${Math.random().toString(36).substring(2, 9)}
     </div>
   </aside>
 )}
-
