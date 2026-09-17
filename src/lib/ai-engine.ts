@@ -215,8 +215,8 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${openrouterKey}`,
-            'HTTP-Referer': 'https://9jabeacon.pages.dev',
-            'X-Title': '9jaBeacon News Engine',
+            'HTTP-Referer': 'https://9jabeacon.name.ng',
+            'X-Title': '9jaBeacon Verified Nigerian News',
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({

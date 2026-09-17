@@ -1,18 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getD1, getSiteSettings, getCategories } from '../lib/runtime-db';
+import { getD1, getSiteSettings } from '../lib/runtime-db';
 
 export const prerender = false;
 
 const db = getD1(Astro.locals);
-const [settings, categories] = await Promise.all([
-  getSiteSettings(db),
-  getCategories(db),
-]);
+const settings = await getSiteSettings(db);
 
 const siteName = settings.site_name || '9jaBeacon';
-const siteUrl = (settings.site_url || 'https://9jabeacon.pages.dev').replace(/\/+$/, '');
-const contactEmail = settings.contact_email || 'privacy@9jabeacon.com';
+const siteUrl = (settings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+const contactEmail = settings.contact_email || settings.admin_email || 'officialbonesceo@gmail.com';
 const lastUpdated = 'September 13, 2026';
 ---
 

@@ -601,11 +601,46 @@ export async function searchArticles(db: D1Database, term: string, limit = 50) {
   ).slice(0, limit).map(formatArticle);
 }
 
+const LEGACY_SLUG_MAP: Record<string, string> = {
+  'otu-nullifies-unauthorised-recruitment-into-c-8217-river-lg-commission': 'governor-otu-nullifies-unauthorised-recruitment-into-cross-river-lg-commission',
+  'north-korea-leader-8217-s-daughter-believed-to-have-younger-sibling': 'north-korean-leaders-daughter-believed-to-have-younger-sibling',
+  'north-korean-leader-8217-s-daughter-believed-to-have-younger-sibling-8211-seoul': 'north-korean-leaders-daughter-believed-to-have-younger-sibling',
+  'one-d-es-as-building-collapses-during-demolition-in-lagos': 'one-dead-and-two-injured-as-building-collapses-during-demolition-in-lagos',
+  'one-dead-two-injured-as-building-collapses-during-demolition-in-lagos': 'one-dead-and-two-injured-as-building-collapses-during-demolition-in-lagos',
+  'trump-accused-of-bribery-after-saying-us-citizens-will-receive-5-000-if-republicans-win-midterms': 'trump-faces-ethics-scrutiny-over-5000-cash-promise-linked-to-midterms',
+  'trump-says-every-adult-american-would-get-5-000-if-republicans-win-midterms': 'trump-proposes-5000-payment-for-adult-americans-if-republicans-win-midterms',
+  'iran-war-won-t-end-until-after-crucial-november-elections-says-trump': 'trump-states-middle-east-conflicts-wont-end-until-after-november-elections',
+  'keyamo-seeks-global-oem-partnerships-to-modernise-nigeria-s-aviation-infrastructure': 'keyamo-pursues-global-oem-partnerships-to-modernise-aviation-infrastructure',
+  'mutfwang-moves-to-strengthen-plateau-s-state-police-framework': 'governor-mutfwang-moves-to-strengthen-plateau-state-police-framework',
+  'see-the-50-innovators-getting-fg-s-n320m-idice-scheme': 'see-the-50-innovators-selected-for-fgs-n320m-idice-tech-grant',
+  'techcabal-daily-mtn-scores-a-century': 'techcabal-daily-mtn-reaches-landmark-african-telecom-milestone',
+  'iphone-duo-price-release-date-specs-and-features': 'iphone-duo-official-price-release-date-specs-and-features',
+  'la-liga-rodri-apologises-after-criticism-over-valencia-remark': 'la-liga-rodri-apologises-after-intense-backlash-over-valencia-remark',
+  'lagos-offers-police-officers-free-transport-for-3-months': 'lagos-state-offers-police-officers-free-public-transport-for-3-months',
+  '24-die-many-hospitalised-after-consuming-herbal-drinks-in-ondo': '24-dead-several-hospitalised-after-consuming-herbal-mixture-in-ondo',
+  'asuu-gives-sokoto-govt-ultimatum-over-unfulfilled-agreement-threatens-strike': 'asuu-issues-ultimatum-to-sokoto-state-government-threatens-strike',
+  'nda-set-to-graduate-444-cadets-3-064-postgraduates': 'nigerian-defence-academy-set-to-graduate-444-cadets-and-postgraduates',
+  'sokoto-police-warn-parties-against-2027-violence': 'sokoto-police-command-warns-political-parties-against-violence',
+  'cbn-keeps-interest-rate-at-26-75-money-hustle': 'cbn-holds-interest-rate-at-26-75-as-naira-stabilizes-across-autonomous-windows',
+  'global-green-energy-investment-surpasses-two-trillion-world-summit': 'global-clean-energy-investment-surpasses-2-trillion-at-historic-un-climate-summit',
+  'nigerian-fintechs-cross-border-payment-volumes-hit-new-milestone': 'nigerian-fintechs-tap-cross-border-trade-as-instant-fx-settlement-surges-65',
+  'nigerias-trade-surplus-hits-n6-3tn-in-q1': 'nigerias-trade-surplus-hits-6-3tn-in-q1-amid-surging-non-oil-agricultural-fertilizer-exports',
+  'enrique-hails-dembele-praises-toure-after-psg-s-win-over-bratislava': 'enrique-hails-dembele-and-praises-toure-after-psg-win',
+  'spurs-should-be-awarded-2016-17-title-pochettino': 'tottenham-should-have-been-awarded-2016-17-title-pochettino',
+  'arsenal-are-passing-every-test-and-odegaard-is-in-form-of-his-life': 'arsenal-passing-every-test-as-odegaard-hits-outstanding-form',
+};
+
 export async function getArticleBySlug(db: D1Database, slug: string) {
+  const targetSlug = LEGACY_SLUG_MAP[slug] || slug;
   try {
-    let row = await db.prepare(`${select} WHERE a.slug=? LIMIT 1`).bind(slug).first<Article>();
+    let row = await db.prepare(`${select} WHERE a.slug=? LIMIT 1`).bind(targetSlug).first<Article>();
     if (!row) {
-      row = await db.prepare("SELECT * FROM articles WHERE slug=? LIMIT 1").bind(slug).first<Article>();
+      row = await db.prepare("SELECT * FROM articles WHERE slug=? LIMIT 1").bind(targetSlug).first<Article>();
+    }
+    // Secondary fallback: check if targetSlug without trailing random suffix exists
+    if (!row && /-([a-z0-9]{4,7})$/.test(targetSlug)) {
+      const stripped = targetSlug.replace(/-([a-z0-9]{4,7})$/, '');
+      row = await db.prepare(`${select} WHERE a.slug LIKE ? LIMIT 1`).bind(`${stripped}%`).first<Article>();
     }
     if (row) {
       return formatArticle(row);
@@ -613,7 +648,7 @@ export async function getArticleBySlug(db: D1Database, slug: string) {
   } catch (err) {
     console.warn('getArticleBySlug error:', err);
   }
-  const fallback = (initialArticles as Article[]).find((a) => a.slug === slug);
+  const fallback = (initialArticles as Article[]).find((a) => a.slug === targetSlug || a.slug === slug);
   return fallback ? formatArticle(fallback) : null;
 }
 
@@ -835,15 +870,22 @@ export async function getSiteSettings(db: D1Database): Promise<Record<string, st
   const defaults: Record<string, string> = {
     site_name: '9jaBeacon',
     site_url: 'https://9jabeacon.name.ng',
-    site_description: 'Fast, verified Nigerian news and useful updates.',
+    site_description: "Nigeria's independent digital newsroom. Delivering fast, verified breaking news, politics, economy, tech, and cultural updates.",
     social_facebook_url: 'https://facebook.com/9jabeacon',
     social_tiktok_url: 'https://tiktok.com/@9jabeacon',
     social_youtube_url: 'https://youtube.com/@9jabeacon',
     google_site_verification: 'googlecacc6ec6e0fdcf79',
+    bing_site_verification: '',
+    yandex_site_verification: '',
+    pinterest_site_verification: '',
+    baidu_site_verification: '',
+    facebook_domain_verification: '',
+    custom_head_tags: '',
     monetag_enabled: '1',
     monetag_in_article_zone: '11801792',
     monetag_global_tag: 'https://nap5k.com/tag.min.js',
-    monetag_ad_code: "<script>(function(s){s.dataset.zone='11801792',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>",
+    monetag_ad_code: '',
+    monetag_smartlink_url: '',
     monetag_verification: '40d3b64d132d7ec42db754b9dca240b1',
   };
   try {

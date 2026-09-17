@@ -1,4 +1,4 @@
-name: 9jaBeacon AI News Ingestion
+name: Content Delivery & Sync Pipeline
 
 on:
   schedule:
@@ -8,12 +8,12 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: 9jabeacon-news-ingestion
+  group: content-sync-pipeline
   cancel-in-progress: false
 
 jobs:
-  ingest-and-publish:
-    name: 🤖 9jaBeacon Autonomous News Engine
+  content-sync:
+    name: 🔄 Content Delivery & Upstream Sync
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,16 +24,16 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: 🟢 Setup Node.js 22
+      - name: 🟢 Setup Node.js Runtime
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           check-latest: false
 
-      - name: 📦 Install Dependencies
+      - name: 📦 Install Runtime Packages
         run: npm install --no-audit --no-fund
 
-      - name: 🔐 Validate required secrets
+      - name: 🔐 Verify Upstream Credentials
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -44,14 +44,12 @@ jobs:
           TOKEN="${CLOUDFLARE_D1_API_TOKEN:-$CLOUDFLARE_API_TOKEN}"
           test -n "$TOKEN" || { echo 'Missing Cloudflare API Token. Please set CLOUDFLARE_API_TOKEN or CLOUDFLARE_D1_API_TOKEN in GitHub Secrets.'; exit 1; }
           test -n "$CLOUDFLARE_D1_DATABASE_ID" || { echo 'Missing CLOUDFLARE_D1_DATABASE_ID'; exit 1; }
-          echo 'Required ingestion secrets are present.'
+          echo 'Credentials verified.'
 
-      - name: 🧩 Disable local mock seed data for CI
-        run: npx tsx scripts/ci-prepare-runtime.ts
+      - name: ⚙️ Prepare Execution Context
+        run: npx tsx scripts/prepare-env.ts
 
-      # SQLite is an ephemeral workspace used only by the ingestion pipeline.
-      # Production content remains in Cloudflare D1 and is never committed.
-      - name: ☁️ Pull current D1 into ephemeral ingestion database
+      - name: 📥 Synchronize Local Cache with Upstream
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -60,9 +58,9 @@ jobs:
           NODE_ENV: production
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'
-        run: npx tsx scripts/sync-d1-to-local.ts
+        run: npx tsx scripts/sync-cache.ts
 
-      - name: 🤖 Execute AI news ingestion pipeline
+      - name: ⚡ Execute Scheduled Content Worker
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -79,9 +77,9 @@ jobs:
           NODE_ENV: production
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'
-        run: npx tsx scripts/ingest.ts
+        run: npx tsx scripts/content-worker.ts
 
-      - name: ☁️ Write newly ingested data to D1
+      - name: 📤 Push Processed Updates to Upstream Datastore
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -89,20 +87,20 @@ jobs:
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'
-        run: npx tsx scripts/sync-local-changes-to-d1.ts
+        run: npx tsx scripts/sync-upstream.ts
 
-      - name: 👥 Normalize editorial desk profiles in D1
+      - name: 👥 Synchronize Profile Records
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-        run: npx tsx scripts/normalize-editorial-profiles.ts
+        run: npx tsx scripts/normalize-profiles.ts
 
-      - name: 🧹 Safety check — database must never be tracked
+      - name: 🧹 Verify Workspace Cleanliness
         run: |
           if git ls-files --error-unmatch 9jabeacon.db >/dev/null 2>&1; then
             echo 'ERROR: 9jabeacon.db is still tracked by Git.'
             exit 1
           fi
-          echo 'OK: ingestion does not build or deploy the website.'
+          echo 'Workspace verified clean.'

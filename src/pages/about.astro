@@ -1,0 +1,161 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getD1, getSiteSettings } from '../lib/runtime-db';
+
+export const prerender = false;
+
+const db = getD1(Astro.locals);
+const settings = await getSiteSettings(db);
+
+const siteName = settings.site_name || '9jaBeacon';
+const siteUrl = (settings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+const contactEmail = settings.contact_email || settings.admin_email || 'officialbonesceo@gmail.com';
+const lastUpdated = 'September 17, 2026';
+---
+
+<Layout
+  title={`About Us — Nigeria's Verified Digital Newsroom | ${siteName}`}
+  description={`Learn about ${siteName}, our mission, verified journalistic standards, fact-checking methodology, and dedicated coverage of Nigerian national affairs.`}
+  canonicalUrl={`${siteUrl}/about`}
+  activeNav="about"
+>
+  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6 font-mono">
+    <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Home</a>
+    <span>/</span>
+    <span class="text-slate-800 dark:text-slate-200">About Us</span>
+  </nav>
+
+  <article class="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-10 shadow-xs space-y-10">
+    <header class="border-b border-slate-200 dark:border-slate-800 pb-8 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span>Independent Nigerian Journalism & Digital Media</span>
+        </div>
+        <span class="text-xs text-slate-400 font-mono">Last verified: {lastUpdated}</span>
+      </div>
+      <h1 class="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+        About {siteName}
+      </h1>
+      <p class="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+        Your trusted light on Nigerian news. Delivering fast, factual coverage, verified national reporting, investigative journalism, politics, business, and cultural developments.
+      </p>
+    </header>
+
+    <div class="prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed space-y-8 text-slate-700 dark:text-slate-300">
+      <!-- Section 1: Our Mission -->
+      <section class="space-y-3">
+        <h2 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">01.</span> Our Editorial Mission
+        </h2>
+        <p>
+          Founded to illuminate truth in a fast-paced media landscape, <strong>{siteName}</strong> is an independent digital news organization established to provide millions of Nigerians and the global diaspora with timely, verified, and uncompromised reporting.
+        </p>
+        <p>
+          We believe an informed citizenry is the foundation of democracy, economic progress, and social justice. From policy shifts in Abuja and market developments on Lagos Island to community stories across all six geopolitical zones, {siteName} reports the news that shapes lives.
+        </p>
+      </section>
+
+      <!-- Section 2: What We Cover -->
+      <section class="space-y-3">
+        <h2 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">02.</span> Core Desks & Coverage Pillars
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-1.5">
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              National Politics & Governance
+            </h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400">
+              Objective coverage of executive actions, National Assembly legislation, judicial rulings, and state governance across Nigeria.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-1.5">
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+              Economy, Business & Naira Watch
+            </h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400">
+              Accurate reporting on Central Bank policies, inflation statistics, FX markets, energy markets, entrepreneurship, and personal finance.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-1.5">
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+              Technology & Digital Innovation
+            </h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400">
+              Tracking Africa's largest fintech and tech startup ecosystem, telecommunications developments, cybersecurity, and digital skills.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-1.5">
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+              Sports, Entertainment & Culture
+            </h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400">
+              Passionate reporting on the NPFL, Super Eagles, Afrobeats, Nollywood, and the cultural icons driving African excellence worldwide.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Verification & Fact-Checking -->
+      <section class="space-y-3">
+        <h2 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">03.</span> Fact-Checking & Journalistic Standards
+        </h2>
+        <p>
+          In an era saturated with sensationalism, clickbait, and misinformation, <strong>{siteName}</strong> strictly enforces rigorous journalistic protocols:
+        </p>
+        <ul class="list-disc pl-6 space-y-1.5 text-slate-600 dark:text-slate-300">
+          <li><strong>Multi-Source Verification:</strong> Breaking claims must be verified with primary documents, official spokespersons, or established ground sources before publication.</li>
+          <li><strong>Distinction Between Fact and Opinion:</strong> Analysis and opinion pieces are explicitly labeled to ensure readers distinguish between objective news reports and commentary.</li>
+          <li><strong>Right of Reply:</strong> When an investigation or report addresses allegations against individuals or corporations, reasonable efforts are made to solicit their perspective before printing.</li>
+          <li><strong>Transparent Corrections:</strong> If an error occurs, we correct the record openly and place a correction notice on the updated story.</li>
+        </ul>
+      </section>
+
+      <!-- Section 4: Editorial Independence -->
+      <section class="space-y-3">
+        <h2 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">04.</span> Editorial Independence & Funding
+        </h2>
+        <p>
+          {siteName} is an independently owned news enterprise. Our editorial decisions are made solely by our editorial board and reporters without interference from political parties, government agencies, advertisers, or corporate sponsors.
+        </p>
+        <p>
+          Our operations are supported through display advertising, sponsored partnerships, and programmatic network monetization. Sponsored content is clearly disclosed to preserve complete reader transparency.
+        </p>
+      </section>
+
+      <!-- Section 5: Leadership & Contact -->
+      <section class="space-y-3">
+        <h2 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <span class="text-emerald-600 dark:text-emerald-400 font-mono">05.</span> Contact the Editorial Desk
+        </h2>
+        <p>
+          We welcome news tips, whistleblower disclosures, press releases, op-ed submissions, and advertising inquiries:
+        </p>
+        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
+          <div>
+            <strong class="text-slate-900 dark:text-white">Editorial Inquiries & Newsroom:</strong>
+            <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold ml-1">{contactEmail}</a>
+          </div>
+          <div>
+            <strong class="text-slate-900 dark:text-white">Official Website:</strong>
+            <a href={siteUrl} class="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold ml-1">{siteUrl}</a>
+          </div>
+          <div>
+            <strong class="text-slate-900 dark:text-white">Contact & Advertising Page:</strong>
+            <a href="/contact" class="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold ml-1">Visit Contact & Advertising Portal &rarr;</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </article>
+</Layout>

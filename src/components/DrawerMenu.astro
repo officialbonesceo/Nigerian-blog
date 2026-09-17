@@ -138,6 +138,8 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
         Search & Archives
       </a>
       <div class="pt-2 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-3 gap-y-1.5 px-2">
+        <a href="/about" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-semibold text-slate-800 dark:text-slate-200">About Us</a>
+        <span>&bull;</span>
         <a href="/contact" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium">Contact & Ads</a>
         <span>&bull;</span>
         <a href="/terms" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Terms</a>
@@ -194,17 +196,22 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
       </div>
     </div>
 
-    <!-- Editorial Disclaimer & Standards -->
-    <div class="pt-4 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 leading-relaxed space-y-1">
-      <p class="font-semibold text-slate-600 dark:text-slate-400">Journalistic Integrity & Attribution</p>
-      <p>9jaBeacon indexes official government announcements and permitted Nigerian news feeds with full source credit, canonical URLs, and copyright respect.</p>
+    <!-- About 9jaBeacon & Editorial Standards -->
+    <div class="pt-4 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 leading-relaxed space-y-1.5">
+      <p class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        About 9jaBeacon
+      </p>
+      <p class="text-slate-600 dark:text-slate-400 leading-normal">
+        Nigeria's trusted digital newsroom. Delivering fast, factual coverage, verified national reporting, investigative journalism, politics, economy, and culture.
+      </p>
     </div>
   </div>
 
   <!-- Drawer Footer -->
   <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
-    <span>© 2025 9jaBeacon.ng</span>
-    <span class="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded font-mono">Mobile-First</span>
+    <span>© {new Date().getFullYear()} 9jaBeacon. All rights reserved.</span>
+    <span class="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded font-mono">Verified News</span>
   </div>
 </aside>
 

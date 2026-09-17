@@ -9,8 +9,10 @@
     "preview": "astro preview --host 0.0.0.0 --port 3000",
     "astro": "astro",
     "lint": "astro check",
-    "ingest": "tsx scripts/ingest.ts",
-    "sync:d1": "tsx scripts/sync-d1-to-local.ts"
+    "content:sync": "tsx scripts/content-worker.ts",
+    "cache:sync": "tsx scripts/sync-cache.ts",
+    "ingest": "tsx scripts/content-worker.ts",
+    "sync:d1": "tsx scripts/sync-cache.ts"
   },
   "dependencies": {
     "@astrojs/check": "0.9.10",

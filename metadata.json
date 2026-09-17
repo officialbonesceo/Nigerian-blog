@@ -1,6 +1,6 @@
 {
   "name": "9jaBeacon News",
-  "description": "Mobile-first Nigerian news platform built with Astro, TypeScript, Cloudflare Workers and D1 database.",
+  "description": "Independent Nigerian digital news platform delivering fast, verified breaking news, national affairs, politics, economy, tech, and cultural reporting.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

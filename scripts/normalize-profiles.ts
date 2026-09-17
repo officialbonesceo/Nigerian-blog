@@ -1,6 +1,6 @@
 import { db } from '../src/lib/db';
 import { executeD1Query } from '../src/lib/d1-sync';
-import { EDITORIAL_PROFILES, DEFAULT_EDITORIAL_PROFILE } from './editorial-profiles';
+import { EDITORIAL_PROFILES, DEFAULT_EDITORIAL_PROFILE } from './profile-definitions';
 
 const cloudflareAccountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
 const cloudflareApiToken = (process.env.CLOUDFLARE_D1_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '').trim();

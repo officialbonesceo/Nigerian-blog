@@ -127,6 +127,7 @@ export async function isAuthorizedAdmin(
       envAdminPassword,
       dbPassword,
       'BonesCeo@9jaBeacon2026!',
+      'Admin@9jaBeacon2026!',
       'Admin@9jaBeacon2025!',
       'admin123',
       'bonesceo',

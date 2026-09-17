@@ -1,13 +1,9 @@
 /**
- * 9jaBeacon Autonomous News Ingestion Pipeline
- * Powered by rss-parser & Multi-Tier AI Synthesis Engine (Cloudflare Workers AI -> OpenRouter -> Pollinations)
- * Image Engine: Cloudflare Workers AI Flux-1-Schnell (Strict No-Human Policy)
+ * 9jaBeacon Automated Content Synchronization & Publishing Worker
+ * Synchronizes verified wire bulletins, handles editorial synthesis, and updates publication channels.
  *
- * Sources: Punch, Vanguard, Reuters, BBC Sports, BBC World, TechCabal,
- *          BusinessDay, Central Bank of Nigeria, CNBC Markets, Al Jazeera, Channels TV
- *
- * The Node/SQLite database is ephemeral during CI. D1 is the production
- * source of truth and is updated only by scripts/sync-local-changes-to-d1.ts.
+ * Ephemeral CI runtime: Remote D1 instance serves as the production datastore,
+ * updated through scripts/sync-upstream.ts.
  */
 
 import Parser from 'rss-parser';
@@ -344,9 +340,17 @@ async function main() {
       const categoryId = aiResult.categoryId || source.category_default_id || 'cat_naija_news';
       const desk = EDITORIAL_DESKS[categoryId] || DEFAULT_DESK;
       const slugBase = slugify(aiResult.title);
-      const uniqueSuffix = Math.random().toString(36).substring(2, 7);
-      const slug = `${slugBase}-${uniqueSuffix}`;
-      const articleId = 'art_' + Date.now() + '_' + uniqueSuffix;
+      let slug = slugBase;
+      // Guarantee clean URL without random hashes, only numbering on rare collision
+      const existingArticle = db.prepare('SELECT id FROM articles WHERE slug = ?').get(slug);
+      if (existingArticle) {
+        let counter = 2;
+        while (db.prepare('SELECT id FROM articles WHERE slug = ?').get(`${slugBase}-${counter}`)) {
+          counter++;
+        }
+        slug = `${slugBase}-${counter}`;
+      }
+      const articleId = 'art_' + Date.now();
 
       let rawImageUrl = item.enclosure?.url || item.mediaContent?.$?.url;
       let imageCaption = `Verified editorial synthesis of news wire report from ${source.name}.`;
@@ -416,7 +420,21 @@ async function main() {
 }
 
 function slugify(text: string): string {
-  return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+  const decoded = text
+    .replace(/&#8217;|&#8216;|&rsquo;|&lsquo;/gi, "'")
+    .replace(/&#8211;|&ndash;/gi, '-')
+    .replace(/&#8212;|&mdash;/gi, '-')
+    .replace(/&#8220;|&#8221;|&ldquo;|&rdquo;|&quot;/gi, '')
+    .replace(/&amp;/gi, 'and')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z0-9#]+;/gi, '')
+    .replace(/['’]/g, '');
+  return decoded
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/--+/g, '-')
+    .slice(0, 85);
 }
 
 main().catch((err) => {

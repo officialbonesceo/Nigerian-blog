@@ -25,7 +25,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       cloudflareApiToken: body.cloudflare_api_token || settingsMap.cloudflare_api_token,
       openrouterApiKey: body.openrouter_api_key || settingsMap.openrouter_api_key,
       openrouterModel: settingsMap.openrouter_model || 'qwen/qwen-2.5-72b-instruct:free',
-      localAiEndpoint: body.local_ai_endpoint || settingsMap.local_ai_endpoint || 'http://127.0.0.1:11434',
+      localAiEndpoint: body.local_ai_endpoint || settingsMap.local_ai_endpoint || '',
       localAiModel: body.local_ai_model || settingsMap.local_ai_model || 'qwen2.5:3b',
       localAiApiKey: settingsMap.local_ai_api_key || 'ollama',
       pollinationsApiKey: settingsMap.pollinations_api_key,

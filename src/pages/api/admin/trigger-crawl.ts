@@ -50,7 +50,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       cloudflareModel: settingsMap.cloudflare_ai_model || '@cf/meta/llama-3.1-8b-instruct',
       openrouterApiKey: settingsMap.openrouter_api_key,
       openrouterModel: settingsMap.openrouter_model || 'qwen/qwen-2.5-72b-instruct:free',
-      localAiEndpoint: settingsMap.local_ai_endpoint || 'http://127.0.0.1:11434',
+      localAiEndpoint: settingsMap.local_ai_endpoint || '',
       localAiModel: settingsMap.local_ai_model || 'qwen2.5:3b',
       localAiApiKey: settingsMap.local_ai_api_key || 'ollama',
       pollinationsApiKey: settingsMap.pollinations_api_key,
@@ -149,19 +149,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
             aiConfig
           );
 
-          if (aiResult.traceLogs && aiResult.traceLogs.length > 0) {
-            for (const trace of aiResult.traceLogs) {
-              const isError = trace.includes('Failed') || trace.includes('Error');
-              const isWarning = trace.includes('Skipped') || trace.includes('did not meet');
-              await recordLog(
-                db,
-                'AI_TRACE',
-                source.id,
-                source.name,
-                `[${rawTitle.slice(0, 30)}...] ${trace}`,
-                isError ? 'warning' : isWarning ? 'warning' : 'info'
-              );
-            }
+          // Only log trace messages for debugging if synthesis failed, preventing false warning flood
+          if (!aiResult.success && aiResult.traceLogs && aiResult.traceLogs.length > 0) {
+            // Keep full trace in rejected articles table, record concise summary in logs
+            const lastError = aiResult.traceLogs.filter(t => t.includes('Error') || t.includes('Failed')).pop() || 'AI synthesis incomplete';
+            await recordLog(
+              db,
+              'AI_SYNTHESIS_RETRY',
+              source.id,
+              source.name,
+              `[${rawTitle.slice(0, 35)}...] Fallback exhausted: ${lastError}`,
+              'info'
+            );
           }
 
           if (!aiResult.success || !aiResult.title || !aiResult.content) {
@@ -267,7 +266,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
             bufferPostsSent < bufferConfig.maxPostsPerWorkflow
           ) {
             try {
-              const siteDomain = (settingsMap.site_url || 'https://9jabeacon.pages.dev').replace(/\/+$/, '');
+              const siteDomain = (settingsMap.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
               const canonicalUrl = `${siteDomain}/news/${publishedArticle.slug}`;
               const categoryName = categoryId === 'cat_money_hustle' ? 'Business' : categoryId === 'cat_sports' ? 'Sports' : categoryId === 'cat_world' ? 'World' : 'Naija News';
 

@@ -1,14 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getD1, getSiteSettings, getCategories } from '../lib/runtime-db';
+import { getD1, getSiteSettings } from '../lib/runtime-db';
 
 export const prerender = false;
 
 const db = getD1(Astro.locals);
-const [settings, categories] = await Promise.all([
-  getSiteSettings(db),
-  getCategories(db),
-]);
+const settings = await getSiteSettings(db);
 
 const siteName = settings.site_name || '9jaBeacon';
 const siteUrl = (settings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
@@ -20,8 +17,6 @@ const twitterHandle = settings.twitter_handle || '@9jaBeacon';
   title={`Contact Us & Advertising | ${siteName}`}
   description={`Get in touch with ${siteName}'s editorial newsroom for news tips, partnership proposals, brand advertising, and press releases.`}
   canonicalUrl={`${siteUrl}/contact`}
-  categories={categories}
-  settings={settings}
 >
   <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6 font-mono">
     <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Home</a>

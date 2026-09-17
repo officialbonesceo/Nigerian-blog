@@ -22,7 +22,7 @@ interface Props {
 
 const {
   title = '9jaBeacon - Verified Nigerian News',
-  description = 'Fast, verified Nigerian news, politics, business, tech, and entertainment updates.',
+  description = "Nigeria's independent digital newsroom. Delivering fast, verified Nigerian news, politics, business, tech, and cultural updates.",
   image = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
   canonicalUrl,
   article,
@@ -32,13 +32,29 @@ const {
 const d1 = getD1(Astro.locals);
 const [categories, settings] = await Promise.all([getCategories(d1), getSiteSettings(d1)]);
 const siteName = settings.site_name || '9jaBeacon';
-const siteBase = (settings.site_url || 'https://9jabeacon.pages.dev').replace(/\/+$/, '');
+const siteBase = (settings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
 
 // Compute clean absolute canonical URL
 const pagePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !canonicalUrl.includes('localhost')
   ? canonicalUrl
   : `${siteBase}${pagePath === '/' ? '' : pagePath}`;
+// Helper to sanitize verification tokens if the user pasted a raw <meta> snippet
+function extractVerificationCode(val?: string): string {
+  if (!val) return '';
+  const trimmed = val.trim();
+  const match = trimmed.match(/content=["']([^"']+)["']/i);
+  if (match && match[1]) return match[1].trim();
+  return trimmed.replace(/^<[^>]+>/, '').replace(/["']/g, '').trim();
+}
+
+const googleVerification = extractVerificationCode(settings.google_site_verification);
+const bingVerification = extractVerificationCode(settings.bing_site_verification);
+const yandexVerification = extractVerificationCode(settings.yandex_site_verification);
+const pinterestVerification = extractVerificationCode(settings.pinterest_site_verification);
+const baiduVerification = extractVerificationCode(settings.baidu_site_verification);
+const facebookVerification = extractVerificationCode(settings.facebook_domain_verification);
+const customHeadTags = (settings.custom_head_tags || '').trim();
 ---
 <!doctype html>
 <html lang="en" class="dark overflow-x-hidden max-w-full">
@@ -51,11 +67,26 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="theme-color" content="#008751" />
   <meta name="monetag" content={settings.monetag_verification || '40d3b64d132d7ec42db754b9dca240b1'} />
-  {settings.google_site_verification && (
-    <meta name="google-site-verification" content={settings.google_site_verification} />
+  {googleVerification && (
+    <meta name="google-site-verification" content={googleVerification} />
   )}
-  {settings.bing_site_verification && (
-    <meta name="msvalidate.01" content={settings.bing_site_verification} />
+  {bingVerification && (
+    <meta name="msvalidate.01" content={bingVerification} />
+  )}
+  {yandexVerification && (
+    <meta name="yandex-verification" content={yandexVerification} />
+  )}
+  {pinterestVerification && (
+    <meta name="p:domain_verify" content={pinterestVerification} />
+  )}
+  {baiduVerification && (
+    <meta name="baidu-site-verification" content={baiduVerification} />
+  )}
+  {facebookVerification && (
+    <meta name="facebook-domain-verification" content={facebookVerification} />
+  )}
+  {customHeadTags && (
+    <Fragment set:html={customHeadTags} />
   )}
 
   <!-- Theme Initialization Script (Prevents flash of wrong theme) -->
@@ -103,13 +134,54 @@ const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !ca
 
   <link rel="sitemap" href="/sitemap.xml" />
 
+  <!-- Schema.org Publisher & NewsMediaOrganization Structured Data -->
+  <script is:inline type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "NewsMediaOrganization",
+        "@id": `${siteBase}/#organization`,
+        "name": siteName,
+        "url": siteBase,
+        "logo": {
+          "@type": "ImageObject",
+          "url": `${siteBase}/favicon.svg`
+        },
+        "description": description,
+        "publishingPrinciples": `${siteBase}/about`,
+        "correctionsPolicy": `${siteBase}/disclaimer`,
+        "sameAs": [
+          settings.social_facebook_url || "https://facebook.com/9jabeacon",
+          settings.social_tiktok_url || "https://tiktok.com/@9jabeacon",
+          settings.social_youtube_url || "https://youtube.com/@9jabeacon"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${siteBase}/#website`,
+        "url": siteBase,
+        "name": siteName,
+        "description": description,
+        "publisher": {
+          "@id": `${siteBase}/#organization`
+        },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": `${siteBase}/search?q={search_term_string}`,
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
+  })} />
+
   <!-- Monetag Global Direct Ad Tag & Anti-AdBlock Script -->
   {(settings.monetag_enabled !== '0' && settings.monetag_enabled !== 'false') && (
-    settings.monetag_ad_code && settings.monetag_ad_code.trim().length > 0 ? (
-      <Fragment set:html={settings.monetag_ad_code} />
-    ) : (
-      <script is:inline set:html={`(function(s){s.dataset.zone='${settings.monetag_in_article_zone || '11801792'}',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`} />
-    )
+    <>
+      {settings.monetag_verification && (
+        <meta name="monetag" content={settings.monetag_verification} />
+      )}
+      <script is:inline set:html={`(function(s){s.dataset.zone='${settings.monetag_in_article_zone || '11801792'}',s.src='${settings.monetag_global_tag || 'https://nap5k.com/tag.min.js'}'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`} />
+    </>
   )}
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden max-w-full relative transition-colors duration-150">

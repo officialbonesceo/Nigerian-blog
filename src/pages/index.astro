@@ -51,6 +51,7 @@ try {
 const isMonetagEnabled = siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true';
 const monetagInArticleZoneId = siteSettings.monetag_in_article_zone || '';
 const monetagAdCode = siteSettings.monetag_ad_code || '';
+const monetagSmartLink = siteSettings.monetag_smartlink_url || '';
 
 const hasNextPage = latestArticles.length > pageSize;
 const currentFeed = latestArticles.slice(0, pageSize);
@@ -159,6 +160,7 @@ const filteredLatest = page === 1
                 isMonetagEnabled={isMonetagEnabled}
                 inArticleZoneId={monetagInArticleZoneId}
                 adCodeSnippet={monetagAdCode}
+                smartLinkUrl={monetagSmartLink}
               />
             )}
           </>

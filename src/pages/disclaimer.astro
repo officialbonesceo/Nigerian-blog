@@ -1,18 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getD1, getSiteSettings, getCategories } from '../lib/runtime-db';
+import { getD1, getSiteSettings } from '../lib/runtime-db';
 
 export const prerender = false;
 
 const db = getD1(Astro.locals);
-const [settings, categories] = await Promise.all([
-  getSiteSettings(db),
-  getCategories(db),
-]);
+const settings = await getSiteSettings(db);
 
 const siteName = settings.site_name || '9jaBeacon';
-const siteUrl = (settings.site_url || 'https://9jabeacon.pages.dev').replace(/\/+$/, '');
-const contactEmail = settings.contact_email || 'editor@9jabeacon.com';
+const siteUrl = (settings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+const contactEmail = settings.contact_email || settings.admin_email || 'officialbonesceo@gmail.com';
 const lastUpdated = 'September 13, 2026';
 ---
 
@@ -47,7 +44,7 @@ const lastUpdated = 'September 13, 2026';
           <span class="text-emerald-600 dark:text-emerald-400 font-mono">1.</span> Editorial Independence & General Notice
         </h2>
         <p>
-          <strong>{siteName}</strong> is an independent digital news and wire aggregation publication. Our mission is to provide balanced, timely, and accessible coverage of Nigerian public affairs, business developments, sports, regional bulletins, and socio-economic updates.
+          <strong>{siteName}</strong> is an independent Nigerian digital news and journalistic media organization. Our mission is to provide balanced, timely, and verified coverage of Nigerian public affairs, business developments, sports, regional bulletins, and socio-economic updates.
         </p>
         <p>
           Information published on this platform is compiled from verified wire dispatches, press conferences, official institutional bulletins, regulatory disclosures, and on-the-record public statements. While every reasonable effort is made to verify the timeliness and factual accuracy of our reports, news stories develop rapidly. Consequently, materials are published for general public informational purposes without warranty of completeness.

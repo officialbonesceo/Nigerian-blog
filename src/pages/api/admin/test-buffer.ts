@@ -46,7 +46,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
           title: '9jaBeacon Test Dispatch: Real-Time Verified Nigerian Journalism',
           summary: 'This is a live test dispatch from the 9jaBeacon autonomous newsroom system verifying seamless API integration with Buffer.',
           categoryName: 'Business',
-          canonicalUrl: 'https://9jabeacon.pages.dev',
+          canonicalUrl: 'https://9jabeacon.name.ng',
           imageUrl: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?q=80&w=1200&auto=format&fit=crop',
         }
       );

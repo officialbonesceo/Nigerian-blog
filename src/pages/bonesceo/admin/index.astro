@@ -618,83 +618,293 @@ for (const s of autoSettings) {
             </form>
           </div>
 
-          <!-- SEO & Search Console Verification -->
+          <!-- SEO, Direct <head> Meta Tags & Multi-Platform Webmaster Verification -->
           <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-            <h2 class="text-base font-bold text-white flex items-center gap-2">
-              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <span>SEO & Google Search Console Verification</span>
-            </h2>
-            <p class="text-xs text-slate-400">
-              Paste your Google & Bing verification codes to verify ownership in 1 click and ensure rapid indexing.
-            </p>
-
-            <form id="seoSettingsForm" class="space-y-3.5 pt-1">
+            <div class="flex items-start justify-between gap-3">
               <div>
-                <label class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-blue-400"></span> Google Site Verification Code:
-                </label>
-                <input
-                  type="text"
-                  name="google_site_verification"
-                  value={siteSettings.google_site_verification || ''}
-                  placeholder="Paste string or HTML tag content value"
-                  class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-blue-400"
-                />
-                <p class="text-[10px] text-slate-500 mt-1">From Google Search Console &rarr; Settings &rarr; Ownership verification &rarr; HTML tag</p>
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                  <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span>SEO, Meta Tags & Webmaster Verification</span>
+                </h2>
+                <p class="text-xs text-slate-400 mt-0.5">
+                  Directly inject meta tags and ownership codes into the <code class="text-emerald-400 font-mono">&lt;head&gt;</code> of all pages.
+                </p>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+                Universal &lt;head&gt;
+              </span>
+            </div>
+
+            <form id="seoSettingsForm" class="space-y-4 pt-1">
+              <!-- Direct <head> Code Injection (Universal HTML Snippets) -->
+              <div class="p-3.5 rounded-xl bg-slate-950 border border-emerald-500/30 space-y-2">
+                <div class="flex items-center justify-between">
+                  <label for="custom_head_tags" class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Direct &lt;head&gt; Meta Tags & Code Snippets (Universal)</span>
+                  </label>
+                  <span class="text-[10px] text-slate-400 font-mono">Raw HTML Injected</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  Paste any raw <code class="text-slate-200 font-mono">&lt;meta&gt;</code>, <code class="text-slate-200 font-mono">&lt;link&gt;</code>, or verification snippets here. Everything in this box is rendered directly into the <code class="text-emerald-400 font-mono">&lt;head&gt;</code> across the entire website without modification.
+                </p>
+                <textarea
+                  id="custom_head_tags"
+                  name="custom_head_tags"
+                  rows="4"
+                  placeholder={`<meta name="yandex-verification" content="your_yandex_code" />\n<meta name="facebook-domain-verification" content="your_meta_token" />\n<link rel="dns-prefetch" href="//yandex.ru" />`}
+                  class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-emerald-300 placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 leading-relaxed"
+                >{siteSettings.custom_head_tags || ''}</textarea>
+                <p class="text-[10px] text-slate-500">Supports Yandex, Google, Facebook, Pinterest, Schema JSON-LD, Bing, and custom analytics.</p>
               </div>
 
-              <div>
-                <label class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-teal-400"></span> Bing Webmaster Verification:
-                </label>
-                <input
-                  type="text"
-                  name="bing_site_verification"
-                  value={siteSettings.bing_site_verification || ''}
-                  placeholder="e.g. msvalidate.01 code"
-                  class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-teal-400"
-                />
+              <!-- Quick Verification Code Fields -->
+              <div class="space-y-3">
+                <div class="text-xs font-bold text-slate-200 flex items-center justify-between">
+                  <span>Quick Webmaster Verification Inputs:</span>
+                  <span class="text-[10px] text-slate-400">Accepts token OR full &lt;meta&gt; tag</span>
+                </div>
+
+                <!-- Yandex Webmaster Verification -->
+                <div class="p-3 rounded-xl bg-slate-950/70 border border-red-500/20">
+                  <label class="block text-[11px] font-semibold text-red-300 mb-1 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                    <span>Yandex Webmaster Verification:</span>
+                    <span class="text-[10px] text-slate-400 font-normal">(yandex-verification)</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="yandex_site_verification"
+                    id="yandex_site_verification"
+                    value={siteSettings.yandex_site_verification || ''}
+                    placeholder="e.g. c03792080a2df337 or <meta name='yandex-verification' content='...' />"
+                    class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-red-400 font-mono"
+                  />
+                  <p class="text-[10px] text-slate-400 mt-1">
+                    From Yandex Webmaster &rarr; Verification &rarr; Meta tag. You can paste just the code string or the entire tag.
+                  </p>
+                </div>
+
+                <!-- Google Site Verification -->
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-400"></span> Google Site Verification Code:
+                  </label>
+                  <input
+                    type="text"
+                    name="google_site_verification"
+                    value={siteSettings.google_site_verification || ''}
+                    placeholder="e.g. googlecacc6ec6e0fdcf79 or HTML tag"
+                    class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-blue-400 font-mono"
+                  />
+                  <p class="text-[10px] text-slate-500 mt-1">From Google Search Console &rarr; Settings &rarr; Ownership verification &rarr; HTML tag</p>
+                </div>
+
+                <!-- Bing Webmaster Verification -->
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-teal-400"></span> Bing Webmaster Verification:
+                  </label>
+                  <input
+                    type="text"
+                    name="bing_site_verification"
+                    value={siteSettings.bing_site_verification || ''}
+                    placeholder="e.g. msvalidate.01 code or full meta tag"
+                    class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-teal-400 font-mono"
+                  />
+                </div>
+
+                <!-- Pinterest Domain Verification -->
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-rose-500"></span> Pinterest Domain Verification:
+                  </label>
+                  <input
+                    type="text"
+                    name="pinterest_site_verification"
+                    value={siteSettings.pinterest_site_verification || ''}
+                    placeholder="e.g. p:domain_verify code or full tag"
+                    class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-rose-400 font-mono"
+                  />
+                </div>
+
+                <!-- Facebook Domain Verification -->
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-indigo-400"></span> Meta / Facebook Domain Verification:
+                  </label>
+                  <input
+                    type="text"
+                    name="facebook_domain_verification"
+                    value={siteSettings.facebook_domain_verification || ''}
+                    placeholder="e.g. facebook-domain-verification token"
+                    class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-indigo-400 font-mono"
+                  />
+                </div>
+
+                <!-- Baidu Webmaster Verification -->
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> Baidu Webmaster Verification:
+                  </label>
+                  <input
+                    type="text"
+                    name="baidu_site_verification"
+                    value={siteSettings.baidu_site_verification || ''}
+                    placeholder="e.g. baidu-site-verification token"
+                    class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono"
+                  />
+                </div>
+
+                <!-- Canonical URL -->
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1">Production Canonical URL:</label>
+                  <input
+                    type="url"
+                    name="site_url"
+                    value={siteSettings.site_url || 'https://9jabeacon.name.ng'}
+                    placeholder="https://9jabeacon.name.ng"
+                    class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label class="block text-[11px] font-medium text-slate-300 mb-1">Production Canonical URL:</label>
-                <input
-                  type="url"
-                  name="site_url"
-                  value={siteSettings.site_url || 'https://9jabeacon.name.ng'}
-                  placeholder="https://9jabeacon.name.ng"
-                  class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div class="pt-2 grid grid-cols-2 gap-2 text-xs">
+              <!-- Quick Sitemap & Feeds Links -->
+              <div class="pt-2 grid grid-cols-3 gap-2 text-xs">
                 <a
                   href="/sitemap.xml"
                   target="_blank"
-                  class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 text-center flex items-center justify-center gap-1.5"
+                  class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 text-center flex items-center justify-center gap-1 text-[11px]"
                 >
-                  <span>View Sitemap.xml</span>
+                  <span>Sitemap.xml</span>
+                  <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                </a>
+                <a
+                  href="/rss.xml"
+                  target="_blank"
+                  class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 text-center flex items-center justify-center gap-1 text-[11px]"
+                >
+                  <span>RSS Feed</span>
                   <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                 </a>
                 <a
                   href="/robots.txt"
                   target="_blank"
-                  class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 text-center flex items-center justify-center gap-1.5"
+                  class="p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 text-center flex items-center justify-center gap-1 text-[11px]"
                 >
-                  <span>View Robots.txt</span>
+                  <span>Robots.txt</span>
                   <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                 </a>
               </div>
 
-              <button
-                type="submit"
-                class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition cursor-pointer shadow-md shadow-emerald-500/10"
-              >
-                Save SEO & Verification
-              </button>
+              <!-- Buttons: Save & Live Test -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <button
+                  type="submit"
+                  class="w-full py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition cursor-pointer shadow-md shadow-emerald-500/10 flex items-center justify-center gap-1.5"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  <span>Save SEO & Verification</span>
+                </button>
+                <button
+                  type="button"
+                  onclick="checkLiveVerificationTags()"
+                  class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition cursor-pointer border border-slate-700 flex items-center justify-center gap-1.5"
+                >
+                  <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Verify Live &lt;head&gt; Status</span>
+                </button>
+              </div>
+
+              <!-- Live Head Verification Scan Results Box -->
+              <div id="seoVerificationCheckResult" class="hidden p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs"></div>
             </form>
+
+            <!-- SEO Submission Directory Accordion Guide -->
+            <details class="group mt-4 rounded-xl bg-slate-950/80 border border-slate-800 p-3.5 [&_summary::-webkit-details-marker]:hidden">
+              <summary class="flex items-center justify-between cursor-pointer font-bold text-xs text-slate-200 hover:text-white">
+                <span class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  <span>Top Sites to Submit 9jaBeacon for High SEO & Traffic</span>
+                </span>
+                <span class="transition group-open:rotate-180 text-slate-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </span>
+              </summary>
+
+              <div class="mt-3.5 space-y-3 pt-3 border-t border-slate-800/80 text-[11px] text-slate-300">
+                <!-- Group 1: Global Search Engines -->
+                <div>
+                  <div class="font-bold text-xs text-white mb-2 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> Major Search Engines
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <a href="https://webmaster.yandex.com/" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-red-500/50 block group">
+                      <div class="font-semibold text-red-400 group-hover:underline">1. Yandex Webmaster</div>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Submit site & sitemap. Huge global search engine & rapid indexer.</p>
+                    </a>
+                    <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/50 block group">
+                      <div class="font-semibold text-blue-400 group-hover:underline">2. Google Search Console</div>
+                      <p class="text-[10px] text-slate-400 mt-0.5">95%+ market share in Nigeria. Essential for organic traffic & sitemaps.</p>
+                    </a>
+                    <a href="https://www.bing.com/webmasters" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-teal-500/50 block group">
+                      <div class="font-semibold text-teal-400 group-hover:underline">3. Bing Webmaster Tools</div>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Powers Bing, Yahoo, DuckDuckGo, and Copilot AI summaries.</p>
+                    </a>
+                    <a href="https://www.indexnow.org/" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-cyan-500/50 block group">
+                      <div class="font-semibold text-cyan-400 group-hover:underline">4. IndexNow Protocol</div>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Instantly notifies Bing, Yandex, and Seznam when stories publish.</p>
+                    </a>
+                  </div>
+                </div>
+
+                <!-- Group 2: News Media Aggregators -->
+                <div>
+                  <div class="font-bold text-xs text-white mb-2 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> News Publishers & Aggregators
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <a href="https://publishercenter.google.com/" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/50 block group">
+                      <div class="font-semibold text-emerald-400 group-hover:underline">5. Google News Publisher Center</div>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Submit your RSS feed (<code class="text-slate-300 font-mono">/rss.xml</code>) to appear in Google News carousels.</p>
+                    </a>
+                    <a href="https://partner.msn.com/" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-400/50 block group">
+                      <div class="font-semibold text-blue-300 group-hover:underline">6. Microsoft Start Partner Hub</div>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Powers Windows 11 desktop news widgets and Microsoft Edge feeds.</p>
+                    </a>
+                    <a href="https://scoopernews.com/" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-amber-400/50 block group">
+                      <div class="font-semibold text-amber-300 group-hover:underline">7. Scooper & Opera News</div>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Dominant mobile browser aggregators in Nigeria. Feed: <code class="text-slate-300 font-mono">/scooper-feed.xml</code>.</p>
+                    </a>
+                    <a href="https://business.pinterest.com/" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-rose-400/50 block group">
+                      <div class="font-semibold text-rose-300 group-hover:underline">8. Pinterest Business</div>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Claim domain for Rich Article Pins and viral visual search traffic.</p>
+                    </a>
+                  </div>
+                </div>
+
+                <!-- Group 3: Verification & Auditing -->
+                <div>
+                  <div class="font-bold text-xs text-white mb-2 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> Social Verification & SEO Auditing
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <a href="https://business.facebook.com/" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-400/50 block group">
+                      <div class="font-semibold text-indigo-300 group-hover:underline">9. Meta / Facebook Business</div>
+                      <p class="text-[10px] text-slate-400 mt-0.5">Verify domain to enable link previews, ads, and prevent false spam flagging.</p>
+                    </a>
+                    <a href="https://ahrefs.com/webmaster-tools" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-orange-400/50 block group">
+                      <div class="font-semibold text-orange-400 group-hover:underline">10. Ahrefs Webmaster Tools</div>
+                      <p class="text-[10px] text-slate-400 mt-0.5">100% Free: Monitor backlinks, indexing health, and keyword rankings.</p>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
 
           <!-- Diagnostics & Live Pipeline Output -->
@@ -1481,40 +1691,87 @@ for (const s of autoSettings) {
               </p>
             </div>
 
+            <!-- Monetag SmartLink / Direct Link URL -->
+            <div class="space-y-1.5">
+              <label for="monetagSmartLink" class="text-xs font-bold text-slate-300 flex items-center justify-between">
+                <span>Monetag Direct Link / SmartLink (Highest CPM)</span>
+                <span class="text-[10px] text-emerald-400 font-mono">Recommended</span>
+              </label>
+              <input
+                type="url"
+                id="monetagSmartLink"
+                name="monetag_smartlink_url"
+                value={siteSettings.monetag_smartlink_url || ''}
+                placeholder="e.g. https://alwingulla.com/..."
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none"
+              />
+              <p class="text-[11px] text-slate-500">
+                Monetag Direct Link URL. When filled, all in-feed and in-article sponsored buttons automatically route to your Monetag SmartLink for immediate click payouts.
+              </p>
+            </div>
+
             <!-- Global / Direct SDK Script Tag -->
             <div class="space-y-1.5">
               <label for="monetagGlobalTag" class="text-xs font-bold text-slate-300 flex items-center justify-between">
-                <span>Monetag Direct / SDK Script Tag (Optional)</span>
+                <span>Monetag MultiTag Script URL</span>
                 <span class="text-[10px] text-slate-400 font-mono">Header / Head</span>
               </label>
               <input
                 type="text"
                 id="monetagGlobalTag"
                 name="monetag_global_tag"
-                value={siteSettings.monetag_global_tag || ''}
-                placeholder="e.g. //gloapi.com/pfe/current/tag.min.js?z=..."
+                value={siteSettings.monetag_global_tag || 'https://nap5k.com/tag.min.js'}
+                placeholder="https://nap5k.com/tag.min.js"
                 class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none"
               />
               <p class="text-[11px] text-slate-500">
-                Optional script source provided by Monetag for tag-based or Vignette delivery.
+                Direct SDK script source loaded globally across all pages for Popunders, In-Page Push, and Vignettes.
               </p>
             </div>
 
             <!-- Custom Monetag JS Snippet / Ad Code -->
             <div class="md:col-span-2 space-y-1.5">
               <label for="monetagAdCode" class="text-xs font-bold text-slate-300">
-                Monetag Custom Ad Code / Embed Snippet (Optional)
+                In-Article / Feed Banner Ad Code (Optional 300x250 or Banner Embed)
               </label>
               <textarea
                 id="monetagAdCode"
                 name="monetag_ad_code"
                 rows="3"
-                placeholder="Paste any custom &lt;script&gt; or tag snippet provided by Monetag here..."
+                placeholder="Paste custom Banner &lt;script&gt; or embed code here (do NOT paste MultiTag here)..."
                 class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none resize-y"
               >{siteSettings.monetag_ad_code || ''}</textarea>
               <p class="text-[11px] text-slate-500">
-                If provided, this snippet will be safely executed inside the AdSlot container when enabled.
+                Optional: If you generate an inline Banner (e.g. 300x250) or Google AdSense ad unit, paste it here to render inside news feeds and articles.
               </p>
+            </div>
+
+            <!-- Monetag Diagnostic & Verification Guide Box -->
+            <div class="md:col-span-2 p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Why Ads Might Not Appear During Testing (Read Carefully)</span>
+              </h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] text-slate-400">
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
+                  <strong class="text-white block">1. Domain Whitelist:</strong>
+                  Monetag only serves live ads on your approved custom domain (<code class="text-cyan-400">https://9jabeacon.name.ng</code>). Monetag servers reject requests from preview or localhost URLs.
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
+                  <strong class="text-white block">2. MultiTag Click Triggers:</strong>
+                  MultiTag ads (zone {siteSettings.monetag_in_article_zone || '11801792'}) deliver Popunders (fires when clicking a news story), In-Page Push (after 3-5 seconds), and Vignettes. They do not render static inline boxes.
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
+                  <strong class="text-white block">3. Ad Blockers & Brave Shields:</strong>
+                  If testing with Chrome AdBlock, uBlock, or Brave browser (Brave Shields), <code class="text-red-400">nap5k.com</code> is blocked. Temporarily disable shields to test.
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
+                  <strong class="text-white block">4. Direct SmartLink Solution:</strong>
+                  To immediately monetize visual spotlight cards in feeds and articles, copy your <strong>Direct Link</strong> from the Monetag dashboard and paste it into the Direct Link field above!
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1985,6 +2242,7 @@ for (const s of autoSettings) {
         const data = await res.json();
         if (data.success) {
           alert('SEO & Webmaster verification settings saved successfully! Your tags are now live in the <head> of every page.');
+          checkLiveVerificationTags();
         } else {
           alert('Error saving SEO settings: ' + data.error);
         }
@@ -1993,6 +2251,45 @@ for (const s of autoSettings) {
       }
     }
     document.getElementById('seoSettingsForm')?.addEventListener('submit', saveSeoSettings);
+
+    async function checkLiveVerificationTags() {
+      const resultBox = document.getElementById('seoVerificationCheckResult');
+      if (!resultBox) return;
+      resultBox.classList.remove('hidden');
+      resultBox.innerHTML = '<div class="text-cyan-400 animate-pulse text-xs flex items-center gap-2"><svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Scanning live &lt;head&gt; tags from home page...</div>';
+
+      try {
+        const res = await fetch('/?_verify_check=' + Date.now(), { cache: 'no-store' });
+        const html = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const head = doc.head;
+
+        const yandexMeta = head.querySelector('meta[name="yandex-verification"]')?.getAttribute('content');
+        const googleMeta = head.querySelector('meta[name="google-site-verification"]')?.getAttribute('content');
+        const bingMeta = head.querySelector('meta[name="msvalidate.01"]')?.getAttribute('content');
+        const pinterestMeta = head.querySelector('meta[name="p:domain_verify"]')?.getAttribute('content');
+        const fbMeta = head.querySelector('meta[name="facebook-domain-verification"]')?.getAttribute('content');
+        const baiduMeta = head.querySelector('meta[name="baidu-site-verification"]')?.getAttribute('content');
+        const monetagMeta = head.querySelector('meta[name="monetag"]')?.getAttribute('content');
+
+        let output = '<div class="space-y-1.5 font-mono text-[11px]">';
+        output += '<div class="font-bold text-slate-200 pb-1 border-b border-slate-800 flex items-center justify-between"><span>Live &lt;head&gt; Verification Scan:</span><span class="text-emerald-400 text-[10px]">Scanned Just Now</span></div>';
+        output += `<div><strong class="text-slate-300">Yandex:</strong> ${yandexMeta ? '<span class="text-emerald-400">✔ Found (content="' + yandexMeta + '")</span>' : '<span class="text-slate-500">○ Not active</span>'}</div>`;
+        output += `<div><strong class="text-slate-300">Google:</strong> ${googleMeta ? '<span class="text-emerald-400">✔ Found (content="' + googleMeta + '")</span>' : '<span class="text-slate-500">○ Not active</span>'}</div>`;
+        output += `<div><strong class="text-slate-300">Bing:</strong> ${bingMeta ? '<span class="text-emerald-400">✔ Found (content="' + bingMeta + '")</span>' : '<span class="text-slate-500">○ Not active</span>'}</div>`;
+        output += `<div><strong class="text-slate-300">Pinterest:</strong> ${pinterestMeta ? '<span class="text-emerald-400">✔ Found (content="' + pinterestMeta + '")</span>' : '<span class="text-slate-500">○ Not active</span>'}</div>`;
+        output += `<div><strong class="text-slate-300">Facebook:</strong> ${fbMeta ? '<span class="text-emerald-400">✔ Found (content="' + fbMeta + '")</span>' : '<span class="text-slate-500">○ Not active</span>'}</div>`;
+        output += `<div><strong class="text-slate-300">Baidu:</strong> ${baiduMeta ? '<span class="text-emerald-400">✔ Found (content="' + baiduMeta + '")</span>' : '<span class="text-slate-500">○ Not active</span>'}</div>`;
+        output += `<div><strong class="text-slate-300">Monetag:</strong> ${monetagMeta ? '<span class="text-emerald-400">✔ Active</span>' : '<span class="text-slate-500">○ Not active</span>'}</div>`;
+        output += '</div>';
+
+        resultBox.innerHTML = output;
+      } catch (err) {
+        resultBox.innerHTML = `<div class="text-red-400 text-xs">Error scanning head: ${err && err.message ? err.message : String(err)}</div>`;
+      }
+    }
+    window.checkLiveVerificationTags = checkLiveVerificationTags;
 
     async function runAiDiagnostics() {
       const box = document.getElementById('aiTestResultBox');
@@ -2224,6 +2521,7 @@ for (const s of autoSettings) {
       const enabled = document.getElementById('monetagEnabled')?.checked;
       const inArticleZone = document.getElementById('monetagInArticleZone')?.value?.trim();
       const verification = document.getElementById('monetagVerification')?.value?.trim();
+      const smartLink = document.getElementById('monetagSmartLink')?.value?.trim();
       const globalTag = document.getElementById('monetagGlobalTag')?.value?.trim();
       const adCode = document.getElementById('monetagAdCode')?.value?.trim();
       const statusBox = document.getElementById('monetagSaveStatus');
@@ -2233,6 +2531,7 @@ for (const s of autoSettings) {
         monetag_enabled: enabled ? '1' : '0',
         monetag_in_article_zone: inArticleZone || '',
         monetag_verification: verification || '',
+        monetag_smartlink_url: smartLink || '',
         monetag_global_tag: globalTag || '',
         monetag_ad_code: adCode || '',
       };

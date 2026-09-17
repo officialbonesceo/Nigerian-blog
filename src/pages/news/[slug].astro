@@ -17,12 +17,17 @@ const d1 = getD1(Astro.locals);
 const article = await getArticleBySlug(d1, slug);
 if (!article) return Astro.redirect('/404');
 
+// 301 Permanent Redirect if accessed via legacy/un-normalized slug to preserve SEO authority
+if (article.slug && article.slug !== slug) {
+  return Astro.redirect(`/news/${article.slug}`, 301);
+}
+
 const [relatedArticles, siteSettings] = await Promise.all([
   getRelatedArticles(d1, article.id, article.category_id, 5),
   getSiteSettings(d1)
 ]);
 
-const siteUrl = (siteSettings.site_url || 'https://9jabeacon.pages.dev').replace(/\/+$/, '');
+const siteUrl = (siteSettings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
 const canonicalUrl = `${siteUrl}/news/${article.slug}`;
 const imageUrl = article.image_url || DEFAULT_FALLBACK_IMAGE_URL;
 
@@ -46,6 +51,7 @@ const formattedArticleContent = cleanAndFormatArticleHtml(article.content);
 const isMonetagEnabled = siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true';
 const monetagInArticleZoneId = siteSettings.monetag_in_article_zone || '';
 const monetagAdCode = siteSettings.monetag_ad_code || '';
+const monetagSmartLink = siteSettings.monetag_smartlink_url || '';
 
 // Partition content for well-spaced ad distribution in-between long news
 const articleParts = partitionArticleForAds(formattedArticleContent);
@@ -207,6 +213,7 @@ const structuredData = {
             isMonetagEnabled={isMonetagEnabled}
             inArticleZoneId={monetagInArticleZoneId}
             adCodeSnippet={monetagAdCode}
+            smartLinkUrl={monetagSmartLink}
           />
 
           <div
@@ -225,6 +232,7 @@ const structuredData = {
             isMonetagEnabled={isMonetagEnabled}
             inArticleZoneId={monetagInArticleZoneId}
             adCodeSnippet={monetagAdCode}
+            smartLinkUrl={monetagSmartLink}
           />
 
           <div

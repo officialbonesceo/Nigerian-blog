@@ -114,7 +114,7 @@ export function generateBrandedSvg(options: FallbackImageOptions = {}): string {
     <rect x="28" y="0" width="12" height="24" rx="2" fill="#008751" />
 
     <text x="52" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="#94a3b8">
-      9jabeacon.pages.dev  •  Autonomous Nigerian Journalism &amp; Live Wire
+      9jabeacon.name.ng  •  Independent Nigerian Journalism &amp; Live Wire
     </text>
   </g>
 </svg>`;

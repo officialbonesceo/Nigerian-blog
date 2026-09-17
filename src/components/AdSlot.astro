@@ -11,6 +11,7 @@ interface Props {
   format?: 'in-article' | 'feed' | 'sidebar';
   className?: string;
   adCodeSnippet?: string;
+  smartLinkUrl?: string;
   inArticleZoneId?: string;
   isMonetagEnabled?: boolean;
 }
@@ -19,9 +20,12 @@ const {
   format = 'in-article',
   className = '',
   adCodeSnippet = '',
+  smartLinkUrl = '',
 } = Astro.props;
 
 const hasCustomSnippet = Boolean(adCodeSnippet && adCodeSnippet.trim().length > 0);
+const targetUrl = smartLinkUrl && smartLinkUrl.trim().length > 0 ? smartLinkUrl.trim() : '/contact#advertise';
+const isExternal = targetUrl.startsWith('http://') || targetUrl.startsWith('https://');
 ---
 
 {format === 'in-article' && (
@@ -37,45 +41,50 @@ const hasCustomSnippet = Boolean(adCodeSnippet && adCodeSnippet.trim().length > 
           Sponsored Spotlight
         </span>
       </div>
-      <a href="/contact#advertise" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700 hover:text-emerald-600 transition-colors">
+      <a
+        href="/contact#advertise"
+        class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+      >
         Advertise
       </a>
     </div>
 
     <!-- Custom Ad Code Container (if provided) -->
-    {hasCustomSnippet && (
-      <div class="monetag-ad-wrapper w-full text-center overflow-hidden mb-3">
-        <div class="monetag-custom-snippet" set:html={adCodeSnippet} />
+    {hasCustomSnippet ? (
+      <div class="monetag-ad-wrapper w-full text-center overflow-hidden my-2 flex items-center justify-center min-h-[90px]">
+        <div class="monetag-custom-snippet w-full flex justify-center" set:html={adCodeSnippet} />
+      </div>
+    ) : (
+      <!-- High-Converting Editorial Sponsored Card (Visible as primary offer or instant native background) -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
+        <div class="flex items-start gap-3.5 text-left flex-1 min-w-0">
+          <div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
+              Verified Business Opportunities & High-Yield Accounts in Nigeria
+            </h4>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+              Discover vetted fintech tools, dollar virtual cards, and verified SME opportunities curated for readers.
+            </p>
+          </div>
+        </div>
+        <a
+          href={targetUrl}
+          target={isExternal ? '_blank' : '_self'}
+          rel={isExternal ? 'noopener noreferrer sponsored' : undefined}
+          class="shrink-0 w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-95"
+        >
+          <span>Explore Offers</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
       </div>
     )}
-
-    <!-- High-Converting Editorial Sponsored Card (Visible as primary offer or instant native background) -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
-      <div class="flex items-start gap-3.5 text-left flex-1 min-w-0">
-        <div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        </div>
-        <div>
-          <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
-            Verified Business Opportunities & High-Yield Accounts in Nigeria
-          </h4>
-          <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-            Discover vetted fintech tools, dollar virtual cards, and verified SME opportunities curated for readers.
-          </p>
-        </div>
-      </div>
-      <a
-        href="/contact#advertise"
-        class="shrink-0 w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-95"
-      >
-        <span>Explore Offers</span>
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-        </svg>
-      </a>
-    </div>
   </div>
 )}
 
@@ -92,33 +101,48 @@ const hasCustomSnippet = Boolean(adCodeSnippet && adCodeSnippet.trim().length > 
           </span>
         </div>
 
-        {hasCustomSnippet && (
-          <div class="monetag-feed-snippet w-full overflow-hidden my-1">
+        {hasCustomSnippet ? (
+          <div class="monetag-feed-snippet w-full overflow-hidden my-2 flex justify-center">
             <div set:html={adCodeSnippet} />
           </div>
+        ) : (
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
+              <a
+                href={targetUrl}
+                target={isExternal ? '_blank' : '_self'}
+                rel={isExternal ? 'noopener noreferrer sponsored' : undefined}
+              >
+                Compare Verified High-Yield Naira Accounts & Dollar Cards in Nigeria (2026)
+              </a>
+            </h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 pt-1 leading-relaxed">
+              Essential guide for professionals and business owners: explore vetted fintech vaults, inflation-hedging instruments, and verified digital trade services.
+            </p>
+          </div>
         )}
-
-        <!-- Converting News-Style Headline and Hook -->
-        <div>
-          <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
-            <a href="/contact#advertise">
-              Compare Verified High-Yield Naira Accounts & Dollar Cards in Nigeria (2026)
-            </a>
-          </h3>
-          <p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 pt-1 leading-relaxed">
-            Essential guide for professionals and business owners: explore vetted fintech vaults, inflation-hedging instruments, and verified digital trade services.
-          </p>
-        </div>
 
         <div class="flex items-center gap-3 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
           <span class="text-emerald-600 dark:text-emerald-400 font-medium">9jaBeacon Partner Spotlight</span>
           <span>•</span>
-          <a href="/contact#advertise" class="hover:underline font-semibold text-slate-700 dark:text-slate-300">Learn More &rarr;</a>
+          <a
+            href={targetUrl}
+            target={isExternal ? '_blank' : '_self'}
+            rel={isExternal ? 'noopener noreferrer sponsored' : undefined}
+            class="hover:underline font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Learn More &rarr;
+          </a>
         </div>
       </div>
 
       <!-- Right sponsored thumbnail -->
-      <a href="/contact#advertise" class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-emerald-50 dark:bg-slate-800 border border-emerald-100 dark:border-slate-700/60 flex flex-col items-center justify-center p-2 text-emerald-600 dark:text-emerald-400 group hover:bg-emerald-100/50 dark:hover:bg-slate-800/80 transition-colors">
+      <a
+        href={targetUrl}
+        target={isExternal ? '_blank' : '_self'}
+        rel={isExternal ? 'noopener noreferrer sponsored' : undefined}
+        class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-emerald-50 dark:bg-slate-800 border border-emerald-100 dark:border-slate-700/60 flex flex-col items-center justify-center p-2 text-emerald-600 dark:text-emerald-400 group hover:bg-emerald-100/50 dark:hover:bg-slate-800/80 transition-colors"
+      >
         <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
@@ -135,30 +159,32 @@ const hasCustomSnippet = Boolean(adCodeSnippet && adCodeSnippet.trim().length > 
       <span>Advertisement</span>
     </div>
 
-    {hasCustomSnippet && (
-      <div class="monetag-sidebar-wrapper w-full text-center overflow-hidden">
+    {hasCustomSnippet ? (
+      <div class="monetag-sidebar-wrapper w-full text-center overflow-hidden my-2">
         <div set:html={adCodeSnippet} />
       </div>
-    )}
-
-    <div class="space-y-2.5 text-center p-2">
-      <div class="w-11 h-11 mx-auto rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+    ) : (
+      <div class="space-y-2.5 text-center p-2">
+        <div class="w-11 h-11 mx-auto rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h4 class="text-xs font-bold text-slate-900 dark:text-slate-100">
+          9jaBeacon Verified Partner Hub
+        </h4>
+        <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+          Feature your brand, fintech platform, or property dispatch to Nigeria's premier decision-makers.
+        </p>
+        <a
+          href={targetUrl}
+          target={isExternal ? '_blank' : '_self'}
+          rel={isExternal ? 'noopener noreferrer sponsored' : undefined}
+          class="block w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold transition shadow-xs"
+        >
+          Partner With Us
+        </a>
       </div>
-      <h4 class="text-xs font-bold text-slate-900 dark:text-slate-100">
-        9jaBeacon Verified Partner Hub
-      </h4>
-      <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-        Feature your brand, fintech platform, or property dispatch to Nigeria's premier decision-makers.
-      </p>
-      <a
-        href="/contact#advertise"
-        class="block w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold transition shadow-xs"
-      >
-        Partner With Us
-      </a>
-    </div>
+    )}
   </aside>
 )}
