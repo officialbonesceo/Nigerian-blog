@@ -5,6 +5,7 @@ import TopStoryCard from '../components/TopStoryCard.astro';
 import ArticleCard from '../components/ArticleCard.astro';
 import MostReadSection from '../components/MostReadSection.astro';
 import AdSlot from '../components/AdSlot.astro';
+import AdsterraNativeBanner from '../components/AdsterraNativeBanner.astro';
 import {
   getD1,
   getTopStory,
@@ -47,11 +48,6 @@ try {
 } catch (e) {
   console.error('[index.astro] Error loading articles:', e);
 }
-
-const isMonetagEnabled = siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true';
-const monetagInArticleZoneId = siteSettings.monetag_in_article_zone || '';
-const monetagAdCode = siteSettings.monetag_ad_code || '';
-const monetagSmartLink = siteSettings.monetag_smartlink_url || '';
 
 const hasNextPage = latestArticles.length > pageSize;
 const currentFeed = latestArticles.slice(0, pageSize);
@@ -155,13 +151,7 @@ const filteredLatest = page === 1
           <>
             <ArticleCard article={article} />
             {(idx === 2 || (idx === 6 && filteredLatest.length >= 7)) && (
-              <AdSlot
-                format="feed"
-                isMonetagEnabled={isMonetagEnabled}
-                inArticleZoneId={monetagInArticleZoneId}
-                adCodeSnippet={monetagAdCode}
-                smartLinkUrl={monetagSmartLink}
-              />
+              <AdSlot format="feed" />
             )}
           </>
         ))}
@@ -232,6 +222,15 @@ const filteredLatest = page === 1
         Return to Front Page
       </a>
     </div>
+  )}
+
+  <!-- Adsterra Native Banner (Around The Web) -->
+  {siteSettings.adsterra_enabled !== '0' && siteSettings.adsterra_enabled !== 'false' && (
+    <AdsterraNativeBanner
+      containerId={siteSettings.adsterra_container_id || 'container-4e5de78ab786afbf822590e03b1b657e'}
+      scriptUrl={siteSettings.adsterra_script_url || 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js'}
+      label="Around The Web"
+    />
   )}
 
   <!-- Most Read Section -->

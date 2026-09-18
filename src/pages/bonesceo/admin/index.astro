@@ -208,7 +208,7 @@ for (const s of autoSettings) {
         class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
         <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <span>Monetag Ad Integration</span>
+        <span>Adsterra Native Network</span>
       </button>
       <button
         onclick="switchAdminTab('bing')"
@@ -1622,168 +1622,88 @@ for (const s of autoSettings) {
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
           <div>
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-              <span>Monetag Ad Network Integration</span>
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+              <span>Adsterra Native Ad Network Integration</span>
             </h2>
             <p class="text-xs text-slate-400 mt-1">
-              Configure your Monetag publisher credentials. When empty or disabled, ads will remain hidden or display verified editorial house announcements.
+              Configure your Adsterra Native Banner widget. Renders responsive 4x1 native cards on desktop and 1x4 vertical units on mobile across homepage and articles.
             </p>
           </div>
           <div class="flex items-center gap-2">
-            <span class={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-              {siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true' ? '● Monetag Active' : '○ Disabled / House Fallback'}
+            <span class={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${siteSettings.adsterra_enabled !== '0' && siteSettings.adsterra_enabled !== 'false' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+              {siteSettings.adsterra_enabled !== '0' && siteSettings.adsterra_enabled !== 'false' ? '● Adsterra Active' : '○ Disabled'}
             </span>
           </div>
         </div>
 
-        <form id="monetagSettingsForm" class="space-y-5">
+        <form id="adsterraSettingsForm" class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <!-- Master Toggle -->
-            <div class="md:col-span-2 p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-              <div>
-                <label for="monetagEnabled" class="text-sm font-bold text-white block">Enable Monetag Ads</label>
-                <span class="text-xs text-slate-400">Turn ad serving on or off instantly across the entire platform.</span>
+            <!-- Adsterra Native Banner Integration Section -->
+            <div class="md:col-span-2 p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+              <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-900 border border-slate-800">
+                <div>
+                  <label for="adsterraEnabled" class="text-xs font-bold text-white block">Enable Adsterra Native Banner Ads</label>
+                  <span class="text-[11px] text-slate-400">Toggle display of the Adsterra native banner across articles and homepage.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  id="adsterraEnabled"
+                  name="adsterra_enabled"
+                  class="w-5 h-5 rounded text-cyan-600 focus:ring-cyan-500 bg-slate-950 border-slate-700 cursor-pointer"
+                  checked={siteSettings.adsterra_enabled !== '0' && siteSettings.adsterra_enabled !== 'false'}
+                />
               </div>
-              <input
-                type="checkbox"
-                id="monetagEnabled"
-                name="monetag_enabled"
-                class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-900 border-slate-700 cursor-pointer"
-                checked={siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true'}
-              />
-            </div>
 
-            <!-- In-Article Native Banner Zone ID -->
-            <div class="space-y-1.5">
-              <label for="monetagInArticleZone" class="text-xs font-bold text-slate-300 flex items-center justify-between">
-                <span>In-Article Native Banner Zone ID</span>
-                <span class="text-[10px] text-emerald-400 font-mono">Recommended: Native Banner</span>
-              </label>
-              <input
-                type="text"
-                id="monetagInArticleZone"
-                name="monetag_in_article_zone"
-                value={siteSettings.monetag_in_article_zone || ''}
-                placeholder="e.g. 11801724"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none"
-              />
-              <p class="text-[11px] text-slate-500">
-                Displayed in the middle of stories and article feeds as a clean, responsive editorial card.
-              </p>
-            </div>
-
-            <!-- Site Verification Code -->
-            <div class="space-y-1.5">
-              <label for="monetagVerification" class="text-xs font-bold text-slate-300 flex items-center justify-between">
-                <span>Monetag Verification Code</span>
-                <span class="text-[10px] text-cyan-400 font-mono">&lt;meta name="monetag" ...&gt;</span>
-              </label>
-              <input
-                type="text"
-                id="monetagVerification"
-                name="monetag_verification"
-                value={siteSettings.monetag_verification || '40d3b64d132d7ec42db754b9dca240b1'}
-                placeholder="e.g. 40d3b64d132d7ec42db754b9dca240b1"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none"
-              />
-              <p class="text-[11px] text-slate-500">
-                Injected into &lt;head&gt; meta tags to verify your domain ownership with Monetag.
-              </p>
-            </div>
-
-            <!-- Monetag SmartLink / Direct Link URL -->
-            <div class="space-y-1.5">
-              <label for="monetagSmartLink" class="text-xs font-bold text-slate-300 flex items-center justify-between">
-                <span>Monetag Direct Link / SmartLink (Highest CPM)</span>
-                <span class="text-[10px] text-emerald-400 font-mono">Recommended</span>
-              </label>
-              <input
-                type="url"
-                id="monetagSmartLink"
-                name="monetag_smartlink_url"
-                value={siteSettings.monetag_smartlink_url || ''}
-                placeholder="e.g. https://alwingulla.com/..."
-                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none"
-              />
-              <p class="text-[11px] text-slate-500">
-                Monetag Direct Link URL. When filled, all in-feed and in-article sponsored buttons automatically route to your Monetag SmartLink for immediate click payouts.
-              </p>
-            </div>
-
-            <!-- Global / Direct SDK Script Tag -->
-            <div class="space-y-1.5">
-              <label for="monetagGlobalTag" class="text-xs font-bold text-slate-300 flex items-center justify-between">
-                <span>Monetag MultiTag Script URL</span>
-                <span class="text-[10px] text-slate-400 font-mono">Header / Head</span>
-              </label>
-              <input
-                type="text"
-                id="monetagGlobalTag"
-                name="monetag_global_tag"
-                value={siteSettings.monetag_global_tag || 'https://nap5k.com/tag.min.js'}
-                placeholder="https://nap5k.com/tag.min.js"
-                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none"
-              />
-              <p class="text-[11px] text-slate-500">
-                Direct SDK script source loaded globally across all pages for Popunders, In-Page Push, and Vignettes.
-              </p>
-            </div>
-
-            <!-- Custom Monetag JS Snippet / Ad Code -->
-            <div class="md:col-span-2 space-y-1.5">
-              <label for="monetagAdCode" class="text-xs font-bold text-slate-300">
-                In-Article / Feed Banner Ad Code (Optional 300x250 or Banner Embed)
-              </label>
-              <textarea
-                id="monetagAdCode"
-                name="monetag_ad_code"
-                rows="3"
-                placeholder="Paste custom Banner &lt;script&gt; or embed code here (do NOT paste MultiTag here)..."
-                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:border-emerald-500 outline-none resize-y"
-              >{siteSettings.monetag_ad_code || ''}</textarea>
-              <p class="text-[11px] text-slate-500">
-                Optional: If you generate an inline Banner (e.g. 300x250) or Google AdSense ad unit, paste it here to render inside news feeds and articles.
-              </p>
-            </div>
-
-            <!-- Monetag Diagnostic & Verification Guide Box -->
-            <div class="md:col-span-2 p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
-              <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Why Ads Might Not Appear During Testing (Read Carefully)</span>
-              </h3>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] text-slate-400">
-                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
-                  <strong class="text-white block">1. Domain Whitelist:</strong>
-                  Monetag only serves live ads on your approved custom domain (<code class="text-cyan-400">https://9jabeacon.name.ng</code>). Monetag servers reject requests from preview or localhost URLs.
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                  <label for="adsterraScriptUrl" class="text-xs font-bold text-slate-300 flex items-center justify-between">
+                    <span>Adsterra Invoke Script URL</span>
+                    <span class="text-[10px] text-cyan-400 font-mono">invoke.js</span>
+                  </label>
+                  <input
+                    type="url"
+                    id="adsterraScriptUrl"
+                    name="adsterra_script_url"
+                    value={siteSettings.adsterra_script_url || 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js'}
+                    placeholder="https://pl...profitableratecpmnetwork.com/.../invoke.js"
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs font-mono focus:border-cyan-500 outline-none"
+                  />
                 </div>
-                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
-                  <strong class="text-white block">2. MultiTag Click Triggers:</strong>
-                  MultiTag ads (zone {siteSettings.monetag_in_article_zone || '11801792'}) deliver Popunders (fires when clicking a news story), In-Page Push (after 3-5 seconds), and Vignettes. They do not render static inline boxes.
+
+                <div class="space-y-1.5">
+                  <label for="adsterraContainerId" class="text-xs font-bold text-slate-300 flex items-center justify-between">
+                    <span>Adsterra Container Target ID</span>
+                    <span class="text-[10px] text-cyan-400 font-mono">&lt;div id="..."&gt;</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="adsterraContainerId"
+                    name="adsterra_container_id"
+                    value={siteSettings.adsterra_container_id || 'container-4e5de78ab786afbf822590e03b1b657e'}
+                    placeholder="container-4e5de78ab786afbf822590e03b1b657e"
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs font-mono focus:border-cyan-500 outline-none"
+                  />
                 </div>
-                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
-                  <strong class="text-white block">3. Ad Blockers & Brave Shields:</strong>
-                  If testing with Chrome AdBlock, uBlock, or Brave browser (Brave Shields), <code class="text-red-400">nap5k.com</code> is blocked. Temporarily disable shields to test.
-                </div>
-                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
-                  <strong class="text-white block">4. Direct SmartLink Solution:</strong>
-                  To immediately monetize visual spotlight cards in feeds and articles, copy your <strong>Direct Link</strong> from the Monetag dashboard and paste it into the Direct Link field above!
-                </div>
+              </div>
+
+              <!-- Active Snippet Preview -->
+              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800/80 space-y-1.5">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Injected HTML Embed:</span>
+                <pre class="text-[11px] font-mono text-cyan-300 bg-slate-950 p-2.5 rounded-lg overflow-x-auto whitespace-pre-wrap select-all">&lt;script async="async" data-cfasync="false" src="{siteSettings.adsterra_script_url || 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js'}"&gt;&lt;/script&gt;
+&lt;div id="{siteSettings.adsterra_container_id || 'container-4e5de78ab786afbf822590e03b1b657e'}"&gt;&lt;/div&gt;</pre>
               </div>
             </div>
           </div>
 
-          <div id="monetagSaveStatus" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+          <div id="adsterraSaveStatus" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
 
           <div class="flex flex-wrap items-center gap-3">
             <button
               type="submit"
-              id="saveMonetagBtn"
-              class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              id="saveAdsterraBtn"
+              class="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
             >
-              <span>Save Monetag Configuration</span>
+              <span>Save Adsterra Configuration</span>
             </button>
 
             <a
@@ -2516,28 +2436,23 @@ for (const s of autoSettings) {
     window.saveAdminCredentials = saveAdminCredentials;
     document.getElementById('adminCredentialsForm')?.addEventListener('submit', saveAdminCredentials);
 
-    async function saveMonetagSettings(e) {
+    async function saveAdsterraSettings(e) {
       e.preventDefault();
-      const enabled = document.getElementById('monetagEnabled')?.checked;
-      const inArticleZone = document.getElementById('monetagInArticleZone')?.value?.trim();
-      const verification = document.getElementById('monetagVerification')?.value?.trim();
-      const smartLink = document.getElementById('monetagSmartLink')?.value?.trim();
-      const globalTag = document.getElementById('monetagGlobalTag')?.value?.trim();
-      const adCode = document.getElementById('monetagAdCode')?.value?.trim();
-      const statusBox = document.getElementById('monetagSaveStatus');
-      const btn = document.getElementById('saveMonetagBtn');
+      const adsterraEnabled = document.getElementById('adsterraEnabled')?.checked;
+      const adsterraScriptUrl = document.getElementById('adsterraScriptUrl')?.value?.trim();
+      const adsterraContainerId = document.getElementById('adsterraContainerId')?.value?.trim();
+
+      const statusBox = document.getElementById('adsterraSaveStatus');
+      const btn = document.getElementById('saveAdsterraBtn');
 
       const payload = {
-        monetag_enabled: enabled ? '1' : '0',
-        monetag_in_article_zone: inArticleZone || '',
-        monetag_verification: verification || '',
-        monetag_smartlink_url: smartLink || '',
-        monetag_global_tag: globalTag || '',
-        monetag_ad_code: adCode || '',
+        adsterra_enabled: adsterraEnabled ? '1' : '0',
+        adsterra_script_url: adsterraScriptUrl || 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js',
+        adsterra_container_id: adsterraContainerId || 'container-4e5de78ab786afbf822590e03b1b657e',
       };
 
       try {
-        if (btn) btn.textContent = 'Saving Monetag Configuration...';
+        if (btn) btn.textContent = 'Saving Adsterra Configuration...';
         const res = await fetch('/api/admin/settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2546,12 +2461,12 @@ for (const s of autoSettings) {
         const data = await res.json();
         if (data.success) {
           if (statusBox) {
-            statusBox.textContent = '✅ Monetag configuration successfully updated in Cloudflare D1 database!';
-            statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-950/80 border border-emerald-800 text-emerald-300 block';
+            statusBox.textContent = '✅ Adsterra Native Banner configuration successfully updated!';
+            statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-cyan-950/80 border border-cyan-800 text-cyan-300 block';
           }
         } else {
           if (statusBox) {
-            statusBox.textContent = '❌ Failed to save Monetag configuration: ' + (data.error || 'Unknown error');
+            statusBox.textContent = '❌ Failed to save configuration: ' + (data.error || 'Unknown error');
             statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-red-950/80 border border-red-800 text-red-300 block';
           }
         }
@@ -2561,11 +2476,11 @@ for (const s of autoSettings) {
           statusBox.className = 'p-3 rounded-xl text-xs font-semibold bg-red-950/80 border border-red-800 text-red-300 block';
         }
       } finally {
-        if (btn) btn.textContent = 'Save Monetag Configuration';
+        if (btn) btn.textContent = 'Save Adsterra Configuration';
       }
     }
-    window.saveMonetagSettings = saveMonetagSettings;
-    document.getElementById('monetagSettingsForm')?.addEventListener('submit', saveMonetagSettings);
+    window.saveAdsterraSettings = saveAdsterraSettings;
+    document.getElementById('adsterraSettingsForm')?.addEventListener('submit', saveAdsterraSettings);
 
     async function logoutAdmin() {
       if (!confirm('Are you sure you want to sign out of the Admin Hub?')) return;

@@ -11,6 +11,11 @@ const CORRUPTED_SIGNATURES = [
   'Nigerian sports administration and athletic competition operate at an intense intersection',
   'complex governance matrix, where federal policies',
   'macroeconomic austerity with grassroots survival',
+  'poised to impact governance, citizens, and relevant market sectors',
+  'poised to impact governance',
+  'Accurate, verified reporting remains vital for public awareness',
+  'Active lead verified by 9jaBeacon Editorial Desk',
+  'Authorities and industry stakeholders are actively monitoring the situation',
 ];
 
 export const POST: APIRoute = async ({ request, locals }) => {

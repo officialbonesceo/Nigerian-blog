@@ -28,3 +28,32 @@
     overflow-x: auto;
   }
 }
+
+/* Unobtrusive Native Banner Headings for Paragraphs */
+.native-banner-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.75rem;
+  border-left-width: 4px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+:root.dark .native-banner-heading,
+.dark .native-banner-heading {
+  background-color: rgba(15, 23, 42, 0.75);
+  border-color: rgba(51, 65, 85, 0.6);
+  border-left-color: #10b981;
+  color: #f1f5f9;
+}
+
+:root:not(.dark) .native-banner-heading,
+html:not(.dark) .native-banner-heading {
+  background-color: rgba(241, 245, 249, 0.9);
+  border-color: rgba(226, 232, 240, 0.9);
+  border-left-color: #059669;
+  color: #0f172a;
+}

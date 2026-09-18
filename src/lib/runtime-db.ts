@@ -887,6 +887,9 @@ export async function getSiteSettings(db: D1Database): Promise<Record<string, st
     monetag_ad_code: '',
     monetag_smartlink_url: '',
     monetag_verification: '40d3b64d132d7ec42db754b9dca240b1',
+    adsterra_enabled: '1',
+    adsterra_script_url: 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js',
+    adsterra_container_id: 'container-4e5de78ab786afbf822590e03b1b657e',
   };
   try {
     const res = await db.prepare('SELECT key, value FROM site_settings').all<{ key: string; value: string }>();

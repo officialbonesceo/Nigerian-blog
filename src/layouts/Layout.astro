@@ -66,7 +66,6 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
   <link rel="canonical" href={computedCanonical} />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="theme-color" content="#008751" />
-  <meta name="monetag" content={settings.monetag_verification || '40d3b64d132d7ec42db754b9dca240b1'} />
   {googleVerification && (
     <meta name="google-site-verification" content={googleVerification} />
   )}
@@ -173,16 +172,6 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
       }
     ]
   })} />
-
-  <!-- Monetag Global Direct Ad Tag & Anti-AdBlock Script -->
-  {(settings.monetag_enabled !== '0' && settings.monetag_enabled !== 'false') && (
-    <>
-      {settings.monetag_verification && (
-        <meta name="monetag" content={settings.monetag_verification} />
-      )}
-      <script is:inline set:html={`(function(s){s.dataset.zone='${settings.monetag_in_article_zone || '11801792'}',s.src='${settings.monetag_global_tag || 'https://nap5k.com/tag.min.js'}'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`} />
-    </>
-  )}
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden max-w-full relative transition-colors duration-150">
   <Header siteName={siteName} categories={categories} />

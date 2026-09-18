@@ -1,9 +1,9 @@
 ---
 /**
- * Monetag & Verified Sponsored Spotlight Component for 9jaBeacon
+ * Verified Sponsored Spotlight Component for 9jaBeacon
  * Supports in-article native cards, sidebar sticky cards, and feed cards.
  * Non-intrusive, strictly light/dark theme matched, ad-block resilient, and zero-CLS.
- * Custom ad snippets (e.g. Monetag Banner tags or Google AdSense) render seamlessly.
+ * Custom ad snippets (e.g. Adsterra or direct partners) render seamlessly.
  * Native spotlight links to verified /contact#advertise desk.
  */
 
@@ -12,8 +12,6 @@ interface Props {
   className?: string;
   adCodeSnippet?: string;
   smartLinkUrl?: string;
-  inArticleZoneId?: string;
-  isMonetagEnabled?: boolean;
 }
 
 const {
@@ -51,8 +49,8 @@ const isExternal = targetUrl.startsWith('http://') || targetUrl.startsWith('http
 
     <!-- Custom Ad Code Container (if provided) -->
     {hasCustomSnippet ? (
-      <div class="monetag-ad-wrapper w-full text-center overflow-hidden my-2 flex items-center justify-center min-h-[90px]">
-        <div class="monetag-custom-snippet w-full flex justify-center" set:html={adCodeSnippet} />
+      <div class="sponsored-ad-wrapper w-full text-center overflow-hidden my-2 flex items-center justify-center min-h-[90px]">
+        <div class="sponsored-custom-snippet w-full flex justify-center" set:html={adCodeSnippet} />
       </div>
     ) : (
       <!-- High-Converting Editorial Sponsored Card (Visible as primary offer or instant native background) -->
@@ -102,7 +100,7 @@ const isExternal = targetUrl.startsWith('http://') || targetUrl.startsWith('http
         </div>
 
         {hasCustomSnippet ? (
-          <div class="monetag-feed-snippet w-full overflow-hidden my-2 flex justify-center">
+          <div class="sponsored-feed-snippet w-full overflow-hidden my-2 flex justify-center">
             <div set:html={adCodeSnippet} />
           </div>
         ) : (
@@ -160,7 +158,7 @@ const isExternal = targetUrl.startsWith('http://') || targetUrl.startsWith('http
     </div>
 
     {hasCustomSnippet ? (
-      <div class="monetag-sidebar-wrapper w-full text-center overflow-hidden my-2">
+      <div class="sponsored-sidebar-wrapper w-full text-center overflow-hidden my-2">
         <div set:html={adCodeSnippet} />
       </div>
     ) : (

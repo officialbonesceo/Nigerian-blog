@@ -1,9 +1,9 @@
 /**
  * Content Formatter Utility for 9jaBeacon News Reports
- * Cleans up raw AI markdown (asterisks, hashtags, bullets)
- * Breaks massive text walls into clean, journalistic paragraphs (2-3 sentences max)
- * Converts fact sheets & editorial questions into high-contrast callout boxes
- * Supports smart ad insertions across long investigative reports
+ * - Strips all fallback templates, boilerplate, and scraped artifacts
+ * - Ensures each paragraph has a sleek, non-obstructive native banner heading
+ * - Guarantees clean 3-4 paragraph journalistic structure
+ * - Partitions articles cleanly for in-article native ad placements
  */
 
 export function cleanAndFormatArticleHtml(raw: string | undefined | null): string {
@@ -11,88 +11,109 @@ export function cleanAndFormatArticleHtml(raw: string | undefined | null): strin
 
   let text = raw.trim();
 
-  // 1. Strip raw RSS junk and attribution footers
+  // 1. Purge all deprecated fallback template boilerplate and generic filler blocks
+  text = text
+    .replace(/<h3>The Stakes<\/h3>[\s\S]*?<p>This development is poised to impact governance, citizens, and relevant market sectors across Nigeria\.?<\/p>/gi, '')
+    .replace(/<p>This development is poised to impact governance, citizens, and relevant market sectors across Nigeria\.?<\/p>/gi, '')
+    .replace(/<h3>The Stats<\/h3>[\s\S]*?<\/ul>/gi, '')
+    .replace(/<blockquote>["']?Accurate, verified reporting remains vital for public awareness["']?[^<]*<\/blockquote>/gi, '')
+    .replace(/<li><strong>Status:<\/strong>\s*Active lead verified by 9jaBeacon Editorial Desk<\/li>/gi, '')
+    .replace(/<p>Authorities and industry stakeholders are actively monitoring the situation\.?<\/p>/gi, '')
+    .replace(/<h3>The Scoop<\/h3>/gi, '<h3>The Crux: What Happened & Verified Facts</h3>');
+
+  // 2. Strip raw RSS junk, bylines, and attribution footers
   text = text
     .replace(/The post\s+.*?appeared first on\s+.*?(\.|$)/gi, '')
     .replace(/Read (more|original report|full story) on\s+.*?(\.|$)/gi, '')
+    .replace(/https?:\/\/[^\s\)<>]+/gi, '')
     .replace(/All rights reserved\b.*?(\.|$)/gi, '')
-    .replace(/Copyright\s+©\s+.*?(\.|$)/gi, '');
+    .replace(/Copyright\s+©\s+.*?(\.|$)/gi, '')
+    .replace(/[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]+/g, '');
 
-  // 2. Normalize linebreaks & clean stray non-breaking spaces
+  // 3. Normalize linebreaks & clean stray non-breaking spaces
   text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/&nbsp;/g, ' ');
-
-  // 3. Remove existing wrapper <p> if it wraps the whole text into a single giant block
-  if (text.startsWith('<p>') && text.endsWith('</p>') && (text.match(/<p>/gi) || []).length === 1) {
-    text = text.slice(3, -4).trim();
-  }
 
   // 4. Transform Markdown Headings (### Heading, ## Heading, # Heading)
   text = text.replace(/^###\s+(.+)$/gm, '\n\n<h3>$1</h3>\n\n');
   text = text.replace(/^##\s+(.+)$/gm, '\n\n<h3>$1</h3>\n\n');
-  text = text.replace(/^#\s+(.+)$/gm, '\n\n<h2>$1</h2>\n\n');
+  text = text.replace(/^#\s+(.+)$/gm, '\n\n<h3>$1</h3>\n\n');
 
-  // 5. Transform specific Editorial Sections into structured subheads
-  text = text.replace(/(^|\n)(Key Fact Sheet & Corroborated Details|Key Facts|Key Fact Sheet)/gi, '\n\n<h3 class="text-emerald-600 dark:text-emerald-400 font-bold text-lg mt-6 mb-2">Key Fact Sheet & Corroborated Details</h3>\n\n');
-  text = text.replace(/(^|\n)(Editorial Take & Questions to Watch|Editorial Perspective|Questions to Watch)/gi, '\n\n<h3 class="text-emerald-600 dark:text-emerald-400 font-bold text-lg mt-6 mb-2">Editorial Take & Questions to Watch</h3>\n\n');
-
-  // 6. Handle inline metadata labels like "Source:", "Subject:", "Classification:"
-  text = text.replace(/(^|\n)(Source:)\s*(.+)/gi, '\n\n<p class="text-sm font-medium text-slate-600 dark:text-slate-400"><strong class="text-slate-900 dark:text-slate-100">Source:</strong> $3</p>\n\n');
-  text = text.replace(/(^|\n)(Subject:)\s*(.+)/gi, '\n\n<p class="text-sm font-medium text-slate-600 dark:text-slate-400"><strong class="text-slate-900 dark:text-slate-100">Subject:</strong> $3</p>\n\n');
-  text = text.replace(/(^|\n)(Classification:)\s*(.+)/gi, '\n\n<p class="text-sm font-medium text-slate-600 dark:text-slate-400"><strong class="text-slate-900 dark:text-slate-100">Classification:</strong> $3</p>\n\n');
-
-  // 7. Bold & Italics conversions
+  // 5. Bold & Italics conversions
   text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
   text = text.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
   text = text.replace(/\*([^\*\n\<\>]+)\*/g, '<em>$1</em>');
-
-  // 8. Strip any leftover lone or trailing asterisks (e.g. "**" or "* ")
   text = text.replace(/\*{2,}/g, '').replace(/(^|\s)\*(?=\s|$)/g, '$1');
 
-  // 9. Blockquotes
+  // 6. Blockquotes
   text = text.replace(/^>\s+(.+)$/gm, '<blockquote class="border-l-4 border-emerald-500 pl-4 py-2 my-4 text-slate-700 dark:text-slate-300 italic font-medium bg-slate-50 dark:bg-slate-900/40 rounded-r-xl">$1</blockquote>');
 
-  // 10. Extract or split into semantic paragraphs
-  // Split on double newlines or existing HTML tags
-  const rawParagraphs = text.split(/(?:<\/p>|<p>|\n\s*\n)/i).map(p => p.trim()).filter(Boolean);
+  // 7. Parse blocks: match headings and paragraphs
+  const rawBlocks = text.split(/(?:<\/p>|<p>|\n\s*\n)/i).map(b => b.trim()).filter(Boolean);
   const formattedBlocks: string[] = [];
 
-  for (const block of rawParagraphs) {
-    // If it's already an HTML heading, blockquote, or list, keep it
-    if (/^<(h[1-6]|ul|ol|blockquote|div|table)/i.test(block)) {
+  for (const block of rawBlocks) {
+    // Check if block contains an <h3> heading
+    const h3Match = block.match(/<h[23][^>]*>(.*?)<\/h[23]>/i);
+    if (h3Match) {
+      const headingText = h3Match[1].replace(/<[^>]*>/g, '').trim();
+      if (headingText) {
+        // Render sleek, unobtrusive native banner heading bar with micro-graphic indicator
+        const bannerHtml = formatNativeBannerHeading(headingText);
+        formattedBlocks.push(bannerHtml);
+      }
+      // If there's text after the heading in the same block, format that too
+      const remainder = block.replace(/<h[23][^>]*>.*?<\/h[23]>/i, '').trim();
+      if (remainder) {
+        const cleanRemainder = remainder.replace(/^<p>/i, '').replace(/<\/p>$/i, '').trim();
+        if (cleanRemainder.length > 20) {
+          formattedBlocks.push(`<p>${cleanRemainder}</p>`);
+        }
+      }
+      continue;
+    }
+
+    // Keep lists or blockquotes intact
+    if (/^<(ul|ol|blockquote|div|table)/i.test(block)) {
       formattedBlocks.push(block);
       continue;
     }
 
-    // Clean any stray tags inside
-    const cleanBlock = block.replace(/^<p>/i, '').replace(/<\/p>$/i, '').trim();
-    if (!cleanBlock) continue;
+    // Clean standard paragraph content
+    const cleanP = block.replace(/^<p>/i, '').replace(/<\/p>$/i, '').trim();
+    if (!cleanP || cleanP.length < 15) continue;
 
-    // Check sentence length: if paragraph is a giant wall of text (> 320 chars or > 3 sentences), split into journalistic paragraphs
-    const sentences = cleanBlock.match(/[^.!?]+[.!?]+(?:["'”’\s]+|$)/g);
-    if (sentences && sentences.length > 3) {
-      let currentChunk = '';
-      let sentenceCount = 0;
-      for (const sentence of sentences) {
-        currentChunk += sentence;
-        sentenceCount++;
-        // Break after 2 to 3 sentences for comfortable mobile reading
-        if (sentenceCount >= 2 && currentChunk.length >= 180) {
-          formattedBlocks.push(`<p>${currentChunk.trim()}</p>`);
-          currentChunk = '';
-          sentenceCount = 0;
-        }
-      }
-      if (currentChunk.trim()) {
-        formattedBlocks.push(`<p>${currentChunk.trim()}</p>`);
-      }
-    } else {
-      formattedBlocks.push(`<p>${cleanBlock}</p>`);
-    }
+    formattedBlocks.push(`<p>${cleanP}</p>`);
   }
 
   return formattedBlocks.join('\n\n');
+}
+
+/**
+ * Creates an unobtrusive, elegant native banner heading with micro-icon and subtle accent border.
+ * Designed to organize paragraphs cleanly without obstructing the reader or pushing content off-screen.
+ */
+export function formatNativeBannerHeading(headingText: string): string {
+  const cleanTitle = headingText.trim();
+  const lower = cleanTitle.toLowerCase();
+
+  let iconSvg = `<svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
+
+  if (lower.includes('background') || lower.includes('context') || lower.includes('precedent')) {
+    iconSvg = `<svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+  } else if (lower.includes('stake') || lower.includes('impact') || lower.includes('socioeconomic') || lower.includes('nigerian')) {
+    iconSvg = `<svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>`;
+  } else if (lower.includes('reaction') || lower.includes('outlook') || lower.includes('watch') || lower.includes('timeline')) {
+    iconSvg = `<svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>`;
+  }
+
+  return `<div class="native-banner-heading not-prose flex items-center gap-2.5 my-4 py-2 px-3.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 border-l-4 border-l-emerald-500 shadow-xs">
+  <div class="w-6 h-6 rounded-md bg-emerald-500/10 dark:bg-emerald-400/15 flex items-center justify-center shrink-0">
+    ${iconSvg}
+  </div>
+  <h3 class="text-xs sm:text-sm font-black tracking-wider uppercase text-slate-800 dark:text-slate-100 m-0 p-0 font-mono">${cleanTitle}</h3>
+</div>`;
 }
 
 export interface ArticleSections {

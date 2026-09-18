@@ -1,0 +1,230 @@
+/**
+ * Wikipedia Public Media API Integration for 9jaBeacon
+ * 
+ * Fetches verified, high-resolution editorial photos from Wikimedia Commons
+ * for real entities, public figures, landmarks, and news events.
+ * 
+ * Verification Rules:
+ * - Must be authentic photographic media from Wikimedia Commons (upload.wikimedia.org).
+ * - Strictly rejects vector icons (.svg), coats of arms, flags, locator maps, and logos.
+ * - Enforces minimum resolution (width >= 300px).
+ * - Falls back to null if unverified or unavailable so the editorial fallback setup is used.
+ */
+
+export interface WikipediaImageResult {
+  imageUrl: string;
+  caption: string;
+  credit: string;
+  wikiTitle: string;
+  sourceUrl?: string;
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Known non-photographic keywords to reject
+ */
+const REJECTED_IMAGE_KEYWORDS = [
+  '.svg',
+  'flag_of',
+  'flag-',
+  'coat_of_arms',
+  'emblem',
+  'insignia',
+  'seal_of',
+  'locator_map',
+  'map_of',
+  'location_map',
+  'sound-icon',
+  'speaker_icon',
+  'audio_icon',
+  'ambox',
+  'question_mark',
+  'portal-icon',
+  'disambig',
+  'symbol',
+  'generic_avatar',
+  'blank_template',
+  'stub_icon',
+  'padlock',
+];
+
+/**
+ * Extracts searchable subject queries from an article title
+ */
+export function extractWikipediaQueries(title: string, category?: string): string[] {
+  const queries: string[] = [];
+  const clean = title.replace(/[‘“"”’'']/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // 1. Quoted names/terms
+  const quoted = title.match(/[‘"“]([^’”"]+)[’”"]/g);
+  if (quoted) {
+    for (const q of quoted) {
+      const trimmed = q.replace(/[‘"“”’'']/g, '').trim();
+      if (trimmed.length > 3 && !trimmed.toLowerCase().includes('gone in')) {
+        queries.push(trimmed);
+      }
+    }
+  }
+
+  // 2. Colons or dash prefixes (e.g. "Osun: Police Arrest...", "TechCabal Daily: MTN...")
+  const parts = clean.split(/[:–—\-]/);
+  if (parts.length > 1) {
+    const left = parts[0].trim();
+    if (left.length >= 3 && left.length <= 35 && !left.toLowerCase().includes('daily')) {
+      queries.push(left);
+    }
+    const right = parts[1].trim();
+    if (right.length >= 4) {
+      queries.push(right.slice(0, 50));
+    }
+  }
+
+  // 3. Prominent capitalized 2-word names/entities (e.g. "Ademola Lookman", "Festus Keyamo", "Donald Trump", "Plateau State")
+  const twoWordNames = clean.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)\b/g);
+  if (twoWordNames) {
+    for (const tw of twoWordNames) {
+      const lower = tw.toLowerCase();
+      if (
+        !lower.includes('after') &&
+        !lower.includes('before') &&
+        !lower.includes('under') &&
+        !lower.includes('over') &&
+        !lower.includes('into') &&
+        !lower.includes('says') &&
+        !lower.includes('warns') &&
+        !lower.includes('issues') &&
+        !lower.includes('moves')
+      ) {
+        queries.push(tw);
+      }
+    }
+  }
+
+  // 4. Prominent capitalized multi-word phrases (e.g. "Central Bank of Nigeria", "Tottenham Hotspur")
+  const properNouns = clean.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){2,3}\b/g);
+  if (properNouns) {
+    for (const pn of properNouns) {
+      const lower = pn.toLowerCase();
+      if (
+        !lower.includes('african footballer') &&
+        !lower.includes('higher institutions') &&
+        !lower.includes('police command') &&
+        !lower.includes('middle east') &&
+        !lower.includes('see the') &&
+        !lower.includes('gone in')
+      ) {
+        queries.push(pn);
+      }
+    }
+  }
+
+  // 4. Category-specific context query
+  if (category === 'cat_sports') {
+    const sportsMatch = clean.match(/(Dembele|Lookman|Rodri|Enrique|Odegaard|Havertz|Tottenham|Arsenal|Man City|Chelsea|Real Madrid|Super Eagles|Osimhen|Boniface)/i);
+    if (sportsMatch) {
+      queries.push(sportsMatch[0]);
+    }
+  }
+
+  // 5. First 5-6 words of clean headline
+  const headlineSlice = clean.split(/\s+/).slice(0, 6).join(' ');
+  queries.push(headlineSlice);
+
+  // Deduplicate and filter out short queries
+  return [...new Set(queries)].filter((q) => q && q.length >= 3);
+}
+
+/**
+ * Validates whether a media URL from Wikimedia is an authentic photographic asset
+ */
+export function isVerifiedWikipediaImage(url?: string, width?: number, height?: number): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const lower = url.toLowerCase();
+
+  // Must be from legitimate Wikimedia domain
+  if (!lower.includes('wikimedia.org')) return false;
+
+  // Must have a standard photo extension
+  const isRasterFormat = lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp') ||
+    lower.includes('.jpg?') || lower.includes('.jpeg?') || lower.includes('.png?') || lower.includes('.webp?');
+
+  if (!isRasterFormat) return false;
+
+  // Reject icons, flags, logos, coats of arms
+  for (const rejected of REJECTED_IMAGE_KEYWORDS) {
+    if (lower.includes(rejected)) {
+      return false;
+    }
+  }
+
+  // Minimum dimensions: Width should be at least 280px to prevent thumbnail icons
+  if (width && width < 280) return false;
+  if (height && height < 180) return false;
+
+  return true;
+}
+
+/**
+ * Attempts to search and retrieve a verified Wikipedia photo for a story
+ */
+export async function fetchVerifiedWikipediaImage(
+  title: string,
+  category?: string
+): Promise<WikipediaImageResult | null> {
+  const candidateQueries = extractWikipediaQueries(title, category);
+
+  for (const query of candidateQueries.slice(0, 3)) {
+    try {
+      const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=3&prop=pageimages|extracts&piprop=thumbnail|original&pithumbsize=1200&exintro=1&explaintext=1&exchars=150&format=json`;
+
+      const response = await fetch(searchUrl, {
+        headers: {
+          'User-Agent': '9jaBeaconNews/1.0 (editorial@9jabeacon.com)',
+          Accept: 'application/json',
+        },
+        signal: AbortSignal.timeout(4500),
+      });
+
+      if (!response.ok) continue;
+
+      const data: any = await response.json();
+      const pages = Object.values(data?.query?.pages || {});
+
+      for (const page of pages as any[]) {
+        const thumb = page.thumbnail;
+        const original = page.original;
+        const candidateUrl = thumb?.source || original?.source;
+        const width = thumb?.width || original?.width;
+        const height = thumb?.height || original?.height;
+
+        if (isVerifiedWikipediaImage(candidateUrl, width, height)) {
+          // Verify entity relevance: The Wikipedia page title itself must share meaningful words with the query
+          const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 4 && !['with', 'from', 'after', 'under', 'into', 'over', 'says', 'warns', 'hails', 'moves'].includes(w));
+          const pageTitleLower = page.title.toLowerCase();
+          const hasTitleMatch = queryWords.some(w => pageTitleLower.includes(w)) ||
+            pageTitleLower.split(/\s+/).some(pw => pw.length >= 4 && query.toLowerCase().includes(pw));
+
+          if (!hasTitleMatch) {
+            continue; // Skip loosely related search matches where the page title does not match the subject
+          }
+
+          return {
+            imageUrl: candidateUrl,
+            caption: `${page.title} — archival editorial dispatch.`,
+            credit: 'Wikimedia Commons / CC Attribution',
+            wikiTitle: page.title,
+            sourceUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`,
+            width,
+            height,
+          };
+        }
+      }
+    } catch {
+      // If a query times out or fails, gracefully try the next candidate
+      continue;
+    }
+  }
+
+  return null;
+}

@@ -109,7 +109,7 @@ function parseXmlFeed(xml: string): RssFeedItem[] {
         title: cleanCdata(title),
         link: cleanCdata(link).trim(),
         pubDate: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
-        description: stripHtml(cleanCdata(description)).slice(0, 350),
+        description: cleanRssSnippet(description).slice(0, 350),
         content: content ? cleanCdata(content) : undefined,
         author: author ? cleanCdata(author) : undefined,
         enclosureUrl: enclosureUrl ? cleanCdata(enclosureUrl) : undefined,
@@ -131,7 +131,7 @@ function parseXmlFeed(xml: string): RssFeedItem[] {
           title: cleanCdata(title),
           link: cleanCdata(link).trim(),
           pubDate: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
-          description: stripHtml(cleanCdata(summary)).slice(0, 350),
+          description: cleanRssSnippet(summary).slice(0, 350),
         });
       }
     }
@@ -157,7 +157,44 @@ function cleanCdata(str: string): string {
   return str.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1').trim();
 }
 
+export function cleanRssSnippet(rawText: string): string {
+  if (!rawText) return '';
+  let text = stripHtml(cleanCdata(rawText));
+
+  // 1. Remove non-English translation artifacts (e.g., Arabic 'اقرأ هذا باللغة العربية')
+  text = text.replace(/[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]+/g, '').trim();
+
+  // 2. Remove typical journalist byline prefixes (e.g., 'By Dayo Johnson Akure', 'By John Doe -')
+  text = text.replace(/^By\s+([A-Za-z\s\.,'-]{3,35})(?:\s+(?:Akure|Lagos|Abuja|Kano|Ibadan|Kaduna|Enugu|Port Harcourt|Benin City|London|Washington|New York|Paris))?\s*[:\-\—\n]?\s*/i, '');
+
+  // 3. Remove mid-text or trailing 'Read More' or 'read more' directives and URLs
+  text = text
+    .replace(/(?:Read\s+More|read\s+more|READ\s+MORE|Read\s+original\s+report|Continue\s+reading|The\s+post\s+.*?appeared\s+first\s+on\s+.*?)(?::\s*https?:\/\/\S+|\.\.\.|\.|$)/gi, '')
+    .replace(/https?:\/\/[^\s\)]+/gi, '');
+
+  // 4. Remove bullet artifacts, leading ellipses, or repetitive dashes
+  text = text
+    .replace(/^[\s…\.\-•–—]+/, '')
+    .replace(/[\s…\.\-•–—]+$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  return text;
+}
+
 function stripHtml(html: string): string {
   if (!html) return '';
-  return html.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/<[^>]*>?/gm, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
 }

@@ -7,6 +7,7 @@
 import { decideCategories } from './category-mapper';
 import { generateEditorialSvgDataUrl } from './editorial-image';
 import { cleanAndFormatArticleHtml } from './content-formatter';
+import { cleanRssSnippet } from './rss-parser';
 
 export interface AiSynthesisInput {
   title: string;
@@ -83,48 +84,48 @@ export const POLLINATIONS_MODELS_CASCADE = [
 
 const SYSTEM_PROMPT = `You are an Executive Nigerian Senior Investigative Editor at 9jaBeacon.
 
-YOUR ABSOLUTE MANDATE: Write an in-depth, authoritative, factual, and thoroughly developed investigative report.
-LENGTH REQUIREMENT: Every article MUST be between 500 and 700 words in length. Do NOT provide brief or superficial summaries. Expand the report with rich context, historical background, socioeconomic implications for everyday Nigerians, stakeholder perspectives, a dedicated "Writer's Take", and concluding thought-provoking questions.
+YOUR EDITORIAL MANDATE & GOLDEN STANDARD:
+Write an authoritative, factual, high-retention news report structured into EXACTLY 3 or 4 paragraphs.
 
-MODULAR & RESILIENT SECTION WRITING RULE (CRITICAL):
-- Write each section as a complete, self-contained modular journalistic unit.
-- If generation stops midway or times out, every completed section must be closed and logically sound so that a downstream AI model or editor can seamlessly resume or rewrite the remaining sections without loss of coherence.
-- Do NOT make later sections reference incomplete fragments or use vague dangling references. Keep section headings explicit and structured.
+ARTICLE STRUCTURE (STRICTLY 3 OR 4 PARAGRAPHS):
+Every article MUST consist of 3 to 4 distinct paragraphs, where EACH paragraph is introduced by its own unobtrusive native banner heading (<h3>).
+Every paragraph MUST contain between 65 and 95 words (minimum 65 words per paragraph, roughly 3 to 4 comprehensive journalistic sentences). The entire report MUST be between 280 and 380 words in total.
 
-REQUIRED ARTICLE STRUCTURE (HTML format with headings):
-- <h3>The Crux: What Happened & Verified Developments</h3>
-  Provide 2 to 3 rich, detailed paragraphs detailing the breaking event: who, what, when, where, verified statements, official actions, and the sequence of events.
-- <h3>Deep-Dive Background & Context</h3>
-  Provide 2 thorough paragraphs providing precedent, relevant Nigerian laws, previous related milestones, economic/political context, and how this situation developed.
-- <h3>The Stakes: Real-Life Impact on Everyday Nigerians</h3>
-  Provide 2 substantive paragraphs analyzing how this directly impacts citizens, cost of living, transport, business operations, market stability, security, or community welfare.
-- <h3>Key Reactions & Official Voices</h3>
-  Provide 1 to 2 paragraphs with direct quotes or stances from government spokespersons, industry leaders, opposition voices, or civil society analysts.
-- <h3>Writer’s Take: Editorial Perspective</h3>
-  Provide 2 insightful, incisive paragraphs offering an independent analytical breakdown of the underlying dynamics, what this signals for Nigeria's future, and the unspoken incentives at play.
-- <h3>Critical Questions for Nigerians to Consider</h3>
-  Provide 2 to 3 thought-provoking, debate-starting questions for readers and citizens to ponder in the comments.
-- <h3>Looking Ahead: Timeline & What to Watch</h3>
-  Provide 1 paragraph highlighting upcoming dates, committee hearings, policy deadlines, or expected market reactions.
+REQUIRED 4-PARAGRAPH FORMAT (HTML with <h3> headings):
+1. <h3>The Crux: What Happened & Verified Facts</h3>
+   Paragraph 1 (70 to 90 words): The breaking core development. State who, what, when, where, official confirmations, and the immediate verified sequence of events without fluff.
+2. <h3>Background & Institutional Context</h3>
+   Paragraph 2 (75 to 95 words): Precedent, historical context, relevant Nigerian laws or international background, and previous milestones explaining how this event unfolded.
+3. <h3>Socioeconomic Stakes & Real-Life Impact</h3>
+   Paragraph 3 (75 to 95 words): Direct, tangible implications for everyday Nigerian citizens, market prices, transport, governance, security, or community welfare.
+4. <h3>Official Reactions & What to Watch</h3>
+   Paragraph 4 (65 to 85 words): Verified stances from government officials, industry leaders, or key stakeholders, concluded by upcoming dates, scheduled hearings, or next steps to watch.
+
+STRICT QUALITY MANDATES:
+- NO fallback templates, NO boilerplate sentences ("This development is poised to impact governance...", "The Stakes", "The Stats").
+- NO artificial placeholder quotes or fabricated 9jaBeacon desk quotes.
+- NO repetitive phrases or bullet list dumps.
+- Do NOT output thin content under 240 words total.
+- Return strictly factual, well-researched information based on the input story wire.
 
 CATEGORY RULES (choose ONE primary):
-- cat_money_hustle → ANY money topic (banks, naira, forex, loans, investments, crypto, budget, taxes, inflation, fintech, salary, refinery, fuel prices)
-- cat_sports → ANY sports topic (football, Super Eagles, Premier League, AFCON, boxing, athletics, transfers)
+- cat_money_hustle → ANY money, finance, banking, naira, forex, loans, crypto, inflation, business, fuel
+- cat_sports → ANY sports, football, athletics, transfers, Super Eagles, Premier League
 - cat_world → Foreign and international affairs outside Nigeria
-- cat_naija_news → Nigerian politics, governance, security, judiciary, community affairs
+- cat_naija_news → Nigerian politics, security, governance, judiciary, community affairs
 
 Return ONLY valid JSON (no markdown fences, strictly parseable):
 {
   "title": "Compelling, factual, non-clickbait headline",
-  "summary": "An executive 3-sentence briefing summarizing the core story, key impact, and upcoming step.",
-  "content": "<h3>The Crux: What Happened & Verified Developments</h3><p>...</p><h3>Deep-Dive Background & Context</h3><p>...</p><h3>The Stakes: Real-Life Impact on Everyday Nigerians</h3><p>...</p><h3>Key Reactions & Official Voices</h3><p>...</p><h3>Writer’s Take: Editorial Perspective</h3><p>...</p><h3>Critical Questions for Nigerians to Consider</h3><ul><li>...</li></ul><h3>Looking Ahead: Timeline & What to Watch</h3><p>...</p>",
+  "summary": "An executive 2-sentence briefing summarizing the core event and its primary significance.",
+  "content": "<h3>The Crux: What Happened & Verified Facts</h3><p>...</p><h3>Background & Institutional Context</h3><p>...</p><h3>Socioeconomic Stakes & Real-Life Impact</h3><p>...</p><h3>Official Reactions & What to Watch</h3><p>...</p>",
   "category_id": "cat_money_hustle | cat_sports | cat_world | cat_naija_news",
-  "reading_time_minutes": 5,
+  "reading_time_minutes": 3,
   "key_takeaways": [
-    "Critical fact or verified figure",
+    "Key verified fact or primary figure",
     "Direct policy or economic impact point",
-    "Key official or stakeholder position",
-    "Next scheduled timeline or date to watch"
+    "Official stance or regulatory action",
+    "Upcoming date or milestone to watch"
   ]
 }`;
 
@@ -422,21 +423,28 @@ function parseAiJsonResponse(
       return null;
     }
 
-    const summary = obj.summary || obj.description || fallbackInput.description || '';
+    const summary = cleanRssSnippet(obj.summary || obj.description || fallbackInput.description || '');
     let content = obj.content || '';
     content = cleanAndFormatArticleHtml(content);
 
-    if (content.length < 80) return null;
+    // Strict quality gate: minimum 180 words and at least 3 distinct paragraphs
+    const plainText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const wordCount = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
+    const paragraphCount = (content.match(/<p>/gi) || []).length;
+
+    if (wordCount < 180 || paragraphCount < 3) {
+      return null;
+    }
 
     // ULTRA-STRONG category decision
     const decision = decideCategories(
       obj.title,
-      content + ' ' + summary,
+      plainText + ' ' + summary,
       obj.category_id || fallbackInput.categoryDefault,
       fallbackInput.sourceName
     );
 
-    const readingTime = Number(obj.reading_time_minutes) || Math.max(3, Math.ceil(content.split(/\s+/).length / 180));
+    const readingTime = Number(obj.reading_time_minutes) || Math.max(2, Math.ceil(wordCount / 160));
 
     const takeaways = Array.isArray(obj.key_takeaways)
       ? obj.key_takeaways.map((t: any) => String(t).trim()).filter(Boolean)

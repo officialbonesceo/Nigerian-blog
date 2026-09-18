@@ -22,11 +22,6 @@ const [allCategories, fetchedArticles, siteSettings] = await Promise.all([
   getSiteSettings(d1),
 ]);
 
-const isMonetagEnabled = siteSettings.monetag_enabled === '1' || siteSettings.monetag_enabled === 'true';
-const monetagInArticleZoneId = siteSettings.monetag_in_article_zone || '';
-const monetagAdCode = siteSettings.monetag_ad_code || '';
-const monetagSmartLink = siteSettings.monetag_smartlink_url || '';
-
 const hasNextPage = fetchedArticles.length > pageSize;
 const categoryArticles = fetchedArticles.slice(0, pageSize);
 const isFirstPage = page === 1;
@@ -147,13 +142,7 @@ const listArticles = isFirstPage ? categoryArticles.slice(1) : categoryArticles;
           <>
             <ArticleCard article={art} showCategory={false} />
             {(idx === 2 || (idx === 6 && listArticles.length >= 7)) && (
-              <AdSlot
-                format="feed"
-                isMonetagEnabled={isMonetagEnabled}
-                inArticleZoneId={monetagInArticleZoneId}
-                adCodeSnippet={monetagAdCode}
-                smartLinkUrl={monetagSmartLink}
-              />
+              <AdSlot format="feed" />
             )}
           </>
         ))}

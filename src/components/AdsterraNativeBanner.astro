@@ -1,0 +1,56 @@
+---
+/**
+ * Adsterra Native Banner Component for 9jaBeacon
+ * High-RPM native ad grid matching 9jaBeacon dark/light color palette.
+ * Formats: 4x1 on desktop, responsive vertical 1x4 on mobile devices.
+ */
+interface Props {
+  containerId?: string;
+  scriptUrl?: string;
+  label?: string;
+  className?: string;
+}
+
+const {
+  containerId = 'container-4e5de78ab786afbf822590e03b1b657e',
+  scriptUrl = 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js',
+  label = 'Sponsored Stories',
+  className = '',
+} = Astro.props;
+---
+
+<section
+  id="adsterra-native-banner-slot"
+  class={`adsterra-native-wrapper my-7 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden transition-colors ${className}`}
+  aria-label="Sponsored Content"
+>
+  <!-- Header Tag & Sponsorship Disclosures -->
+  <div class="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
+    <div class="flex items-center gap-2">
+      <span class="relative flex h-2 w-2">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+      </span>
+      <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
+        {label}
+      </span>
+      <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold border border-slate-200 dark:border-slate-700">
+        AD
+      </span>
+    </div>
+    <a
+      href="/contact#advertise"
+      class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+    >
+      Advertise with 9jaBeacon
+    </a>
+  </div>
+
+  <!-- Adsterra Container Target -->
+  <div class="w-full flex items-center justify-center min-h-[140px] overflow-hidden">
+    <div id={containerId} class="w-full flex justify-center"></div>
+  </div>
+
+  <!-- Adsterra Native Banner Script Tag -->
+  <script is:inline async="async" data-cfasync="false" src={scriptUrl}></script>
+</section>
