@@ -85,27 +85,23 @@ export const POLLINATIONS_MODELS_CASCADE = [
 const SYSTEM_PROMPT = `You are an Executive Nigerian Senior Investigative Editor at 9jaBeacon.
 
 YOUR EDITORIAL MANDATE & GOLDEN STANDARD:
-Write an authoritative, factual, high-retention news report structured into EXACTLY 3 or 4 paragraphs.
+Write an authoritative, factual, high-retention news report structured into EXACTLY 3 or 4 substantive paragraphs with context-derived headings (Option A).
 
-ARTICLE STRUCTURE (STRICTLY 3 OR 4 PARAGRAPHS):
-Every article MUST consist of 3 to 4 distinct paragraphs, where EACH paragraph is introduced by its own unobtrusive native banner heading (<h3>).
-Every paragraph MUST contain between 65 and 95 words (minimum 65 words per paragraph, roughly 3 to 4 comprehensive journalistic sentences). The entire report MUST be between 280 and 380 words in total.
-
-REQUIRED 4-PARAGRAPH FORMAT (HTML with <h3> headings):
-1. <h3>The Crux: What Happened & Verified Facts</h3>
-   Paragraph 1 (70 to 90 words): The breaking core development. State who, what, when, where, official confirmations, and the immediate verified sequence of events without fluff.
-2. <h3>Background & Institutional Context</h3>
-   Paragraph 2 (75 to 95 words): Precedent, historical context, relevant Nigerian laws or international background, and previous milestones explaining how this event unfolded.
-3. <h3>Socioeconomic Stakes & Real-Life Impact</h3>
-   Paragraph 3 (75 to 95 words): Direct, tangible implications for everyday Nigerian citizens, market prices, transport, governance, security, or community welfare.
-4. <h3>Official Reactions & What to Watch</h3>
-   Paragraph 4 (65 to 85 words): Verified stances from government officials, industry leaders, or key stakeholders, concluded by upcoming dates, scheduled hearings, or next steps to watch.
+ARTICLE STRUCTURE (OPTION A: DYNAMIC STORY-DERIVED SUBHEADINGS):
+- Every article MUST consist of 3 to 4 distinct paragraphs.
+- EACH paragraph MUST be preceded by its own dynamic, story-derived <h3> heading that reflects the specific subject of that paragraph (e.g., specific names, entities, policies, actions, or developments).
+- STRICTLY FORBIDDEN: Do NOT use static, repetitive generic headings such as "The Crux", "Background & Institutional Context", "Socioeconomic Stakes", or "Official Reactions". Every heading must be unique to the story facts. For example:
+  * In a sports story: <h3>Dembele's Decisive Brace Leads Parisian Resurgence</h3>, <h3>Atalanta's Tactical Structure and Lookman's Impact</h3>, <h3>Implications for the Champions League Table</h3>
+  * In a finance/economy story: <h3>CBN Forex Intervention Stabilizes Interbank Naira Rates</h3>, <h3>Parallel Market Divergence and Liquidity Pressure</h3>, <h3>Direct Inflation Outlook for Nigerian Households</h3>
+- STRICT WORD COUNT MANDATE:
+  * The entire article MUST contain AT LEAST 300 WORDS of substantive text (strictly 300 to 450 words total).
+  * Each of the 3 to 4 paragraphs must contain between 75 and 115 words of rich, comprehensive journalistic prose.
+  * Any draft containing fewer than 300 words will be rejected by the editorial quality gate.
 
 STRICT QUALITY MANDATES:
 - NO fallback templates, NO boilerplate sentences ("This development is poised to impact governance...", "The Stakes", "The Stats").
 - NO artificial placeholder quotes or fabricated 9jaBeacon desk quotes.
 - NO repetitive phrases or bullet list dumps.
-- Do NOT output thin content under 240 words total.
 - Return strictly factual, well-researched information based on the input story wire.
 
 CATEGORY RULES (choose ONE primary):
@@ -118,7 +114,7 @@ Return ONLY valid JSON (no markdown fences, strictly parseable):
 {
   "title": "Compelling, factual, non-clickbait headline",
   "summary": "An executive 2-sentence briefing summarizing the core event and its primary significance.",
-  "content": "<h3>The Crux: What Happened & Verified Facts</h3><p>...</p><h3>Background & Institutional Context</h3><p>...</p><h3>Socioeconomic Stakes & Real-Life Impact</h3><p>...</p><h3>Official Reactions & What to Watch</h3><p>...</p>",
+  "content": "<h3>[Dynamic Story-Derived Subheading 1]</h3><p>[Substantive paragraph 1, 75-110 words]</p><h3>[Dynamic Story-Derived Subheading 2]</h3><p>[Substantive paragraph 2, 75-110 words]</p><h3>[Dynamic Story-Derived Subheading 3]</h3><p>[Substantive paragraph 3, 75-110 words]</p><h3>[Dynamic Story-Derived Subheading 4]</h3><p>[Substantive paragraph 4, 75-110 words]</p>",
   "category_id": "cat_money_hustle | cat_sports | cat_world | cat_naija_news",
   "reading_time_minutes": 3,
   "key_takeaways": [
@@ -152,6 +148,32 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
   const errors: string[] = [];
   const traceLogs: string[] = [];
 
+  const attemptAiExpansion = async (
+    rawText: string,
+    currentWordCount: number,
+    callModel: (messages: Array<{ role: string; content: string }>) => Promise<string | null>
+  ): Promise<ReturnType<typeof parseAiJsonResponse>> => {
+    const expansionMessages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userContent },
+      { role: 'assistant', content: rawText },
+      {
+        role: 'user',
+        content: `EDITORIAL REJECTION: Your draft contains only ${currentWordCount} words, which violates our strict quality threshold of 300 words minimum.
+Please EXPAND this article to between 320 and 420 words total across 3 to 4 comprehensive paragraphs, each introduced by a story-specific <h3> heading (Option A).
+Deepen the factual analysis, explain historical precedents, detail citizen and market impacts, and report verified stakeholder statements.
+Output strictly updated JSON matching the schema with at least 300 words of content.`
+      }
+    ];
+    try {
+      const expandedRaw = await callModel(expansionMessages);
+      if (!expandedRaw) return null;
+      return parseAiJsonResponse(expandedRaw, input);
+    } catch {
+      return null;
+    }
+  };
+
   // TIER 1: Cloudflare Workers AI (Llama / Qwen / Mistral)
   if (accountId && cfToken) {
     for (const modelCandidate of CLOUDFLARE_MODELS_CASCADE) {
@@ -178,9 +200,34 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
         if (cfRes.ok) {
           const cfData = await cfRes.json() as any;
           const rawText = cfData?.result?.response || cfData?.response || '';
-          const parsed = parseAiJsonResponse(rawText, input);
+          let parsed = parseAiJsonResponse(rawText, input);
           if (parsed) {
-            traceLogs.push(`Tier 1 Success: Rewritten by Cloudflare AI (${modelCandidate})`);
+            if (parsed.wordCount < 300) {
+              traceLogs.push(`Tier 1 (${modelCandidate}): Draft contains only ${parsed.wordCount} words (<300 required). Requesting AI expansion...`);
+              const expanded = await attemptAiExpansion(rawText, parsed.wordCount, async (msgs) => {
+                const retryRes = await fetch(cfUrl, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${cfToken}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ messages: msgs, temperature: 0.3, max_tokens: 2800 }),
+                  signal: AbortSignal.timeout(18000),
+                });
+                if (!retryRes.ok) return null;
+                const d = await retryRes.json() as any;
+                return d?.result?.response || d?.response || null;
+              });
+
+              if (expanded && expanded.wordCount >= 300) {
+                traceLogs.push(`Tier 1 (${modelCandidate}): Expansion successful — expanded from ${parsed.wordCount} to ${expanded.wordCount} words (>=300 threshold satisfied).`);
+                parsed = expanded;
+              } else {
+                const finalWords = expanded ? expanded.wordCount : parsed.wordCount;
+                traceLogs.push(`Tier 1 (${modelCandidate}): Expansion failed to reach 300 words (${finalWords} words). Strictly no fallback template permitted.`);
+                errors.push(`Tier 1 (${modelCandidate}): Word count strictly below 300 words (${finalWords} words) after expansion attempt.`);
+                continue;
+              }
+            }
+
+            traceLogs.push(`Tier 1 Success: Rewritten by Cloudflare AI (${modelCandidate}) [${parsed.wordCount} words]`);
             return {
               success: true,
               provider: 'cloudflare_workers_ai',
@@ -236,9 +283,45 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
         if (openrouterRes.ok) {
           const orData = await openrouterRes.json() as any;
           const rawText = orData?.choices?.[0]?.message?.content || '';
-          const parsed = parseAiJsonResponse(rawText, input);
+          let parsed = parseAiJsonResponse(rawText, input);
           if (parsed) {
-            traceLogs.push(`Tier 2 Success: Rewritten by OpenRouter AI (${modelCandidate})`);
+            if (parsed.wordCount < 300) {
+              traceLogs.push(`Tier 2 (${modelCandidate}): Draft contains only ${parsed.wordCount} words (<300 required). Requesting AI expansion...`);
+              const expanded = await attemptAiExpansion(rawText, parsed.wordCount, async (msgs) => {
+                const retryRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${openrouterKey}`,
+                    'HTTP-Referer': 'https://9jabeacon.name.ng',
+                    'X-Title': '9jaBeacon Verified Nigerian News',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    model: modelCandidate,
+                    messages: msgs,
+                    temperature: 0.3,
+                    max_tokens: 2800,
+                    response_format: { type: 'json_object' },
+                  }),
+                  signal: AbortSignal.timeout(22000),
+                });
+                if (!retryRes.ok) return null;
+                const d = await retryRes.json() as any;
+                return d?.choices?.[0]?.message?.content || null;
+              });
+
+              if (expanded && expanded.wordCount >= 300) {
+                traceLogs.push(`Tier 2 (${modelCandidate}): Expansion successful — expanded from ${parsed.wordCount} to ${expanded.wordCount} words (>=300 threshold satisfied).`);
+                parsed = expanded;
+              } else {
+                const finalWords = expanded ? expanded.wordCount : parsed.wordCount;
+                traceLogs.push(`Tier 2 (${modelCandidate}): Expansion failed to reach 300 words (${finalWords} words). Strictly no fallback template permitted.`);
+                errors.push(`Tier 2 (${modelCandidate}): Word count strictly below 300 words (${finalWords} words) after expansion attempt.`);
+                continue;
+              }
+            }
+
+            traceLogs.push(`Tier 2 Success: Rewritten by OpenRouter AI (${modelCandidate}) [${parsed.wordCount} words]`);
             return {
               success: true,
               provider: 'openrouter_ai',
@@ -294,9 +377,34 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
         if (localRes.ok) {
           const localData = await localRes.json() as any;
           const rawText = localData?.choices?.[0]?.message?.content || '';
-          const parsed = parseAiJsonResponse(rawText, input);
+          let parsed = parseAiJsonResponse(rawText, input);
           if (parsed) {
-            traceLogs.push(`Tier 3 Success: Rewritten locally by ${localCandidate}`);
+            if (parsed.wordCount < 300) {
+              traceLogs.push(`Tier 3 (${localCandidate}): Draft contains only ${parsed.wordCount} words (<300 required). Requesting AI expansion...`);
+              const expanded = await attemptAiExpansion(rawText, parsed.wordCount, async (msgs) => {
+                const retryRes = await fetch(`${cleanBaseUrl}/chat/completions`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${localKey}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ model: localCandidate, messages: msgs, temperature: 0.2, max_tokens: 2800 }),
+                  signal: AbortSignal.timeout(20000),
+                });
+                if (!retryRes.ok) return null;
+                const d = await retryRes.json() as any;
+                return d?.choices?.[0]?.message?.content || null;
+              });
+
+              if (expanded && expanded.wordCount >= 300) {
+                traceLogs.push(`Tier 3 (${localCandidate}): Expansion successful — expanded from ${parsed.wordCount} to ${expanded.wordCount} words (>=300 threshold satisfied).`);
+                parsed = expanded;
+              } else {
+                const finalWords = expanded ? expanded.wordCount : parsed.wordCount;
+                traceLogs.push(`Tier 3 (${localCandidate}): Expansion failed to reach 300 words (${finalWords} words). Strictly no fallback template permitted.`);
+                errors.push(`Tier 3 (${localCandidate}): Word count strictly below 300 words (${finalWords} words) after expansion attempt.`);
+                continue;
+              }
+            }
+
+            traceLogs.push(`Tier 3 Success: Rewritten locally by ${localCandidate} [${parsed.wordCount} words]`);
             return {
               success: true,
               provider: 'local_ai_model',
@@ -343,9 +451,33 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
 
       if (pollRes.ok) {
         const rawText = await pollRes.text();
-        const parsed = parseAiJsonResponse(rawText, input);
+        let parsed = parseAiJsonResponse(rawText, input);
         if (parsed) {
-          traceLogs.push(`Tier 4 Success: Rewritten by Pollinations AI (${pollModel})`);
+          if (parsed.wordCount < 300) {
+            traceLogs.push(`Tier 4 (${pollModel}): Draft contains only ${parsed.wordCount} words (<300 required). Requesting AI expansion...`);
+            const expanded = await attemptAiExpansion(rawText, parsed.wordCount, async (msgs) => {
+              const retryRes = await fetch('https://text.pollinations.ai/', {
+                method: 'POST',
+                headers: pollinationsHeaders,
+                body: JSON.stringify({ messages: msgs, model: pollModel, jsonMode: true, seed: 42 }),
+                signal: AbortSignal.timeout(22000),
+              });
+              if (!retryRes.ok) return null;
+              return await retryRes.text();
+            });
+
+            if (expanded && expanded.wordCount >= 300) {
+              traceLogs.push(`Tier 4 (${pollModel}): Expansion successful — expanded from ${parsed.wordCount} to ${expanded.wordCount} words (>=300 threshold satisfied).`);
+              parsed = expanded;
+            } else {
+              const finalWords = expanded ? expanded.wordCount : parsed.wordCount;
+              traceLogs.push(`Tier 4 (${pollModel}): Expansion failed to reach 300 words (${finalWords} words). Strictly no fallback template permitted.`);
+              errors.push(`Tier 4 (${pollModel}): Word count strictly below 300 words (${finalWords} words) after expansion attempt.`);
+              continue;
+            }
+          }
+
+          traceLogs.push(`Tier 4 Success: Rewritten by Pollinations AI (${pollModel}) [${parsed.wordCount} words]`);
           return {
             success: true,
             provider: 'pollinations_ai',
@@ -365,11 +497,11 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
     }
   }
 
-  // If all AI tiers failed, do not generate artificial preset wire articles. Return strict failure so the user/admin can rewrite or investigate.
-  traceLogs.push('All active AI tiers failed to synthesize article.');
+  // If all AI tiers failed, strictly do NOT generate artificial preset wire articles. Return failure so it is recorded in rejected articles log.
+  traceLogs.push('All active AI tiers failed to synthesize article meeting the strict 300-word editorial threshold.');
   return {
     success: false,
-    error: `All AI synthesis tiers failed: ${errors.slice(0, 3).join('; ') || 'No AI providers available'}`,
+    error: `All AI synthesis tiers failed: ${errors.slice(0, 3).join('; ') || 'Content did not meet strict 300-word threshold and could not be expanded'}`,
     traceLogs,
   };
 }
@@ -406,6 +538,8 @@ function parseAiJsonResponse(
   secondaryCategoryId?: string;
   readingTimeMinutes: number;
   keyTakeaways: string[];
+  wordCount: number;
+  paragraphCount: number;
 } | null {
   if (!rawText) return null;
 
@@ -427,12 +561,12 @@ function parseAiJsonResponse(
     let content = obj.content || '';
     content = cleanAndFormatArticleHtml(content);
 
-    // Strict quality gate: minimum 180 words and at least 3 distinct paragraphs
+    // Initial sanity gate: minimum 80 words and at least 2 distinct paragraphs to be candidate for parsing
     const plainText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     const wordCount = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
     const paragraphCount = (content.match(/<p>/gi) || []).length;
 
-    if (wordCount < 180 || paragraphCount < 3) {
+    if (wordCount < 80 || paragraphCount < 2) {
       return null;
     }
 
@@ -458,6 +592,8 @@ function parseAiJsonResponse(
       secondaryCategoryId: decision.secondary,
       readingTimeMinutes: readingTime,
       keyTakeaways: takeaways,
+      wordCount,
+      paragraphCount,
     };
   } catch {
     return null;

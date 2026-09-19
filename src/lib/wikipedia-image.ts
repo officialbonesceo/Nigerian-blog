@@ -203,7 +203,7 @@ export async function fetchVerifiedWikipediaImage(
           const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length >= 4 && !['with', 'from', 'after', 'under', 'into', 'over', 'says', 'warns', 'hails', 'moves'].includes(w));
           const pageTitleLower = page.title.toLowerCase();
           const hasTitleMatch = queryWords.some(w => pageTitleLower.includes(w)) ||
-            pageTitleLower.split(/\s+/).some(pw => pw.length >= 4 && query.toLowerCase().includes(pw));
+            pageTitleLower.split(/\s+/).some((pw: string) => pw.length >= 4 && query.toLowerCase().includes(pw));
 
           if (!hasTitleMatch) {
             continue; // Skip loosely related search matches where the page title does not match the subject

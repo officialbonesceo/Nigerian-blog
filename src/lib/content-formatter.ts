@@ -120,14 +120,15 @@ export interface ArticleSections {
   lead: string;
   middle1: string;
   middle2: string;
+  middle3: string;
   conclusion: string;
   totalBlocks: number;
 }
 
 /**
  * Splits an article into multiple sections for strategic ad placement
- * (Slot 1 after ~3rd paragraph, Slot 2 further down in long stories)
- * Accurately extracts complete, well-formed HTML blocks without stripping tags
+ * Guarantees that each ~100-word block (every paragraph) can have an ad banner placed seamlessly
+ * Accurately extracts complete, well-formed HTML blocks without breaking tags
  */
 export function partitionArticleForAds(htmlContent: string): ArticleSections {
   if (!htmlContent) {
@@ -135,6 +136,7 @@ export function partitionArticleForAds(htmlContent: string): ArticleSections {
       lead: '',
       middle1: '',
       middle2: '',
+      middle3: '',
       conclusion: '',
       totalBlocks: 0,
     };
@@ -144,43 +146,57 @@ export function partitionArticleForAds(htmlContent: string): ArticleSections {
   const blockRegex = /(?:<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>|<blockquote[^>]*>[\s\S]*?<\/blockquote>|<ul[^>]*>[\s\S]*?<\/ul>|<ol[^>]*>[\s\S]*?<\/ol>|<p[^>]*>[\s\S]*?<\/p>|<div[^>]*>[\s\S]*?<\/div>)/gi;
   const blocks = htmlContent.match(blockRegex);
 
-  // If regex found no structured blocks, fallback safely to the full content as lead
-  if (!blocks || blocks.length < 4) {
+  // If regex found no structured blocks, fallback safely
+  if (!blocks || blocks.length < 3) {
     return {
       lead: htmlContent,
       middle1: '',
       middle2: '',
+      middle3: '',
       conclusion: '',
       totalBlocks: blocks ? blocks.length : 1,
     };
   }
 
-  // If article is medium (4 - 7 blocks), place 1 ad around block 2-3
-  if (blocks.length <= 7) {
-    const cut = Math.min(3, Math.floor(blocks.length / 2));
-    const part1 = blocks.slice(0, cut).join('\n\n');
-    const part2 = blocks.slice(cut).join('\n\n');
+  // Articles have headings + paragraphs. A 300+ word article typically has 4 to 8 blocks.
+  // We want to insert an ad between each major paragraph group (~100 words each).
+  if (blocks.length <= 4) {
+    const part1 = blocks.slice(0, 2).join('\n\n');
+    const part2 = blocks.slice(2).join('\n\n');
     return {
       lead: part1,
       middle1: part2,
       middle2: '',
+      middle3: '',
       conclusion: '',
       totalBlocks: blocks.length,
     };
   }
 
-  // If article is long (8+ blocks), place 2 ads: one after block 3, another around 65% of the story
-  const cut1 = 3;
-  const cut2 = Math.min(blocks.length - 2, Math.floor(blocks.length * 0.65));
+  if (blocks.length <= 6) {
+    const cut1 = 2;
+    const cut2 = 4;
+    return {
+      lead: blocks.slice(0, cut1).join('\n\n'),
+      middle1: blocks.slice(cut1, cut2).join('\n\n'),
+      middle2: blocks.slice(cut2).join('\n\n'),
+      middle3: '',
+      conclusion: '',
+      totalBlocks: blocks.length,
+    };
+  }
 
-  const part1 = blocks.slice(0, cut1).join('\n\n');
-  const part2 = blocks.slice(cut1, cut2).join('\n\n');
-  const part3 = blocks.slice(cut2).join('\n\n');
+  // 7+ blocks (full 350+ word deep-dive article)
+  // Split into 4 distinct segments (Paragraph 1 group, Paragraph 2 group, Paragraph 3 group, Final group)
+  const cut1 = 2;
+  const cut2 = 4;
+  const cut3 = Math.min(blocks.length - 1, 6);
 
   return {
-    lead: part1,
-    middle1: part2,
-    middle2: part3,
+    lead: blocks.slice(0, cut1).join('\n\n'),
+    middle1: blocks.slice(cut1, cut2).join('\n\n'),
+    middle2: blocks.slice(cut2, cut3).join('\n\n'),
+    middle3: blocks.slice(cut3).join('\n\n'),
     conclusion: '',
     totalBlocks: blocks.length,
   };

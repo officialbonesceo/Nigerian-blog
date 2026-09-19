@@ -13,6 +13,7 @@ import {
 import { fetchAndParseRssFeed } from '../../../lib/rss-parser';
 import { synthesizeNewsArticle, generateEditorialNewsImage, type AiCredentialsConfig } from '../../../lib/ai-engine';
 import { isPublisherLogoOrBanner } from '../../../lib/editorial-image';
+import { fetchVerifiedWikipediaImage } from '../../../lib/wikipedia-image';
 import { postToBuffer, type BufferConfig } from '../../../lib/buffer';
 import { submitUrlToBing, submitToIndexNow } from '../../../lib/bing-api';
 
@@ -189,22 +190,49 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
           const categoryId = aiResult.categoryId || source.category_default_id || 'cat_naija_news';
 
-          // Image handling & validation: Strictly reject publisher logos and avatars
-          let finalImageUrl = item.enclosureUrl;
-          if (finalImageUrl && isPublisherLogoOrBanner(finalImageUrl)) {
-            finalImageUrl = undefined;
-          }
-
+          // Image handling & validation:
+          // 1. Try fetching verified archival/editorial photograph from Wikipedia first
+          // 2. If not verified or not found, fall back to current setup: source enclosure or dynamic editorial SVG
+          let finalImageUrl: string | undefined;
           let imageCaption = `Synthesized report based on wire from ${source.name}.`;
           let imageCredit = source.name;
 
+          try {
+            const wikiImg = await fetchVerifiedWikipediaImage(aiResult.title || item.title, categoryId);
+            if (wikiImg && wikiImg.imageUrl) {
+              finalImageUrl = wikiImg.imageUrl;
+              imageCaption = wikiImg.caption || `Archival photograph via Wikipedia: ${wikiImg.wikiTitle}`;
+              imageCredit = wikiImg.credit || 'Wikimedia Commons / CC Attribution';
+              await recordLog(
+                db,
+                'WIKIPEDIA_IMAGE_MATCH',
+                source.id,
+                source.name,
+                `Verified Wikipedia image matched for "${(aiResult.title || item.title).slice(0, 45)}...": ${wikiImg.wikiTitle}`,
+                'info'
+              );
+            }
+          } catch (wikiErr: any) {
+            console.warn('[trigger-crawl] Wikipedia image search error:', wikiErr?.message);
+          }
+
+          // Fallback to current setup: check wire enclosure (rejecting publisher logos/avatars)
+          if (!finalImageUrl) {
+            if (item.enclosureUrl && !isPublisherLogoOrBanner(item.enclosureUrl)) {
+              finalImageUrl = item.enclosureUrl;
+              imageCaption = `News wire dispatch photograph via ${source.name}.`;
+              imageCredit = source.name;
+            }
+          }
+
+          // Final fallback in current setup: generate crisp 9jaBeacon editorial SVG vector card
           if (!finalImageUrl) {
             await recordLog(
               db,
               'IMAGE_GENERATION',
               source.id,
               source.name,
-              `No authentic story photo found (or was publisher logo). Generating crisp 9jaBeacon editorial SVG vector card.`,
+              `No authentic Wikipedia or wire photo found. Generating crisp 9jaBeacon editorial SVG vector card.`,
               'info'
             );
             const genImg = await generateEditorialNewsImage(
@@ -310,54 +338,68 @@ export const POST: APIRoute = async ({ request, locals }) => {
             }
           }
 
-          // Automated Bing Webmaster & IndexNow Submission
-          const bingApiKey = (settingsMap.bing_api_key || '').trim();
-          const bingAutoSubmit = settingsMap.bing_auto_submit_enabled === '1' || settingsMap.bing_auto_submit_enabled === 'true';
-          if (publishedArticle && bingApiKey && bingAutoSubmit) {
-            try {
-              const siteDomain = (settingsMap.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
-              const canonicalUrl = `${siteDomain}/news/${publishedArticle.slug}`;
-              const bingRes = await submitUrlToBing(canonicalUrl, {
-                apiKey: bingApiKey,
-                siteUrl: siteDomain,
-              });
+          // Automated Multi-Engine Submission (Bing Webmaster, IndexNow, and Search Engine Sitemaps)
+          if (publishedArticle) {
+            const siteDomain = (settingsMap.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+            const canonicalUrl = `${siteDomain}/news/${publishedArticle.slug}`;
+            const bingApiKey = (settingsMap.bing_api_key || '').trim();
+            const indexNowKey = (settingsMap.indexnow_key || bingApiKey).trim();
+            const bingAutoSubmit = settingsMap.bing_auto_submit_enabled !== '0' && settingsMap.bing_auto_submit_enabled !== 'false';
 
-              if (bingRes.success) {
+            // 1. Bing Direct API
+            if (bingApiKey && bingAutoSubmit) {
+              try {
+                const bingRes = await submitUrlToBing(canonicalUrl, {
+                  apiKey: bingApiKey,
+                  siteUrl: siteDomain,
+                });
+
+                if (bingRes.success) {
+                  await recordLog(
+                    db,
+                    'BING_SUBMIT',
+                    source.id,
+                    source.name,
+                    `[Bing Automated Indexing] URL submitted successfully: ${canonicalUrl}`,
+                    'info'
+                  );
+                }
+              } catch (bingErr: any) {
                 await recordLog(
                   db,
-                  'BING_SUBMIT',
+                  'BING_ERROR',
                   source.id,
                   source.name,
-                  `[Bing Automated Indexing] URL submitted successfully: ${canonicalUrl}`,
-                  'info'
-                );
-              } else {
-                await recordLog(
-                  db,
-                  'BING_NOTICE',
-                  source.id,
-                  source.name,
-                  `Bing URL submission notice: ${bingRes.message}`,
+                  `Bing automated submission notice: ${bingErr.message}`,
                   'warning'
                 );
               }
-
-              // IndexNow companion ping
-              const indexNowKey = (settingsMap.indexnow_key || bingApiKey).trim();
-              if (indexNowKey) {
-                const host = new URL(siteDomain).hostname;
-                await submitToIndexNow([canonicalUrl], { host, key: indexNowKey }).catch(() => {});
-              }
-            } catch (bingErr: any) {
-              await recordLog(
-                db,
-                'BING_ERROR',
-                source.id,
-                source.name,
-                `Bing automated submission error: ${bingErr.message}`,
-                'warning'
-              );
             }
+
+            // 2. IndexNow Real-Time Protocol (Bing, Yandex, Seznam, Naver)
+            if (indexNowKey) {
+              try {
+                const host = new URL(siteDomain).hostname;
+                await submitToIndexNow([canonicalUrl], { host, key: indexNowKey });
+                await recordLog(
+                  db,
+                  'INDEXNOW_PING',
+                  source.id,
+                  source.name,
+                  `[IndexNow Multi-Engine Instant Ping] Pushed ${canonicalUrl} to IndexNow network.`,
+                  'info'
+                );
+              } catch (idxErr: any) {
+                // non-blocking
+              }
+            }
+
+            // 3. Search Engine Ping for Immediate Sitemap Re-indexing
+            try {
+              const sitemapUrl = `${siteDomain}/sitemap.xml`;
+              fetch(`https://www.bing.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`).catch(() => {});
+              fetch(`https://www.google.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`).catch(() => {});
+            } catch {}
           }
 
           await recordLog(

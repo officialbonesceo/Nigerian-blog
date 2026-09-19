@@ -1,42 +1,75 @@
 ---
 /**
- * Verified Sponsored Spotlight Component for 9jaBeacon
- * Supports in-article native cards, sidebar sticky cards, and feed cards.
- * Non-intrusive, strictly light/dark theme matched, ad-block resilient, and zero-CLS.
- * Custom ad snippets (e.g. Adsterra or direct partners) render seamlessly.
- * Native spotlight links to verified /contact#advertise desk.
+ * Strategic High-Converting Ad Placements for 9jaBeacon
+ * Supports:
+ * 1. 320x50 Banner (Key: 68c3e01457bdbc56eeaf6737cd933b72)
+ * 2. 300x250 Native Banner (Key: 6605a898998325cc0d10c2c5c77a29d8)
+ * 3. High-Converting Smartlink (https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead)
+ *
+ * Isolated via zero-CLS sandboxed frames to prevent window.atOptions collisions
+ * and ensure seamless multi-unit rendering across articles and feeds.
  */
 
 interface Props {
-  format?: 'in-article' | 'feed' | 'sidebar';
+  format?: 'banner-320x50' | 'banner-300x250' | 'in-article' | 'smartlink' | 'feed' | 'sidebar';
   className?: string;
-  adCodeSnippet?: string;
   smartLinkUrl?: string;
+  headline?: string;
+  teaser?: string;
 }
 
 const {
   format = 'in-article',
   className = '',
-  adCodeSnippet = '',
   smartLinkUrl = '',
+  headline = '',
+  teaser = '',
 } = Astro.props;
 
-const hasCustomSnippet = Boolean(adCodeSnippet && adCodeSnippet.trim().length > 0);
-const targetUrl = smartLinkUrl && smartLinkUrl.trim().length > 0 ? smartLinkUrl.trim() : '/contact#advertise';
-const isExternal = targetUrl.startsWith('http://') || targetUrl.startsWith('https://');
+const DEFAULT_SMARTLINK = 'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead';
+const activeSmartLink = (smartLinkUrl && smartLinkUrl.trim().length > 0) ? smartLinkUrl.trim() : DEFAULT_SMARTLINK;
+
+const BANNER_320X50_KEY = '68c3e01457bdbc56eeaf6737cd933b72';
+const BANNER_300X250_KEY = '6605a898998325cc0d10c2c5c77a29d8';
+
+// Build safe iframe srcdocs that avoid race conditions
+const srcDoc320x50 = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:0;display:flex;justify-content:center;align-items:center;background:transparent;overflow:hidden;}</style></head><body><script>atOptions={'key':'${BANNER_320X50_KEY}','format':'iframe','height':50,'width':320,'params':{}};</script><script src="https://www.highrevenueformat.com/${BANNER_320X50_KEY}/invoke.js"></script></body></html>`;
+
+const srcDoc300x250 = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:0;display:flex;justify-content:center;align-items:center;background:transparent;overflow:hidden;}</style></head><body><script>atOptions={'key':'${BANNER_300X250_KEY}','format':'iframe','height':250,'width':300,'params':{}};</script><script src="https://www.highrevenueformat.com/${BANNER_300X250_KEY}/invoke.js"></script></body></html>`;
 ---
 
-{format === 'in-article' && (
-  <div class={`my-7 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden not-prose transition-colors ${className}`}>
-    <!-- Header Tag & Disclosures -->
-    <div class="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
+<!-- 1. Strategic 320x50 Mobile / Horizontal Banner -->
+{format === 'banner-320x50' && (
+  <div class={`my-5 w-full flex flex-col items-center justify-center not-prose ${className}`}>
+    <div class="flex items-center justify-between w-full max-w-[320px] mb-1 px-1 text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+      <span>Advertisement</span>
+      <a href="/contact#advertise" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Advertise With Us</a>
+    </div>
+    <div class="w-[320px] h-[50px] min-w-[320px] min-h-[50px] overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-center justify-center shadow-xs">
+      <iframe
+        srcdoc={srcDoc320x50}
+        width="320"
+        height="50"
+        loading="lazy"
+        scrolling="no"
+        title="Sponsored Advertisement (320x50)"
+        class="border-0 w-[320px] h-[50px] overflow-hidden block"
+      />
+    </div>
+  </div>
+)}
+
+<!-- 2. Strategic 300x250 Native Banner (In-Article & Mid-Break) -->
+{(format === 'banner-300x250' || format === 'in-article') && (
+  <div class={`my-6 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs not-prose transition-colors ${className}`}>
+    <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
       <div class="flex items-center gap-2">
         <span class="relative flex h-2 w-2">
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
           <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
         </span>
         <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
-          Sponsored Spotlight
+          Sponsored Feature
         </span>
       </div>
       <a
@@ -47,142 +80,105 @@ const isExternal = targetUrl.startsWith('http://') || targetUrl.startsWith('http
       </a>
     </div>
 
-    <!-- Custom Ad Code Container (if provided) -->
-    {hasCustomSnippet ? (
-      <div class="sponsored-ad-wrapper w-full text-center overflow-hidden my-2 flex items-center justify-center min-h-[90px]">
-        <div class="sponsored-custom-snippet w-full flex justify-center" set:html={adCodeSnippet} />
+    <!-- 300x250 Iframe Banner Container -->
+    <div class="w-full flex flex-col items-center justify-center min-h-[250px] py-1">
+      <div class="w-[300px] h-[250px] min-w-[300px] min-h-[250px] overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 flex items-center justify-center">
+        <iframe
+          srcdoc={srcDoc300x250}
+          width="300"
+          height="250"
+          loading="lazy"
+          scrolling="no"
+          title="Native Sponsor Unit (300x250)"
+          class="border-0 w-[300px] h-[250px] overflow-hidden block"
+        />
       </div>
-    ) : (
-      <!-- High-Converting Editorial Sponsored Card (Visible as primary offer or instant native background) -->
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
-        <div class="flex items-start gap-3.5 text-left flex-1 min-w-0">
-          <div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <div>
-            <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
-              Verified Business Opportunities & High-Yield Accounts in Nigeria
-            </h4>
-            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-              Discover vetted fintech tools, dollar virtual cards, and verified SME opportunities curated for readers.
-            </p>
-          </div>
-        </div>
-        <a
-          href={targetUrl}
-          target={isExternal ? '_blank' : '_self'}
-          rel={isExternal ? 'noopener noreferrer sponsored' : undefined}
-          class="shrink-0 w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-95"
-        >
-          <span>Explore Offers</span>
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </a>
-      </div>
-    )}
+    </div>
   </div>
 )}
 
-{format === 'feed' && (
-  <article class={`p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs dark:shadow-none transition-all duration-200 overflow-hidden ${className}`}>
-    <div class="flex items-start justify-between gap-3 sm:gap-4">
-      <div class="flex-1 min-w-0 space-y-1.5">
-        <div class="flex items-center gap-1.5">
-          <span class="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
-            Sponsored Feature
-          </span>
-          <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700">
-            Partner
-          </span>
-        </div>
-
-        {hasCustomSnippet ? (
-          <div class="sponsored-feed-snippet w-full overflow-hidden my-2 flex justify-center">
-            <div set:html={adCodeSnippet} />
-          </div>
-        ) : (
-          <div>
-            <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
-              <a
-                href={targetUrl}
-                target={isExternal ? '_blank' : '_self'}
-                rel={isExternal ? 'noopener noreferrer sponsored' : undefined}
-              >
-                Compare Verified High-Yield Naira Accounts & Dollar Cards in Nigeria (2026)
-              </a>
-            </h3>
-            <p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 pt-1 leading-relaxed">
-              Essential guide for professionals and business owners: explore vetted fintech vaults, inflation-hedging instruments, and verified digital trade services.
-            </p>
-          </div>
-        )}
-
-        <div class="flex items-center gap-3 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
-          <span class="text-emerald-600 dark:text-emerald-400 font-medium">9jaBeacon Partner Spotlight</span>
-          <span>•</span>
-          <a
-            href={targetUrl}
-            target={isExternal ? '_blank' : '_self'}
-            rel={isExternal ? 'noopener noreferrer sponsored' : undefined}
-            class="hover:underline font-semibold text-slate-700 dark:text-slate-300"
-          >
-            Learn More &rarr;
-          </a>
-        </div>
+<!-- 3. Strategic High-Converting Smartlink Spotlight Card (In-Article & In-Feed) -->
+{(format === 'smartlink' || format === 'feed') && (
+  <div class={`my-6 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-emerald-800/60 shadow-xs not-prose transition-all hover:border-emerald-400 dark:hover:border-emerald-600 ${className}`}>
+    <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+      <div class="flex items-center gap-1.5">
+        <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider font-mono">
+          Partner Spotlight
+        </span>
+        <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold">
+          Trending Deal
+        </span>
       </div>
-
-      <!-- Right sponsored thumbnail -->
       <a
-        href={targetUrl}
-        target={isExternal ? '_blank' : '_self'}
-        rel={isExternal ? 'noopener noreferrer sponsored' : undefined}
-        class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-emerald-50 dark:bg-slate-800 border border-emerald-100 dark:border-slate-700/60 flex flex-col items-center justify-center p-2 text-emerald-600 dark:text-emerald-400 group hover:bg-emerald-100/50 dark:hover:bg-slate-800/80 transition-colors"
+        href="/contact#advertise"
+        class="text-[10px] text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
       >
-        <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-        <span class="text-[9px] font-bold uppercase tracking-wider mt-1 text-slate-600 dark:text-slate-300">Featured</span>
+        Advertise With Us &rarr;
       </a>
     </div>
-  </article>
-)}
 
-{format === 'sidebar' && (
-  <aside class={`p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 ${className}`}>
-    <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">
-      <span class="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Spotlight</span>
-      <span>Advertisement</span>
-    </div>
-
-    {hasCustomSnippet ? (
-      <div class="sponsored-sidebar-wrapper w-full text-center overflow-hidden my-2">
-        <div set:html={adCodeSnippet} />
-      </div>
-    ) : (
-      <div class="space-y-2.5 text-center p-2">
-        <div class="w-11 h-11 mx-auto rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-start gap-3.5 text-left flex-1 min-w-0">
+        <div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         </div>
-        <h4 class="text-xs font-bold text-slate-900 dark:text-slate-100">
-          9jaBeacon Verified Partner Hub
-        </h4>
-        <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-          Feature your brand, fintech platform, or property dispatch to Nigeria's premier decision-makers.
-        </p>
-        <a
-          href={targetUrl}
-          target={isExternal ? '_blank' : '_self'}
-          rel={isExternal ? 'noopener noreferrer sponsored' : undefined}
-          class="block w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold transition shadow-xs"
-        >
-          Partner With Us
-        </a>
+        <div>
+          <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
+            {headline || 'Verified Financial Opportunities, High-Yield FX & Business Vaults in Nigeria'}
+          </h4>
+          <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+            {teaser || 'Explore vetted fintech tools, dollar cards, SME expansion grants, and verified market instruments curated for readers.'}
+          </p>
+        </div>
       </div>
-    )}
+      <a
+        href={activeSmartLink}
+        target="_blank"
+        rel="noopener noreferrer sponsored"
+        class="shrink-0 w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+      >
+        <span>Explore Offers</span>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </a>
+    </div>
+  </div>
+)}
+
+<!-- 4. Strategic Desktop Sidebar 300x250 Banner + Smartlink Action -->
+{format === 'sidebar' && (
+  <aside class={`p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 not-prose ${className}`}>
+    <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">
+      <span class="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Spotlight</span>
+      <a href="/contact#advertise" class="hover:underline">Advertise</a>
+    </div>
+
+    <!-- 300x250 Native Banner -->
+    <div class="w-full flex justify-center py-1">
+      <div class="w-[300px] h-[250px] overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 flex items-center justify-center">
+        <iframe
+          srcdoc={srcDoc300x250}
+          width="300"
+          height="250"
+          loading="lazy"
+          scrolling="no"
+          title="Sidebar Advertisement"
+          class="border-0 w-[300px] h-[250px] overflow-hidden block"
+        />
+      </div>
+    </div>
+
+    <!-- Supplementary Smartlink Callout -->
+    <a
+      href={activeSmartLink}
+      target="_blank"
+      rel="noopener noreferrer sponsored"
+      class="block w-full text-center py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold transition shadow-xs cursor-pointer"
+    >
+      🔥 Explore Verified Partner Deals &rarr;
+    </a>
   </aside>
 )}

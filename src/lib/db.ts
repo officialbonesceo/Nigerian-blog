@@ -228,6 +228,7 @@ function initDatabase() {
       insertArt.run(art);
     }
   }
+
   // Seed default automation settings
   const settingsCount = db.prepare('SELECT COUNT(*) as count FROM automation_settings').get() as { count: number };
   if (settingsCount.count === 0) {
@@ -273,26 +274,18 @@ function initDatabase() {
     insertSite.run('admin_email', 'officialbonesceo@gmail.com');
     insertSite.run('twitter_handle', '@9jaBeacon');
     insertSite.run('admin_password', 'BonesCeo@9jaBeacon2026!');
-    insertSite.run('monetag_enabled', '1');
-    insertSite.run('monetag_in_article_zone', '11801792');
-    insertSite.run('monetag_global_tag', 'https://nap5k.com/tag.min.js');
-    insertSite.run('monetag_ad_code', "<script>(function(s){s.dataset.zone='11801792',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>");
-    insertSite.run('monetag_verification', '40d3b64d132d7ec42db754b9dca240b1');
+    insertSite.run('monetag_enabled', '0');
     insertSite.run('adsterra_enabled', '1');
     insertSite.run('adsterra_script_url', 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js');
     insertSite.run('adsterra_container_id', 'container-4e5de78ab786afbf822590e03b1b657e');
   } else {
     const updateAdminEmail = db.prepare(`INSERT OR REPLACE INTO site_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))`);
     updateAdminEmail.run('admin_email', 'officialbonesceo@gmail.com');
-    const insertSettingOrIgnore = db.prepare(`INSERT OR IGNORE INTO site_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))`);
-    insertSettingOrIgnore.run('monetag_enabled', '1');
-    insertSettingOrIgnore.run('monetag_in_article_zone', '11801792');
-    insertSettingOrIgnore.run('monetag_global_tag', 'https://nap5k.com/tag.min.js');
-    insertSettingOrIgnore.run('monetag_ad_code', "<script>(function(s){s.dataset.zone='11801792',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>");
-    insertSettingOrIgnore.run('monetag_verification', '40d3b64d132d7ec42db754b9dca240b1');
-    insertSettingOrIgnore.run('adsterra_enabled', '1');
-    insertSettingOrIgnore.run('adsterra_script_url', 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js');
-    insertSettingOrIgnore.run('adsterra_container_id', 'container-4e5de78ab786afbf822590e03b1b657e');
+    const insertSettingOrReplace = db.prepare(`INSERT OR REPLACE INTO site_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))`);
+    insertSettingOrReplace.run('monetag_enabled', '0');
+    insertSettingOrReplace.run('adsterra_enabled', '1');
+    insertSettingOrReplace.run('adsterra_script_url', 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js');
+    insertSettingOrReplace.run('adsterra_container_id', 'container-4e5de78ab786afbf822590e03b1b657e');
   }
 
   // Seed initial audit log

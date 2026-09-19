@@ -63,8 +63,10 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{title}</title>
   <meta name="description" content={description} />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <link rel="canonical" href={computedCanonical} />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate" type="application/rss+xml" title={`${siteName} RSS Feed`} href="/rss.xml" />
   <meta name="theme-color" content="#008751" />
   {googleVerification && (
     <meta name="google-site-verification" content={googleVerification} />
