@@ -10,6 +10,8 @@
  * and ensure seamless multi-unit rendering across articles and feeds.
  */
 
+import { getD1, getCustomAds } from '../lib/runtime-db';
+
 interface Props {
   format?: 'banner-320x50' | 'banner-300x250' | 'in-article' | 'smartlink' | 'feed' | 'sidebar';
   className?: string;
@@ -27,7 +29,23 @@ const {
 } = Astro.props;
 
 const DEFAULT_SMARTLINK = 'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead';
-const activeSmartLink = (smartLinkUrl && smartLinkUrl.trim().length > 0) ? smartLinkUrl.trim() : DEFAULT_SMARTLINK;
+
+let effectiveHeadline = headline;
+let effectiveTeaser = teaser;
+let effectiveLink = (smartLinkUrl && smartLinkUrl.trim().length > 0) ? smartLinkUrl.trim() : DEFAULT_SMARTLINK;
+
+if (!headline) {
+  try {
+    const db = getD1(Astro.locals);
+    const activeAds = await getCustomAds(db, true);
+    if (activeAds && activeAds.length > 0) {
+      const liveAd = activeAds[0];
+      effectiveHeadline = liveAd.title;
+      effectiveTeaser = liveAd.teaser || '';
+      effectiveLink = liveAd.target_url;
+    }
+  } catch {}
+}
 
 const BANNER_320X50_KEY = '68c3e01457bdbc56eeaf6737cd933b72';
 const BANNER_300X250_KEY = '6605a898998325cc0d10c2c5c77a29d8';
@@ -126,15 +144,15 @@ const srcDoc300x250 = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>b
         </div>
         <div>
           <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
-            {headline || 'Verified Financial Opportunities, High-Yield FX & Business Vaults in Nigeria'}
+            {effectiveHeadline || 'Verified Financial Opportunities, High-Yield FX & Business Vaults in Nigeria'}
           </h4>
           <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-            {teaser || 'Explore vetted fintech tools, dollar cards, SME expansion grants, and verified market instruments curated for readers.'}
+            {effectiveTeaser || 'Explore vetted fintech tools, dollar cards, SME expansion grants, and verified market instruments curated for readers.'}
           </p>
         </div>
       </div>
       <a
-        href={activeSmartLink}
+        href={effectiveLink}
         target="_blank"
         rel="noopener noreferrer sponsored"
         class="shrink-0 w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
@@ -173,7 +191,7 @@ const srcDoc300x250 = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>b
 
     <!-- Supplementary Smartlink Callout -->
     <a
-      href={activeSmartLink}
+      href={effectiveLink}
       target="_blank"
       rel="noopener noreferrer sponsored"
       class="block w-full text-center py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold transition shadow-xs cursor-pointer"

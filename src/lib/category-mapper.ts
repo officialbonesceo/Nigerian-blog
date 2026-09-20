@@ -41,13 +41,17 @@ const SPORTS_KEYWORDS = [
 ];
 
 const WORLD_KEYWORDS = [
-  'united nations', 'un ', 'us ', 'usa', 'america', 'china', 'beijing',
-  'russia', 'ukraine', 'europe', 'european', 'uk ', 'britain', 'france',
+  'united nations', 'un ', 'us ', 'usa', 'america', 'american', 'china', 'chinese', 'beijing',
+  'russia', 'russian', 'ukraine', 'europe', 'european', 'uk ', 'britain', 'british', 'france',
   'germany', 'middle east', 'israel', 'gaza', 'palestine', 'iran',
   'global', 'international', 'foreign', 'diplomacy', 'summit',
   'nato', 'g7', 'g20', 'world bank', 'imf', 'who ', 'unesco',
   'diaspora', 'abroad', 'overseas', 'washington', 'london', 'paris',
-  'moscow', 'kyiv', 'brussels', 'geneva'
+  'moscow', 'kyiv', 'brussels', 'geneva', 'trump', 'biden', 'white house',
+  'pentagon', 'capitol hill', 'kremlin', 'putin', 'zelensky', 'tokyo', 'seoul',
+  'pyongyang', 'north korea', 'south korea', 'taiwan', 'syria', 'idlib', 'damascus',
+  'lebanon', 'beirut', 'nepal', 'kathmandu', 'philippines', 'manila', 'basilan',
+  'india', 'indian', 'modi', 'delhi', 'canada', 'australia'
 ];
 
 const NIGERIA_MARKERS = [
@@ -95,7 +99,12 @@ export function decideCategories(
   let primary: PrimaryCategory = 'cat_naija_news';
   let secondary: PrimaryCategory | undefined;
 
-  // Priority order: Sports+Money hybrid, then strongest single signal
+  // Priority order:
+  // 1. Sports+Money hybrid
+  // 2. Pure sports
+  // 3. Foreign/World stories (if zero Nigeria markers and strong world keywords/foreign source, primary is cat_world)
+  // 4. Money/Hustle (for Nigerian business, finance, and domestic economic affairs)
+  // 5. Naija News (governance, judiciary, community)
   if (isPlayerMoneyDeal) {
     primary = 'cat_sports';
     secondary = 'cat_money_hustle';
@@ -103,15 +112,20 @@ export function decideCategories(
   } else if (sportsScore >= 2 || (sportsScore >= 1 && moneyScore === 0 && worldScore === 0)) {
     primary = 'cat_sports';
     reasons.push(`Sports keywords matched (${sportsScore})`);
+  } else if (nigeriaScore === 0 && (worldScore >= 2 || (worldScore >= 1 && /reuters|bbc|al jazeera|cnn|ap news|bloomberg|afp/i.test(sourceName || '')))) {
+    primary = 'cat_world';
+    if (moneyScore >= 1) {
+      secondary = 'cat_money_hustle';
+      reasons.push(`Foreign/World story with economic angle (${worldScore} world, ${moneyScore} money)`);
+    } else {
+      reasons.push(`Foreign/World story with no Nigeria markers (${worldScore} world)`);
+    }
   } else if (moneyScore >= 2 || (moneyScore >= 1 && sportsScore === 0)) {
     primary = 'cat_money_hustle';
     reasons.push(`Money/Finance keywords matched (${moneyScore})`);
   } else if (worldScore >= 2 && nigeriaScore === 0) {
     primary = 'cat_world';
     reasons.push(`Foreign/World keywords matched (${worldScore}) with no strong Nigeria markers`);
-  } else if (worldScore >= 1 && nigeriaScore === 0 && sourceName && /reuters|bbc|al jazeera|cnn|ap news/i.test(sourceName)) {
-    primary = 'cat_world';
-    reasons.push('Foreign news agency source + world signals');
   } else {
     // Respect AI if it made a clear choice, otherwise default to Naija
     const ai = (aiSuggested || '').toLowerCase();
@@ -134,6 +148,13 @@ export function decideCategories(
   if (primary === 'cat_naija_news' && nigeriaScore === 0 && worldScore >= 1) {
     primary = 'cat_world';
     reasons.push('Overrode to World (no Nigeria markers)');
+  }
+
+  // Extra safety: pure foreign story should never be primary Money & Hustle unless Nigeria-linked
+  if (primary === 'cat_money_hustle' && nigeriaScore === 0 && worldScore >= 2) {
+    primary = 'cat_world';
+    secondary = 'cat_money_hustle';
+    reasons.push('Overrode to World (international economic event without Nigerian domestic ties)');
   }
 
   return { primary, secondary, reasons };

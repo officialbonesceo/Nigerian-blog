@@ -155,6 +155,37 @@ function initDatabase() {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS advert_inquiries (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      company TEXT,
+      budget TEXT,
+      target_url TEXT,
+      message TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      promoted_headline TEXT,
+      promoted_teaser TEXT,
+      promoted_link TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS custom_ads (
+      id TEXT PRIMARY KEY,
+      inquiry_id TEXT,
+      title TEXT NOT NULL,
+      teaser TEXT,
+      target_url TEXT NOT NULL,
+      format TEXT DEFAULT 'spotlight',
+      is_active INTEGER DEFAULT 1,
+      impressions INTEGER DEFAULT 0,
+      clicks INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC);
     CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC);
     CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug);
@@ -274,18 +305,49 @@ function initDatabase() {
     insertSite.run('admin_email', 'officialbonesceo@gmail.com');
     insertSite.run('twitter_handle', '@9jaBeacon');
     insertSite.run('admin_password', 'BonesCeo@9jaBeacon2026!');
+    insertSite.run('ads_enabled', '1');
+    insertSite.run('ad_banner_320x50_key', '68c3e01457bdbc56eeaf6737cd933b72');
+    insertSite.run('ad_banner_300x250_key', '6605a898998325cc0d10c2c5c77a29d8');
+    insertSite.run('ad_smartlink_url', 'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead');
     insertSite.run('monetag_enabled', '0');
     insertSite.run('adsterra_enabled', '1');
-    insertSite.run('adsterra_script_url', 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js');
-    insertSite.run('adsterra_container_id', 'container-4e5de78ab786afbf822590e03b1b657e');
+    insertSite.run('adsterra_script_url', 'https://www.highrevenueformat.com/68c3e01457bdbc56eeaf6737cd933b72/invoke.js');
+    insertSite.run('adsterra_container_id', 'container-68c3e01457bdbc56eeaf6737cd933b72');
   } else {
     const updateAdminEmail = db.prepare(`INSERT OR REPLACE INTO site_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))`);
     updateAdminEmail.run('admin_email', 'officialbonesceo@gmail.com');
     const insertSettingOrReplace = db.prepare(`INSERT OR REPLACE INTO site_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))`);
+    insertSettingOrReplace.run('ads_enabled', '1');
+    insertSettingOrReplace.run('ad_banner_320x50_key', '68c3e01457bdbc56eeaf6737cd933b72');
+    insertSettingOrReplace.run('ad_banner_300x250_key', '6605a898998325cc0d10c2c5c77a29d8');
+    insertSettingOrReplace.run('ad_smartlink_url', 'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead');
     insertSettingOrReplace.run('monetag_enabled', '0');
     insertSettingOrReplace.run('adsterra_enabled', '1');
-    insertSettingOrReplace.run('adsterra_script_url', 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js');
-    insertSettingOrReplace.run('adsterra_container_id', 'container-4e5de78ab786afbf822590e03b1b657e');
+    insertSettingOrReplace.run('adsterra_script_url', 'https://www.highrevenueformat.com/68c3e01457bdbc56eeaf6737cd933b72/invoke.js');
+    insertSettingOrReplace.run('adsterra_container_id', 'container-68c3e01457bdbc56eeaf6737cd933b72');
+  }
+
+  // Seed sample advert inquiry if empty so admin can test 1-click advertising immediately
+  const inquiryCount = db.prepare('SELECT COUNT(*) as count FROM advert_inquiries').get() as { count: number };
+  if (inquiryCount.count === 0) {
+    const insertInquiry = db.prepare(`
+      INSERT INTO advert_inquiries (id, name, email, subject, company, budget, target_url, message, status, promoted_headline, promoted_teaser, promoted_link, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `);
+    insertInquiry.run(
+      'inq_sample_flutterwave',
+      'Tunde Adeyemi',
+      'partnerships@fintechgrowth.ng',
+      'Featured Fintech Banner & Native Sponsorship',
+      'FintechGrowth Africa',
+      '$500 - $1,000 / month',
+      'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead',
+      'Hello 9jaBeacon Editorial Team, we are looking to place native sponsored spotlight cards and in-article banners on high-traffic business and finance articles. We want to promote instant dollar-to-naira cross-border trade settlements.',
+      'pending',
+      'Fast Multi-Currency Settlements for African Businesses',
+      'Empower your cross-border ventures with instant zero-fee settlement across 30+ African corridors.',
+      'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead'
+    );
   }
 
   // Seed initial audit log

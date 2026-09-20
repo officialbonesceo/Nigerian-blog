@@ -4,7 +4,6 @@ import ArticleCard from '../../components/ArticleCard.astro';
 import BookmarkButton from '../../components/BookmarkButton.astro';
 import ShareBar from '../../components/ShareBar.astro';
 import AdSlot from '../../components/AdSlot.astro';
-import AdsterraNativeBanner from '../../components/AdsterraNativeBanner.astro';
 import { getD1, getArticleBySlug, getRelatedArticles, getSiteSettings } from '../../lib/runtime-db';
 import { DEFAULT_FALLBACK_IMAGE_URL } from '../../lib/fallback-image';
 import { cleanAndFormatArticleHtml, partitionArticleForAds } from '../../lib/content-formatter';
@@ -226,6 +225,9 @@ const structuredData = [
       </aside>
     )}
 
+    <!-- Top Horizontal Ad Banner -->
+    <AdSlot format="banner-320x50" />
+
     <!-- Story Content Body (Sanitized, Semantic Paragraphs, with In-Between Native Ads) -->
     <div class="space-y-6 max-w-full min-w-0">
       <div
@@ -236,8 +238,8 @@ const structuredData = [
 
       {articleParts.middle1 && (
         <>
-          <!-- Primary Mid-Article Native Ad -->
-          <AdSlot format="in-article" />
+          <!-- Primary Mid-Article Native 300x250 Banner (~100 Words) -->
+          <AdSlot format="banner-300x250" />
 
           <div
             id="article-content-body-middle1"
@@ -249,14 +251,30 @@ const structuredData = [
 
       {articleParts.middle2 && (
         <>
-          <!-- Secondary In-Between Native Ad for Long In-Depth Reports -->
-          <AdSlot format="in-article" />
+          <!-- High-Converting Smartlink Deal Spotlight (~200 Words) -->
+          <AdSlot format="smartlink" />
 
           <div
             id="article-content-body-middle2"
             class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
             set:html={articleParts.middle2}
           />
+        </>
+      )}
+
+      {articleParts.middle3 && (
+        <>
+          <!-- Tertiary Mid-Article Native Ad (~300 Words) -->
+          <AdSlot format="banner-300x250" />
+
+          <div
+            id="article-content-body-middle3"
+            class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
+            set:html={articleParts.middle3}
+          />
+
+          <!-- Mobile Friendly 320x50 Banner After Deep Read -->
+          <AdSlot format="banner-320x50" />
         </>
       )}
     </div>
@@ -285,14 +303,8 @@ const structuredData = [
     </div>
   </article>
 
-  <!-- Adsterra Native Banner (Under Article / Above Recommended Stories) -->
-  {siteSettings.adsterra_enabled !== '0' && siteSettings.adsterra_enabled !== 'false' && (
-    <AdsterraNativeBanner
-      containerId={siteSettings.adsterra_container_id || 'container-4e5de78ab786afbf822590e03b1b657e'}
-      scriptUrl={siteSettings.adsterra_script_url || 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js'}
-      label="Sponsored Stories"
-    />
-  )}
+  <!-- Native Ad Banner (Under Article / Above Recommended Stories) -->
+  <AdSlot format="banner-300x250" />
 
   <!-- Recommended News Section (5 items + See More button) -->
   {relatedArticles.length > 0 && (

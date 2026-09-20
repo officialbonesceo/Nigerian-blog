@@ -366,6 +366,35 @@ export async function ensureTablesExist(db: D1Database) {
             value TEXT NOT NULL,
             updated_at TEXT DEFAULT (datetime('now'))
           )`,
+          `CREATE TABLE IF NOT EXISTS advert_inquiries (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            company TEXT,
+            budget TEXT,
+            target_url TEXT,
+            message TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            promoted_headline TEXT,
+            promoted_teaser TEXT,
+            promoted_link TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+          )`,
+          `CREATE TABLE IF NOT EXISTS custom_ads (
+            id TEXT PRIMARY KEY,
+            inquiry_id TEXT,
+            title TEXT NOT NULL,
+            teaser TEXT,
+            target_url TEXT NOT NULL,
+            format TEXT DEFAULT 'spotlight',
+            is_active INTEGER DEFAULT 1,
+            impressions INTEGER DEFAULT 0,
+            clicks INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+          )`,
           `CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)`,
           `CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC)`,
           `CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`,
@@ -887,9 +916,13 @@ export async function getSiteSettings(db: D1Database): Promise<Record<string, st
     monetag_ad_code: '',
     monetag_smartlink_url: '',
     monetag_verification: '',
+    ads_enabled: '1',
+    ad_banner_320x50_key: '68c3e01457bdbc56eeaf6737cd933b72',
+    ad_banner_300x250_key: '6605a898998325cc0d10c2c5c77a29d8',
+    ad_smartlink_url: 'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead',
     adsterra_enabled: '1',
-    adsterra_script_url: 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js',
-    adsterra_container_id: 'container-4e5de78ab786afbf822590e03b1b657e',
+    adsterra_script_url: 'https://www.highrevenueformat.com/68c3e01457bdbc56eeaf6737cd933b72/invoke.js',
+    adsterra_container_id: 'container-68c3e01457bdbc56eeaf6737cd933b72',
   };
   try {
     const res = await db.prepare('SELECT key, value FROM site_settings').all<{ key: string; value: string }>();
@@ -1225,4 +1258,227 @@ export async function getDatabaseDiagnostics(locals?: RuntimeLocals) {
     queryError,
     activeRuntime: typeof process !== 'undefined' && process.release?.name === 'node' ? 'Node.js / Local' : 'Cloudflare Workers / Pages',
   };
+}
+
+export interface AdvertInquiry {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  company?: string | null;
+  budget?: string | null;
+  target_url?: string | null;
+  message: string;
+  status: 'pending' | 'active_ad' | 'replied' | 'archived';
+  promoted_headline?: string | null;
+  promoted_teaser?: string | null;
+  promoted_link?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CustomAd {
+  id: string;
+  inquiry_id?: string | null;
+  title: string;
+  teaser?: string | null;
+  target_url: string;
+  format: string;
+  is_active: number;
+  impressions: number;
+  clicks: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export async function getAdvertInquiries(db: D1Database): Promise<AdvertInquiry[]> {
+  try {
+    await ensureTablesExist(db);
+    const res = await db.prepare('SELECT * FROM advert_inquiries ORDER BY created_at DESC').all<AdvertInquiry>();
+    return res?.results || [];
+  } catch (err) {
+    console.error('getAdvertInquiries error:', err);
+    return [];
+  }
+}
+
+export async function createAdvertInquiry(
+  db: D1Database,
+  inquiry: {
+    name: string;
+    email: string;
+    subject: string;
+    company?: string | null;
+    budget?: string | null;
+    target_url?: string | null;
+    message: string;
+    promoted_headline?: string | null;
+    promoted_teaser?: string | null;
+    promoted_link?: string | null;
+  }
+): Promise<{ success: boolean; id: string; error?: string }> {
+  try {
+    await ensureTablesExist(db);
+    const id = 'inq_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    const now = new Date().toISOString();
+    await db.prepare(`
+      INSERT INTO advert_inquiries (
+        id, name, email, subject, company, budget, target_url, message,
+        status, promoted_headline, promoted_teaser, promoted_link, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      inquiry.name,
+      inquiry.email,
+      inquiry.subject,
+      inquiry.company || null,
+      inquiry.budget || null,
+      inquiry.target_url || null,
+      inquiry.message,
+      inquiry.promoted_headline || null,
+      inquiry.promoted_teaser || null,
+      inquiry.promoted_link || inquiry.target_url || null,
+      now,
+      now
+    ).run();
+
+    await addAutomationLog(
+      db,
+      'ADVERT_INQUIRY_RECEIVED',
+      null,
+      `New advertiser inquiry received from ${inquiry.name} (${inquiry.company || 'Direct'}): "${inquiry.subject}"`,
+      'info'
+    ).catch(() => {});
+
+    return { success: true, id };
+  } catch (err: any) {
+    console.error('createAdvertInquiry error:', err);
+    return { success: false, id: '', error: err?.message || String(err) };
+  }
+}
+
+export async function updateAdvertInquiry(
+  db: D1Database,
+  id: string,
+  updates: Partial<AdvertInquiry>
+): Promise<boolean> {
+  try {
+    await ensureTablesExist(db);
+    const sets: string[] = ['updated_at = datetime("now")'];
+    const params: any[] = [];
+    if (updates.status !== undefined) {
+      sets.push('status = ?');
+      params.push(updates.status);
+    }
+    if (updates.promoted_headline !== undefined) {
+      sets.push('promoted_headline = ?');
+      params.push(updates.promoted_headline);
+    }
+    if (updates.promoted_teaser !== undefined) {
+      sets.push('promoted_teaser = ?');
+      params.push(updates.promoted_teaser);
+    }
+    if (updates.promoted_link !== undefined) {
+      sets.push('promoted_link = ?');
+      params.push(updates.promoted_link);
+    }
+    params.push(id);
+    await db.prepare(`UPDATE advert_inquiries SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run();
+    return true;
+  } catch (err) {
+    console.error('updateAdvertInquiry error:', err);
+    return false;
+  }
+}
+
+export async function deleteAdvertInquiry(db: D1Database, id: string): Promise<boolean> {
+  try {
+    await ensureTablesExist(db);
+    await db.prepare('DELETE FROM advert_inquiries WHERE id = ?').bind(id).run();
+    await db.prepare('DELETE FROM custom_ads WHERE inquiry_id = ?').bind(id).run();
+    return true;
+  } catch (err) {
+    console.error('deleteAdvertInquiry error:', err);
+    return false;
+  }
+}
+
+export async function getCustomAds(db: D1Database, onlyActive = false): Promise<CustomAd[]> {
+  try {
+    await ensureTablesExist(db);
+    const sql = onlyActive
+      ? 'SELECT * FROM custom_ads WHERE is_active = 1 ORDER BY created_at DESC'
+      : 'SELECT * FROM custom_ads ORDER BY created_at DESC';
+    const res = await db.prepare(sql).all<CustomAd>();
+    return res?.results || [];
+  } catch (err) {
+    console.error('getCustomAds error:', err);
+    return [];
+  }
+}
+
+export async function createCustomAd(
+  db: D1Database,
+  ad: {
+    inquiry_id?: string | null;
+    title: string;
+    teaser?: string | null;
+    target_url: string;
+    format?: string;
+  }
+): Promise<{ success: boolean; id: string; error?: string }> {
+  try {
+    await ensureTablesExist(db);
+    const id = 'ad_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    const now = new Date().toISOString();
+    await db.prepare(`
+      INSERT INTO custom_ads (id, inquiry_id, title, teaser, target_url, format, is_active, impressions, clicks, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 1, 0, 0, ?, ?)
+    `).bind(
+      id,
+      ad.inquiry_id || null,
+      ad.title,
+      ad.teaser || '',
+      ad.target_url,
+      ad.format || 'spotlight',
+      now,
+      now
+    ).run();
+
+    if (ad.inquiry_id) {
+      await updateAdvertInquiry(db, ad.inquiry_id, {
+        status: 'active_ad',
+        promoted_headline: ad.title,
+        promoted_teaser: ad.teaser,
+        promoted_link: ad.target_url,
+      });
+    }
+
+    return { success: true, id };
+  } catch (err: any) {
+    console.error('createCustomAd error:', err);
+    return { success: false, id: '', error: err?.message || String(err) };
+  }
+}
+
+export async function toggleCustomAd(db: D1Database, id: string, isActive: boolean): Promise<boolean> {
+  try {
+    await ensureTablesExist(db);
+    await db.prepare('UPDATE custom_ads SET is_active = ?, updated_at = datetime("now") WHERE id = ?').bind(isActive ? 1 : 0, id).run();
+    return true;
+  } catch (err) {
+    console.error('toggleCustomAd error:', err);
+    return false;
+  }
+}
+
+export async function deleteCustomAd(db: D1Database, id: string): Promise<boolean> {
+  try {
+    await ensureTablesExist(db);
+    await db.prepare('DELETE FROM custom_ads WHERE id = ?').bind(id).run();
+    return true;
+  } catch (err) {
+    console.error('deleteCustomAd error:', err);
+    return false;
+  }
 }

@@ -490,6 +490,11 @@ Output strictly updated JSON matching the schema with at least 300 words of cont
         }
       } else {
         traceLogs.push(`Tier 4 (${pollModel}): HTTP ${pollRes.status}`);
+        if (pollRes.status === 429) {
+          errors.push(`Pollinations (${pollModel}): Rate limited (HTTP 429)`);
+          // Apply pacing backoff before attempting next cascade model to prevent consecutive 429s
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
       }
     } catch (pollErr: any) {
       errors.push(`Pollinations (${pollModel}): ${pollErr.message}`);

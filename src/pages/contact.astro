@@ -134,20 +134,69 @@ const twitterHandle = settings.twitter_handle || '@9jaBeacon';
           </div>
         </div>
 
-        <div class="space-y-1.5">
-          <label for="contactSubject" class="block text-xs font-bold text-slate-700 dark:text-slate-300">
-            Inquiry Type
-          </label>
-          <select
-            id="contactSubject"
-            name="subject"
-            class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:border-emerald-500 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
-          >
-            <option value="advertising">Advertising, Sponsored Article or Banner Placement</option>
-            <option value="tip">Verified Editorial News Tip</option>
-            <option value="partnership">Media Partnership / Syndication</option>
-            <option value="general">General Inquiries</option>
-          </select>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label for="contactSubject" class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Inquiry Type
+            </label>
+            <select
+              id="contactSubject"
+              name="subject"
+              class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:border-emerald-500 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
+            >
+              <option value="Advertising & Sponsored Spotlight">Advertising & Sponsored Spotlight</option>
+              <option value="In-Article Native Banner Ad">In-Article Native Banner Ad</option>
+              <option value="Verified Editorial News Tip">Verified Editorial News Tip</option>
+              <option value="Media Partnership & Syndication">Media Partnership & Syndication</option>
+              <option value="General Inquiries">General Inquiries</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="contactCompany" class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Company / Brand (Optional)
+            </label>
+            <input
+              type="text"
+              id="contactCompany"
+              name="company"
+              placeholder="e.g. Fintech Africa Ltd."
+              class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:border-emerald-500 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label for="contactBudget" class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Campaign Budget (Optional)
+            </label>
+            <select
+              id="contactBudget"
+              name="budget"
+              class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:border-emerald-500 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
+            >
+              <option value="">Select an estimated budget range...</option>
+              <option value="₦100,000 - ₦250,000 / month">₦100,000 - ₦250,000 / month</option>
+              <option value="₦250,000 - ₦500,000 / month">₦250,000 - ₦500,000 / month</option>
+              <option value="₦500,000 - ₦1,500,000 / month">₦500,000 - ₦1,500,000 / month</option>
+              <option value="$500 - $1,500 / month ($ USD)">$500 - $1,500 / month ($ USD)</option>
+              <option value="$1,500+ / Custom Enterprise">$1,500+ / Custom Enterprise</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="contactTargetUrl" class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Target Website / Offer Link (Optional)
+            </label>
+            <input
+              type="url"
+              id="contactTargetUrl"
+              name="target_url"
+              placeholder="https://yourwebsite.com/deal"
+              class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:border-emerald-500 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
+            />
+          </div>
         </div>
 
         <div class="space-y-1.5">
@@ -157,9 +206,9 @@ const twitterHandle = settings.twitter_handle || '@9jaBeacon';
           <textarea
             id="contactMessage"
             name="message"
-            rows="5"
+            rows="4"
             required
-            placeholder="Provide brief details on your campaign budget, target launch date, or news lead..."
+            placeholder="Tell us about your brand, preferred banner format, or confidential news scoop..."
             class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:border-emerald-500 dark:focus:border-emerald-500 text-slate-900 dark:text-white"
           ></textarea>
         </div>
@@ -169,7 +218,7 @@ const twitterHandle = settings.twitter_handle || '@9jaBeacon';
         <button
           type="submit"
           id="contactSubmitBtn"
-          class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center gap-2"
+          class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center gap-2 cursor-pointer"
         >
           <span>Send Inquiry</span>
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,23 +230,59 @@ const twitterHandle = settings.twitter_handle || '@9jaBeacon';
   </article>
 
   <script is:inline>
-    document.getElementById('contactForm')?.addEventListener('submit', function(e) {
+    document.getElementById('contactForm')?.addEventListener('submit', async function(e) {
       e.preventDefault();
       const status = document.getElementById('contactStatus');
       const btn = document.getElementById('contactSubmitBtn');
-      if (!status || !btn) return;
+      const form = document.getElementById('contactForm');
+      if (!status || !btn || !form) return;
+
+      const name = document.getElementById('contactName')?.value?.trim();
+      const email = document.getElementById('contactEmailInput')?.value?.trim();
+      const subject = document.getElementById('contactSubject')?.value;
+      const company = document.getElementById('contactCompany')?.value?.trim();
+      const budget = document.getElementById('contactBudget')?.value;
+      const target_url = document.getElementById('contactTargetUrl')?.value?.trim();
+      const message = document.getElementById('contactMessage')?.value?.trim();
+
+      if (!name || !email || !message) {
+        status.className = 'p-3.5 rounded-xl text-xs font-semibold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20';
+        status.textContent = 'Please fill in your name, email, and message.';
+        status.classList.remove('hidden');
+        return;
+      }
 
       btn.disabled = true;
-      btn.textContent = 'Sending...';
+      btn.innerHTML = 'Submitting to Desk...';
 
-      setTimeout(() => {
-        status.className = 'p-3.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
-        status.textContent = 'Thank you! Your message has been received by our editorial desk. We will respond within 24 business hours.';
+      try {
+        const res = await fetch('/api/contact/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, subject, company, budget, target_url, message })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          status.className = 'p-4 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 space-y-1';
+          status.innerHTML = '<strong>Inquiry Successfully Registered!</strong><br />Thank you! Your message and advertising requirements have been received by the 9jaBeacon admin desk. Our team will review your proposal and respond promptly.';
+          status.classList.remove('hidden');
+          form.reset();
+          btn.innerHTML = 'Inquiry Sent!';
+        } else {
+          status.className = 'p-3.5 rounded-xl text-xs font-semibold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20';
+          status.textContent = data.error || 'Failed to submit inquiry. Please try again.';
+          status.classList.remove('hidden');
+          btn.innerHTML = 'Retry Sending';
+        }
+      } catch (err) {
+        status.className = 'p-3.5 rounded-xl text-xs font-semibold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20';
+        status.textContent = 'Network error contacting the editorial desk. Please try again.';
         status.classList.remove('hidden');
+        btn.innerHTML = 'Retry Sending';
+      } finally {
         btn.disabled = false;
-        btn.textContent = 'Message Sent';
-        document.getElementById('contactForm').reset();
-      }, 600);
+      }
     });
   </script>
 </Layout>
