@@ -16,6 +16,13 @@ import { isPublisherLogoOrBanner } from '../../../lib/editorial-image';
 import { fetchVerifiedWikipediaImage } from '../../../lib/wikipedia-image';
 import { postToBuffer, type BufferConfig } from '../../../lib/buffer';
 import { submitUrlToBing, submitToIndexNow } from '../../../lib/bing-api';
+import {
+  classifyTopic,
+  qualityGate,
+  getDeskAttribution,
+  categorySlugToId,
+  readingMinutes
+} from '../../../lib/editorial-pipeline';
 
 interface TriggerCrawlBody {
   source_id?: string;
@@ -188,7 +195,48 @@ export const POST: APIRoute = async ({ request, locals }) => {
             continue;
           }
 
-          const categoryId = aiResult.categoryId || source.category_default_id || 'cat_naija_news';
+          // Fail-Closed Post-Synthesis Quality Gate
+          const rawPlainText = (aiResult.content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+          const determinedCategorySlug = classifyTopic(
+            aiResult.title || item.title || '',
+            rawPlainText,
+            aiResult.categoryId || source.category_default_id
+          );
+          const finalCategoryId = categorySlugToId(determinedCategorySlug);
+
+          const gateCheck = qualityGate({
+            title: aiResult.title || item.title || '',
+            bodyHtml: aiResult.content,
+            bodyText: rawPlainText,
+            category: determinedCategorySlug,
+            sourceOk: true,
+          });
+
+          if (!gateCheck.pass) {
+            rejectedFromSource++;
+            totalRejectedNoAi++;
+            const failureDetail = `Quality Gate Rejected: ${gateCheck.reasons.join('; ')}`;
+            await recordRejectedArticle(db, {
+              source_id: source.id,
+              source_name: source.name,
+              original_title: item.title || 'Untitled Lead',
+              original_url: item.link || source.website_url,
+              raw_content: item.description || item.content || '',
+              rejection_reason: failureDetail,
+              ai_tier_failures: (aiResult.traceLogs || []).join(' -> '),
+            });
+            await recordLog(
+              db,
+              'ARTICLE_REJECTED',
+              source.id,
+              source.name,
+              `Quality gate rejected "${rawTitle.slice(0, 45)}...": ${failureDetail}`,
+              'warning'
+            );
+            continue;
+          }
+
+          const categoryId = finalCategoryId;
 
           // Image handling & validation:
           // 1. Try fetching verified archival/editorial photograph from Wikipedia first
@@ -248,19 +296,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
             imageCredit = genImg.credit;
           }
 
-          let authorName = '9jaBeacon Editorial Team';
-          let authorRole = 'National Affairs & Governance Desk';
-
-          if (categoryId === 'cat_money_hustle' || categoryId === 'cat_business') {
-            authorName = '9jaBeacon Finance Team';
-            authorRole = 'Markets, Banking & Economy Desk';
-          } else if (categoryId === 'cat_sports') {
-            authorName = '9jaBeacon Sports Desk';
-            authorRole = 'Sports & Athletics Desk';
-          } else if (categoryId === 'cat_world') {
-            authorName = '9jaBeacon World News Desk';
-            authorRole = 'Global Foreign Affairs Desk';
-          }
+          const desk = getDeskAttribution(determinedCategorySlug);
+          const authorName = desk.authorName;
+          const authorRole = desk.authorRole;
+          const wordCount = rawPlainText.split(/\s+/).filter(Boolean).length;
+          const computedReadingTime = readingMinutes(wordCount);
 
           const publishedArticle = await createArticle(db, {
             title: aiResult.title,
@@ -279,7 +319,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
             is_top_story: 0,
             is_trending: 1,
             is_breaking: 0,
-            reading_time_minutes: aiResult.readingTimeMinutes || 3,
+            reading_time_minutes: computedReadingTime,
             status: 'published',
           });
 

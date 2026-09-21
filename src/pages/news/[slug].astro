@@ -7,6 +7,7 @@ import AdSlot from '../../components/AdSlot.astro';
 import { getD1, getArticleBySlug, getRelatedArticles, getSiteSettings } from '../../lib/runtime-db';
 import { DEFAULT_FALLBACK_IMAGE_URL } from '../../lib/fallback-image';
 import { cleanAndFormatArticleHtml, partitionArticleForAds } from '../../lib/content-formatter';
+import { readingMinutes } from '../../lib/editorial-pipeline';
 
 export const prerender = false;
 
@@ -52,6 +53,9 @@ const articleParts = partitionArticleForAds(formattedArticleContent);
 
 const plainTextArticle = formattedArticleContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 const estimatedWordCount = plainTextArticle ? plainTextArticle.split(/\s+/).filter(Boolean).length : 300;
+const displayReadingTime = article.reading_time_minutes && article.reading_time_minutes > 0
+  ? article.reading_time_minutes
+  : readingMinutes(estimatedWordCount);
 
 // Structured Data (Schema.org NewsArticle & BreadcrumbList for rich SERP snippets)
 const structuredData = [
@@ -192,7 +196,7 @@ const structuredData = [
       <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 font-medium">
         <span>Published {publishedDate}</span>
         {isUpdated && <span>· Updated {updatedDate}</span>}
-        <span>· {article.reading_time_minutes || 4} min read</span>
+        <span>· {displayReadingTime} min read</span>
         <span>· {(article.views_count ?? 0).toLocaleString()} reads</span>
       </div>
     </div>

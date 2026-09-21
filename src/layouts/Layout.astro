@@ -11,6 +11,9 @@ interface Props {
   description?: string;
   image?: string;
   canonicalUrl?: string;
+  prevUrl?: string;
+  nextUrl?: string;
+  noIndex?: boolean;
   article?: {
     publishedTime?: string;
     modifiedTime?: string;
@@ -25,6 +28,9 @@ const {
   description = "Nigeria's independent digital newsroom. Delivering fast, verified Nigerian news, politics, business, tech, and cultural updates.",
   image = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
   canonicalUrl,
+  prevUrl,
+  nextUrl,
+  noIndex = false,
   article,
   activeNav = 'home'
 } = Astro.props;
@@ -34,11 +40,31 @@ const [categories, settings] = await Promise.all([getCategories(d1), getSiteSett
 const siteName = settings.site_name || '9jaBeacon';
 const siteBase = (settings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
 
-// Compute clean absolute canonical URL
+// Compute clean absolute canonical URL respecting pagination
 const pagePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const pageParam = Astro.url.searchParams.get('page');
+const parsedPage = pageParam ? parseInt(pageParam, 10) : 1;
+const isPaginated = !isNaN(parsedPage) && parsedPage > 1;
+
+let computedPath = '';
+if (pagePath === '/') {
+  computedPath = isPaginated ? `/?page=${parsedPage}` : '';
+} else {
+  computedPath = isPaginated ? `${pagePath}?page=${parsedPage}` : pagePath;
+}
+
 const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !canonicalUrl.includes('localhost')
   ? canonicalUrl
-  : `${siteBase}${pagePath === '/' ? '' : pagePath}`;
+  : `${siteBase}${computedPath}`;
+
+// Auto-derive prevUrl for pagination if not explicitly passed
+const effectivePrevUrl = prevUrl || (isPaginated
+  ? (parsedPage === 2
+      ? (pagePath === '/' ? `${siteBase}/` : `${siteBase}${pagePath}`)
+      : (pagePath === '/' ? `${siteBase}/?page=${parsedPage - 1}` : `${siteBase}${pagePath}?page=${parsedPage - 1}`)
+    )
+  : undefined);
+
 // Helper to sanitize verification tokens if the user pasted a raw <meta> snippet
 function extractVerificationCode(val?: string): string {
   if (!val) return '';
@@ -63,8 +89,10 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{title}</title>
   <meta name="description" content={description} />
-  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta name="robots" content={noIndex ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"} />
   <link rel="canonical" href={computedCanonical} />
+  {effectivePrevUrl && <link rel="prev" href={effectivePrevUrl} />}
+  {nextUrl && <link rel="next" href={nextUrl} />}
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="alternate" type="application/rss+xml" title={`${siteName} RSS Feed`} href="/rss.xml" />
   <meta name="theme-color" content="#008751" />

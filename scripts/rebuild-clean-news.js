@@ -1,6 +1,5 @@
 import Database from 'better-sqlite3';
 import fs from 'fs';
-import path from 'path';
 
 // Clean, authoritative 3-4 paragraph articles with unobtrusive native banner headings
 // Word counts per paragraph: 65 - 95 words. Total: ~280 - 380 words.

@@ -35,23 +35,23 @@ export interface Article {
   category_name?: string;
   category_slug?: string;
   image_url: string;
-  image_caption?: string;
-  image_credit?: string;
-  image_license?: string;
+  image_caption?: string | null;
+  image_credit?: string | null;
+  image_license?: string | null;
   author_name: string;
   author_role: string;
-  author_avatar?: string;
+  author_avatar?: string | null;
   is_top_story: number | boolean;
   is_trending: number | boolean;
   is_breaking: number | boolean;
   views_count: number;
   reading_time_minutes: number;
-  source_id?: string;
-  source_name?: string;
-  source_original_url?: string;
+  source_id?: string | null;
+  source_name?: string | null;
+  source_original_url?: string | null;
   published_at: string;
   updated_at: string;
-  created_at?: string;
+  created_at?: string | null;
   status: 'published' | 'draft' | 'archived';
 }
 

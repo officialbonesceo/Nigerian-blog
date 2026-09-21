@@ -26,9 +26,19 @@ const categoryArticles = fetchedArticles.slice(0, pageSize);
 const isFirstPage = page === 1;
 const topCatArticle = isFirstPage ? categoryArticles[0] : null;
 const listArticles = isFirstPage ? categoryArticles.slice(1) : categoryArticles;
+
+const siteBase = 'https://9jabeacon.name.ng';
+const prevUrl = page > 1 ? (page === 2 ? `${siteBase}/category/${slug}` : `${siteBase}/category/${slug}?page=${page - 1}`) : undefined;
+const nextUrl = hasNextPage ? `${siteBase}/category/${slug}?page=${page + 1}` : undefined;
 ---
 
-<Layout title={`${category.name} News (Page ${page}) - 9jaBeacon`} description={category.description} activeNav={slug}>
+<Layout
+  title={page > 1 ? `${category.name} News (Page ${page}) - 9jaBeacon` : `${category.name} News - Verified Updates | 9jaBeacon`}
+  description={category.description}
+  prevUrl={prevUrl}
+  nextUrl={nextUrl}
+  activeNav={slug}
+>
   <!-- Category Header Hero -->
   <div class="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-slate-100 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 space-y-4 mb-5 shadow-xs">
     <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">

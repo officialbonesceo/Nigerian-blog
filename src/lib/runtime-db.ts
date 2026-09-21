@@ -1085,7 +1085,7 @@ export async function createArticle(db: D1Database, input: Record<string, unknow
         ? input.views_count
         : (85 + Math.floor(Math.random() * 55))
     ),
-    reading_time_minutes: Number(input.reading_time_minutes || 4),
+    reading_time_minutes: Number(input.reading_time_minutes || 2),
     source_id: input.source_id ? String(input.source_id) : null,
     source_name: input.source_name ? String(input.source_name) : null,
     source_original_url: input.source_original_url ? String(input.source_original_url) : null,

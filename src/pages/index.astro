@@ -52,6 +52,10 @@ try {
 const hasNextPage = latestArticles.length > pageSize;
 const currentFeed = latestArticles.slice(0, pageSize);
 
+const siteBase = (siteSettings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+const prevUrl = page > 1 ? (page === 2 ? `${siteBase}/` : `${siteBase}/?page=${page - 1}`) : undefined;
+const nextUrl = hasNextPage ? `${siteBase}/?page=${page + 1}` : undefined;
+
 // Ensure there is always an effective top story on page 1 if any articles exist
 const effectiveTopStory = page === 1 ? (topStory || (currentFeed.length > 0 ? currentFeed[0] : null)) : null;
 const filteredLatest = page === 1
@@ -59,7 +63,13 @@ const filteredLatest = page === 1
   : currentFeed;
 ---
 
-<Layout title={`9jaBeacon - Your Trusted Light on Nigerian News ${page > 1 ? `(Page ${page})` : ''}`} activeNav="home">
+<Layout
+  title={page > 1 ? `9jaBeacon - Verified Nigerian News (Page ${page})` : '9jaBeacon - Your Trusted Light on Nigerian News'}
+  description={page > 1 ? `Explore page ${page} of verified Nigerian news, politics, business, tech, and cultural dispatches on 9jaBeacon.` : siteSettings.site_tagline || "Nigeria's independent digital newsroom. Delivering fast, verified Nigerian news, politics, business, tech, and cultural updates."}
+  prevUrl={prevUrl}
+  nextUrl={nextUrl}
+  activeNav="home"
+>
   <!-- Breaking News Ticker (Page 1) -->
   {page === 1 && breakingNews[0] && (
     <div class="mb-3 p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 flex items-center gap-2">

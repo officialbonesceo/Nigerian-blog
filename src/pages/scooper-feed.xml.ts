@@ -4,8 +4,7 @@ import { getD1, getArticles, getSiteSettings } from '../lib/runtime-db';
 export const prerender = false;
 
 function escapeXml(unsafe: string): string {
-  if (!unsafe) return '';
-  return unsafe
+  return (unsafe || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -36,12 +35,17 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
     }
     origin = origin.replace(/\/+$/, '');
 
+    // Determine feed path from requested URL
+    const pathname = (url && url.pathname) ? url.pathname : '/rss.xml';
+    const feedSelfUrl = `${origin}${pathname}`;
+
     const itemsXml = articles.map((art) => {
       const articleUrl = `${origin}/news/${encodeURIComponent(art.slug)}`;
       const pubDate = art.published_at ? new Date(art.published_at).toUTCString() : new Date().toUTCString();
       const imageUrl = art.image_url || `${origin}/favicon.svg`;
       const categoryName = art.category_name || 'Naija News';
       const cleanContent = art.content || `<p>${escapeXml(art.summary || art.title)}</p>`;
+      const author = art.author_name || '9jaBeacon Editorial Desk';
 
       return `
     <item>
@@ -49,7 +53,7 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
       <link>${articleUrl}</link>
       <guid isPermaLink="true">${articleUrl}</guid>
       <pubDate>${pubDate}</pubDate>
-      <dc:creator><![CDATA[9jaBeacon Editorial Desk]]></dc:creator>
+      <dc:creator><![CDATA[${author}]]></dc:creator>
       <category><![CDATA[${categoryName}]]></category>
       <description><![CDATA[${art.summary || art.title}]]></description>
       <content:encoded><![CDATA[${cleanContent}]]></content:encoded>
@@ -68,12 +72,12 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
   xmlns:media="http://search.yahoo.com/mrss/"
   xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>9jaBeacon - Phoenix Browser &amp; Scooper News Feed</title>
+    <title>9jaBeacon - Phoenix Browser, Scooper News &amp; RSS Feed</title>
     <link>${origin}</link>
-    <description>Verified Nigerian breaking news, politics, business, sports, and world events syndication feed for Phoenix Browser and Scooper News.</description>
+    <description>Verified Nigerian breaking news, politics, business, sports, and world events syndication feed for 9jaBeacon.</description>
     <language>en-NG</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
-    <atom:link href="${origin}/scooper-feed.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="${feedSelfUrl}" rel="self" type="application/rss+xml" />
     <image>
       <url>${origin}/favicon.svg</url>
       <title>9jaBeacon</title>
@@ -83,20 +87,16 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
   </channel>
 </rss>`;
 
-    return new Response(xml, {
+    return new Response(xml.trim(), {
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
-        'Cache-Control': 'public, max-age=120, s-maxage=300',
-        'X-Syndication-Partner': 'Scooper-PhoenixBrowser-v2',
+        'Cache-Control': 'public, max-age=600, s-maxage=1200, stale-while-revalidate=86400',
       },
     });
   } catch (err: any) {
-    return new Response(
-      `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>9jaBeacon</title><description>Error generating syndication feed</description></channel></rss>`,
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-      }
-    );
+    return new Response(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>9jaBeacon</title><description>Error: ${escapeXml(err.message)}</description></channel></rss>`, {
+      status: 500,
+      headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+    });
   }
 };

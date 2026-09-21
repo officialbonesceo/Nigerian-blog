@@ -16,6 +16,13 @@ const CORRUPTED_SIGNATURES = [
   'Accurate, verified reporting remains vital for public awareness',
   'Active lead verified by 9jaBeacon Editorial Desk',
   'Authorities and industry stakeholders are actively monitoring the situation',
+  'compiling further operational updates',
+  'field dispatches and corroborating sources',
+  'As this development continues to unfold across Nigeria, key questions remain regarding regulatory oversight',
+  'The Stakes',
+  'The Stats',
+  'As an AI language model',
+  'Here is a rewritten version',
 ];
 
 export const POST: APIRoute = async ({ request, locals }) => {

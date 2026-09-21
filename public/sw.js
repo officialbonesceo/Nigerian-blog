@@ -1,4 +1,5 @@
 // Monetag Web Push Notification Service Worker Integration
+// @ts-nocheck
 self.options = {
   "domain": "3nbf4.com",
   "zoneId": 11801367
@@ -22,11 +23,14 @@ const PRECACHE_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS).catch((err) => {
+    (async () => {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.addAll(PRECACHE_ASSETS);
+      } catch (err) {
         console.warn('[SW] Precache failed, continuing:', err);
-      });
-    })
+      }
+    })()
   );
   self.skipWaiting();
 });

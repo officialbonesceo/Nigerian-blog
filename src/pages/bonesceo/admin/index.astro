@@ -1860,7 +1860,7 @@ for (const s of autoSettings) {
             Create and launch a sponsored partner card directly for clients who negotiated outside the contact form.
           </p>
 
-          <form id="manualCampaignForm" onsubmit="launchManualCampaign(event)" class="space-y-4">
+          <form id="manualCampaignForm" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="space-y-1.5">
                 <label class="text-xs font-bold text-slate-300">Campaign Headline <span class="text-red-400">*</span></label>
@@ -2106,7 +2106,7 @@ for (const s of autoSettings) {
           </div>
         </div>
 
-        <form id="bingSettingsForm" onsubmit="saveBingSettings(event)" class="space-y-6">
+        <form id="bingSettingsForm" class="space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Left Column: Primary Credentials -->
             <div class="space-y-4">
@@ -3532,6 +3532,9 @@ for (const s of autoSettings) {
       }
     }
     window.saveBingSettings = saveBingSettings;
+
+    document.getElementById('manualCampaignForm')?.addEventListener('submit', launchManualCampaign);
+    document.getElementById('bingSettingsForm')?.addEventListener('submit', saveBingSettings);
 
     async function testBingConnection() {
       const testBtn = document.getElementById('testBingBtn');

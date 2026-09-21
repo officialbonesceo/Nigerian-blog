@@ -11,7 +11,6 @@
 
 const Database = require('better-sqlite3');
 const path = require('path');
-const fs = require('fs');
 
 const dbPath = path.resolve('.wrangler/state/v3/d1/miniflare-D1DatabaseObject/77312c3b9ae73bbfac76bf2a4751d6093a4b72f3be14a3377a4a80101b0bca29.sqlite');
 const db = new Database(dbPath);
