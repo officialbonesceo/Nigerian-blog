@@ -51,23 +51,47 @@ if (queryToken && isSessionValid) {
   );
 }
 
-// Redirect to login only if neither valid token nor cookie is present
 if (!isSessionValid && !cookie.includes('bonesceo_session=') && !queryToken) {
-  return Astro.redirect('/bonesceo/admin/login');
+  return Astro.redirect('/bonesceo/admin/login', 302);
 }
 
-const [stats, sources, articles, analytics, logs, autoSettings, rejectedList, categories, advertInquiries, customAds] = await Promise.all([
-  getAdminDashboardStats(db),
-  getSources(db),
-  getArticles(db, { limit: 120 }),
-  getAnalyticsMetrics(db),
-  getAutomationLogs(db, 80),
-  getAutomationSettings(db),
-  getRejectedArticles(db, 40),
-  getCategories(db),
-  getAdvertInquiries(db),
-  getCustomAds(db),
-]);
+let stats: any = {};
+let sources: any[] = [];
+let articles: any[] = [];
+let analytics: any = {};
+let logs: any[] = [];
+let autoSettings: any[] = [];
+let rejectedList: any[] = [];
+let categories: any[] = [];
+let advertInquiries: any[] = [];
+let customAds: any[] = [];
+
+try {
+  const results = await Promise.all([
+    getAdminDashboardStats(db),
+    getSources(db),
+    getArticles(db, { limit: 120 }),
+    getAnalyticsMetrics(db),
+    getAutomationLogs(db, 80),
+    getAutomationSettings(db),
+    getRejectedArticles(db, 40),
+    getCategories(db),
+    getAdvertInquiries(db),
+    getCustomAds(db),
+  ]);
+  stats = results[0];
+  sources = results[1];
+  articles = results[2];
+  analytics = results[3];
+  logs = results[4];
+  autoSettings = results[5];
+  rejectedList = results[6];
+  categories = results[7];
+  advertInquiries = results[8];
+  customAds = results[9];
+} catch (dashErr) {
+  console.error('[Admin Dashboard Error]:', dashErr);
+}
 
 const settingsMap: Record<string, string> = {};
 for (const s of autoSettings) {

@@ -8,16 +8,19 @@ export function getEnvSecret(locals?: any, ...keys: string[]): string | undefine
   const envSources = [
     locals?.runtime?.env,
     locals?.env,
-    process?.env,
-    (import.meta as any)?.env,
+    typeof process !== 'undefined' ? process.env : undefined,
   ];
 
   for (const source of envSources) {
     if (!source || typeof source !== 'object') continue;
     for (const key of keys) {
-      if (source[key]) return String(source[key]).trim();
-      if (source[key.toUpperCase()]) return String(source[key.toUpperCase()]).trim();
-      if (source[key.toLowerCase()]) return String(source[key.toLowerCase()]).trim();
+      try {
+        if (source[key]) return String(source[key]).trim();
+        const upper = key.toUpperCase();
+        if (source[upper]) return String(source[upper]).trim();
+        const lower = key.toLowerCase();
+        if (source[lower]) return String(source[lower]).trim();
+      } catch {}
     }
   }
   return undefined;

@@ -262,152 +262,180 @@ export function invalidateCache(prefix?: string): void {
 }
 
 let tablesChecked = false;
-export async function ensureTablesExist(db: D1Database) {
-  if (tablesChecked) return;
-  try {
-    await db.prepare("SELECT 1 FROM articles LIMIT 1").first();
-    tablesChecked = true;
-  } catch (err: any) {
-    const msg = String(err?.message || err);
-    if (msg.includes('no such table')) {
-      console.log('Initializing missing database tables in D1...');
-      try {
-        const statements = [
-          `CREATE TABLE IF NOT EXISTS categories (
-            id TEXT PRIMARY KEY,
-            slug TEXT UNIQUE NOT NULL,
-            name TEXT NOT NULL,
-            description TEXT,
-            icon TEXT DEFAULT 'newspaper',
-            color TEXT DEFAULT '#008751',
-            follower_count INTEGER DEFAULT 1250,
-            display_order INTEGER DEFAULT 0
-          )`,
-          `CREATE TABLE IF NOT EXISTS sources (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            feed_url TEXT NOT NULL,
-            website_url TEXT NOT NULL,
-            category_default_id TEXT,
-            is_enabled INTEGER DEFAULT 1,
-            is_official INTEGER DEFAULT 0,
-            trust_score REAL DEFAULT 95.0,
-            license_notes TEXT,
-            last_fetched_at TEXT,
-            fetch_interval_minutes INTEGER DEFAULT 30,
-            created_at TEXT DEFAULT (datetime('now'))
-          )`,
-          `CREATE TABLE IF NOT EXISTS articles (
-            id TEXT PRIMARY KEY,
-            slug TEXT UNIQUE NOT NULL,
-            title TEXT NOT NULL,
-            summary TEXT NOT NULL,
-            content TEXT NOT NULL,
-            category_id TEXT NOT NULL,
-            image_url TEXT,
-            image_caption TEXT,
-            image_credit TEXT,
-            image_license TEXT,
-            author_name TEXT DEFAULT '9jaBeacon Editorial Team',
-            author_role TEXT DEFAULT 'Editorial Contributor',
-            author_avatar TEXT,
-            is_top_story INTEGER DEFAULT 0,
-            is_trending INTEGER DEFAULT 0,
-            is_breaking INTEGER DEFAULT 0,
-            views_count INTEGER DEFAULT 0,
-            reading_time_minutes INTEGER DEFAULT 4,
-            source_id TEXT,
-            source_name TEXT,
-            source_original_url TEXT,
-            published_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now')),
-            created_at TEXT DEFAULT (datetime('now')),
-            status TEXT DEFAULT 'published'
-          )`,
-          `CREATE TABLE IF NOT EXISTS automation_settings (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL,
-            description TEXT,
-            updated_at TEXT DEFAULT (datetime('now'))
-          )`,
-          `CREATE TABLE IF NOT EXISTS automation_logs (
-            id TEXT PRIMARY KEY,
-            action TEXT NOT NULL,
-            source_id TEXT,
-            message TEXT NOT NULL,
-            status TEXT DEFAULT 'info',
-            created_at TEXT DEFAULT (datetime('now'))
-          )`,
-          `CREATE TABLE IF NOT EXISTS article_reports (
-            id TEXT PRIMARY KEY,
-            article_id TEXT NOT NULL,
-            article_title TEXT,
-            article_slug TEXT,
-            reason TEXT NOT NULL,
-            details TEXT,
-            reporter_email TEXT,
-            status TEXT DEFAULT 'pending',
-            created_at TEXT DEFAULT (datetime('now'))
-          )`,
-          `CREATE TABLE IF NOT EXISTS rejected_articles (
-            id TEXT PRIMARY KEY,
-            source_id TEXT,
-            source_name TEXT,
-            original_title TEXT NOT NULL,
-            original_url TEXT NOT NULL,
-            raw_content TEXT,
-            rejection_reason TEXT NOT NULL,
-            ai_tier_failures TEXT,
-            status TEXT DEFAULT 'rejected',
-            created_at TEXT DEFAULT (datetime('now'))
-          )`,
-          `CREATE TABLE IF NOT EXISTS site_settings (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL,
-            updated_at TEXT DEFAULT (datetime('now'))
-          )`,
-          `CREATE TABLE IF NOT EXISTS advert_inquiries (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            company TEXT,
-            budget TEXT,
-            target_url TEXT,
-            message TEXT NOT NULL,
-            status TEXT DEFAULT 'pending',
-            promoted_headline TEXT,
-            promoted_teaser TEXT,
-            promoted_link TEXT,
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now'))
-          )`,
-          `CREATE TABLE IF NOT EXISTS custom_ads (
-            id TEXT PRIMARY KEY,
-            inquiry_id TEXT,
-            title TEXT NOT NULL,
-            teaser TEXT,
-            target_url TEXT NOT NULL,
-            format TEXT DEFAULT 'spotlight',
-            is_active INTEGER DEFAULT 1,
-            impressions INTEGER DEFAULT 0,
-            clicks INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now'))
-          )`,
-          `CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)`,
-          `CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC)`,
-          `CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`,
-          `CREATE INDEX IF NOT EXISTS idx_automation_logs_created ON automation_logs(created_at DESC)`
-        ];
+export async function ensureTablesExist(db: D1Database, force = false) {
+  if (tablesChecked && !force) return;
+  if (!force) {
+    try {
+      await Promise.all([
+        db.prepare("SELECT 1 FROM articles LIMIT 1").first(),
+        db.prepare("SELECT 1 FROM custom_ads LIMIT 1").first(),
+        db.prepare("SELECT 1 FROM advert_inquiries LIMIT 1").first(),
+        db.prepare("SELECT 1 FROM visitor_analytics LIMIT 1").first(),
+      ]);
+      tablesChecked = true;
+      return;
+    } catch {
+      // One or more tables are missing; initialize tables in D1
+    }
+  }
 
-        for (const stmt of statements) {
-          try {
-            await db.prepare(stmt).run();
-          } catch (stmtErr) {
-            console.warn('Statement failed in D1 init:', stmtErr);
-          }
-        }
+  console.log('Ensuring all database tables exist in D1...');
+  try {
+    const statements = [
+      `CREATE TABLE IF NOT EXISTS categories (
+        id TEXT PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        icon TEXT DEFAULT 'newspaper',
+        color TEXT DEFAULT '#008751',
+        follower_count INTEGER DEFAULT 1250,
+        display_order INTEGER DEFAULT 0
+      )`,
+      `CREATE TABLE IF NOT EXISTS sources (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        feed_url TEXT NOT NULL,
+        website_url TEXT NOT NULL,
+        category_default_id TEXT,
+        is_enabled INTEGER DEFAULT 1,
+        is_official INTEGER DEFAULT 0,
+        trust_score REAL DEFAULT 95.0,
+        license_notes TEXT,
+        last_fetched_at TEXT,
+        fetch_interval_minutes INTEGER DEFAULT 30,
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS articles (
+        id TEXT PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        content TEXT NOT NULL,
+        category_id TEXT NOT NULL,
+        image_url TEXT,
+        image_caption TEXT,
+        image_credit TEXT,
+        image_license TEXT,
+        author_name TEXT DEFAULT '9jaBeacon Editorial Team',
+        author_role TEXT DEFAULT 'Editorial Contributor',
+        author_avatar TEXT,
+        is_top_story INTEGER DEFAULT 0,
+        is_trending INTEGER DEFAULT 0,
+        is_breaking INTEGER DEFAULT 0,
+        views_count INTEGER DEFAULT 0,
+        reading_time_minutes INTEGER DEFAULT 4,
+        source_id TEXT,
+        source_name TEXT,
+        source_original_url TEXT,
+        published_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        created_at TEXT DEFAULT (datetime('now')),
+        status TEXT DEFAULT 'published'
+      )`,
+      `CREATE TABLE IF NOT EXISTS automation_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        description TEXT,
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS automation_logs (
+        id TEXT PRIMARY KEY,
+        action TEXT NOT NULL,
+        source_id TEXT,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'info',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS article_reports (
+        id TEXT PRIMARY KEY,
+        article_id TEXT NOT NULL,
+        article_title TEXT,
+        article_slug TEXT,
+        reason TEXT NOT NULL,
+        details TEXT,
+        reporter_email TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS rejected_articles (
+        id TEXT PRIMARY KEY,
+        source_id TEXT,
+        source_name TEXT,
+        original_title TEXT NOT NULL,
+        original_url TEXT NOT NULL,
+        raw_content TEXT,
+        rejection_reason TEXT NOT NULL,
+        ai_tier_failures TEXT,
+        status TEXT DEFAULT 'rejected',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS site_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS advert_inquiries (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        company TEXT,
+        budget TEXT,
+        target_url TEXT,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        promoted_headline TEXT,
+        promoted_teaser TEXT,
+        promoted_link TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS custom_ads (
+        id TEXT PRIMARY KEY,
+        inquiry_id TEXT,
+        title TEXT NOT NULL,
+        teaser TEXT,
+        target_url TEXT NOT NULL,
+        format TEXT DEFAULT 'spotlight',
+        is_active INTEGER DEFAULT 1,
+        impressions INTEGER DEFAULT 0,
+        clicks INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS visitor_analytics (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        visit_date TEXT NOT NULL,
+        page_path TEXT NOT NULL,
+        user_agent TEXT,
+        referrer TEXT,
+        device_type TEXT DEFAULT 'mobile',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS admin_users (
+        id TEXT PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT DEFAULT 'admin',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`,
+      `CREATE INDEX IF NOT EXISTS idx_automation_logs_created ON automation_logs(created_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_visitor_date ON visitor_analytics(visit_date)`
+    ];
+
+    for (const stmt of statements) {
+      try {
+        await db.prepare(stmt).run();
+      } catch (stmtErr) {
+        console.warn('Statement warning in D1 init:', stmtErr);
+      }
+    }
+    tablesChecked = true;
 
         // Seed default categories
         for (const cat of initialCategories) {
@@ -443,8 +471,6 @@ export async function ensureTablesExist(db: D1Database) {
         console.warn('Could not auto-create missing tables in D1:', createErr);
       }
     }
-  }
-}
 
 function formatArticle(art: any): Article {
   let catName = art.category_name;
@@ -1364,7 +1390,7 @@ export async function updateAdvertInquiry(
 ): Promise<boolean> {
   try {
     await ensureTablesExist(db);
-    const sets: string[] = ['updated_at = datetime("now")'];
+    const sets: string[] = ["updated_at = datetime('now')"];
     const params: any[] = [];
     if (updates.status !== undefined) {
       sets.push('status = ?');
@@ -1404,15 +1430,38 @@ export async function deleteAdvertInquiry(db: D1Database, id: string): Promise<b
 }
 
 export async function getCustomAds(db: D1Database, onlyActive = false): Promise<CustomAd[]> {
+  const cacheKey = `custom_ads_${onlyActive ? 'active' : 'all'}`;
+  const cached = getCached<CustomAd[]>(cacheKey);
+  if (cached) return cached;
+
   try {
     await ensureTablesExist(db);
     const sql = onlyActive
       ? 'SELECT * FROM custom_ads WHERE is_active = 1 ORDER BY created_at DESC'
       : 'SELECT * FROM custom_ads ORDER BY created_at DESC';
     const res = await db.prepare(sql).all<CustomAd>();
-    return res?.results || [];
-  } catch (err) {
-    console.error('getCustomAds error:', err);
+    const ads = res?.results || [];
+    setCached(cacheKey, ads, 60_000);
+    return ads;
+  } catch (err: any) {
+    const msg = String(err?.message || err);
+    if (msg.includes('no such table')) {
+      console.warn('custom_ads table missing on query, initializing tables...');
+      try {
+        await ensureTablesExist(db, true);
+        const sql = onlyActive
+          ? 'SELECT * FROM custom_ads WHERE is_active = 1 ORDER BY created_at DESC'
+          : 'SELECT * FROM custom_ads ORDER BY created_at DESC';
+        const res = await db.prepare(sql).all<CustomAd>();
+        const ads = res?.results || [];
+        setCached(cacheKey, ads, 60_000);
+        return ads;
+      } catch (retryErr) {
+        console.error('getCustomAds retry error:', retryErr);
+      }
+    } else {
+      console.error('getCustomAds error:', err);
+    }
     return [];
   }
 }
@@ -1454,6 +1503,7 @@ export async function createCustomAd(
       });
     }
 
+    invalidateCache('custom_ads');
     return { success: true, id };
   } catch (err: any) {
     console.error('createCustomAd error:', err);
@@ -1464,7 +1514,8 @@ export async function createCustomAd(
 export async function toggleCustomAd(db: D1Database, id: string, isActive: boolean): Promise<boolean> {
   try {
     await ensureTablesExist(db);
-    await db.prepare('UPDATE custom_ads SET is_active = ?, updated_at = datetime("now") WHERE id = ?').bind(isActive ? 1 : 0, id).run();
+    await db.prepare("UPDATE custom_ads SET is_active = ?, updated_at = datetime('now') WHERE id = ?").bind(isActive ? 1 : 0, id).run();
+    invalidateCache('custom_ads');
     return true;
   } catch (err) {
     console.error('toggleCustomAd error:', err);
@@ -1476,6 +1527,7 @@ export async function deleteCustomAd(db: D1Database, id: string): Promise<boolea
   try {
     await ensureTablesExist(db);
     await db.prepare('DELETE FROM custom_ads WHERE id = ?').bind(id).run();
+    invalidateCache('custom_ads');
     return true;
   } catch (err) {
     console.error('deleteCustomAd error:', err);
