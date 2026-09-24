@@ -13,6 +13,11 @@ export function cleanAndFormatArticleHtml(raw: string | undefined | null): strin
 
   // 1. Purge all deprecated fallback template boilerplate and generic filler blocks
   text = text
+    .replace(/<div[^>]*class="[^"]*editorial-take[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/<section[^>]*class="[^"]*editorial-take[^"]*"[^>]*>[\s\S]*?<\/section>/gi, '')
+    .replace(/<h3>(?:9jaBeacon\s+)?Editorial Take<\/h3>[\s\S]*?(?=<h[23]|$)/gi, '')
+    .replace(/<p>[^<]*As this development continues to unfold across Nigeria,?\s*key questions remain regarding regulatory oversight[^<]*<\/p>/gi, '')
+    .replace(/As this development continues to unfold across Nigeria,?\s*key questions remain regarding regulatory oversight[^.\n<]*(\.|\n|<)/gi, '')
     .replace(/<h3>The Stakes<\/h3>[\s\S]*?<p>This development is poised to impact governance, citizens, and relevant market sectors across Nigeria\.?<\/p>/gi, '')
     .replace(/<p>This development is poised to impact governance, citizens, and relevant market sectors across Nigeria\.?<\/p>/gi, '')
     .replace(/<h3>The Stats<\/h3>[\s\S]*?<\/ul>/gi, '')

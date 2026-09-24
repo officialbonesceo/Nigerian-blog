@@ -38,7 +38,8 @@ const {
 const d1 = getD1(Astro.locals);
 const [categories, settings] = await Promise.all([getCategories(d1), getSiteSettings(d1)]);
 const siteName = settings.site_name || '9jaBeacon';
-const siteBase = (settings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+const rawSiteBase = (settings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+const siteBase = rawSiteBase === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteBase;
 
 // Compute clean absolute canonical URL respecting pagination
 const pagePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
@@ -53,9 +54,12 @@ if (pagePath === '/') {
   computedPath = isPaginated ? `${pagePath}?page=${parsedPage}` : pagePath;
 }
 
-const computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !canonicalUrl.includes('localhost')
+let computedCanonical = canonicalUrl && canonicalUrl.startsWith('http') && !canonicalUrl.includes('localhost')
   ? canonicalUrl
   : `${siteBase}${computedPath}`;
+if (computedCanonical.startsWith('https://9jabeacon.name.ng/')) {
+  computedCanonical = computedCanonical.replace('https://9jabeacon.name.ng/', 'https://www.9jabeacon.name.ng/');
+}
 
 // Auto-derive prevUrl for pagination if not explicitly passed
 const effectivePrevUrl = prevUrl || (isPaginated

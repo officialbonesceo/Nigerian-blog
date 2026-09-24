@@ -21,10 +21,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
     }
 
     const aiConfig: AiCredentialsConfig = {
+      geminiApiKey: process.env.GEMINI_API_KEY || settingsMap.gemini_api_key,
       cloudflareAccountId: body.cloudflare_account_id || settingsMap.cloudflare_account_id,
       cloudflareApiToken: body.cloudflare_api_token || settingsMap.cloudflare_api_token,
       openrouterApiKey: body.openrouter_api_key || settingsMap.openrouter_api_key,
-      openrouterModel: settingsMap.openrouter_model || 'qwen/qwen-2.5-72b-instruct:free',
+      openrouterModel: settingsMap.openrouter_model || 'openrouter/free',
       localAiEndpoint: body.local_ai_endpoint || settingsMap.local_ai_endpoint || '',
       localAiModel: body.local_ai_model || settingsMap.local_ai_model || 'qwen2.5:3b',
       localAiApiKey: settingsMap.local_ai_api_key || 'ollama',

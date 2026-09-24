@@ -14,3 +14,6 @@ ENVIRONMENT = "production"
 SITE_NAME = "9jaBeacon"
 SITE_URL = "https://9jabeacon.pages.dev"
 
+[triggers]
+crons = ["*/30 * * * *"]
+

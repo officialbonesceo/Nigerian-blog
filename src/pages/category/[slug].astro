@@ -27,7 +27,7 @@ const isFirstPage = page === 1;
 const topCatArticle = isFirstPage ? categoryArticles[0] : null;
 const listArticles = isFirstPage ? categoryArticles.slice(1) : categoryArticles;
 
-const siteBase = 'https://9jabeacon.name.ng';
+const siteBase = 'https://www.9jabeacon.name.ng';
 const prevUrl = page > 1 ? (page === 2 ? `${siteBase}/category/${slug}` : `${siteBase}/category/${slug}?page=${page - 1}`) : undefined;
 const nextUrl = hasNextPage ? `${siteBase}/category/${slug}?page=${page + 1}` : undefined;
 ---

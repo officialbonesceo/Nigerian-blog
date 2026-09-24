@@ -28,7 +28,8 @@ const [relatedArticles, siteSettings] = await Promise.all([
   getSiteSettings(d1)
 ]);
 
-const siteUrl = (siteSettings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+const rawSiteUrl = (siteSettings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+const siteUrl = rawSiteUrl === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteUrl;
 const canonicalUrl = `${siteUrl}/news/${article.slug}`;
 const imageUrl = article.image_url || DEFAULT_FALLBACK_IMAGE_URL;
 

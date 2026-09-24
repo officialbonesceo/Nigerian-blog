@@ -8,7 +8,8 @@ const db = getD1(Astro.locals);
 const settings = await getSiteSettings(db);
 
 const siteName = settings.site_name || '9jaBeacon';
-const siteUrl = (settings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+const rawSiteUrl = (settings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+const siteUrl = rawSiteUrl === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteUrl;
 const contactEmail = settings.contact_email || settings.admin_email || 'officialbonesceo@gmail.com';
 const lastUpdated = 'September 13, 2026';
 ---

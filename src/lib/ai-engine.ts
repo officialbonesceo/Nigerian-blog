@@ -8,6 +8,12 @@ import { decideCategories } from './category-mapper';
 import { generateEditorialSvgDataUrl } from './editorial-image';
 import { cleanAndFormatArticleHtml } from './content-formatter';
 import { cleanRssSnippet } from './rss-parser';
+import { rewriteWithEditorialQuality } from './automated-ingest';
+import { categorySlugToId } from './editorial-pipeline';
+import {
+  discoverOpenRouterFreeModels,
+  discoverCloudflareModels,
+} from './dynamic-model-discovery';
 
 export interface AiSynthesisInput {
   title: string;
@@ -20,7 +26,7 @@ export interface AiSynthesisInput {
 
 export interface AiSynthesisResult {
   success: boolean;
-  provider?: 'cloudflare_workers_ai' | 'openrouter_ai' | 'local_ai_model' | 'pollinations_ai' | 'editorial_synthesis_engine' | 'factual_wire_engine';
+  provider?: 'gemini_ai' | 'cloudflare_workers_ai' | 'openrouter_ai' | 'local_ai_model' | 'pollinations_ai' | 'editorial_synthesis_engine' | 'factual_wire_engine';
   modelUsed?: string;
   title?: string;
   summary?: string;
@@ -35,6 +41,7 @@ export interface AiSynthesisResult {
 }
 
 export interface AiCredentialsConfig {
+  geminiApiKey?: string;
   cloudflareAccountId?: string;
   cloudflareApiToken?: string;
   cloudflareModel?: string;
@@ -45,6 +52,8 @@ export interface AiCredentialsConfig {
   localAiApiKey?: string;
   pollinationsApiKey?: string;
   customPromptTemplate?: string;
+  workingCloudflareModels?: string[];
+  workingOpenRouterModels?: string[];
 }
 
 export const CLOUDFLARE_MODELS_CASCADE = [
@@ -128,6 +137,7 @@ export async function synthesizeNewsArticle(
   input: AiSynthesisInput,
   config: AiCredentialsConfig = {}
 ): Promise<AiSynthesisResult> {
+  const geminiKey = (config.geminiApiKey || process.env.GEMINI_API_KEY || '').trim();
   const accountId = (config.cloudflareAccountId || process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
   const cfToken = (config.cloudflareApiToken || process.env.CLOUDFLARE_API_TOKEN || '').trim();
   const openrouterKey = (config.openrouterApiKey || process.env.OPENROUTER_API_KEY || '').trim();
@@ -146,6 +156,45 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
 
   const errors: string[] = [];
   const traceLogs: string[] = [];
+
+  // TIER 0: Google Gemini AI (Official High-Throughput Flash Cascade)
+  if (geminiKey) {
+    try {
+      traceLogs.push('Tier 0: Attempting Google Gemini AI Flash Cascade');
+      const geminiRewrite = await rewriteWithEditorialQuality({
+        title: input.title,
+        link: input.originalUrl,
+        description: input.description,
+        content: input.content,
+        categoryDefault: input.categoryDefault,
+        sourceName: input.sourceName,
+      });
+
+      if (geminiRewrite.success && geminiRewrite.title && geminiRewrite.content) {
+        const catId = geminiRewrite.category ? categorySlugToId(geminiRewrite.category) : (input.categoryDefault || 'cat_naija_news');
+        traceLogs.push(`Tier 0 (Gemini Flash): Successfully synthesized "${geminiRewrite.title.slice(0, 40)}..."`);
+        return {
+          success: true,
+          provider: 'gemini_ai',
+          modelUsed: 'gemini-3.5-flash',
+          title: geminiRewrite.title,
+          summary: geminiRewrite.summary || input.description || geminiRewrite.title,
+          content: geminiRewrite.content,
+          categoryId: catId,
+          readingTimeMinutes: geminiRewrite.readingTimeMinutes || 4,
+          tags: geminiRewrite.tags || [],
+          traceLogs,
+        };
+      } else {
+        const reasons = (geminiRewrite.reasons || []).join('; ') || geminiRewrite.rawError || 'Validation failed';
+        traceLogs.push(`Tier 0 Warning (Gemini Flash): ${reasons}`);
+        errors.push(`Gemini Flash: ${reasons}`);
+      }
+    } catch (geminiErr: any) {
+      traceLogs.push(`Tier 0 Error (Gemini): ${geminiErr.message}`);
+      errors.push(`Gemini: ${geminiErr.message}`);
+    }
+  }
 
   const attemptAiExpansion = async (
     rawText: string,
@@ -173,9 +222,14 @@ Output strictly updated JSON matching the schema with at least 300 words of cont
     }
   };
 
-  // TIER 1: Cloudflare Workers AI (Llama / Qwen / Mistral)
+  // TIER 1: Cloudflare Workers AI (Dynamic Model Discovery & Verification)
   if (accountId && cfToken) {
-    for (const modelCandidate of CLOUDFLARE_MODELS_CASCADE) {
+    const cfCandidates = (config.workingCloudflareModels && config.workingCloudflareModels.length > 0)
+      ? config.workingCloudflareModels
+      : await discoverCloudflareModels({ accountId, apiToken: cfToken });
+
+    traceLogs.push(`Tier 1: Evaluating ${cfCandidates.length} active Cloudflare models`);
+    for (const modelCandidate of cfCandidates) {
       try {
         traceLogs.push(`Tier 1: Attempting Cloudflare Workers AI with ${modelCandidate}`);
         const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${modelCandidate}`;
@@ -253,9 +307,18 @@ Output strictly updated JSON matching the schema with at least 300 words of cont
     traceLogs.push('Tier 1 Skipped: Cloudflare Workers AI credentials not configured');
   }
 
-  // TIER 2: OpenRouter AI (Qwen 2.5, DeepSeek R1, Llama 3.3)
+  // TIER 2: OpenRouter AI (Dynamic Free Models Discovery & Verification)
   if (openrouterKey) {
-    for (const modelCandidate of OPENROUTER_MODELS_CASCADE) {
+    const discoveredOr = (config.workingOpenRouterModels && config.workingOpenRouterModels.length > 0)
+      ? config.workingOpenRouterModels
+      : await discoverOpenRouterFreeModels({ apiKey: openrouterKey });
+
+    const prioritized = config.openrouterModel && !discoveredOr.includes(config.openrouterModel)
+      ? [config.openrouterModel, ...discoveredOr]
+      : discoveredOr;
+
+    traceLogs.push(`Tier 2: Evaluating ${prioritized.length} active free OpenRouter models`);
+    for (const modelCandidate of prioritized) {
       try {
         traceLogs.push(`Tier 2: Attempting OpenRouter AI with ${modelCandidate}`);
         const openrouterRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {

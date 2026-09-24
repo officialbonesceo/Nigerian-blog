@@ -30,8 +30,8 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
       }
     } catch {}
   }
-  if (!siteBase || siteBase.includes('localhost') || siteBase === 'null') {
-    siteBase = 'https://9jabeacon.name.ng';
+  if (!siteBase || siteBase.includes('localhost') || siteBase === 'null' || siteBase === 'https://9jabeacon.name.ng') {
+    siteBase = 'https://www.9jabeacon.name.ng';
   }
   siteBase = siteBase.replace(/\/+$/, '');
   const siteName = settings.site_name || '9jaBeacon';

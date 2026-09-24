@@ -116,7 +116,7 @@ export function classifyTopic(title: string, bodyText: string, aiSuggestedCatego
 
   // 2. High-priority Politics / Governance / Crime / Courts / Elections overrides
   // Politics/Security MUST NEVER become business just because "funds", "naira", "fee", "price", or "dollars" appears.
-  const politicsSecurityRegex = /\b(tinubu|shettima|presidency|aso rock|inec|national assembly|senate|house of reps|minister|ministry|police|fbi|efcc|icpc|dss|bandit|bandits|military|army|court|judiciary|election|elections|protest|protests|governor|otu|sanwo-olu|mutfwang|ndlea|nysc|frsc|apc|pdp|lp|nnpp|boko haram|kidnap|kidnappers|murder|arraign|prosecut)\b/i;
+  const politicsSecurityRegex = /\b(tinubu|shettima|presidency|aso rock|inec|national assembly|senate|house of reps|minister|ministry|police|fbi|efcc|icpc|dss|bandit|bandits|military|army|court|judiciary|election|elections|protest|protests|governor|otu|sanwo-olu|mutfwang|ndlea|nysc|frsc|apc|pdp|lp|nnpp|boko haram|kidnap|kidnappers|murder|arraign|prosecut|omokri|reno omokri|investigation|allegation|law enforcement|bribe)\b/i;
   const isPoliticsSecurity = politicsSecurityRegex.test(combined);
 
   // 3. Foreign / International affairs check (Zero Nigeria markers, distinct global signals)
@@ -129,7 +129,7 @@ export function classifyTopic(title: string, bodyText: string, aiSuggestedCatego
   }
 
   // 4. Genuine Business subject check: only when firm, financial market, or macroeconomics is the actual subject
-  const businessSubjectRegex = /\b(ngx|nigerian exchange|cbn|central bank of nigeria|monetary policy committee|interest rate|inflation rate|naira exchange rate|forex window|fmdq|inventory|manufacturer|manufacturers association of nigeria|bank plc|tier-1 bank|earnings report|quarterly revenue|gdp growth|capital importation|export surplus|crude oil production|refinery output|d測gote refinery|fintech funding|papss)\b/i;
+  const businessSubjectRegex = /\b(ngx|nigerian exchange|cbn|central bank of nigeria|monetary policy committee|interest rate|inflation rate|naira exchange rate|forex window|fmdq|inventory|manufacturer|manufacturers association of nigeria|bank plc|tier-1 bank|earnings report|quarterly revenue|gdp growth|capital importation|export surplus|crude oil production|refinery output|dangote refinery|fintech funding|papss)\b/i;
 
   if (businessSubjectRegex.test(combined) && !isPoliticsSecurity) {
     return 'business';
@@ -190,6 +190,7 @@ export function qualityGate(input: QualityGateInput): QualityGateResult {
   const bannedPatterns = [
     /compiling further operational updates/i,
     /field dispatches and corroborating sources/i,
+    /while pacing ai development might sound like a quick fix/i,
     /okay,\s*i need to/i,
     /as an ai\b/i,
     /as an ai language model/i,
@@ -248,13 +249,11 @@ export function qualityGate(input: QualityGateInput): QualityGateResult {
 
 /**
  * Editorial Take Policy:
- * Default: do not generate an Editorial Take section.
- * Only permit if article has >= 200 words and is naija-news or business,
- * and strictly prohibits boilerplate filler strings.
+ * Default: OFF. No generic templates or boilerplate governance fillers on World wires.
  */
-export function shouldWriteEditorialTake(category: string, bodyWordCount: number): boolean {
-  const norm = normalizeCategorySlug(category);
-  return bodyWordCount >= 200 && (norm === 'naija-news' || norm === 'business');
+export function shouldWriteEditorialTake(_category?: string, _bodyWordCount?: number): boolean {
+  // Default off per v2 spec
+  return false;
 }
 
 /**
@@ -270,3 +269,14 @@ export function cleanNewsTypos(text: string): string {
     .replace(/\boccured\b/gi, 'occurred')
     .replace(/\brecieve\b/gi, 'receive');
 }
+
+// Re-export automated ingestion engine (RSS + Gemini)
+export {
+  fetchRss,
+  rewriteWithEditorialQuality,
+  runIngestionPipeline,
+  type FetchRssResult,
+  type EditorialRewriteResult,
+  type IngestionPipelineResult,
+} from './automated-ingest';
+

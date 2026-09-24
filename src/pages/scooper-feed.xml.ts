@@ -30,8 +30,8 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
         }
       } catch {}
     }
-    if (!origin || origin.includes('localhost') || origin === 'null') {
-      origin = 'https://9jabeacon.name.ng';
+    if (!origin || origin.includes('localhost') || origin === 'null' || origin === 'https://9jabeacon.name.ng') {
+      origin = 'https://www.9jabeacon.name.ng';
     }
     origin = origin.replace(/\/+$/, '');
 

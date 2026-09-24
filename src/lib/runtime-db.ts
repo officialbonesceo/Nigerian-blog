@@ -466,16 +466,114 @@ export async function ensureTablesExist(db: D1Database, force = false) {
           ).run().catch(() => {});
         }
 
+        // Auto-remediation migration: purge live stubs & reclassify Omokri (Fail-closed spec)
+        try {
+          await db.prepare(`
+            UPDATE articles SET status = 'rejected'
+            WHERE status = 'published'
+              AND (
+                slug LIKE '%safrica-silent-as-outrage-trails-killing-of-two-nigerians%'
+                OR slug LIKE '%questions-mount-over-what-an-ai-slowdown-would-look-like%'
+                OR content LIKE '%compiling further operational updates%'
+                OR content LIKE '%Field dispatches and corroborating sources%'
+                OR content LIKE '%While pacing AI development might sound like a quick fix%'
+                OR (LENGTH(content) > 0 AND LENGTH(content) < 400)
+              )
+          `).run().catch(() => {});
+        } catch {}
+
+        try {
+          await db.prepare(`
+            UPDATE articles SET 
+              category_id = 'cat_naija_news',
+              author_name = '9jaBeacon National News Desk',
+              author_role = 'Governance, Judiciary & Public Affairs Reporter',
+              title = REPLACE(title, 'spoek', 'spoke'),
+              summary = REPLACE(summary, 'spoek', 'spoke'),
+              content = REPLACE(content, 'spoek', 'spoke')
+            WHERE slug LIKE '%there-was-fbi-investigation-but-tinubu-not-involved-omokri%'
+          `).run().catch(() => {});
+        } catch {}
+
+        try {
+          await db.prepare(`
+            UPDATE site_settings SET value = 'https://www.9jabeacon.name.ng'
+            WHERE key = 'site_url' AND (value = 'https://9jabeacon.name.ng' OR value IS NULL OR value = '')
+          `).run().catch(() => {});
+        } catch {}
+
         tablesChecked = true;
       } catch (createErr) {
         console.warn('Could not auto-create missing tables in D1:', createErr);
       }
     }
 
+export function isStubOrRejected(article: any): boolean {
+  if (!article) return true;
+  if (article.status === 'rejected') return true;
+  const slug = (article.slug || '').toLowerCase();
+  if (
+    slug.includes('safrica-silent-as-outrage-trails-killing-of-two-nigerians') ||
+    slug.includes('questions-mount-over-what-an-ai-slowdown-would-look-like')
+  ) {
+    return true;
+  }
+  const content = (article.content || '').toLowerCase();
+  if (
+    content.includes('compiling further operational updates') ||
+    content.includes('field dispatches and corroborating sources') ||
+    content.includes('while pacing ai development might sound like a quick fix')
+  ) {
+    return true;
+  }
+  const plainText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (plainText.length > 0 && plainText.length < 400) {
+    return true;
+  }
+  return false;
+}
+
 function formatArticle(art: any): Article {
   let catName = art.category_name;
   let catSlug = art.category_slug;
-  if (!catName || catName === 'Money Hustle' || art.category_id === 'cat_money_hustle' || art.category_id === 'business') {
+  let title = art.title || '';
+  let summary = art.summary || '';
+  let content = art.content || '';
+  let authorName = art.author_name;
+  let authorRole = art.author_role;
+
+  // Typo fix: "spoek" -> "spoke"
+  if (title.includes('spoek') || title.includes('Spoek')) {
+    title = title.replace(/\bspoek\b/g, 'spoke').replace(/\bSpoek\b/g, 'Spoke');
+  }
+  if (summary.includes('spoek') || summary.includes('Spoek')) {
+    summary = summary.replace(/\bspoek\b/g, 'spoke').replace(/\bSpoek\b/g, 'Spoke');
+  }
+  if (content.includes('spoek') || content.includes('Spoek')) {
+    content = content.replace(/\bspoek\b/g, 'spoke').replace(/\bSpoek\b/g, 'Spoke');
+  }
+
+  // Strip generic "Editorial Take" boilerplate (spec #6)
+  if (content) {
+    content = content
+      .replace(/<div[^>]*class="[^"]*editorial-take[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+      .replace(/<section[^>]*class="[^"]*editorial-take[^"]*"[^>]*>[\s\S]*?<\/section>/gi, '')
+      .replace(/<h3>(?:9jaBeacon\s+)?Editorial Take<\/h3>[\s\S]*?(?=<h[23]|$)/gi, '')
+      .replace(/<p>[^<]*As this development continues to unfold across Nigeria,?\s*key questions remain regarding regulatory oversight[^<]*<\/p>/gi, '')
+      .replace(/As this development continues to unfold across Nigeria,?\s*key questions remain regarding regulatory oversight[^.\n<]*(\.|\n|<)/gi, '');
+  }
+
+  // Reclassify Omokri story to Naija News Desk (spec #3)
+  const isOmokri = (art.slug && art.slug.includes('there-was-fbi-investigation-but-tinubu-not-involved-omokri'))
+    || (title.toLowerCase().includes('tinubu') && title.toLowerCase().includes('omokri') && title.toLowerCase().includes('fbi'));
+
+  if (isOmokri) {
+    catName = 'Naija News';
+    catSlug = 'naija-news';
+    art.category_id = 'cat_naija_news';
+    authorName = '9jaBeacon National News Desk';
+    authorRole = 'Governance, Judiciary & Public Affairs Reporter';
+  } else if (!catName || catName === 'Money Hustle' || art.category_id === 'cat_money_hustle' || art.category_id === 'business') {
     if (art.category_id === 'cat_money_hustle' || art.category_id === 'business' || catSlug === 'business' || catSlug === 'money-hustle') {
       catName = 'Business';
       catSlug = 'business';
@@ -490,9 +588,20 @@ function formatArticle(art: any): Article {
       catSlug = catSlug || 'naija-news';
     }
   }
+
+  const plainText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const wordCount = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
+  const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+
   return {
     ...art,
+    title,
+    summary,
+    content,
+    author_name: authorName,
+    author_role: authorRole,
     views_count: art.views_count ?? 0,
+    reading_time_minutes: readingTime,
     category_name: catName,
     category_slug: catSlug,
   };
@@ -524,7 +633,7 @@ export async function getArticles(
   try {
     const res = await db.prepare(q).bind(...v).all<Article>();
     if (res?.results?.length) {
-      results = res.results.map(formatArticle);
+      results = res.results.filter((a) => !isStubOrRejected(a)).map(formatArticle);
     }
   } catch (err) {
     console.warn('getArticles query warning:', err);
@@ -555,7 +664,7 @@ export async function getArticles(
 
       const directRes = await db.prepare(directQ).bind(...directV).all<Article>();
       if (directRes?.results?.length) {
-        results = directRes.results.map(formatArticle);
+        results = directRes.results.filter((a) => !isStubOrRejected(a)).map(formatArticle);
       }
     } catch (directErr) {
       console.warn('getArticles direct query warning:', directErr);
@@ -575,7 +684,7 @@ export async function getArticles(
     if (o.isTopStory !== undefined) fallback = fallback.filter((a) => Boolean(a.is_top_story) === Boolean(o.isTopStory));
     if (o.isTrending !== undefined) fallback = fallback.filter((a) => Boolean(a.is_trending) === Boolean(o.isTrending));
     if (o.isBreaking !== undefined) fallback = fallback.filter((a) => Boolean(a.is_breaking) === Boolean(o.isBreaking));
-    results = fallback.slice(o.offset || 0, (o.offset || 0) + (o.limit || 20)).map(formatArticle);
+    results = fallback.filter((a) => !isStubOrRejected(a)).slice(o.offset || 0, (o.offset || 0) + (o.limit || 20)).map(formatArticle);
   }
   return results;
 }
@@ -630,6 +739,7 @@ export async function getArticlesWithCount(
       const s = o.search.toLowerCase();
       fallback = fallback.filter(a => a.title?.toLowerCase().includes(s) || a.summary?.toLowerCase().includes(s));
     }
+    fallback = fallback.filter((a) => !isStubOrRejected(a));
     total = fallback.length;
     articles = fallback.slice(offset, offset + limit).map(formatArticle);
   }
@@ -643,16 +753,16 @@ export async function searchArticles(db: D1Database, term: string, limit = 50) {
   try {
     const res = await db.prepare(q).bind(x, x, x, Math.min(Math.max(limit, 1), 100)).all<Article>();
     if (res?.results?.length) {
-      return res.results.map(formatArticle);
+      return res.results.filter((a) => !isStubOrRejected(a)).map(formatArticle);
     }
     const directRes = await db.prepare("SELECT * FROM articles WHERE (status='published' OR status IS NULL) AND (title LIKE ? OR summary LIKE ? OR content LIKE ?) ORDER BY published_at DESC LIMIT ?").bind(x, x, x, Math.min(Math.max(limit, 1), 100)).all<Article>();
     if (directRes?.results?.length) {
-      return directRes.results.map(formatArticle);
+      return directRes.results.filter((a) => !isStubOrRejected(a)).map(formatArticle);
     }
   } catch {}
   const lower = term.toLowerCase();
   return (initialArticles as Article[]).filter((a) =>
-    a.title.toLowerCase().includes(lower) || a.summary.toLowerCase().includes(lower)
+    !isStubOrRejected(a) && (a.title.toLowerCase().includes(lower) || a.summary.toLowerCase().includes(lower))
   ).slice(0, limit).map(formatArticle);
 }
 
@@ -687,6 +797,14 @@ const LEGACY_SLUG_MAP: Record<string, string> = {
 
 export async function getArticleBySlug(db: D1Database, slug: string) {
   const targetSlug = LEGACY_SLUG_MAP[slug] || slug;
+  // If slug is one of the purged stubs, reject immediately
+  if (
+    targetSlug.includes('safrica-silent-as-outrage-trails-killing-of-two-nigerians') ||
+    targetSlug.includes('questions-mount-over-what-an-ai-slowdown-would-look-like')
+  ) {
+    return null;
+  }
+
   try {
     let row = await db.prepare(`${select} WHERE a.slug=? LIMIT 1`).bind(targetSlug).first<Article>();
     if (!row) {
@@ -698,13 +816,22 @@ export async function getArticleBySlug(db: D1Database, slug: string) {
       row = await db.prepare(`${select} WHERE a.slug LIKE ? LIMIT 1`).bind(`${stripped}%`).first<Article>();
     }
     if (row) {
+      if (isStubOrRejected(row)) {
+        return null;
+      }
       return formatArticle(row);
     }
   } catch (err) {
     console.warn('getArticleBySlug error:', err);
   }
   const fallback = (initialArticles as Article[]).find((a) => a.slug === targetSlug || a.slug === slug);
-  return fallback ? formatArticle(fallback) : null;
+  if (fallback) {
+    if (isStubOrRejected(fallback)) {
+      return null;
+    }
+    return formatArticle(fallback);
+  }
+  return null;
 }
 
 export async function getArticleById(db: D1Database, id: string) {
@@ -924,7 +1051,7 @@ export async function getSiteSettings(db: D1Database): Promise<Record<string, st
 
   const defaults: Record<string, string> = {
     site_name: '9jaBeacon',
-    site_url: 'https://9jabeacon.name.ng',
+    site_url: 'https://www.9jabeacon.name.ng',
     site_description: "Nigeria's independent digital newsroom. Delivering fast, verified breaking news, politics, economy, tech, and cultural updates.",
     social_facebook_url: 'https://facebook.com/9jabeacon',
     social_tiktok_url: 'https://tiktok.com/@9jabeacon',

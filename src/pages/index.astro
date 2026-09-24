@@ -52,7 +52,8 @@ try {
 const hasNextPage = latestArticles.length > pageSize;
 const currentFeed = latestArticles.slice(0, pageSize);
 
-const siteBase = (siteSettings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
+const rawSiteBase = (siteSettings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+const siteBase = rawSiteBase === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteBase;
 const prevUrl = page > 1 ? (page === 2 ? `${siteBase}/` : `${siteBase}/?page=${page - 1}`) : undefined;
 const nextUrl = hasNextPage ? `${siteBase}/?page=${page + 1}` : undefined;
 

@@ -15,6 +15,12 @@ import {
   generateEditorialNewsImage,
   type AiCredentialsConfig
 } from '../src/lib/ai-engine';
+import {
+  discoverOpenRouterFreeModels,
+  discoverCloudflareModels,
+  getVerifiedWorkingOpenRouterModels,
+  getVerifiedWorkingCloudflareModels,
+} from '../src/lib/dynamic-model-discovery';
 
 interface SourceRow {
   id: string;
@@ -124,8 +130,12 @@ async function main() {
   const polKey = (process.env.POLLINATIONS_API_KEY && process.env.POLLINATIONS_API_KEY !== 'true')
     ? process.env.POLLINATIONS_API_KEY
     : dbSettings.pollinations_api_key;
+  const geminiKey = (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'true')
+    ? process.env.GEMINI_API_KEY
+    : dbSettings.gemini_api_key;
 
   const aiConfig: AiCredentialsConfig = {
+    geminiApiKey: geminiKey,
     cloudflareAccountId: cfAccount,
     cloudflareApiToken: cfToken,
     cloudflareModel: cfModel,
@@ -145,8 +155,50 @@ async function main() {
   console.log('----------------------------------------------------------------');
   const cloudinaryCheck = await verifyCloudinaryConnection(cloudName, uploadPreset);
   console.log(`  ☁️ Cloudinary CDN:       ${cloudinaryCheck.verified ? '✅ VERIFIED' : `⚠️ ${cloudinaryCheck.message}`}`);
-  console.log(`  ⚡ Cloudflare Workers AI: ${aiConfig.cloudflareAccountId && aiConfig.cloudflareApiToken ? '✅ Configured' : 'ℹ️ Not set'}`);
-  console.log(`  🌐 OpenRouter AI Pool:    ${aiConfig.openrouterApiKey ? '✅ Configured' : 'ℹ️ Not set'}`);
+  console.log(`  ✨ Google Gemini AI:     ${aiConfig.geminiApiKey ? '✅ Configured (gemini-3.5-flash / gemini-3.6-flash)' : 'ℹ️ Not set'}`);
+
+  let workingOpenRouterModels: string[] = [];
+  let workingCloudflareModels: string[] = [];
+
+  // Live Discovery for OpenRouter Free Models
+  if (aiConfig.openrouterApiKey) {
+    try {
+      console.log('  🌐 OpenRouter: Probing endpoint for working & free models...');
+      const orResult = await getVerifiedWorkingOpenRouterModels(aiConfig.openrouterApiKey, { maxToProbe: 4 });
+      workingOpenRouterModels = orResult.workingModels;
+      console.log(`     ✅ Found ${workingOpenRouterModels.length} working free models: ${workingOpenRouterModels.slice(0, 3).join(', ')}`);
+    } catch (e: any) {
+      console.warn(`     ⚠️ OpenRouter probe notice: ${e.message}`);
+    }
+  } else {
+    try {
+      const orDiscovered = await discoverOpenRouterFreeModels();
+      console.log(`  🌐 OpenRouter Catalog:   ℹ️ Discovered ${orDiscovered.length} free models (Top: ${orDiscovered.slice(0, 3).join(', ')})`);
+      workingOpenRouterModels = orDiscovered;
+    } catch {}
+  }
+
+  // Live Discovery for Cloudflare Workers AI Models
+  if (aiConfig.cloudflareAccountId && aiConfig.cloudflareApiToken) {
+    try {
+      console.log('  ⚡ Cloudflare: Searching endpoint for deployed LLM models...');
+      const cfResult = await getVerifiedWorkingCloudflareModels(aiConfig.cloudflareAccountId, aiConfig.cloudflareApiToken, { maxToProbe: 4 });
+      workingCloudflareModels = cfResult.workingModels;
+      console.log(`     ✅ Found ${workingCloudflareModels.length} working models: ${workingCloudflareModels.slice(0, 3).join(', ')}`);
+    } catch (e: any) {
+      console.warn(`     ⚠️ Cloudflare probe notice: ${e.message}`);
+    }
+  } else {
+    try {
+      const cfDiscovered = await discoverCloudflareModels();
+      console.log(`  ⚡ Cloudflare Catalog:   ℹ️ Discovered ${cfDiscovered.length} active models (Top: ${cfDiscovered.slice(0, 3).join(', ')})`);
+      workingCloudflareModels = cfDiscovered;
+    } catch {}
+  }
+
+  aiConfig.workingOpenRouterModels = workingOpenRouterModels;
+  aiConfig.workingCloudflareModels = workingCloudflareModels;
+
   console.log(`  🌸 Pollinations Server:   ${aiConfig.pollinationsApiKey ? '✅ Configured' : 'ℹ️ Optional fallback'}`);
   console.log('----------------------------------------------------------------\n');
 
@@ -185,7 +237,7 @@ async function main() {
   }
   console.log(`📡 Loaded ${sources.length} active verified RSS news feeds.`);
 
-  const MAX_ARTICLES_PER_RUN = parseInt(process.env.MAX_ARTICLES_PER_RUN || '1', 10);
+  const MAX_ARTICLES_PER_RUN = Math.max(parseInt(process.env.MAX_ARTICLES_PER_RUN || '3', 10), 1);
   const startTime = Date.now();
   let totalProcessed = 0;
   let totalPublished = 0;
