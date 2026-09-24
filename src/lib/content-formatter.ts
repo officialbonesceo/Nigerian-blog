@@ -7,11 +7,25 @@
  */
 
 export function cleanAndFormatArticleHtml(raw: string | undefined | null): string {
-  if (!raw) return '<p>Report details are being finalized by the 9jaBeacon Editorial Desk.</p>';
+  if (!raw) return '';
 
   let text = raw.trim();
 
-  // 1. Purge all deprecated fallback template boilerplate and generic filler blocks
+  // 1. Purge all AI thinking processes, thought tokens, and internal reasoning blocks
+  text = text
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+    .replace(/(?:^|\n)\s*(?:Thinking Process|Thought Process|Model Thought|Internal Reasoning|AI Thinking):[\s\S]*?(?=\n\s*\n|<h3>|<p>|$)/gi, '')
+    .replace(/(?:^|\n)\s*(?:Here is (?:the|a) (?:rewritten|full) (?:news )?article|Sure,? here (?:is|are)|As an AI(?: language model)?[^\n]*)\s*:?\s*/gi, '')
+    .replace(/```(?:html|json|markdown)?/gi, '')
+    .replace(/```/g, '');
+
+  // 2. Purge previous writer's personal musings, subjective op-ed takes, and first-person bias
+  text = text
+    .replace(/(?:in my opinion|in my view|from my perspective|personally speaking|as this writer believes)[^.,;]*([.,;]|$)/gi, '')
+    .replace(/(?:the author believes|the writer argues|the original journalist noted)[^.,;]*([.,;]|$)/gi, '');
+
+  // 3. Purge all deprecated fallback template boilerplate and generic filler blocks
   text = text
     .replace(/<div[^>]*class="[^"]*editorial-take[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
     .replace(/<section[^>]*class="[^"]*editorial-take[^"]*"[^>]*>[\s\S]*?<\/section>/gi, '')
@@ -24,9 +38,11 @@ export function cleanAndFormatArticleHtml(raw: string | undefined | null): strin
     .replace(/<blockquote>["']?Accurate, verified reporting remains vital for public awareness["']?[^<]*<\/blockquote>/gi, '')
     .replace(/<li><strong>Status:<\/strong>\s*Active lead verified by 9jaBeacon Editorial Desk<\/li>/gi, '')
     .replace(/<p>Authorities and industry stakeholders are actively monitoring the situation\.?<\/p>/gi, '')
+    .replace(/<p>compiling further operational updates[^<]*<\/p>/gi, '')
+    .replace(/<p>Field dispatches and corroborating sources[^<]*<\/p>/gi, '')
     .replace(/<h3>The Scoop<\/h3>/gi, '<h3>The Crux: What Happened & Verified Facts</h3>');
 
-  // 2. Strip raw RSS junk, bylines, and attribution footers
+  // 4. Strip raw RSS junk, bylines, and attribution footers
   text = text
     .replace(/The post\s+.*?appeared first on\s+.*?(\.|$)/gi, '')
     .replace(/Read (more|original report|full story) on\s+.*?(\.|$)/gi, '')
@@ -35,15 +51,15 @@ export function cleanAndFormatArticleHtml(raw: string | undefined | null): strin
     .replace(/Copyright\s+©\s+.*?(\.|$)/gi, '')
     .replace(/[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]+/g, '');
 
-  // 3. Normalize linebreaks & clean stray non-breaking spaces
+  // 5. Normalize linebreaks & clean stray non-breaking spaces
   text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/&nbsp;/g, ' ');
 
-  // 4. Transform Markdown Headings (### Heading, ## Heading, # Heading)
+  // 6. Transform Markdown Headings (### Heading, ## Heading, # Heading)
   text = text.replace(/^###\s+(.+)$/gm, '\n\n<h3>$1</h3>\n\n');
   text = text.replace(/^##\s+(.+)$/gm, '\n\n<h3>$1</h3>\n\n');
   text = text.replace(/^#\s+(.+)$/gm, '\n\n<h3>$1</h3>\n\n');
 
-  // 5. Bold & Italics conversions
+  // 7. Bold & Italics conversions
   text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
   text = text.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -51,10 +67,20 @@ export function cleanAndFormatArticleHtml(raw: string | undefined | null): strin
   text = text.replace(/\*([^\*\n\<\>]+)\*/g, '<em>$1</em>');
   text = text.replace(/\*{2,}/g, '').replace(/(^|\s)\*(?=\s|$)/g, '$1');
 
-  // 6. Blockquotes
+  // 8. Blockquotes
   text = text.replace(/^>\s+(.+)$/gm, '<blockquote class="border-l-4 border-emerald-500 pl-4 py-2 my-4 text-slate-700 dark:text-slate-300 italic font-medium bg-slate-50 dark:bg-slate-900/40 rounded-r-xl">$1</blockquote>');
 
-  // 7. Parse blocks: match headings and paragraphs
+  // Normalize and repair any legacy or broken nested banner heading divs
+  text = text.replace(/<div class="native-banner-heading[^"]*"[^>]*>[\s\S]*?<h[23][^>]*>([\s\S]*?)<\/h[23]>[\s\S]*?<\/div>/gi, (_, title) => {
+    const cleanTitle = title.replace(/<[^>]*>/g, '').trim();
+    return formatNativeBannerHeading(cleanTitle);
+  });
+  text = text.replace(/<div class="native-banner-heading[^"]*"[^>]*>/gi, '');
+  text = text.replace(/<p>\s*(<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>)\s*<\/p>/gi, '$1');
+  text = text.replace(/<p>\s*(<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>)/gi, '$1');
+  text = text.replace(/(<\/h[1-6]>)\s*<\/p>/gi, '$1');
+
+  // 9. Parse blocks: match headings and paragraphs
   const rawBlocks = text.split(/(?:<\/p>|<p>|\n\s*\n)/i).map(b => b.trim()).filter(Boolean);
   const formattedBlocks: string[] = [];
 
@@ -64,7 +90,7 @@ export function cleanAndFormatArticleHtml(raw: string | undefined | null): strin
     if (h3Match) {
       const headingText = h3Match[1].replace(/<[^>]*>/g, '').trim();
       if (headingText) {
-        // Render sleek, unobtrusive native banner heading bar with micro-graphic indicator
+        // Render sleek, semantic, fail-proof heading
         const bannerHtml = formatNativeBannerHeading(headingText);
         formattedBlocks.push(bannerHtml);
       }
@@ -96,29 +122,15 @@ export function cleanAndFormatArticleHtml(raw: string | undefined | null): strin
 }
 
 /**
- * Creates an unobtrusive, elegant native banner heading with micro-icon and subtle accent border.
- * Designed to organize paragraphs cleanly without obstructing the reader or pushing content off-screen.
+ * Creates an elegant, fully semantic heading with micro-accent indicator.
+ * Pure semantic HTML (<h3 ...>) avoids nested divs that break responsive rendering on mobile.
  */
 export function formatNativeBannerHeading(headingText: string): string {
   const cleanTitle = headingText.trim();
-  const lower = cleanTitle.toLowerCase();
-
-  let iconSvg = `<svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
-
-  if (lower.includes('background') || lower.includes('context') || lower.includes('precedent')) {
-    iconSvg = `<svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-  } else if (lower.includes('stake') || lower.includes('impact') || lower.includes('socioeconomic') || lower.includes('nigerian')) {
-    iconSvg = `<svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>`;
-  } else if (lower.includes('reaction') || lower.includes('outlook') || lower.includes('watch') || lower.includes('timeline')) {
-    iconSvg = `<svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>`;
-  }
-
-  return `<div class="native-banner-heading not-prose flex items-center gap-2.5 my-4 py-2 px-3.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 border-l-4 border-l-emerald-500 shadow-xs">
-  <div class="w-6 h-6 rounded-md bg-emerald-500/10 dark:bg-emerald-400/15 flex items-center justify-center shrink-0">
-    ${iconSvg}
-  </div>
-  <h3 class="text-xs sm:text-sm font-black tracking-wider uppercase text-slate-800 dark:text-slate-100 m-0 p-0 font-mono">${cleanTitle}</h3>
-</div>`;
+  return `<h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5 mt-7 mb-3 pb-1.5 border-b border-emerald-500/20 not-prose break-words">
+  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shrink-0"></span>
+  <span class="leading-tight tracking-tight">${cleanTitle}</span>
+</h3>`;
 }
 
 export interface ArticleSections {
@@ -132,7 +144,7 @@ export interface ArticleSections {
 
 /**
  * Splits an article into multiple sections for strategic ad placement
- * Guarantees that each ~100-word block (every paragraph) can have an ad banner placed seamlessly
+ * Guarantees that each block group (~100 words each) can have an ad banner placed seamlessly
  * Accurately extracts complete, well-formed HTML blocks without breaking tags
  */
 export function partitionArticleForAds(htmlContent: string): ArticleSections {
@@ -147,14 +159,24 @@ export function partitionArticleForAds(htmlContent: string): ArticleSections {
     };
   }
 
-  // Match complete top-level HTML element blocks (headings, paragraphs, blockquotes, lists, divs)
-  const blockRegex = /(?:<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>|<blockquote[^>]*>[\s\S]*?<\/blockquote>|<ul[^>]*>[\s\S]*?<\/ul>|<ol[^>]*>[\s\S]*?<\/ol>|<p[^>]*>[\s\S]*?<\/p>|<div[^>]*>[\s\S]*?<\/div>)/gi;
-  const blocks = htmlContent.match(blockRegex);
+  // Pre-sanitize any legacy nested banner divs in the content to prevent layout splitting bugs
+  let sanitized = htmlContent.replace(/<div class="native-banner-heading[^"]*"[^>]*>[\s\S]*?<h[23][^>]*>([\s\S]*?)<\/h[23]>[\s\S]*?<\/div>/gi, (_, title) => {
+    return formatNativeBannerHeading(title.replace(/<[^>]*>/g, '').trim());
+  });
+  sanitized = sanitized.replace(/<div class="native-banner-heading[^"]*"[^>]*>/gi, '');
+  sanitized = sanitized.replace(/<p>\s*(<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>)\s*<\/p>/gi, '$1');
+  sanitized = sanitized.replace(/<p>\s*(<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>)/gi, '$1');
+  sanitized = sanitized.replace(/(<\/h[1-6]>)\s*<\/p>/gi, '$1');
+
+  // Match complete top-level HTML element blocks (headings, paragraphs, blockquotes, lists)
+  // Strictly avoiding unconstrained div matching which causes unclosed flex parent bugs
+  const blockRegex = /(?:<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>|<blockquote[^>]*>[\s\S]*?<\/blockquote>|<ul[^>]*>[\s\S]*?<\/ul>|<ol[^>]*>[\s\S]*?<\/ol>|<p[^>]*>[\s\S]*?<\/p>)/gi;
+  const blocks = sanitized.match(blockRegex);
 
   // If regex found no structured blocks, fallback safely
   if (!blocks || blocks.length < 3) {
     return {
-      lead: htmlContent,
+      lead: sanitized,
       middle1: '',
       middle2: '',
       middle3: '',

@@ -1,0 +1,101 @@
+---
+interface FAQItem {
+  question: string;
+  answer: string;
+  category: string;
+}
+
+const FAQ_LIST: FAQItem[] = [
+  {
+    category: 'Verification & AI Ethics',
+    question: 'How does 9jaBeacon verify breaking news and ensure neutral reporting?',
+    answer: 'Every dispatch on 9jaBeacon passes through our multi-tier editorial pipeline. We extract strictly corroborated facts, official government statements, regulatory filings, and primary sources while systematically stripping away the previous writer’s personal bias, speculation, or subjective takes to ensure 100% objective reporting.',
+  },
+  {
+    category: 'Community Opinions',
+    question: 'How do reader opinions and comments work on 9jaBeacon?',
+    answer: 'Readers can share their perspectives directly under each article using our dedicated Firebase Firestore community engine. You can tag your response as "Agree", "Disagree", or "Nuanced Take", and upvote insightful contributions from fellow readers. All comments undergo automated safety filters to prevent spam and toxicity.',
+  },
+  {
+    category: 'Real Analytics',
+    question: 'How is "Most Read This Week" calculated?',
+    answer: 'Our "Most Read This Week" rankings are powered by real, verified reader sessions stored in Firebase Firestore. We reset counts on a weekly cycle (deleting prior week records) to highlight genuine trending stories without artificial multipliers or inflated view counts.',
+  },
+  {
+    category: 'Ad Standards',
+    question: 'What is the "Sponsored Feature" badge on partner guides?',
+    answer: 'To maintain full compliance with international advertising standards (including Adsterra and Google policies) and protect reader trust, all external commercial spotlights are clearly labeled with a "Sponsored Feature" badge and direct readers to verified resource guides with zero cloaking.',
+  },
+  {
+    category: 'Editorial Desk',
+    question: 'Can readers report errors, submit tips, or request corrections?',
+    answer: 'Yes. Our newsroom operates an open corrections desk. Readers and public stakeholders can flag any factual discrepancy or submit verified documentation directly through our Contact & Editorial Grievance page.',
+  },
+];
+
+// Schema.org FAQPage structured data for Google Rich Snippets
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  'mainEntity': FAQ_LIST.map((item) => ({
+    '@type': 'Question',
+    'name': item.question,
+    'acceptedAnswer': {
+      '@type': 'Answer',
+      'text': item.answer,
+    },
+  })),
+};
+---
+
+<section id="faq-section" class="my-12 py-10 px-4 sm:px-6 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 shadow-xs">
+  <!-- FAQ Schema for Google Rich Snippets -->
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+
+  <div class="max-w-3xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold uppercase tracking-wider font-mono mb-3">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>Editorial & Reader FAQ</span>
+      </div>
+      <h2 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+        Frequently Asked Questions
+      </h2>
+      <p class="text-sm text-slate-600 dark:text-slate-400 mt-2 max-w-xl mx-auto">
+        Everything you need to know about our real-time verification process, community opinion rules, and real weekly read metrics.
+      </p>
+    </div>
+
+    <!-- Accordion List -->
+    <div class="space-y-3" id="faq-accordion-container">
+      {FAQ_LIST.map((faq, idx) => (
+        <details class="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 open:border-emerald-500/40 dark:open:border-emerald-500/40 transition-all duration-200 overflow-hidden shadow-xs hover:border-slate-300 dark:hover:border-slate-700">
+          <summary class="flex items-center justify-between gap-4 p-4 sm:p-5 cursor-pointer list-none select-none">
+            <div class="flex items-center gap-3">
+              <span class="w-6 h-6 rounded-lg bg-emerald-500/10 dark:bg-emerald-400/15 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center justify-center shrink-0 font-mono">
+                {idx + 1}
+              </span>
+              <span class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors text-left leading-snug">
+                {faq.question}
+              </span>
+            </div>
+            <div class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400 group-open:rotate-180 group-open:bg-emerald-500/10 group-open:text-emerald-600 dark:group-open:text-emerald-400 transition-transform duration-200">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </summary>
+          <div class="px-5 pb-5 pt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/60 mt-1">
+            <span class="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono mb-2">
+              {faq.category}
+            </span>
+            <p>{faq.answer}</p>
+          </div>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>

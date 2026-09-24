@@ -6,25 +6,24 @@ interface Props {
 }
 
 const { articles = [] } = Astro.props;
-if (!articles || articles.length === 0) return null;
 ---
 
 <section id="most-read-section" class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800/80">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 font-sans">
-      <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-      <span>Most Read Stories</span>
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span>Most Read This Week</span>
     </h2>
-    <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-0.5 rounded-full font-mono">
-      Real-Time Popular
+    <span id="weekly-reads-badge" class="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-0.5 rounded-full font-mono">
+      Verified Firestore Analytics
     </span>
   </div>
 
   <div id="most-read-container" class="space-y-2.5">
-    {articles.map((art, index) => (
+    {articles.slice(0, 5).map((art, index) => (
       <a
         href={`/news/${art.slug}`}
-        class="flex items-start gap-3.5 p-3 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/70 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 hover:shadow-sm transition-all group"
+        class="most-read-card flex items-start gap-3.5 p-3 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/70 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 hover:shadow-xs transition-all group"
       >
         <!-- Rank Number Badge -->
         <span class={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 font-mono shadow-xs ${
@@ -46,7 +45,9 @@ if (!articles || articles.length === 0) return null;
           <div class="flex items-center gap-2 mt-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
             <span class="text-emerald-700 dark:text-emerald-400 font-semibold">{art.category_name || 'General'}</span>
             <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-            <span>{(art.views_count ?? 0).toLocaleString()} readers</span>
+            <span class="read-count-label text-slate-500 dark:text-slate-400">
+              {art.views_count && art.views_count > 0 ? `${art.views_count} reads this week` : 'Trending this week'}
+            </span>
             {art.reading_time_minutes && (
               <>
                 <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
@@ -60,3 +61,63 @@ if (!articles || articles.length === 0) return null;
   </div>
 </section>
 
+<script is:inline>
+  // Hydrate with genuine Firestore weekly view metrics and trigger lean cleanup of expired weeks
+  (async function() {
+    try {
+      const fbModule = await import('/src/lib/firebase.ts');
+      if (!fbModule) return;
+
+      // Asynchronously trigger clean up of previous weeks to keep database lean and fresh
+      setTimeout(() => {
+        fbModule.cleanupExpiredWeeklyViews().catch(() => {});
+      }, 5000);
+
+      const realWeeklyStories = await fbModule.fetchMostReadThisWeek(5);
+      if (!realWeeklyStories || realWeeklyStories.length === 0) return;
+
+      const container = document.getElementById('most-read-container');
+      const badge = document.getElementById('weekly-reads-badge');
+      if (badge) {
+        badge.textContent = `${fbModule.getCurrentWeekKey()} · Real Reads`;
+      }
+
+      if (container && realWeeklyStories.length >= 2) {
+        container.innerHTML = realWeeklyStories.map((item, idx) => {
+          const rankClass = idx === 0 
+            ? 'bg-amber-500 text-slate-950 shadow-amber-500/20' 
+            : idx === 1
+            ? 'bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-white'
+            : idx === 2
+            ? 'bg-amber-700/20 text-amber-800 dark:text-amber-400 border border-amber-500/30'
+            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50';
+
+          return `
+            <a
+              href="/news/${item.articleSlug}"
+              class="flex items-start gap-3.5 p-3 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/70 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 hover:shadow-xs transition-all group"
+            >
+              <span class="w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 font-mono shadow-xs ${rankClass}">
+                ${idx + 1}
+              </span>
+              <div class="flex-1 min-w-0">
+                <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 leading-snug line-clamp-2 transition-colors">
+                  ${item.articleTitle}
+                </h4>
+                <div class="flex items-center gap-2 mt-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  <span class="text-emerald-700 dark:text-emerald-400 font-semibold">${item.category || 'News'}</span>
+                  <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                  <span class="text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+                    ${item.viewsCount} verified ${item.viewsCount === 1 ? 'read' : 'reads'} this week
+                  </span>
+                </div>
+              </div>
+            </a>
+          `;
+        }).join('');
+      }
+    } catch (e) {
+      console.warn('[MostRead] Could not hydrate from Firestore:', e);
+    }
+  })();
+</script>

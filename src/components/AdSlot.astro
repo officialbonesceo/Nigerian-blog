@@ -30,8 +30,71 @@ const {
 
 const DEFAULT_SMARTLINK = 'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead';
 
-let effectiveHeadline = headline;
-let effectiveTeaser = teaser;
+// High-converting, fully compliant partner spotlights that rotate dynamically without database costs
+// Clear "Sponsored" & "Partner" disclosures satisfy ad network rules to prevent account bans
+const NATIVE_ROTATING_STORIES = [
+  {
+    category: 'Careers & Tech',
+    badge: 'Partner',
+    title: 'Remote Global Tech Contracts & Digital Skills: Comprehensive Resource Guide for Professionals',
+    teaser: 'Detailed breakdown of vetted international onboarding pipelines, professional portfolio standards, and accredited remote industry pathways.',
+    timeAgo: 'Sponsored',
+    readingTime: 3,
+    imageUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    category: 'Finance & FX',
+    badge: 'Partner',
+    title: 'Multi-Currency Digital Cards & Cross-Border Remittances: Navigating FX Channels Compliantly',
+    teaser: 'Key insights into regulated foreign exchange payment gateways, offshore dollar wallets, and secure international educational transfers.',
+    timeAgo: 'Sponsored',
+    readingTime: 4,
+    imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    category: 'Global Mobility',
+    badge: 'Partner',
+    title: 'International Professional Mobility & Skilled Talent Tracks: Verification & Eligibility Guide',
+    teaser: 'Official documentation frameworks, certified credential evaluations, and verified talent sponsorship resources for global careers.',
+    timeAgo: 'Sponsored',
+    readingTime: 3,
+    imageUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    category: 'Business & Growth',
+    badge: 'Partner',
+    title: 'Treasury Capital Management & Commercial Clean Energy Financing for Enterprise Owners',
+    teaser: 'Institutional strategies for protecting business liquidity, deploying commercial solar solutions, and hedging operational costs against inflation.',
+    timeAgo: 'Sponsored',
+    readingTime: 4,
+    imageUrl: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    category: 'Tech Infrastructure',
+    badge: 'Partner',
+    title: 'Enterprise High-Speed Broadband & Cloud Tools: Scaling Remote Operations in West Africa',
+    teaser: 'Industry overview of reliable internet connectivity solutions, enterprise security software, and digital tools tailored for distributed teams.',
+    timeAgo: 'Sponsored',
+    readingTime: 3,
+    imageUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=400&q=80',
+  },
+  {
+    category: 'Diaspora & Trade',
+    badge: 'Partner',
+    title: 'High-Yield Foreign Currency Solutions & Cross-Border Merchant Gateways for Exporters',
+    teaser: 'A comprehensive review of liquidity benchmarks, international trade compliance standards, and risk-managed foreign currency instruments.',
+    timeAgo: 'Sponsored',
+    readingTime: 3,
+    imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=400&q=80',
+  }
+];
+
+// Dynamically rotate topic every 8 minutes without touching database
+const storyIndex = Math.floor(Date.now() / (8 * 60 * 1000)) % NATIVE_ROTATING_STORIES.length;
+const currentNativeStory = NATIVE_ROTATING_STORIES[storyIndex];
+
+let effectiveHeadline = headline || currentNativeStory.title;
+let effectiveTeaser = teaser || currentNativeStory.teaser;
 let effectiveLink = (smartLinkUrl && smartLinkUrl.trim().length > 0) ? smartLinkUrl.trim() : DEFAULT_SMARTLINK;
 
 if (!headline) {
@@ -41,7 +104,7 @@ if (!headline) {
     if (activeAds && activeAds.length > 0) {
       const liveAd = activeAds[0];
       effectiveHeadline = liveAd.title;
-      effectiveTeaser = liveAd.teaser || '';
+      effectiveTeaser = liveAd.teaser || currentNativeStory.teaser;
       effectiveLink = liveAd.target_url;
     }
   } catch {}
@@ -113,49 +176,106 @@ const srcDoc300x250 = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>b
   </div>
 )}
 
-<!-- 3. Strategic High-Converting Smartlink Spotlight Card (In-Article & In-Feed) -->
-{(format === 'smartlink' || format === 'feed') && (
-  <div class={`my-6 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-emerald-800/60 shadow-xs not-prose transition-all hover:border-emerald-400 dark:hover:border-emerald-600 ${className}`}>
-    <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-      <div class="flex items-center gap-1.5">
-        <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider font-mono">
-          Partner Spotlight
+<!-- 3. IN-FEED SMARTLINK: Fully Compliant Native Partner Spotlight (Complies with Adsterra/Google policies to prevent bans) -->
+{format === 'feed' && (
+  <article class={`p-3 sm:p-4 rounded-xl bg-white dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-900/80 border border-amber-200/60 dark:border-amber-900/30 hover:border-amber-300 dark:hover:border-amber-700/60 shadow-xs dark:shadow-none transition-all duration-200 group overflow-hidden ${className}`}>
+    <div class="flex items-start justify-between gap-3 sm:gap-4">
+      <!-- Left Details -->
+      <div class="flex-1 min-w-0 space-y-1.5 overflow-hidden">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="inline-block text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 font-mono">
+            Sponsored
+          </span>
+          <span class="inline-block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-mono truncate max-w-full">
+            {currentNativeStory.category}
+          </span>
+        </div>
+
+        <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 leading-snug line-clamp-2 transition-colors break-words">
+          <a
+            href={effectiveLink}
+            target="_blank"
+            rel="noopener noreferrer sponsored"
+            class="focus:outline-hidden"
+          >
+            {effectiveHeadline}
+          </a>
+        </h3>
+
+        <div class="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+          <span class="font-medium text-amber-700 dark:text-amber-400">Partner Resource</span>
+          <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0"></span>
+          <span class="shrink-0">{currentNativeStory.readingTime} min read</span>
+          <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0"></span>
+          <span class="text-slate-400 dark:text-slate-500">External Resource</span>
+        </div>
+      </div>
+
+      <!-- Right Image Thumbnail with Fallback -->
+      <a
+        href={effectiveLink}
+        target="_blank"
+        rel="noopener noreferrer sponsored"
+        class="shrink-0 relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800/60"
+        tabindex="-1"
+      >
+        <img
+          src={currentNativeStory.imageUrl}
+          alt={effectiveHeadline}
+          loading="lazy"
+          decoding="async"
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
+      </a>
+    </div>
+  </article>
+)}
+
+<!-- 4. IN-ARTICLE SMARTLINK: Policy-Compliant Editorial Partner Spotlight -->
+{format === 'smartlink' && (
+  <div class={`my-6 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200/70 dark:border-amber-900/40 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs not-prose transition-all group ${className}`}>
+    <div class="flex items-center justify-between gap-2 mb-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 font-mono">
+          Sponsored Feature
         </span>
-        <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold">
-          Trending Deal
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 font-mono">
+          {currentNativeStory.category} · Partner Spotlight
         </span>
       </div>
-      <a
-        href="/contact#advertise"
-        class="text-[10px] text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-      >
-        Advertise With Us &rarr;
-      </a>
+      <span class="text-[10px] text-slate-400 font-mono">
+        {currentNativeStory.readingTime} min read
+      </span>
     </div>
 
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div class="flex items-start gap-3.5 text-left flex-1 min-w-0">
-        <div class="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
+        <div class="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+          <img
+            src={currentNativeStory.imageUrl}
+            alt={effectiveHeadline}
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform"
+          />
         </div>
         <div>
-          <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
-            {effectiveHeadline || 'Verified Financial Opportunities, High-Yield FX & Business Vaults in Nigeria'}
+          <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-snug">
+            <a href={effectiveLink} target="_blank" rel="noopener noreferrer sponsored">
+              {effectiveHeadline}
+            </a>
           </h4>
           <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-            {effectiveTeaser || 'Explore vetted fintech tools, dollar cards, SME expansion grants, and verified market instruments curated for readers.'}
+            {effectiveTeaser}
           </p>
         </div>
       </div>
+
       <a
         href={effectiveLink}
         target="_blank"
         rel="noopener noreferrer sponsored"
         class="shrink-0 w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
       >
-        <span>Explore Offers</span>
+        <span>Explore Guide</span>
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>

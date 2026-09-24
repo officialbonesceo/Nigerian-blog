@@ -4,6 +4,7 @@ import TrendingBar from '../components/TrendingBar.astro';
 import TopStoryCard from '../components/TopStoryCard.astro';
 import ArticleCard from '../components/ArticleCard.astro';
 import MostReadSection from '../components/MostReadSection.astro';
+import FAQSection from '../components/FAQSection.astro';
 import AdSlot from '../components/AdSlot.astro';
 import AdsterraNativeBanner from '../components/AdsterraNativeBanner.astro';
 import {
@@ -57,9 +58,37 @@ const siteBase = rawSiteBase === 'https://9jabeacon.name.ng' ? 'https://www.9jab
 const prevUrl = page > 1 ? (page === 2 ? `${siteBase}/` : `${siteBase}/?page=${page - 1}`) : undefined;
 const nextUrl = hasNextPage ? `${siteBase}/?page=${page + 1}` : undefined;
 
-// Ensure there is always an effective top story on page 1 if any articles exist
-const effectiveTopStory = page === 1 ? (topStory || (currentFeed.length > 0 ? currentFeed[0] : null)) : null;
-const filteredLatest = page === 1
+// Dynamic hero rotation across candidate stories with 0 extra database reads and 0 writes
+let effectiveTopStory: Article | null = null;
+if (page === 1) {
+  const heroCandidatePool: Article[] = [];
+  const seenIds = new Set<string>();
+
+  const poolSources = [
+    topStory,
+    ...breakingNews,
+    ...mostRead.slice(0, 3),
+    ...currentFeed.slice(0, 4),
+  ].filter((art): art is Article => Boolean(art && art.id));
+
+  for (const art of poolSources) {
+    if (!seenIds.has(art.id)) {
+      seenIds.add(art.id);
+      heroCandidatePool.push(art);
+    }
+  }
+
+  if (heroCandidatePool.length > 0) {
+    // Dynamic time-window rotation (changes smoothly every 10 minutes)
+    // 0 extra DB reads, 0 DB writes, ensures visitors always see fresh leading hero news
+    const timeWindow = Math.floor(Date.now() / (10 * 60 * 1000));
+    const selectedIdx = timeWindow % heroCandidatePool.length;
+    effectiveTopStory = heroCandidatePool[selectedIdx] || heroCandidatePool[0];
+  }
+}
+
+// Exclude the hero story from the feed so there is no duplicate on page 1
+const filteredLatest = page === 1 && effectiveTopStory
   ? currentFeed.filter((art) => art.id !== effectiveTopStory?.id).slice(0, 6)
   : currentFeed;
 ---
@@ -161,7 +190,7 @@ const filteredLatest = page === 1
         {filteredLatest.map((article, idx) => (
           <>
             <ArticleCard article={article} />
-            {(idx === 2 || (idx === 6 && filteredLatest.length >= 7)) && (
+            {((filteredLatest.length <= 3 && idx === 1) || (filteredLatest.length > 3 && idx === 2) || (idx === 5 && filteredLatest.length >= 6)) && (
               <AdSlot format="feed" />
             )}
           </>
@@ -248,5 +277,8 @@ const filteredLatest = page === 1
   {mostRead.length > 0 && (
     <MostReadSection articles={mostRead} />
   )}
+
+  <!-- Engaging Fact-Checking & Editorial FAQ Section (with Google FAQPage JSON-LD Schema) -->
+  <FAQSection />
 </Layout>
 

@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User Opinions & Comments on Articles
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if request.resource.data.content is string
+                    && request.resource.data.content.size() >= 3
+                    && request.resource.data.content.size() <= 1500
+                    && request.resource.data.userName is string
+                    && request.resource.data.userName.size() >= 2
+                    && request.resource.data.userName.size() <= 60
+                    && request.resource.data.articleSlug is string;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
+                    && request.resource.data.likesCount == resource.data.likesCount + 1;
+      allow delete: if false;
+    }
+
+    // Real Weekly Article View Counts
+    match /weekly_article_views/{docId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.viewsCount is number
+                            && request.resource.data.articleSlug is string
+                            && request.resource.data.weekKey is string;
+      allow delete: if true;
+    }
+
+    // General fallback
+    match /{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

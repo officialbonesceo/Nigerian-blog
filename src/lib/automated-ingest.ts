@@ -25,7 +25,7 @@ import {
 } from './runtime-db';
 import type { Article } from './types';
 import { cleanAndFormatArticleHtml } from './content-formatter';
-import { isPublisherLogoOrBanner, generateEditorialSvgDataUrl } from './editorial-image';
+import { isPublisherLogoOrBanner, resolveEditorialImage } from './editorial-image';
 
 export interface FeedItemValidated {
   title: string;
@@ -238,23 +238,27 @@ Default Category Context: ${input.categoryDefault || 'naija-news'}
 You are the Executive Senior Investigative Editor at 9jaBeacon (Nigeria's premier digital newsroom).
 Rewrite this breaking wire dispatch into an original, authoritative, balanced, and verified Nigerian news report.
 
-STRICT EDITORIAL REQUIREMENTS:
-1. TITLE: Engaging, journalistic headline (minimum 30 characters, maximum 100 characters). Factual and clear.
-2. SUMMARY: A concise 1-2 sentence executive summary (under 250 characters).
-3. CONTENT: Substantive, professional article of AT LEAST 250 WORDS (ideally 300-450 words total).
-   - Must be structured into EXACTLY 3 or 4 paragraphs.
+STRICT EDITORIAL REQUIREMENTS & WORD LIMITS:
+1. TITLE: Engaging, journalistic headline (minimum 35 characters, maximum 100 characters). Factual, clear, non-clickbait.
+2. SUMMARY: A concise 2-sentence executive summary (under 250 characters).
+3. CONTENT: Substantive, comprehensive news report strictly between 350 and 500 WORDS total:
+   - Must be structured into EXACTLY 4 distinct paragraphs.
    - Each paragraph MUST be preceded by a dynamic, context-derived <h3> heading that reflects the actual facts of that section (NO generic headings like "The Crux", "Background", "The Stakes").
-   - Paragraph 1: Immediate breaking facts, key actors, locations, and lead announcement.
-   - Paragraph 2: Institutional context, historical background, or economic/legal implications.
-   - Paragraph 3: Direct quotes, verified statements, or official public positions.
-   - Paragraph 4: What comes next, timeline, or societal impact.
-4. CATEGORY: One of 'naija-news', 'business', 'sports', or 'world'.
+   - Paragraph 1 (Lead & Facts, 85-115 words): Immediate breaking development, key actors, locations, figures, and core announcement.
+   - Paragraph 2 (Institutional & Regulatory Backdrop, 85-115 words): Contextualize the development within relevant institutional policies, legal statutes, or economic circumstances. Explain systemic significance rather than guessing facts.
+   - Paragraph 3 (Official Records & Statements, 85-115 words): Direct quotes, verified institutional declarations, or stakeholder responses.
+   - Paragraph 4 (Public Impact & Forward Outlook, 85-115 words): Measurable consequences for citizens, market participants, next procedural milestones, or timelines.
+4. FACTUAL GUARDRAILS & ZERO HALLUCINATION:
+   - STRICT GROUNDING: Extract ONLY verified names, dates, quotes, statistics, and government decisions established in the source text. NEVER invent fake numbers, fictitious officials, or unverified claims.
+   - Completely discard the previous writer's personal opinions, subjective reactions, speculative takes, emotional bias, or first-person remarks ("In my opinion", "I think", "This writer notes").
+   - Rewrite everything 100% in 9jaBeacon's professional, neutral, objective newsroom voice.
+5. CATEGORY: One of 'naija-news', 'business', 'sports', or 'world'.
    - High-priority rule: Politics, elections, courts, crime, Tinubu, Reno Omokri, police, military, EFCC, and governance MUST ALWAYS be 'naija-news', even if monetary sums/fees/prices are mentioned.
-5. TAGS: Array of 3-5 relevant lowercase search keywords.
-6. READ_TIME: Integer minutes (ceil(words / 200)).
+6. TAGS: Array of 3-5 relevant lowercase search keywords.
+7. READ_TIME: Integer minutes (ceil(words / 200)).
 
-BANNED STRINGS & AI LEAKS (STRICT FAIL-CLOSED):
-- NEVER output phrases like "compiling further operational updates", "field dispatches and corroborating sources", "while pacing AI development might sound like a quick fix", "as an AI language model", "here is a rewritten version", or "As this development continues to unfold across Nigeria, key questions remain regarding regulatory oversight".
+BANNED STRINGS & ZERO AI THOUGHT LEAKS (STRICT FAIL-CLOSED):
+- NEVER output reasoning tokens, <think> tags, internal monologues, or conversational intros/outros ("compiling further operational updates", "field dispatches and corroborating sources", "while pacing AI development might sound like a quick fix", "as an AI language model", "here is a rewritten version", or "As this development continues to unfold across Nigeria, key questions remain regarding regulatory oversight").
 - Do not output markdown code blocks (\`\`\`json). Output pure schema values.
 `;
 
@@ -321,15 +325,34 @@ BANNED STRINGS & AI LEAKS (STRICT FAIL-CLOSED):
 
     let parsed: any;
     try {
-      parsed = JSON.parse(text);
+      const sanitizedText = text
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+        .replace(/^```json\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+      parsed = JSON.parse(sanitizedText);
     } catch {
-      // Strip any accidental markdown formatting if present
-      const cleaned = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+      // Strip any accidental markdown formatting or preambles if present
+      const cleaned = text
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+        .replace(/^```json\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
       parsed = JSON.parse(cleaned);
     }
 
-    const finalTitle = (parsed.title || '').trim();
-    const finalSummary = (parsed.summary || '').trim();
+    let finalTitle = (parsed.title || '')
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/^(?:opinion|analysis|editorial|exclusive):\s*/i, '')
+      .trim();
+
+    let finalSummary = (parsed.summary || '')
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/(?:in my opinion|in the writer's view|the author believes)[^.,;]*([.,;]|$)/gi, '')
+      .trim();
+
     let finalHtml = cleanAndFormatArticleHtml(parsed.content || '');
     const plainText = finalHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     const wordCount = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
@@ -450,20 +473,22 @@ export async function runIngestionPipeline(
 
         result.passed++;
 
-        // Visual handling
-        let imageUrl = item.imageUrl;
-        if (!imageUrl || isPublisherLogoOrBanner(imageUrl)) {
-          imageUrl = generateEditorialSvgDataUrl({
-            title: rewrite.title,
-            category: rewrite.category || 'naija-news',
-            sourceName: source.name,
-          });
-        }
-
         const categorySlug = rewrite.category || 'naija-news';
         const categoryId = categorySlugToId(categorySlug);
         const desk = getDeskAttribution(categorySlug);
         const uniqueSlug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
+
+        // Multi-tier visual resolution:
+        // 1. Source image (if valid, not logo/banner)
+        // 2. If human/person story: try Wikipedia; if not found on Wikipedia, SKIP stock photos and use SVG
+        // 3. If non-human story: try Wikipedia, then curated conceptual photography (Unsplash), then SVG
+        const visual = await resolveEditorialImage({
+          title: rewrite.title,
+          content: rewrite.content,
+          category: categorySlug,
+          sourceName: source.name,
+          sourceImageUrl: item.imageUrl,
+        });
 
         const newArticle: Article = {
           id: `art_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -472,17 +497,17 @@ export async function runIngestionPipeline(
           summary: rewrite.summary || rewrite.title,
           content: rewrite.content,
           category_id: categoryId,
-          image_url: imageUrl,
-          image_caption: `${rewrite.title} — Verified wire report.`,
-          image_credit: '9jaBeacon Editorial Visual Desk',
-          image_license: 'Editorial Fair Use',
+          image_url: visual.imageUrl,
+          image_caption: visual.imageCaption,
+          image_credit: visual.imageCredit,
+          image_license: visual.imageLicense,
           author_name: desk.authorName,
           author_role: desk.authorRole,
           author_avatar: '/editorial/naija-news-team.svg',
           is_top_story: 0,
           is_trending: 0,
           is_breaking: 0,
-          views_count: Math.floor(Math.random() * 40) + 10,
+          views_count: 0,
           reading_time_minutes: rewrite.readingTimeMinutes || 3,
           source_id: source.id,
           source_name: source.name,

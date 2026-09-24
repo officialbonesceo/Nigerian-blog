@@ -4,6 +4,7 @@ import ArticleCard from '../../components/ArticleCard.astro';
 import BookmarkButton from '../../components/BookmarkButton.astro';
 import ShareBar from '../../components/ShareBar.astro';
 import AdSlot from '../../components/AdSlot.astro';
+import ArticleComments from '../../components/ArticleComments.astro';
 import { getD1, getArticleBySlug, getRelatedArticles, getSiteSettings } from '../../lib/runtime-db';
 import { DEFAULT_FALLBACK_IMAGE_URL } from '../../lib/fallback-image';
 import { cleanAndFormatArticleHtml, partitionArticleForAds } from '../../lib/content-formatter';
@@ -243,7 +244,7 @@ const structuredData = [
 
       {articleParts.middle1 && (
         <>
-          <!-- Primary Mid-Article Native 300x250 Banner (~100 Words) -->
+          <!-- Banner 2 of 3: Primary Mid-Article Native 300x250 Banner -->
           <AdSlot format="banner-300x250" />
 
           <div
@@ -256,7 +257,7 @@ const structuredData = [
 
       {articleParts.middle2 && (
         <>
-          <!-- High-Converting Smartlink Deal Spotlight (~200 Words) -->
+          <!-- High-Converting Native Smartlink Editorial Dispatch (Native card, not a banner) -->
           <AdSlot format="smartlink" />
 
           <div
@@ -268,19 +269,11 @@ const structuredData = [
       )}
 
       {articleParts.middle3 && (
-        <>
-          <!-- Tertiary Mid-Article Native Ad (~300 Words) -->
-          <AdSlot format="banner-300x250" />
-
-          <div
-            id="article-content-body-middle3"
-            class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
-            set:html={articleParts.middle3}
-          />
-
-          <!-- Mobile Friendly 320x50 Banner After Deep Read -->
-          <AdSlot format="banner-320x50" />
-        </>
+        <div
+          id="article-content-body-middle3"
+          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
+          set:html={articleParts.middle3}
+        />
       )}
     </div>
 
@@ -308,8 +301,70 @@ const structuredData = [
     </div>
   </article>
 
-  <!-- Native Ad Banner (Under Article / Above Recommended Stories) -->
+  <!-- Contextual FAQ & Fact-Check Card (Google FAQPage Rich Snippet) -->
+  <section class="my-8 p-5 sm:p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 shadow-xs not-prose">
+    <script is:inline type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      'mainEntity': [
+        {
+          '@type': 'Question',
+          'name': `What are the core verified facts of: ${article.title}?`,
+          'acceptedAnswer': {
+            '@type': 'Answer',
+            'text': article.summary
+          }
+        },
+        {
+          '@type': 'Question',
+          'name': 'How does 9jaBeacon ensure this report is objective and fact-checked?',
+          'acceptedAnswer': {
+            '@type': 'Answer',
+            'text': `Our newsroom extracts exclusively verified developments, official public positions, dates, and direct quotes from ${article.source_name || 'verified wire partners'}, strictly discarding subjective opinions or writer speculation.`
+          }
+        }
+      ]
+    })} />
+
+    <div class="flex items-center gap-2 mb-3">
+      <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+      <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-mono">
+        Story Fact-Check & Key Insights FAQ
+      </h3>
+    </div>
+    
+    <div class="space-y-2.5">
+      <details class="group rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 open:border-emerald-500/40">
+        <summary class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 cursor-pointer list-none flex items-center justify-between gap-2">
+          <span>What is the core verified development in this report?</span>
+          <svg class="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </summary>
+        <p class="text-xs text-slate-600 dark:text-slate-300 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 leading-relaxed">
+          {article.summary}
+        </p>
+      </details>
+
+      <details class="group rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 open:border-emerald-500/40">
+        <summary class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 cursor-pointer list-none flex items-center justify-between gap-2">
+          <span>How does 9jaBeacon ensure this report is objective?</span>
+          <svg class="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </summary>
+        <p class="text-xs text-slate-600 dark:text-slate-300 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 leading-relaxed">
+          Our editorial desk extracts exclusively verified developments, official public positions, dates, and direct quotes from {article.source_name || 'verified wire partners'}, strictly discarding subjective opinions or writer speculation.
+        </p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Native Ad Banner (Under Article / Above Community Perspectives) -->
   <AdSlot format="banner-300x250" />
+
+  <!-- Reader Opinions & Perspectives (Powered by Firebase Firestore) -->
+  <ArticleComments articleSlug={article.slug} articleTitle={article.title} />
 
   <!-- Recommended News Section (5 items + See More button) -->
   {relatedArticles.length > 0 && (
@@ -349,14 +404,36 @@ const structuredData = [
   )}
 </Layout>
 
-<script is:inline define:vars={{ articleId: article.id }}>
-  // Track genuine article read once per session to power dynamic "Most Read" while minimizing writes
+<script is:inline define:vars={{ 
+  articleId: article.id, 
+  articleSlug: article.slug, 
+  articleTitle: article.title, 
+  articleCategory: article.category_name, 
+  articleImage: imageUrl 
+}}>
+  // Track genuine article read once per session in both analytics and Firestore Weekly Analytics
   (function() {
     try {
-      if (!articleId) return;
-      const readKey = 'art_read_' + articleId;
+      if (!articleSlug) return;
+      const readKey = 'art_read_' + articleSlug;
       if (!sessionStorage.getItem(readKey)) {
         sessionStorage.setItem(readKey, '1');
+
+        // 1. Record authentic weekly view in Firebase Firestore
+        import('/src/lib/firebase.ts').then(function(fb) {
+          if (fb && fb.recordArticleView) {
+            fb.recordArticleView({
+              slug: articleSlug,
+              title: articleTitle,
+              category: articleCategory,
+              imageUrl: articleImage,
+            });
+          }
+        }).catch(function(err) {
+          console.warn('[Firestore] View tracking skipped:', err);
+        });
+
+        // 2. Track internal analytics beacon
         let sid = sessionStorage.getItem('9ja_sess_id');
         if (!sid) {
           sid = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);

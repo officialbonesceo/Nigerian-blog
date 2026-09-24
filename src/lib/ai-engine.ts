@@ -94,23 +94,27 @@ export const POLLINATIONS_MODELS_CASCADE = [
 const SYSTEM_PROMPT = `You are an Executive Senior Investigative Editor at 9jaBeacon.
 
 YOUR EDITORIAL MANDATE & GOLDEN STANDARD:
-Write an authoritative, factual, high-retention news report structured into EXACTLY 3 or 4 substantive paragraphs with context-derived headings (Option A).
+Write an authoritative, factual, high-retention news report structured into EXACTLY 4 substantive paragraphs with context-derived headings (Option A).
 
 ARTICLE STRUCTURE (OPTION A: DYNAMIC STORY-DERIVED SUBHEADINGS):
-- Every article MUST consist of 3 to 4 distinct paragraphs.
-- EACH paragraph MUST be preceded by its own dynamic, story-derived <h3> heading that reflects the specific subject of that paragraph (e.g., specific names, entities, policies, actions, or developments).
+- Every article MUST consist of EXACTLY 4 distinct paragraphs.
+- EACH paragraph MUST be preceded by its own dynamic, story-derived <h3> heading that reflects the specific facts of that paragraph (e.g., specific names, entities, policies, actions, or developments).
 - STRICTLY FORBIDDEN: Do NOT use static, repetitive generic headings such as "The Crux", "Background & Institutional Context", "Socioeconomic Stakes", or "Official Reactions". Every heading must be unique to the story facts.
 - STRICT WORD COUNT MANDATE:
-  * The entire article MUST contain AT LEAST 300 WORDS of substantive text (strictly 300 to 450 words total).
-  * Each of the 3 to 4 paragraphs must contain between 75 and 115 words of rich, comprehensive journalistic prose.
-  * Any draft containing fewer than 300 words will be rejected by the editorial quality gate.
+  * The entire article MUST contain between 350 and 500 WORDS total.
+  * Each of the 4 paragraphs must contain between 85 and 115 words of rich, comprehensive journalistic prose.
+  * Any draft containing fewer than 320 words will be rejected by the editorial quality gate.
 
-STRICT QUALITY MANDATES:
-- NO fallback templates, NO boilerplate sentences ("This development is poised to impact governance...", "As this development continues to unfold across Nigeria, key questions remain regarding regulatory oversight...", "The Stakes", "The Stats").
-- Never inject Nigerian governance boilerplate into World or Sports stories.
-- NO artificial placeholder quotes or fabricated 9jaBeacon desk quotes.
-- NO repetitive phrases or bullet list dumps.
-- Return strictly factual, well-researched information based on the input story wire.
+FACTUAL GUARDRAILS & ZERO HALLUCINATION:
+- STRICT GROUNDING: Extract ONLY verified names, dates, quotes, statistics, and government decisions established in the source text. NEVER invent fake numbers, fictitious officials, or unverified claims.
+- Expand depth through institutional context, regulatory statutes, and historical parallels rather than guessing new facts.
+- ZERO AI THOUGHTS & ZERO PRESET BOILERPLATE:
+  * NEVER leak thinking processes, internal monologues, <think> tags, or conversational intros/outros ("Here is the rewritten article", "Sure, here is", "As an AI language model"). Output ONLY pure JSON.
+  * Let the AI do the writing itself from raw facts. NO synthetic canned fallback stubs, NO preset info or boilerplate templates.
+
+STRICT DISREGARD OF PREVIOUS WRITER'S OPINIONS:
+- Completely discard the previous writer's or journalist's personal musings, subjective opinions, political bias, speculation, and first-person commentary ("In my view", "I believe", "The writer argues").
+- Extract ONLY verified factual developments, direct quotes, official government/institutional positions, dates, figures, and legal/economic implications. Rewrite everything 100% in 9jaBeacon's balanced, objective editorial voice.
 
 CATEGORY RULES (choose ONE primary by MAIN topic, not by incidental money words):
 - cat_naija_news → Politics, governance, security, police, courts, elections, public institutions, Nigeria-led social issues
@@ -122,9 +126,9 @@ Return ONLY valid JSON (no markdown fences, strictly parseable):
 {
   "title": "Compelling, factual, non-clickbait headline",
   "summary": "An executive 2-sentence briefing summarizing the core event and its primary significance.",
-  "content": "<h3>[Dynamic Story-Derived Subheading 1]</h3><p>[Substantive paragraph 1, 75-110 words]</p><h3>[Dynamic Story-Derived Subheading 2]</h3><p>[Substantive paragraph 2, 75-110 words]</p><h3>[Dynamic Story-Derived Subheading 3]</h3><p>[Substantive paragraph 3, 75-110 words]</p><h3>[Dynamic Story-Derived Subheading 4]</h3><p>[Substantive paragraph 4, 75-110 words]</p>",
+  "content": "<h3>[Dynamic Story-Derived Subheading 1]</h3><p>[Substantive paragraph 1, 85-115 words]</p><h3>[Dynamic Story-Derived Subheading 2]</h3><p>[Substantive paragraph 2, 85-115 words]</p><h3>[Dynamic Story-Derived Subheading 3]</h3><p>[Substantive paragraph 3, 85-115 words]</p><h3>[Dynamic Story-Derived Subheading 4]</h3><p>[Substantive paragraph 4, 85-115 words]</p>",
   "category_id": "cat_naija_news | cat_money_hustle | cat_sports | cat_world",
-  "reading_time_minutes": 2,
+  "reading_time_minutes": 3,
   "key_takeaways": [
     "Key verified fact or primary figure",
     "Direct policy or economic impact point",
@@ -611,7 +615,15 @@ function parseAiJsonResponse(
   if (!rawText) return null;
 
   try {
-    let cleaned = rawText.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
+    // 1. Strip reasoning and thinking tokens before extracting JSON
+    let cleaned = rawText
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+      .replace(/(?:^|\n)\s*(?:Thinking Process|Thought Process|Model Thought|Internal Reasoning):[\s\S]*?(?=\n\s*\n|\{|$)/gi, '')
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*$/gi, '')
+      .trim();
+
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
@@ -620,11 +632,23 @@ function parseAiJsonResponse(
 
     const obj = JSON.parse(cleaned);
 
-    if (!obj.title || typeof obj.title !== 'string' || obj.title.trim().length < 5) {
+    let rawTitle = (obj.title || '').trim();
+    // Sanitize title from thinking remnants or writer opinions
+    rawTitle = rawTitle
+      .replace(/<[^>]*>/g, '')
+      .replace(/^(?:opinion|analysis|editorial|exclusive):\s*/i, '')
+      .trim();
+
+    if (!rawTitle || typeof rawTitle !== 'string' || rawTitle.length < 5) {
       return null;
     }
 
-    const summary = cleanRssSnippet(obj.summary || obj.description || fallbackInput.description || '');
+    let summary = cleanRssSnippet(obj.summary || obj.description || fallbackInput.description || '');
+    summary = summary
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/(?:in my opinion|in the writer's view|the author believes)[^.,;]*([.,;]|$)/gi, '')
+      .trim();
+
     let content = obj.content || '';
     content = cleanAndFormatArticleHtml(content);
 
