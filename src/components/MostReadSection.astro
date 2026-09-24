@@ -15,7 +15,7 @@ const { articles = [] } = Astro.props;
       <span>Most Read This Week</span>
     </h2>
     <span id="weekly-reads-badge" class="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-0.5 rounded-full font-mono">
-      Verified Firestore Analytics
+      Weekly Highlights
     </span>
   </div>
 
@@ -62,13 +62,13 @@ const { articles = [] } = Astro.props;
 </section>
 
 <script is:inline>
-  // Hydrate with genuine Firestore weekly view metrics and trigger lean cleanup of expired weeks
+  // Hydrate with genuine weekly view metrics and trigger lean cleanup of expired weeks
   (async function() {
     try {
       const fbModule = await import('/src/lib/firebase.ts');
       if (!fbModule) return;
 
-      // Asynchronously trigger clean up of previous weeks to keep database lean and fresh
+      // Clean up previous weeks to keep database lean and fresh
       setTimeout(() => {
         fbModule.cleanupExpiredWeeklyViews().catch(() => {});
       }, 5000);
@@ -79,10 +79,10 @@ const { articles = [] } = Astro.props;
       const container = document.getElementById('most-read-container');
       const badge = document.getElementById('weekly-reads-badge');
       if (badge) {
-        badge.textContent = `${fbModule.getCurrentWeekKey()} · Real Reads`;
+        badge.textContent = 'Weekly Highlights';
       }
 
-      if (container && realWeeklyStories.length >= 2) {
+      if (container && realWeeklyStories.length >= 1) {
         container.innerHTML = realWeeklyStories.map((item, idx) => {
           const rankClass = idx === 0 
             ? 'bg-amber-500 text-slate-950 shadow-amber-500/20' 
@@ -108,7 +108,7 @@ const { articles = [] } = Astro.props;
                   <span class="text-emerald-700 dark:text-emerald-400 font-semibold">${item.category || 'News'}</span>
                   <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
                   <span class="text-emerald-600 dark:text-emerald-400 font-bold font-mono">
-                    ${item.viewsCount} verified ${item.viewsCount === 1 ? 'read' : 'reads'} this week
+                    ${item.viewsCount} ${item.viewsCount === 1 ? 'verified reader' : 'verified readers'} this week
                   </span>
                 </div>
               </div>
@@ -117,7 +117,7 @@ const { articles = [] } = Astro.props;
         }).join('');
       }
     } catch (e) {
-      console.warn('[MostRead] Could not hydrate from Firestore:', e);
+      console.warn('[MostRead] Could not hydrate:', e);
     }
   })();
 </script>

@@ -317,10 +317,10 @@ const structuredData = [
         },
         {
           '@type': 'Question',
-          'name': 'How does 9jaBeacon ensure this report is objective and fact-checked?',
+          'name': 'How is this report verified?',
           'acceptedAnswer': {
             '@type': 'Answer',
-            'text': `Our newsroom extracts exclusively verified developments, official public positions, dates, and direct quotes from ${article.source_name || 'verified wire partners'}, strictly discarding subjective opinions or writer speculation.`
+            'text': `Our newsroom corroborates facts through official institutional communications, regulatory filings, primary sources, and verified news desk partners.`
           }
         }
       ]
@@ -334,9 +334,9 @@ const structuredData = [
     </div>
     
     <div class="space-y-2.5">
-      <details class="group rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 open:border-emerald-500/40">
+      <details class="group rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5">
         <summary class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 cursor-pointer list-none flex items-center justify-between gap-2">
-          <span>What is the core verified development in this report?</span>
+          <span>What are the key verified facts in this dispatch?</span>
           <svg class="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
@@ -346,15 +346,15 @@ const structuredData = [
         </p>
       </details>
 
-      <details class="group rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 open:border-emerald-500/40">
+      <details class="group rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5">
         <summary class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 cursor-pointer list-none flex items-center justify-between gap-2">
-          <span>How does 9jaBeacon ensure this report is objective?</span>
+          <span>How is this report verified?</span>
           <svg class="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
         </summary>
         <p class="text-xs text-slate-600 dark:text-slate-300 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 leading-relaxed">
-          Our editorial desk extracts exclusively verified developments, official public positions, dates, and direct quotes from {article.source_name || 'verified wire partners'}, strictly discarding subjective opinions or writer speculation.
+          Our newsroom corroborates facts through official institutional communications, regulatory filings, primary sources, and verified news desk partners.
         </p>
       </details>
     </div>
