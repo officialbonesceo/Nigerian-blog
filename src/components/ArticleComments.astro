@@ -7,7 +7,12 @@ interface Props {
 const { articleSlug, articleTitle } = Astro.props;
 ---
 
-<section id="opinions-section" class="my-10 pt-8 border-t border-slate-200 dark:border-slate-800/80 not-prose">
+<section 
+  id="opinions-section" 
+  data-article-slug={articleSlug} 
+  data-article-title={articleTitle} 
+  class="my-10 pt-8 border-t border-slate-200 dark:border-slate-800/80 not-prose"
+>
   <div class="flex items-center justify-between gap-4 mb-6">
     <div>
       <h3 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -111,16 +116,25 @@ const { articleSlug, articleTitle } = Astro.props;
   </div>
 </section>
 
-<script is:inline define:vars={{ articleSlug, articleTitle }}>
-  (async function() {
+<script>
+  import { fetchArticleComments, postArticleComment, upvoteComment } from '../lib/firebase';
+
+  function initOpinions() {
+    const section = document.getElementById('opinions-section');
+    if (!section) return;
+
+    const articleSlug = section.getAttribute('data-article-slug') || '';
+    const articleTitle = section.getAttribute('data-article-title') || '';
+    if (!articleSlug) return;
+
     const listEl = document.getElementById('opinions-list');
     const formEl = document.getElementById('opinion-form');
     const statusEl = document.getElementById('form-status');
-    const submitBtn = document.getElementById('submit-opinion-btn');
+    const submitBtn = document.getElementById('submit-opinion-btn') as HTMLButtonElement | null;
     const btnText = document.getElementById('btn-text');
     const btnSpinner = document.getElementById('btn-spinner');
     const countBadge = document.getElementById('comments-count-badge');
-    const contentInput = document.getElementById('opinion-content');
+    const contentInput = document.getElementById('opinion-content') as HTMLTextAreaElement | null;
     const charCounter = document.getElementById('char-counter');
 
     if (contentInput && charCounter) {
@@ -130,7 +144,7 @@ const { articleSlug, articleTitle } = Astro.props;
     }
 
     // Helper for sentiment styling
-    function getSentimentBadge(sentiment) {
+    function getSentimentBadge(sentiment: string) {
       if (sentiment === 'agree') {
         return '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-mono">Agreed</span>';
       } else if (sentiment === 'disagree') {
@@ -141,7 +155,7 @@ const { articleSlug, articleTitle } = Astro.props;
       return '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 font-mono">Perspective</span>';
     }
 
-    function timeAgo(dateMs) {
+    function timeAgo(dateMs: number) {
       const diffSec = Math.floor((Date.now() - dateMs) / 1000);
       if (diffSec < 60) return 'Just now';
       if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
@@ -149,30 +163,23 @@ const { articleSlug, articleTitle } = Astro.props;
       return `${Math.floor(diffSec / 86400)}d ago`;
     }
 
-    function escapeHtml(str) {
+    function escapeHtml(str: string) {
       const p = document.createElement('p');
       p.textContent = str;
       return p.innerHTML;
     }
 
-    // Dynamic import of Firebase module from bundle
-    let fbModule = null;
-    try {
-      fbModule = await import('/src/lib/firebase.ts');
-    } catch (e) {
-      console.warn('[Comments] Could not import firebase module:', e);
-    }
-
     async function loadOpinions() {
-      if (!fbModule) return;
       try {
-        const comments = await fbModule.fetchArticleComments(articleSlug);
+        const comments = await fetchArticleComments(articleSlug);
         const loadingEl = document.getElementById('opinions-loading');
         if (loadingEl) loadingEl.remove();
 
         if (countBadge) {
           countBadge.textContent = `${comments.length} ${comments.length === 1 ? 'Opinion' : 'Opinions'}`;
         }
+
+        if (!listEl) return;
 
         if (comments.length === 0) {
           listEl.innerHTML = `
@@ -226,9 +233,9 @@ const { articleSlug, articleTitle } = Astro.props;
             const likedKey = `liked_${commentId}`;
             if (localStorage.getItem(likedKey)) return; // already liked
             localStorage.setItem(likedKey, '1');
-            btn.disabled = true;
+            (btn as HTMLButtonElement).disabled = true;
             btn.classList.add('text-emerald-600', 'font-bold');
-            await fbModule.upvoteComment(commentId);
+            await upvoteComment(commentId);
             loadOpinions();
           });
         });
@@ -241,22 +248,20 @@ const { articleSlug, articleTitle } = Astro.props;
     if (formEl) {
       formEl.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!fbModule) return;
-
-        const nameInput = document.getElementById('opinion-name');
-        const sentimentInput = document.getElementById('opinion-sentiment');
-        const contentVal = contentInput.value.trim();
-        const nameVal = nameInput.value.trim();
-        const sentimentVal = sentimentInput.value;
+        const nameInput = document.getElementById('opinion-name') as HTMLInputElement | null;
+        const sentimentInput = document.getElementById('opinion-sentiment') as HTMLSelectElement | null;
+        const contentVal = contentInput?.value.trim() || '';
+        const nameVal = nameInput?.value.trim() || '';
+        const sentimentVal = (sentimentInput?.value || 'perspective') as 'agree' | 'disagree' | 'neutral' | 'perspective';
 
         if (contentVal.length < 3) return;
 
-        submitBtn.disabled = true;
-        btnText.textContent = 'Publishing...';
-        btnSpinner.classList.remove('hidden');
-        statusEl.classList.add('hidden');
+        if (submitBtn) submitBtn.disabled = true;
+        if (btnText) btnText.textContent = 'Publishing...';
+        btnSpinner?.classList.remove('hidden');
+        statusEl?.classList.add('hidden');
 
-        const res = await fbModule.postArticleComment({
+        const res = await postArticleComment({
           articleSlug,
           articleTitle,
           userName: nameVal,
@@ -264,25 +269,36 @@ const { articleSlug, articleTitle } = Astro.props;
           sentiment: sentimentVal,
         });
 
-        submitBtn.disabled = false;
-        btnText.textContent = 'Publish Perspective';
-        btnSpinner.classList.add('hidden');
+        if (submitBtn) submitBtn.disabled = false;
+        if (btnText) btnText.textContent = 'Publish Perspective';
+        btnSpinner?.classList.add('hidden');
 
         if (res.success) {
-          contentInput.value = '';
+          if (contentInput) contentInput.value = '';
           if (charCounter) charCounter.textContent = '0 / 800';
-          statusEl.textContent = 'Your perspective was published successfully!';
-          statusEl.className = 'text-xs py-2 px-3 rounded-lg font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 block';
+          if (statusEl) {
+            statusEl.textContent = 'Your perspective was published successfully!';
+            statusEl.className = 'text-xs py-2 px-3 rounded-lg font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 block';
+          }
           loadOpinions();
-          setTimeout(() => { statusEl.classList.add('hidden'); }, 4000);
+          setTimeout(() => { statusEl?.classList.add('hidden'); }, 4000);
         } else {
-          statusEl.textContent = res.error || 'Failed to publish opinion.';
-          statusEl.className = 'text-xs py-2 px-3 rounded-lg font-medium bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20 block';
+          if (statusEl) {
+            statusEl.textContent = res.error || 'Failed to publish opinion.';
+            statusEl.className = 'text-xs py-2 px-3 rounded-lg font-medium bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20 block';
+          }
         }
       });
     }
 
     // Initial load
     loadOpinions();
-  })();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initOpinions);
+  } else {
+    initOpinions();
+  }
+  document.addEventListener('astro:page-load', initOpinions);
 </script>

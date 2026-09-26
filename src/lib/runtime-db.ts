@@ -573,19 +573,42 @@ function formatArticle(art: any): Article {
     art.category_id = 'cat_naija_news';
     authorName = '9jaBeacon National News Desk';
     authorRole = 'Governance, Judiciary & Public Affairs Reporter';
-  } else if (!catName || catName === 'Money Hustle' || art.category_id === 'cat_money_hustle' || art.category_id === 'business') {
-    if (art.category_id === 'cat_money_hustle' || art.category_id === 'business' || catSlug === 'business' || catSlug === 'money-hustle') {
-      catName = 'Business';
-      catSlug = 'business';
-    } else if (art.category_id === 'cat_sports' || catSlug === 'sports') {
-      catName = 'Sports';
-      catSlug = 'sports';
-    } else if (art.category_id === 'cat_world' || catSlug === 'world') {
-      catName = 'World';
-      catSlug = 'world';
-    } else {
-      catName = catName || 'Naija News';
-      catSlug = catSlug || 'naija-news';
+  } else {
+    // Sports category mis-tagging post-override (spec 26 Sep 2026)
+    const isSportsCandidate = art.category_id === 'cat_sports' || art.category_id === 'sports' || catSlug === 'sports' || catName === 'Sports';
+    if (isSportsCandidate) {
+      const fullText = `${title} ${summary} ${content}`.toLowerCase();
+      if (/olori|olu of|royal|royalty|monarch|palace|polygamy|icpc|minister|blockchain|lisk|steel investment|education minister|gym instructor|feminist|activist|divorce|adultery|traditional ruler|alausa/i.test(fullText)) {
+        if (/blockchain|lisk|steel investment|crypto|invest|trade|export|firm|bank|equity|economy|fund|capital|dollar|naira|commercial/i.test(fullText)) {
+          art.category_id = 'cat_money_hustle';
+          catName = 'Business';
+          catSlug = 'business';
+          authorName = '9jaBeacon Financial Team';
+          authorRole = 'Money & Business Desk';
+        } else {
+          art.category_id = 'cat_naija_news';
+          catName = 'Naija News';
+          catSlug = 'naija-news';
+          authorName = '9jaBeacon National News Desk';
+          authorRole = 'Governance, Culture & Public Affairs Reporter';
+        }
+      }
+    }
+
+    if (!catName || catName === 'Money Hustle' || art.category_id === 'cat_money_hustle' || art.category_id === 'business') {
+      if (art.category_id === 'cat_money_hustle' || art.category_id === 'business' || catSlug === 'business' || catSlug === 'money-hustle') {
+        catName = 'Business';
+        catSlug = 'business';
+      } else if (art.category_id === 'cat_sports' || catSlug === 'sports') {
+        catName = 'Sports';
+        catSlug = 'sports';
+      } else if (art.category_id === 'cat_world' || catSlug === 'world') {
+        catName = 'World';
+        catSlug = 'world';
+      } else {
+        catName = catName || 'Naija News';
+        catSlug = catSlug || 'naija-news';
+      }
     }
   }
 
@@ -634,6 +657,10 @@ export async function getArticles(
     const res = await db.prepare(q).bind(...v).all<Article>();
     if (res?.results?.length) {
       results = res.results.filter((a) => !isStubOrRejected(a)).map(formatArticle);
+      if (o.categorySlug) {
+        const targetSlug = o.categorySlug === 'money-hustle' ? 'business' : o.categorySlug;
+        results = results.filter((a) => a.category_slug === targetSlug || (targetSlug === 'naija-news' && a.category_slug === 'cat_naija_news'));
+      }
     }
   } catch (err) {
     console.warn('getArticles query warning:', err);
@@ -665,6 +692,10 @@ export async function getArticles(
       const directRes = await db.prepare(directQ).bind(...directV).all<Article>();
       if (directRes?.results?.length) {
         results = directRes.results.filter((a) => !isStubOrRejected(a)).map(formatArticle);
+        if (o.categorySlug) {
+          const targetSlug = o.categorySlug === 'money-hustle' ? 'business' : o.categorySlug;
+          results = results.filter((a) => a.category_slug === targetSlug || (targetSlug === 'naija-news' && a.category_slug === 'cat_naija_news'));
+        }
       }
     } catch (directErr) {
       console.warn('getArticles direct query warning:', directErr);

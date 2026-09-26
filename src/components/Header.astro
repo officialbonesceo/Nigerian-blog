@@ -398,14 +398,48 @@ const { siteName = '9jaBeacon' } = Astro.props;
     loadDatabaseNotifications();
   }
 
-  // Bind to DOM ready and page navigation
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initNotificationCenter);
-  } else {
-    initNotificationCenter();
+  // Header Theme Switcher
+  function initHeaderThemeToggle() {
+    const themeBtn = document.getElementById('btn-theme-toggle');
+    if (!themeBtn || themeBtn.dataset.themeBound === 'true') return;
+    themeBtn.dataset.themeBound = 'true';
+
+    themeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const isDark = document.documentElement.classList.contains('dark');
+      const targetTheme = isDark ? 'light' : 'dark';
+
+      if (typeof window.setDrawerTheme === 'function') {
+        window.setDrawerTheme(targetTheme);
+      } else {
+        if (targetTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        try {
+          localStorage.setItem('9jabeacon_theme', targetTheme);
+          localStorage.setItem('naijapulse_theme', targetTheme);
+          localStorage.setItem('theme', targetTheme);
+        } catch (err) {}
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: targetTheme } }));
+        window.showToast?.(targetTheme === 'dark' ? 'Dark mode activated' : 'Light mode activated', 'info');
+      }
+    });
   }
 
-  document.addEventListener('astro:page-load', () => {
+  // Bind to DOM ready and page navigation
+  function setupHeaderScripts() {
     initNotificationCenter();
-  });
+    initHeaderThemeToggle();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupHeaderScripts);
+  } else {
+    setupHeaderScripts();
+  }
+
+  document.addEventListener('astro:page-load', setupHeaderScripts);
 </script>

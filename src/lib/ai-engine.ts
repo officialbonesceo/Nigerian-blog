@@ -100,10 +100,11 @@ ARTICLE STRUCTURE (OPTION A: DYNAMIC STORY-DERIVED SUBHEADINGS):
 - Every article MUST consist of EXACTLY 4 distinct paragraphs.
 - EACH paragraph MUST be preceded by its own dynamic, story-derived <h3> heading that reflects the specific facts of that paragraph (e.g., specific names, entities, policies, actions, or developments).
 - STRICTLY FORBIDDEN: Do NOT use static, repetitive generic headings such as "The Crux", "Background & Institutional Context", "Socioeconomic Stakes", or "Official Reactions". Every heading must be unique to the story facts.
-- STRICT WORD COUNT MANDATE:
-  * The entire article MUST contain between 350 and 500 WORDS total.
-  * Each of the 4 paragraphs must contain between 85 and 115 words of rich, comprehensive journalistic prose.
-  * Any draft containing fewer than 320 words will be rejected by the editorial quality gate.
+- STRICT WORD COUNT & DEPTH MANDATE:
+  * The article MUST contain between 500 and 850 WORDS total (long-form, high-retention investigative depth).
+  * Structure across 4 to 6 comprehensive sections, each introduced by a dynamic story-specific <h3> heading that reflects the factual development.
+  * Deepen the factual analysis: explain verified timeline, legal/regulatory statutes, institutional background, market/citizen implications, and official stakeholder statements.
+  * Any draft containing fewer than 380 words will be rejected by the editorial quality gate.
 
 FACTUAL GUARDRAILS & ZERO HALLUCINATION:
 - STRICT GROUNDING: Extract ONLY verified names, dates, quotes, statistics, and government decisions established in the source text. NEVER invent fake numbers, fictitious officials, or unverified claims.
@@ -211,10 +212,9 @@ Rewrite into a 9jaBeacon article following the JSON schema.`;
       { role: 'assistant', content: rawText },
       {
         role: 'user',
-        content: `EDITORIAL REJECTION: Your draft contains only ${currentWordCount} words, which violates our strict quality threshold of 300 words minimum.
-Please EXPAND this article to between 320 and 420 words total across 3 to 4 comprehensive paragraphs, each introduced by a story-specific <h3> heading (Option A).
-Deepen the factual analysis, explain historical precedents, detail citizen and market impacts, and report verified stakeholder statements.
-Output strictly updated JSON matching the schema with at least 300 words of content.`
+        content: `EDITORIAL QUALITY GATE: Your draft contains only ${currentWordCount} words. To satisfy Google search intent and in-depth journalistic standards, EXPAND this report to between 500 and 800 words across 4 to 6 detailed sections, each introduced by a story-specific <h3> heading (Option A).
+Deepen verified background details, historical precedents, citizen and market impacts, and official institutional positions.
+Output strictly updated JSON matching the schema with at least 400 words of content.`
       }
     ];
     try {

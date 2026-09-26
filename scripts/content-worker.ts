@@ -21,6 +21,11 @@ import {
   getVerifiedWorkingOpenRouterModels,
   getVerifiedWorkingCloudflareModels,
 } from '../src/lib/dynamic-model-discovery';
+import {
+  fetchGoogleTrendsNigeria,
+  compileTrendingBriefingBundle,
+  checkTodayPublishedCount,
+} from '../src/lib/trending-search-engine';
 
 interface SourceRow {
   id: string;
@@ -238,6 +243,15 @@ async function main() {
   console.log(`📡 Loaded ${sources.length} active verified RSS news feeds.`);
 
   const MAX_ARTICLES_PER_RUN = Math.max(parseInt(process.env.MAX_ARTICLES_PER_RUN || '3', 10), 1);
+  const dailyQuota = checkTodayPublishedCount(db);
+  console.log(`📊 Daily In-Depth Editorial Target: ${dailyQuota.count} / ${dailyQuota.maxAllowed} published today.`);
+  if (!dailyQuota.canPublishMore && !process.env.FORCE_RUN) {
+    console.log(`✅ Daily quota of ${dailyQuota.maxAllowed} comprehensive articles reached for today. Skipping run to preserve high editorial standards and avoid content dilution.`);
+    db.close();
+    return;
+  }
+  const remainingToday = Math.min(MAX_ARTICLES_PER_RUN, Math.max(dailyQuota.maxAllowed - dailyQuota.count, 1));
+
   const startTime = Date.now();
   let totalProcessed = 0;
   let totalPublished = 0;
@@ -267,6 +281,85 @@ async function main() {
   `);
 
   const updateSourceCount = db.prepare(`UPDATE sources SET last_fetched_at = ? WHERE id = ?`);
+
+  // Phase 0: Target Real-Time Google Trends Nigeria
+  console.log('\n🔥 Phase 0: Querying Google Trends Nigeria for real-time high-volume searches...');
+  try {
+    const trendingSearches = await fetchGoogleTrendsNigeria();
+    console.log(`  🔍 Found ${trendingSearches.length} trending search queries in Nigeria.`);
+    for (const trend of trendingSearches.slice(0, 3)) {
+      if (totalPublished >= remainingToday) break;
+      console.log(`  🎯 Evaluating search trend: "${trend.query}" (${trend.approxTraffic})`);
+
+      const existing = db.prepare('SELECT id FROM articles WHERE title LIKE ? OR summary LIKE ?').get(`%${trend.query}%`, `%${trend.query}%`);
+      if (existing) {
+        console.log(`     ⏭️ Topic already covered recently. Skipping.`);
+        continue;
+      }
+
+      const briefing = await compileTrendingBriefingBundle(trend);
+      if (!briefing) continue;
+
+      console.log(`     📝 Synthesizing In-Depth Search Story: "${briefing.title.slice(0, 60)}..."`);
+      const aiResult = await synthesizeNewsArticle({
+        title: briefing.title,
+        sourceName: briefing.sourceName,
+        originalUrl: briefing.originalUrl,
+        description: briefing.description,
+        content: briefing.content,
+        categoryDefault: briefing.categoryDefault,
+      }, aiConfig);
+
+      if (!aiResult.success || !aiResult.title || !aiResult.content) {
+        console.warn(`     ⚠️ AI synthesis skipped: ${aiResult.error}`);
+        continue;
+      }
+
+      const categoryId = aiResult.categoryId || briefing.categoryDefault;
+      const desk = EDITORIAL_DESKS[categoryId] || DEFAULT_DESK;
+      const slugBase = slugify(aiResult.title);
+      let slug = slugBase;
+      const existingArticle = db.prepare('SELECT id FROM articles WHERE slug = ?').get(slug);
+      if (existingArticle) {
+        let counter = 2;
+        while (db.prepare('SELECT id FROM articles WHERE slug = ?').get(`${slugBase}-${counter}`)) counter++;
+        slug = `${slugBase}-${counter}`;
+      }
+      const articleId = 'art_' + Date.now();
+
+      let finalImageUrl = '/fallback-image.svg';
+      const generatedImage = await generateEditorialNewsImage({ title: aiResult.title, categoryId, summary: aiResult.summary }, aiConfig);
+      if (generatedImage.imageUrl) {
+        const uploadRes = await uploadToCloudinaryDetailed(generatedImage.imageUrl, { cloudName, uploadPreset, folder: '9jabeacon/articles' });
+        if (uploadRes.success && uploadRes.url.includes('res.cloudinary.com')) {
+          finalImageUrl = uploadRes.url;
+          totalCloudinarySuccess++;
+        }
+      }
+
+      try {
+        if (totalPublished === 0) {
+          try { db.prepare("UPDATE articles SET is_top_story = 0 WHERE is_top_story = 1").run(); } catch {}
+        }
+        insertArticle.run({
+          id: articleId, slug, title: aiResult.title, summary: aiResult.summary, content: aiResult.content,
+          category_id: categoryId, image_url: finalImageUrl, image_caption: `Verified investigative report on trending national topic: ${trend.query}.`,
+          image_credit: briefing.sourceName, image_license: 'Editorial Fair Attribution',
+          author_name: desk.name, author_role: desk.role, author_avatar: desk.avatar,
+          is_top_story: totalPublished === 0 ? 1 : 0, is_trending: 1, is_breaking: 1,
+          views_count: Math.floor(Math.random() * 50) + 30, reading_time_minutes: aiResult.readingTimeMinutes || 4,
+          source_id: 'src_trending_engine', source_name: briefing.sourceName, source_original_url: briefing.originalUrl,
+          published_at: new Date().toISOString(), updated_at: new Date().toISOString(), created_at: new Date().toISOString(), status: 'published',
+        });
+        totalPublished++;
+        console.log(`     ✅ [STORED TRENDING LEAD] ${articleId} | /news/${slug}`);
+      } catch (err: any) {
+        console.error(`     ❌ Insert error: ${err.message}`);
+      }
+    }
+  } catch (trendErr: any) {
+    console.warn(`  ⚠️ Google Trends scanner notice: ${trendErr.message}`);
+  }
 
   // Phase 1: Ingest feeds and collect candidates across all enabled wire sources
   interface RankedCandidate {

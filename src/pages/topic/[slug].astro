@@ -1,0 +1,265 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+import TopStoryCard from '../../components/TopStoryCard.astro';
+import { getD1, searchArticles, getSiteSettings } from '../../lib/runtime-db';
+import type { Article } from '../../lib/types';
+import { getTopicBySlug, NIGERIAN_TOPIC_SPHERES } from '../../lib/topics-data';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect('/topics');
+
+const d1 = getD1(Astro.locals);
+const settings = await getSiteSettings(d1);
+const rawSiteBase = (settings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+const siteBase = rawSiteBase === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteBase;
+
+const definedTopic = getTopicBySlug(slug);
+
+// Derive topic details either from structured definition or humanized slug
+const topicName = definedTopic
+  ? definedTopic.name
+  : slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+const topicShortName = definedTopic ? definedTopic.shortName : topicName;
+const topicTagline = definedTopic
+  ? definedTopic.tagline
+  : `Continuous coverage, verified developments, and policy impact on ${topicName}.`;
+
+const topicDescription = definedTopic
+  ? definedTopic.description
+  : `Explore verified Nigerian news, investigative reports, policy developments, and timeline analysis concerning ${topicName} on 9jaBeacon.`;
+
+const searchQueries = definedTopic
+  ? definedTopic.searchTerms
+  : [slug.replace(/-/g, ' ')];
+
+// Query database for all articles matching this topic's keywords
+let matchedArticles: Article[] = [];
+const seenIds = new Set<string>();
+
+for (const query of searchQueries) {
+  const results = await searchArticles(d1, query, 25);
+  for (const art of results) {
+    if (!seenIds.has(art.id)) {
+      seenIds.add(art.id);
+      matchedArticles.push(art);
+    }
+  }
+}
+
+// Sort by published_at DESC
+matchedArticles.sort((a, b) => {
+  const tA = new Date(a.published_at || a.created_at || '').getTime();
+  const tB = new Date(b.published_at || b.created_at || '').getTime();
+  return tB - tA;
+});
+
+const pageParam = Astro.url.searchParams.get('page');
+const page = Math.max(1, parseInt(pageParam || '1', 10));
+const pageSize = 10;
+const totalArticles = matchedArticles.length;
+const totalPages = Math.max(1, Math.ceil(totalArticles / pageSize));
+const validPage = Math.min(page, totalPages);
+const startIndex = (validPage - 1) * pageSize;
+const paginatedArticles = matchedArticles.slice(startIndex, startIndex + pageSize);
+
+const isFirstPage = validPage === 1;
+const topArticle = isFirstPage && paginatedArticles.length > 0 ? paginatedArticles[0] : null;
+const feedArticles = isFirstPage ? paginatedArticles.slice(1) : paginatedArticles;
+
+const canonicalUrl = `${siteBase}/topic/${slug}${validPage > 1 ? `?page=${validPage}` : ''}`;
+const prevUrl = validPage > 1 ? `${siteBase}/topic/${slug}${validPage === 2 ? '' : `?page=${validPage - 1}`}` : undefined;
+const nextUrl = validPage < totalPages ? `${siteBase}/topic/${slug}?page=${validPage + 1}` : undefined;
+
+// Related topics for rich internal linking
+const relatedTopics = NIGERIAN_TOPIC_SPHERES.filter((t) => t.slug !== slug).slice(0, 5);
+
+// Schema.org CollectionPage & BreadcrumbList structured data
+const structuredData = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': canonicalUrl,
+    'name': `${topicName} - News & Reports`,
+    'description': topicDescription,
+    'url': canonicalUrl,
+    'publisher': {
+      '@type': 'NewsMediaOrganization',
+      'name': settings.site_name || '9jaBeacon',
+      'url': siteBase,
+      'logo': {
+        '@type': 'ImageObject',
+        'url': `${siteBase}/favicon.svg`,
+      },
+    },
+    'mainEntity': {
+      '@type': 'ItemList',
+      'itemListElement': paginatedArticles.map((art, idx) => ({
+        '@type': 'ListItem',
+        'position': startIndex + idx + 1,
+        'url': `${siteBase}/news/${art.slug}`,
+        'name': art.title,
+      })),
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': [
+      {
+        '@type': 'ListItem',
+        'position': 1,
+        'name': 'Home',
+        'item': siteBase,
+      },
+      {
+        '@type': 'ListItem',
+        'position': 2,
+        'name': 'Topic Spheres',
+        'item': `${siteBase}/topics`,
+      },
+      {
+        '@type': 'ListItem',
+        'position': 3,
+        'name': topicShortName,
+        'item': canonicalUrl,
+      },
+    ],
+  },
+];
+---
+
+<Layout
+  title={validPage > 1 ? `${topicShortName} News (Page ${validPage}) - 9jaBeacon` : `${topicShortName} News & Verified Reports | 9jaBeacon`}
+  description={topicDescription}
+  canonicalUrl={canonicalUrl}
+  prevUrl={prevUrl}
+  nextUrl={nextUrl}
+  activeNav="topics"
+>
+  <!-- Schema.org Structured Data -->
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+
+  <!-- Breadcrumb Bar -->
+  <nav class="flex items-center gap-1.5 py-2 mb-3 text-xs text-slate-500 dark:text-slate-400 overflow-x-auto whitespace-nowrap">
+    <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Home</a>
+    <span class="text-slate-300 dark:text-slate-700">/</span>
+    <a href="/topics" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Topic Spheres</a>
+    <span class="text-slate-300 dark:text-slate-700">/</span>
+    <span class="text-slate-800 dark:text-slate-200 font-semibold truncate">{topicShortName}</span>
+  </nav>
+
+  <!-- Topic Hub Header Hero -->
+  <div class="p-5 sm:p-7 rounded-2xl bg-gradient-to-br from-slate-100 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-800 space-y-4 mb-6 shadow-xs">
+    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+      <div class="space-y-2">
+        <div class="inline-flex items-center gap-2">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
+            Topic Hub
+          </span>
+          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {totalArticles} {totalArticles === 1 ? 'verified report' : 'verified reports'}
+          </span>
+        </div>
+
+        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+          {topicName}
+        </h1>
+
+        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+          {topicTagline}
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <a
+          href="/rss.xml"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-300/80 dark:border-slate-700 text-xs font-bold transition-colors"
+          title="Topic RSS Feed"
+        >
+          <svg class="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
+          </svg>
+          <span>RSS</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Related Topic Tags Cloud -->
+    <div class="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-wrap items-center gap-2">
+      <span class="text-xs font-semibold text-slate-400">Related Spheres:</span>
+      {relatedTopics.map((rel) => (
+        <a
+          href={`/topic/${rel.slug}`}
+          class="px-2.5 py-1 rounded-lg text-xs font-medium bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-500/40 transition-colors"
+        >
+          #{rel.shortName}
+        </a>
+      ))}
+    </div>
+  </div>
+
+  <!-- Articles Feed -->
+  {matchedArticles.length === 0 ? (
+    <div class="p-8 sm:p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+      <div class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+        </svg>
+      </div>
+      <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">No reports cataloged for this topic yet</h3>
+      <p class="text-xs text-slate-500 max-w-md mx-auto">
+        Our automated editorial desk monitors national wire feeds and Google Search trends. As breaking reports emerge for this topic, they will appear here automatically.
+      </p>
+      <div class="pt-2">
+        <a href="/" class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
+          Return to Headlines &rarr;
+        </a>
+      </div>
+    </div>
+  ) : (
+    <div class="space-y-6">
+      {topArticle && (
+        <div class="mb-6">
+          <TopStoryCard article={topArticle} />
+        </div>
+      )}
+
+      {feedArticles.length > 0 && (
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {feedArticles.map((article) => (
+            <ArticleCard article={article} />
+          ))}
+        </div>
+      )}
+
+      <!-- Pagination -->
+      {totalPages > 1 && (
+        <div class="flex items-center justify-center gap-2 pt-6">
+          {prevUrl && (
+            <a
+              href={prevUrl}
+              class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-xs"
+            >
+              &larr; Previous Page
+            </a>
+          )}
+          <span class="text-xs font-medium text-slate-500 dark:text-slate-400 px-3">
+            Page {validPage} of {totalPages}
+          </span>
+          {nextUrl && (
+            <a
+              href={nextUrl}
+              class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-xs"
+            >
+              Next Page &rarr;
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  )}
+</Layout>

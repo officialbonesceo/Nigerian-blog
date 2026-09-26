@@ -80,6 +80,14 @@ jobs:
           ALLOW_SEED_DATA: 'false'
         run: npx tsx scripts/content-worker.ts
 
+      - name: 🛡️ Remediate Sports Category Mis-Tagging
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: npx tsx scripts/fix-sports-mistagging.ts
+
       - name: 📤 Push Processed Updates to Upstream Datastore
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -49,6 +49,7 @@ User-agent: msnbot
 Allow: /
 
 Sitemap: ${siteBase}/sitemap.xml
+Sitemap: ${siteBase}/news-sitemap.xml
 `.trim();
 
   return new Response(robotsTxt, {

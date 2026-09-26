@@ -46,7 +46,7 @@ const { articles = [] } = Astro.props;
             <span class="text-emerald-700 dark:text-emerald-400 font-semibold">{art.category_name || 'General'}</span>
             <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
             <span class="read-count-label text-slate-500 dark:text-slate-400">
-              {art.views_count && art.views_count > 0 ? `${art.views_count} reads this week` : 'Trending this week'}
+              Trending this week
             </span>
             {art.reading_time_minutes && (
               <>
@@ -61,19 +61,18 @@ const { articles = [] } = Astro.props;
   </div>
 </section>
 
-<script is:inline>
-  // Hydrate with genuine weekly view metrics and trigger lean cleanup of expired weeks
-  (async function() {
-    try {
-      const fbModule = await import('/src/lib/firebase.ts');
-      if (!fbModule) return;
+<script>
+  import { fetchMostReadThisWeek, cleanupExpiredWeeklyViews } from '../lib/firebase';
 
+  // Hydrate with genuine weekly view metrics and trigger lean cleanup of expired weeks
+  async function hydrateMostRead() {
+    try {
       // Clean up previous weeks to keep database lean and fresh
       setTimeout(() => {
-        fbModule.cleanupExpiredWeeklyViews().catch(() => {});
-      }, 5000);
+        cleanupExpiredWeeklyViews().catch(() => {});
+      }, 4000);
 
-      const realWeeklyStories = await fbModule.fetchMostReadThisWeek(5);
+      const realWeeklyStories = await fetchMostReadThisWeek(5);
       if (!realWeeklyStories || realWeeklyStories.length === 0) return;
 
       const container = document.getElementById('most-read-container');
@@ -119,5 +118,12 @@ const { articles = [] } = Astro.props;
     } catch (e) {
       console.warn('[MostRead] Could not hydrate:', e);
     }
-  })();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', hydrateMostRead);
+  } else {
+    hydrateMostRead();
+  }
+  document.addEventListener('astro:page-load', hydrateMostRead);
 </script>
