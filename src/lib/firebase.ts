@@ -190,6 +190,8 @@ export interface UserOpinionComment {
   id: string;
   articleSlug: string;
   articleTitle: string;
+  parentId?: string | null;
+  replyToUser?: string | null;
   userName: string;
   content: string;
   sentiment: 'agree' | 'disagree' | 'neutral' | 'perspective';
@@ -207,7 +209,6 @@ export async function fetchArticleComments(articleSlug: string): Promise<UserOpi
     const q = query(
       commentsRef,
       where('articleSlug', '==', articleSlug),
-      orderBy('createdAt', 'desc'),
       limit(50)
     );
 
@@ -216,17 +217,33 @@ export async function fetchArticleComments(articleSlug: string): Promise<UserOpi
 
     snapshot.forEach((d) => {
       const data = d.data();
+      const rawCreated = data.createdAt;
+      let timestamp = Date.now();
+      if (rawCreated?.toMillis) {
+        timestamp = rawCreated.toMillis();
+      } else if (typeof rawCreated === 'number') {
+        timestamp = rawCreated;
+      } else if (typeof rawCreated === 'string') {
+        const parsed = new Date(rawCreated).getTime();
+        if (!isNaN(parsed)) timestamp = parsed;
+      }
+
       comments.push({
         id: d.id,
         articleSlug: data.articleSlug,
         articleTitle: data.articleTitle || '',
+        parentId: data.parentId || null,
+        replyToUser: data.replyToUser || null,
         userName: data.userName || 'Anonymous Reader',
         content: data.content || '',
         sentiment: data.sentiment || 'perspective',
-        createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : Number(data.createdAt) || Date.now(),
+        createdAt: timestamp,
         likesCount: Number(data.likesCount) || 0,
       });
     });
+
+    // In-memory sort by newest first (avoids needing a Firestore composite index)
+    comments.sort((a, b) => b.createdAt - a.createdAt);
 
     return comments;
   } catch (err) {
@@ -236,11 +253,14 @@ export async function fetchArticleComments(articleSlug: string): Promise<UserOpi
 }
 
 /**
- * Submits a new reader opinion to Firestore
+ * Submits a new reader opinion or reply to Firestore
  */
 export async function postArticleComment(opinion: {
+  id?: string;
   articleSlug: string;
   articleTitle: string;
+  parentId?: string | null;
+  replyToUser?: string | null;
   userName: string;
   content: string;
   sentiment?: 'agree' | 'disagree' | 'neutral' | 'perspective';
@@ -255,17 +275,26 @@ export async function postArticleComment(opinion: {
     }
 
     const commentsRef = collection(db, 'comments');
-    const docRef = await addDoc(commentsRef, {
+    const commentData: any = {
       articleSlug: opinion.articleSlug,
       articleTitle: opinion.articleTitle,
+      parentId: opinion.parentId || null,
+      replyToUser: opinion.replyToUser || null,
       userName: cleanName,
       content: cleanContent,
       sentiment: opinion.sentiment || 'perspective',
       createdAt: serverTimestamp(),
       likesCount: 0,
-    });
+    };
 
-    return { success: true, commentId: docRef.id };
+    if (opinion.id) {
+      const docRef = doc(commentsRef, opinion.id);
+      await setDoc(docRef, commentData);
+      return { success: true, commentId: opinion.id };
+    } else {
+      const docRef = await addDoc(commentsRef, commentData);
+      return { success: true, commentId: docRef.id };
+    }
   } catch (err: any) {
     console.error('[Firestore] Error posting comment:', err);
     return { success: false, error: err.message || 'Failed to submit opinion. Please retry.' };

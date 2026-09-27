@@ -186,13 +186,31 @@ function initDatabase() {
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS article_comments (
+      id TEXT PRIMARY KEY,
+      article_slug TEXT NOT NULL,
+      article_title TEXT,
+      parent_id TEXT DEFAULT NULL,
+      reply_to_user TEXT DEFAULT NULL,
+      user_name TEXT NOT NULL,
+      sentiment TEXT DEFAULT 'perspective',
+      content TEXT NOT NULL,
+      likes_count INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      status TEXT DEFAULT 'published'
+    );
+
     CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC);
     CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC);
     CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug);
+    CREATE INDEX IF NOT EXISTS idx_comments_slug_created ON article_comments(article_slug, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_comments_parent ON article_comments(parent_id);
     CREATE INDEX IF NOT EXISTS idx_automation_logs_created ON automation_logs(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_visitor_date ON visitor_analytics(visit_date);
   `);
 
+  try { db.prepare(`ALTER TABLE article_comments ADD COLUMN parent_id TEXT DEFAULT NULL`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE article_comments ADD COLUMN reply_to_user TEXT DEFAULT NULL`).run(); } catch {}
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN action TEXT`).run(); } catch {}
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN status TEXT DEFAULT 'info'`).run(); } catch {}
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN event_type TEXT`).run(); } catch {}

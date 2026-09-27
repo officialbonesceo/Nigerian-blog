@@ -98,8 +98,15 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
   {effectivePrevUrl && <link rel="prev" href={effectivePrevUrl} />}
   {nextUrl && <link rel="next" href={nextUrl} />}
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="alternate" type="application/rss+xml" title={`${siteName} RSS Feed`} href="/rss.xml" />
   <meta name="theme-color" content="#008751" />
+
+  <!-- Ad Network & Smartlink Fast-Load Preconnect / DNS-Prefetch -->
+  <link rel="preconnect" href="https://www.highrevenueformat.com" crossorigin />
+  <link rel="dns-prefetch" href="https://www.highrevenueformat.com" />
+  <link rel="preconnect" href="https://www.profitableratecpmnetwork.com" crossorigin />
+  <link rel="dns-prefetch" href="https://www.profitableratecpmnetwork.com" />
+  <link rel="preconnect" href="https://pl31396495.profitableratecpmnetwork.com" crossorigin />
+  <link rel="dns-prefetch" href="https://pl31396495.profitableratecpmnetwork.com" />
   {googleVerification && (
     <meta name="google-site-verification" content={googleVerification} />
   )}

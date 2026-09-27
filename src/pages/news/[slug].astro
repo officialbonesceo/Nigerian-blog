@@ -257,8 +257,8 @@ const structuredData = [
       </aside>
     )}
 
-    <!-- Top Horizontal Ad Banner -->
-    <AdSlot format="banner-320x50" />
+    <!-- Top Horizontal Ad Banner (Eager loading to eliminate delayed display) -->
+    <AdSlot format="banner-320x50" loading="eager" />
 
     <!-- Story Content Body (Sanitized, Semantic Paragraphs, with In-Between Native Ads) -->
     <div class="space-y-6 max-w-full min-w-0">
@@ -267,6 +267,9 @@ const structuredData = [
         class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 pt-2 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
         set:html={articleParts.lead}
       />
+
+      <!-- Contextual Curiosity Smartlink Callout (High CTR, policy compliant) -->
+      <AdSlot format="read-also" />
 
       {articleParts.middle1 && (
         <>
@@ -413,6 +416,9 @@ const structuredData = [
 
   <!-- Native Ad Banner (Under Article / Above Community Perspectives) -->
   <AdSlot format="banner-300x250" />
+
+  <!-- Trending Opportunities Grid (Smartlink High-Intent Grid) -->
+  <AdSlot format="opportunities-grid" />
 
   <!-- Reader Opinions & Perspectives -->
   <ArticleComments articleSlug={article.slug} articleTitle={article.title} />

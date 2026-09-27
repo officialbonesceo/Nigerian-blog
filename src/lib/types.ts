@@ -119,3 +119,18 @@ export interface RssFeedItem {
   categories?: string[];
   enclosureUrl?: string;
 }
+
+export interface ArticleComment {
+  id: string;
+  article_slug: string;
+  article_title?: string;
+  parent_id?: string | null;
+  reply_to_user?: string | null;
+  user_name: string;
+  sentiment: 'agree' | 'disagree' | 'neutral' | 'perspective';
+  content: string;
+  likes_count: number;
+  created_at: string;
+  status: 'published' | 'hidden';
+  replies?: ArticleComment[];
+}

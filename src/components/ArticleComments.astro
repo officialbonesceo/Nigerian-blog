@@ -11,7 +11,7 @@ const { articleSlug, articleTitle } = Astro.props;
   id="opinions-section" 
   data-article-slug={articleSlug} 
   data-article-title={articleTitle} 
-  class="my-10 pt-8 border-t border-slate-200 dark:border-slate-800/80 not-prose"
+  class="my-10 pt-8 border-t border-slate-200 dark:border-slate-800 not-prose"
 >
   <div class="flex items-center justify-between gap-4 mb-6">
     <div>
@@ -22,15 +22,15 @@ const { articleSlug, articleTitle } = Astro.props;
         <span>Reader Opinions & Perspectives</span>
       </h3>
       <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-        Civil, verified community discourse
+        Civil, verified community discourse & threaded discussion
       </p>
     </div>
-    <span id="comments-count-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">
-      0 Opinions
+    <span id="comments-count-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono border border-slate-200 dark:border-slate-700">
+      0 Perspectives
     </span>
   </div>
 
-  <!-- Opinion Submission Box -->
+  <!-- Primary Opinion Submission Box -->
   <div class="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs mb-8">
     <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">
       Add Your Perspective
@@ -40,12 +40,13 @@ const { articleSlug, articleTitle } = Astro.props;
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label for="opinion-name" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-            Your Name / Pseudonym
+            Your Name / Pseudonym <span class="text-rose-500">*</span>
           </label>
           <input
             type="text"
             id="opinion-name"
             placeholder="e.g. Adeola B."
+            minlength="2"
             maxlength="40"
             required
             class="w-full px-3.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:border-emerald-500 transition-colors"
@@ -53,7 +54,7 @@ const { articleSlug, articleTitle } = Astro.props;
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+          <label for="opinion-sentiment" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
             Your Take / Sentiment
           </label>
           <select
@@ -70,11 +71,12 @@ const { articleSlug, articleTitle } = Astro.props;
 
       <div>
         <label for="opinion-content" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-          Your Commentary
+          Your Commentary <span class="text-rose-500">*</span>
         </label>
         <textarea
           id="opinion-content"
           rows="3"
+          minlength="3"
           maxlength="800"
           placeholder="Share factual insights, policy context, or public sentiment on this report..."
           required
@@ -90,7 +92,7 @@ const { articleSlug, articleTitle } = Astro.props;
         <button
           type="submit"
           id="submit-opinion-btn"
-          class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold tracking-wide transition-all shadow-xs inline-flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold tracking-wide transition-all shadow-xs inline-flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span id="btn-text">Publish Perspective</span>
           <svg id="btn-spinner" class="w-3.5 h-3.5 animate-spin hidden" viewBox="0 0 24 24" fill="none">
@@ -104,24 +106,26 @@ const { articleSlug, articleTitle } = Astro.props;
     </form>
   </div>
 
-  <!-- Live Opinions Container -->
-  <div id="opinions-list" class="space-y-3">
+  <!-- Live Opinions & Threaded Discussions Container -->
+  <div id="opinions-list" class="space-y-4">
     <div id="opinions-loading" class="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
       <svg class="w-4 h-4 animate-spin text-emerald-500" viewBox="0 0 24 24" fill="none">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
-      <span>Loading reader perspectives...</span>
+      <span>Loading reader perspectives & replies...</span>
     </div>
   </div>
 </section>
 
 <script>
-  import { fetchArticleComments, postArticleComment, upvoteComment } from '../lib/firebase';
-
   function initOpinions() {
     const section = document.getElementById('opinions-section');
     if (!section) return;
+
+    // Guard against attaching listeners multiple times
+    if (section.getAttribute('data-initialized') === 'true') return;
+    section.setAttribute('data-initialized', 'true');
 
     const articleSlug = section.getAttribute('data-article-slug') || '';
     const articleTitle = section.getAttribute('data-article-title') || '';
@@ -136,6 +140,8 @@ const { articleSlug, articleTitle } = Astro.props;
     const countBadge = document.getElementById('comments-count-badge');
     const contentInput = document.getElementById('opinion-content') as HTMLTextAreaElement | null;
     const charCounter = document.getElementById('char-counter');
+
+    let isSubmitting = false;
 
     if (contentInput && charCounter) {
       contentInput.addEventListener('input', () => {
@@ -156,6 +162,7 @@ const { articleSlug, articleTitle } = Astro.props;
     }
 
     function timeAgo(dateMs: number) {
+      if (!dateMs || isNaN(dateMs)) return 'Just now';
       const diffSec = Math.floor((Date.now() - dateMs) / 1000);
       if (diffSec < 60) return 'Just now';
       if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
@@ -165,65 +172,100 @@ const { articleSlug, articleTitle } = Astro.props;
 
     function escapeHtml(str: string) {
       const p = document.createElement('p');
-      p.textContent = str;
+      p.textContent = str || '';
       return p.innerHTML;
+    }
+
+    // Render single comment or reply item
+    function renderCommentCard(c: any, isReply = false, parentCommentId = '') {
+      const targetParentId = isReply ? parentCommentId : c.id;
+      return `
+        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs transition-all hover:border-slate-300 dark:hover:border-slate-700" id="comment-${c.id}">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold text-xs flex items-center justify-center font-mono">
+                ${(c.userName || 'R')[0].toUpperCase()}
+              </div>
+              <span class="text-xs font-bold text-slate-900 dark:text-slate-100">${escapeHtml(c.userName)}</span>
+              ${!isReply ? getSentimentBadge(c.sentiment) : ''}
+              ${c.replyToUser ? `<span class="text-[11px] text-slate-400 font-medium">replying to <span class="text-emerald-600 dark:text-emerald-400 font-bold">@${escapeHtml(c.replyToUser)}</span></span>` : ''}
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono">${timeAgo(c.createdAt)}</span>
+          </div>
+
+          <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-9 break-words">
+            ${escapeHtml(c.content)}
+          </p>
+
+          <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 pl-9">
+            <button 
+              data-comment-id="${c.id}" 
+              class="like-btn text-[11px] text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium inline-flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+              </svg>
+              <span class="like-label">Helpful (${c.likesCount || 0})</span>
+            </button>
+
+            <button
+              data-reply-btn
+              data-parent-id="${targetParentId}"
+              data-reply-to-user="${escapeHtml(c.userName)}"
+              class="reply-trigger-btn text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 inline-flex items-center gap-1.5 transition-colors cursor-pointer px-2.5 py-1 rounded-lg hover:bg-emerald-500/10"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              <span>Reply</span>
+            </button>
+          </div>
+
+          <!-- Inline Nested Reply Form Container (Hidden by default) -->
+          <div id="reply-container-${c.id}" class="reply-form-slot hidden mt-3 pl-9"></div>
+
+          <!-- Nested Replies Thread -->
+          ${Array.isArray(c.replies) && c.replies.length > 0 ? `
+            <div class="nested-replies-thread ml-4 sm:ml-9 pl-3 sm:pl-4 border-l-2 border-emerald-500/30 dark:border-emerald-500/20 space-y-2.5 mt-3">
+              ${c.replies.map((reply: any) => renderCommentCard(reply, true, c.id)).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
     }
 
     async function loadOpinions() {
       try {
-        const comments = await fetchArticleComments(articleSlug);
+        const response = await fetch(`/api/comments?slug=${encodeURIComponent(articleSlug)}`);
+        const data: any = await response.json();
+        const topComments = (data.success && Array.isArray(data.comments)) ? data.comments : [];
+        const totalCount = typeof data.total === 'number' ? data.total : topComments.length;
+
         const loadingEl = document.getElementById('opinions-loading');
         if (loadingEl) loadingEl.remove();
 
         if (countBadge) {
-          countBadge.textContent = `${comments.length} ${comments.length === 1 ? 'Opinion' : 'Opinions'}`;
+          countBadge.textContent = `${totalCount} ${totalCount === 1 ? 'Perspective' : 'Perspectives'}`;
         }
 
         if (!listEl) return;
 
-        if (comments.length === 0) {
+        if (topComments.length === 0) {
           listEl.innerHTML = `
-            <div class="py-8 text-center rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 p-6">
+            <div class="py-8 text-center rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-6">
               <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center mb-2">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                 </svg>
               </div>
               <p class="text-xs font-bold text-slate-700 dark:text-slate-300">No public opinions yet</p>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Be the first verified reader to share your viewpoint on this dispatch.</p>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Be the first verified reader to share your viewpoint or start a discussion.</p>
             </div>
           `;
           return;
         }
 
-        listEl.innerHTML = comments.map(c => `
-          <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs transition-all hover:border-slate-300 dark:hover:border-slate-700" id="comment-${c.id}">
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold text-xs flex items-center justify-center font-mono">
-                  ${(c.userName || 'R')[0].toUpperCase()}
-                </div>
-                <span class="text-xs font-bold text-slate-900 dark:text-slate-100">${escapeHtml(c.userName)}</span>
-                ${getSentimentBadge(c.sentiment)}
-              </div>
-              <span class="text-[10px] text-slate-400 font-mono">${timeAgo(c.createdAt)}</span>
-            </div>
-            <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-9">
-              ${escapeHtml(c.content)}
-            </p>
-            <div class="flex items-center justify-end mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/60 pl-9">
-              <button 
-                data-comment-id="${c.id}" 
-                class="like-btn text-[11px] text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium inline-flex items-center gap-1 transition-colors cursor-pointer"
-              >
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                </svg>
-                <span>Helpful (${c.likesCount || 0})</span>
-              </button>
-            </div>
-          </div>
-        `).join('');
+        listEl.innerHTML = topComments.map((c: any) => renderCommentCard(c, false)).join('');
 
         // Wire up upvoting
         document.querySelectorAll('.like-btn').forEach(btn => {
@@ -231,12 +273,160 @@ const { articleSlug, articleTitle } = Astro.props;
             const commentId = btn.getAttribute('data-comment-id');
             if (!commentId) return;
             const likedKey = `liked_${commentId}`;
-            if (localStorage.getItem(likedKey)) return; // already liked
+            if (localStorage.getItem(likedKey)) return;
             localStorage.setItem(likedKey, '1');
             (btn as HTMLButtonElement).disabled = true;
             btn.classList.add('text-emerald-600', 'font-bold');
-            await upvoteComment(commentId);
-            loadOpinions();
+
+            try {
+              await fetch('/api/comments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'like', commentId }),
+              });
+              loadOpinions();
+            } catch (err) {
+              console.warn('[Comments] Upvote notice:', err);
+            }
+          });
+        });
+
+        // Wire up Reply buttons for nested replies
+        document.querySelectorAll('.reply-trigger-btn').forEach(replyBtn => {
+          replyBtn.addEventListener('click', () => {
+            const parentId = replyBtn.getAttribute('data-parent-id') || '';
+            const replyToUser = replyBtn.getAttribute('data-reply-to-user') || '';
+            const containerId = `reply-container-${replyBtn.closest('[id^="comment-"]')?.id.replace('comment-', '')}`;
+            const targetContainer = document.getElementById(containerId);
+            if (!targetContainer) return;
+
+            // Close other open reply forms to keep UI pristine
+            document.querySelectorAll('.reply-form-slot').forEach(slot => {
+              if (slot.id !== containerId) {
+                slot.innerHTML = '';
+                slot.classList.add('hidden');
+              }
+            });
+
+            // Toggle or render inline reply form
+            if (!targetContainer.classList.contains('hidden') && targetContainer.innerHTML.trim().length > 0) {
+              targetContainer.innerHTML = '';
+              targetContainer.classList.add('hidden');
+              return;
+            }
+
+            targetContainer.classList.remove('hidden');
+            targetContainer.innerHTML = `
+              <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-2.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <span>Replying to</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 font-mono font-bold">@${escapeHtml(replyToUser)}</span>
+                  </span>
+                  <button type="button" class="cancel-reply-btn text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-medium cursor-pointer">
+                    Cancel
+                  </button>
+                </div>
+
+                <form class="nested-reply-form space-y-2.5">
+                  <input
+                    type="text"
+                    name="reply-name"
+                    placeholder="Your Name / Pseudonym"
+                    minlength="2"
+                    maxlength="40"
+                    required
+                    class="w-full px-3 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:border-emerald-500"
+                  />
+                  <textarea
+                    name="reply-content"
+                    rows="2"
+                    minlength="3"
+                    maxlength="800"
+                    placeholder="Write a constructive reply to @${escapeHtml(replyToUser)}..."
+                    required
+                    class="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-hidden focus:border-emerald-500 resize-none"
+                  ></textarea>
+
+                  <div class="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="submit"
+                      class="send-reply-btn px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <span>Post Reply</span>
+                    </button>
+                  </div>
+                  <div class="reply-status-msg hidden text-[11px] py-1 px-2 rounded font-medium"></div>
+                </form>
+              </div>
+            `;
+
+            // Wire Cancel button
+            targetContainer.querySelector('.cancel-reply-btn')?.addEventListener('click', () => {
+              targetContainer.innerHTML = '';
+              targetContainer.classList.add('hidden');
+            });
+
+            // Wire Submit on the nested reply form
+            const nestedForm = targetContainer.querySelector('.nested-reply-form');
+            nestedForm?.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const replyBtnEl = nestedForm.querySelector('.send-reply-btn') as HTMLButtonElement | null;
+              const statusBox = nestedForm.querySelector('.reply-status-msg') as HTMLDivElement | null;
+              const replyNameInput = nestedForm.querySelector('input[name="reply-name"]') as HTMLInputElement | null;
+              const replyContentInput = nestedForm.querySelector('textarea[name="reply-content"]') as HTMLTextAreaElement | null;
+
+              const rName = replyNameInput?.value.trim() || '';
+              const rContent = replyContentInput?.value.trim() || '';
+
+              if (rName.length < 2 || rContent.length < 3) return;
+
+              if (replyBtnEl) {
+                replyBtnEl.disabled = true;
+                replyBtnEl.innerHTML = '<span>Sending...</span>';
+              }
+
+              try {
+                const postRes = await fetch('/api/comments', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    articleSlug,
+                    articleTitle,
+                    parentId,
+                    replyToUser,
+                    userName: rName,
+                    content: rContent,
+                    sentiment: 'perspective',
+                  }),
+                });
+                const postData: any = await postRes.json();
+
+                if (postData.success) {
+                  targetContainer.innerHTML = '';
+                  targetContainer.classList.add('hidden');
+                  loadOpinions();
+                } else {
+                  if (replyBtnEl) {
+                    replyBtnEl.disabled = false;
+                    replyBtnEl.innerHTML = '<span>Post Reply</span>';
+                  }
+                  if (statusBox) {
+                    statusBox.textContent = postData.error || 'Failed to submit reply.';
+                    statusBox.className = 'reply-status-msg text-[11px] py-1 px-2 rounded font-medium bg-rose-500/10 text-rose-700 dark:text-rose-400 block';
+                  }
+                }
+              } catch (err) {
+                if (replyBtnEl) {
+                  replyBtnEl.disabled = false;
+                  replyBtnEl.innerHTML = '<span>Post Reply</span>';
+                }
+                if (statusBox) {
+                  statusBox.textContent = 'Connection error. Please retry.';
+                  statusBox.className = 'reply-status-msg text-[11px] py-1 px-2 rounded font-medium bg-rose-500/10 text-rose-700 dark:text-rose-400 block';
+                }
+              }
+            });
           });
         });
 
@@ -248,43 +438,78 @@ const { articleSlug, articleTitle } = Astro.props;
     if (formEl) {
       formEl.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
+
         const nameInput = document.getElementById('opinion-name') as HTMLInputElement | null;
         const sentimentInput = document.getElementById('opinion-sentiment') as HTMLSelectElement | null;
         const contentVal = contentInput?.value.trim() || '';
         const nameVal = nameInput?.value.trim() || '';
-        const sentimentVal = (sentimentInput?.value || 'perspective') as 'agree' | 'disagree' | 'neutral' | 'perspective';
+        const sentimentVal = sentimentInput?.value || 'perspective';
 
-        if (contentVal.length < 3) return;
+        if (nameVal.length < 2) {
+          if (statusEl) {
+            statusEl.textContent = 'Please enter your name or pseudonym (at least 2 characters).';
+            statusEl.className = 'text-xs py-2 px-3 rounded-lg font-medium bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20 block';
+          }
+          return;
+        }
 
+        if (contentVal.length < 3) {
+          if (statusEl) {
+            statusEl.textContent = 'Your commentary must be at least 3 characters long.';
+            statusEl.className = 'text-xs py-2 px-3 rounded-lg font-medium bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20 block';
+          }
+          return;
+        }
+
+        isSubmitting = true;
         if (submitBtn) submitBtn.disabled = true;
         if (btnText) btnText.textContent = 'Publishing...';
         btnSpinner?.classList.remove('hidden');
         statusEl?.classList.add('hidden');
 
-        const res = await postArticleComment({
-          articleSlug,
-          articleTitle,
-          userName: nameVal,
-          content: contentVal,
-          sentiment: sentimentVal,
-        });
+        try {
+          const response = await fetch('/api/comments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              articleSlug,
+              articleTitle,
+              userName: nameVal,
+              content: contentVal,
+              sentiment: sentimentVal,
+            }),
+          });
 
-        if (submitBtn) submitBtn.disabled = false;
-        if (btnText) btnText.textContent = 'Publish Perspective';
-        btnSpinner?.classList.add('hidden');
+          const res: any = await response.json();
 
-        if (res.success) {
-          if (contentInput) contentInput.value = '';
-          if (charCounter) charCounter.textContent = '0 / 800';
-          if (statusEl) {
-            statusEl.textContent = 'Your perspective was published successfully!';
-            statusEl.className = 'text-xs py-2 px-3 rounded-lg font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 block';
+          isSubmitting = false;
+          if (submitBtn) submitBtn.disabled = false;
+          if (btnText) btnText.textContent = 'Publish Perspective';
+          btnSpinner?.classList.add('hidden');
+
+          if (res.success) {
+            if (contentInput) contentInput.value = '';
+            if (charCounter) charCounter.textContent = '0 / 800';
+            if (statusEl) {
+              statusEl.textContent = 'Your perspective has been published successfully!';
+              statusEl.className = 'text-xs py-2 px-3 rounded-lg font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 block';
+            }
+            loadOpinions();
+            setTimeout(() => { statusEl?.classList.add('hidden'); }, 5000);
+          } else {
+            if (statusEl) {
+              statusEl.textContent = res.error || 'Failed to publish perspective. Please try again.';
+              statusEl.className = 'text-xs py-2 px-3 rounded-lg font-medium bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20 block';
+            }
           }
-          loadOpinions();
-          setTimeout(() => { statusEl?.classList.add('hidden'); }, 4000);
-        } else {
+        } catch (err: any) {
+          isSubmitting = false;
+          if (submitBtn) submitBtn.disabled = false;
+          if (btnText) btnText.textContent = 'Publish Perspective';
+          btnSpinner?.classList.add('hidden');
           if (statusEl) {
-            statusEl.textContent = res.error || 'Failed to publish opinion.';
+            statusEl.textContent = 'Connection error. Please check your internet and retry.';
             statusEl.className = 'text-xs py-2 px-3 rounded-lg font-medium bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20 block';
           }
         }

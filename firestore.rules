@@ -11,7 +11,9 @@ service cloud.firestore {
                     && request.resource.data.userName is string
                     && request.resource.data.userName.size() >= 2
                     && request.resource.data.userName.size() <= 60
-                    && request.resource.data.articleSlug is string;
+                    && request.resource.data.articleSlug is string
+                    && (!('parentId' in request.resource.data) || request.resource.data.parentId is string || request.resource.data.parentId == null)
+                    && (!('replyToUser' in request.resource.data) || request.resource.data.replyToUser is string || request.resource.data.replyToUser == null);
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
                     && request.resource.data.likesCount == resource.data.likesCount + 1;
       allow delete: if false;

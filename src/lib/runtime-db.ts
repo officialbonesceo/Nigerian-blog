@@ -1,5 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle } from './types';
+import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle, ArticleComment } from './types';
 import { initialCategories, initialArticles, initialSources } from './seed-data';
 import { executeD1Query } from './d1-sync';
 
@@ -271,6 +271,7 @@ export async function ensureTablesExist(db: D1Database, force = false) {
         db.prepare("SELECT 1 FROM custom_ads LIMIT 1").first(),
         db.prepare("SELECT 1 FROM advert_inquiries LIMIT 1").first(),
         db.prepare("SELECT 1 FROM visitor_analytics LIMIT 1").first(),
+        db.prepare("SELECT 1 FROM article_comments LIMIT 1").first(),
       ]);
       tablesChecked = true;
       return;
@@ -421,9 +422,24 @@ export async function ensureTablesExist(db: D1Database, force = false) {
         role TEXT DEFAULT 'admin',
         created_at TEXT DEFAULT (datetime('now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS article_comments (
+        id TEXT PRIMARY KEY,
+        article_slug TEXT NOT NULL,
+        article_title TEXT,
+        parent_id TEXT DEFAULT NULL,
+        reply_to_user TEXT DEFAULT NULL,
+        user_name TEXT NOT NULL,
+        sentiment TEXT DEFAULT 'perspective',
+        content TEXT NOT NULL,
+        likes_count INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'published'
+      )`,
       `CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)`,
       `CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC)`,
       `CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`,
+      `CREATE INDEX IF NOT EXISTS idx_comments_slug_created ON article_comments(article_slug, created_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_comments_parent ON article_comments(parent_id)`,
       `CREATE INDEX IF NOT EXISTS idx_automation_logs_created ON automation_logs(created_at DESC)`,
       `CREATE INDEX IF NOT EXISTS idx_visitor_date ON visitor_analytics(visit_date)`
     ];
@@ -435,6 +451,10 @@ export async function ensureTablesExist(db: D1Database, force = false) {
         console.warn('Statement warning in D1 init:', stmtErr);
       }
     }
+
+    try { await db.prepare('ALTER TABLE article_comments ADD COLUMN parent_id TEXT DEFAULT NULL').run(); } catch {}
+    try { await db.prepare('ALTER TABLE article_comments ADD COLUMN reply_to_user TEXT DEFAULT NULL').run(); } catch {}
+
     tablesChecked = true;
 
         // Seed default categories
@@ -1692,3 +1712,122 @@ export async function deleteCustomAd(db: D1Database, id: string): Promise<boolea
     return false;
   }
 }
+
+/**
+ * Comments Database Layer: Retrieves reader comments from local SQLite / Cloudflare D1
+ */
+export async function getArticleComments(db: D1Database, articleSlug: string): Promise<ArticleComment[]> {
+  try {
+    await ensureTablesExist(db);
+    const { results } = await db
+      .prepare('SELECT * FROM article_comments WHERE article_slug = ? AND status = "published" ORDER BY created_at ASC LIMIT 300')
+      .bind(articleSlug)
+      .all<ArticleComment>();
+    return (results || []).map((row: any) => ({
+      id: row.id,
+      article_slug: row.article_slug,
+      article_title: row.article_title || '',
+      parent_id: row.parent_id || null,
+      reply_to_user: row.reply_to_user || null,
+      user_name: row.user_name,
+      sentiment: row.sentiment || 'perspective',
+      content: row.content,
+      likes_count: Number(row.likes_count) || 0,
+      created_at: row.created_at,
+      status: row.status || 'published',
+      replies: []
+    }));
+  } catch (err) {
+    console.error('getArticleComments error:', err);
+    return [];
+  }
+}
+
+/**
+ * Persists a new comment into SQLite / Cloudflare D1 (migration ready)
+ */
+export async function createArticleComment(
+  db: D1Database,
+  data: {
+    id?: string;
+    article_slug: string;
+    article_title?: string;
+    parent_id?: string | null;
+    reply_to_user?: string | null;
+    user_name: string;
+    sentiment?: string;
+    content: string;
+  }
+): Promise<{ success: boolean; comment?: ArticleComment; error?: string }> {
+  try {
+    await ensureTablesExist(db);
+    const id = data.id || ('cmt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
+    const cleanName = (data.user_name || 'Verified Reader').trim().slice(0, 60);
+    const cleanContent = (data.content || '').trim().slice(0, 1500);
+    const sentiment = ['agree', 'disagree', 'neutral', 'perspective'].includes(data.sentiment || '')
+      ? data.sentiment
+      : 'perspective';
+
+    if (cleanName.length < 2) {
+      return { success: false, error: 'Name must be at least 2 characters.' };
+    }
+    if (cleanContent.length < 3) {
+      return { success: false, error: 'Perspective commentary must be at least 3 characters.' };
+    }
+
+    const createdAt = new Date().toISOString();
+    const parentId = data.parent_id || null;
+    const replyToUser = data.reply_to_user ? data.reply_to_user.slice(0, 60) : null;
+
+    await db.prepare(`
+      INSERT INTO article_comments (
+        id, article_slug, article_title, parent_id, reply_to_user, user_name, sentiment, content, likes_count, created_at, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'published')
+    `).bind(
+      id,
+      data.article_slug,
+      data.article_title || '',
+      parentId,
+      replyToUser,
+      cleanName,
+      sentiment,
+      cleanContent,
+      createdAt
+    ).run();
+
+    const newComment: ArticleComment = {
+      id,
+      article_slug: data.article_slug,
+      article_title: data.article_title || '',
+      parent_id: parentId,
+      reply_to_user: replyToUser,
+      user_name: cleanName,
+      sentiment: sentiment as any,
+      content: cleanContent,
+      likes_count: 0,
+      created_at: createdAt,
+      status: 'published',
+      replies: []
+    };
+
+    return { success: true, comment: newComment };
+  } catch (err: any) {
+    console.error('createArticleComment error:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
+/**
+ * Upvotes a comment in SQLite / Cloudflare D1
+ */
+export async function likeArticleComment(db: D1Database, commentId: string): Promise<boolean> {
+  try {
+    await ensureTablesExist(db);
+    await db.prepare('UPDATE article_comments SET likes_count = likes_count + 1 WHERE id = ?').bind(commentId).run();
+    return true;
+  } catch (err) {
+    console.error('likeArticleComment error:', err);
+    return false;
+  }
+}
+
