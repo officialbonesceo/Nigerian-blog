@@ -347,7 +347,7 @@ async function main() {
           image_credit: briefing.sourceName, image_license: 'Editorial Fair Attribution',
           author_name: desk.name, author_role: desk.role, author_avatar: desk.avatar,
           is_top_story: totalPublished === 0 ? 1 : 0, is_trending: 1, is_breaking: 1,
-          views_count: Math.floor(Math.random() * 50) + 30, reading_time_minutes: aiResult.readingTimeMinutes || 4,
+          views_count: 0, reading_time_minutes: aiResult.readingTimeMinutes || 4,
           source_id: 'src_trending_engine', source_name: briefing.sourceName, source_original_url: briefing.originalUrl,
           published_at: new Date().toISOString(), updated_at: new Date().toISOString(), created_at: new Date().toISOString(), status: 'published',
         });
@@ -458,7 +458,13 @@ async function main() {
 
     console.log(`\n  📝 [Score ${score}] Synthesizing Top Lead: "${item.title?.slice(0, 65)}..." (${source.name})`);
     const rawDescription = item.contentSnippet || item.content || '';
-    const rawContent = item.contentEncoded || item.content || rawDescription;
+    const rawContent = (item.contentEncoded || item.content || rawDescription).trim();
+
+    // Fail-closed requirement: source_url and source_excerpt must be present
+    if (!item.link || !rawContent || rawContent.length < 50) {
+      console.warn(`  🛑 [INPUT REJECTION] Candidate missing required source_url or source_excerpt.`);
+      continue;
+    }
 
     const aiResult = await synthesizeNewsArticle({
       title: item.title || '',
@@ -533,7 +539,7 @@ async function main() {
           is_top_story: totalPublished === 0 ? 1 : 0,
           is_trending: totalPublished < 4 ? 1 : 0,
           is_breaking: totalPublished < 2 ? 1 : 0,
-          views_count: Math.floor(Math.random() * 40) + 15, reading_time_minutes: aiResult.readingTimeMinutes || 4, source_id: source.id,
+          views_count: 0, reading_time_minutes: aiResult.readingTimeMinutes || 4, source_id: source.id,
           source_name: source.name, source_original_url: item.link, published_at: new Date().toISOString(),
           updated_at: new Date().toISOString(), created_at: new Date().toISOString(), status: 'published',
         });

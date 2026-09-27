@@ -35,7 +35,11 @@ export const GET: APIRoute = async ({ request, locals }) => {
     const seenFingerprints = new Set<string>();
 
     for (const c of sqlComments) {
-      const fingerprint = `${(c.user_name || '').toLowerCase()}_${(c.content || '').trim().toLowerCase()}`;
+      const parentKey = c.parent_id || 'root';
+      const fingerprint = `${(c.user_name || '').toLowerCase()}_${(c.content || '').trim().toLowerCase()}_${parentKey}`;
+      if (seenFingerprints.has(fingerprint)) {
+        continue; // Prevent duplicate display from repeated submits
+      }
       seenFingerprints.add(fingerprint);
       seenMap.set(c.id, {
         id: c.id,
@@ -53,7 +57,8 @@ export const GET: APIRoute = async ({ request, locals }) => {
     }
 
     for (const fc of firestoreComments) {
-      const fingerprint = `${(fc.userName || '').toLowerCase()}_${(fc.content || '').trim().toLowerCase()}`;
+      const parentKey = fc.parentId || 'root';
+      const fingerprint = `${(fc.userName || '').toLowerCase()}_${(fc.content || '').trim().toLowerCase()}_${parentKey}`;
       if (!seenMap.has(fc.id) && !seenFingerprints.has(fingerprint)) {
         seenFingerprints.add(fingerprint);
         seenMap.set(fc.id, {

@@ -79,11 +79,13 @@ if (page === 1) {
   }
 
   if (heroCandidatePool.length > 0) {
-    // Dynamic time-window rotation (changes smoothly every 10 minutes)
-    // 0 extra DB reads, 0 DB writes, ensures visitors always see fresh leading hero news
-    const timeWindow = Math.floor(Date.now() / (10 * 60 * 1000));
-    const selectedIdx = timeWindow % heroCandidatePool.length;
-    effectiveTopStory = heroCandidatePool[selectedIdx] || heroCandidatePool[0];
+    // Top story must use newest published_at among featured (Spec 2 Section 6)
+    heroCandidatePool.sort((a, b) => {
+      const timeA = a.published_at ? new Date(a.published_at).getTime() : 0;
+      const timeB = b.published_at ? new Date(b.published_at).getTime() : 0;
+      return timeB - timeA;
+    });
+    effectiveTopStory = heroCandidatePool[0];
   }
 }
 

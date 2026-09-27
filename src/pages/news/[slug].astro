@@ -225,7 +225,9 @@ const structuredData = [
         <span>Published {publishedDate}</span>
         {isUpdated && <span>· Updated {updatedDate}</span>}
         <span>· {displayReadingTime} min read</span>
-        <span>· {(article.views_count ?? 0).toLocaleString()} reads</span>
+        {Boolean(article.views_count && article.views_count > 0) && (
+          <span>· {article.views_count.toLocaleString()} verified reads</span>
+        )}
       </div>
     </div>
 

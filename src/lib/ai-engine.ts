@@ -4,12 +4,11 @@
  * With ULTRA-STRONG category mapping (Money / Sports / World / Naija)
  */
 
-import { decideCategories } from './category-mapper';
 import { generateEditorialSvgDataUrl } from './editorial-image';
 import { cleanAndFormatArticleHtml } from './content-formatter';
 import { cleanRssSnippet } from './rss-parser';
 import { rewriteWithEditorialQuality } from './automated-ingest';
-import { categorySlugToId } from './editorial-pipeline';
+import { categorySlugToId, normalizeCategory } from './editorial-pipeline';
 import {
   discoverOpenRouterFreeModels,
   discoverCloudflareModels,
@@ -91,44 +90,49 @@ export const POLLINATIONS_MODELS_CASCADE = [
   'qwen-coder',
 ];
 
-const SYSTEM_PROMPT = `You are an Executive Senior Investigative Editor at 9jaBeacon.
+const SYSTEM_PROMPT = `You are an Executive Senior Investigative Editor at 9jaBeacon (Nigeria's digital newsroom).
 
 YOUR EDITORIAL MANDATE & GOLDEN STANDARD:
-Write an authoritative, factual, high-retention news report structured into EXACTLY 4 substantive paragraphs with context-derived headings (Option A).
+Write an authoritative, factual, high-retention news report structured into EXACTLY 4 substantive paragraphs with context-derived headings.
 
 ARTICLE STRUCTURE (OPTION A: DYNAMIC STORY-DERIVED SUBHEADINGS):
 - Every article MUST consist of EXACTLY 4 distinct paragraphs.
 - EACH paragraph MUST be preceded by its own dynamic, story-derived <h3> heading that reflects the specific facts of that paragraph (e.g., specific names, entities, policies, actions, or developments).
 - STRICTLY FORBIDDEN: Do NOT use static, repetitive generic headings such as "The Crux", "Background & Institutional Context", "Socioeconomic Stakes", or "Official Reactions". Every heading must be unique to the story facts.
 - STRICT WORD COUNT & DEPTH MANDATE:
-  * The article MUST contain between 500 and 850 WORDS total (long-form, high-retention investigative depth).
-  * Structure across 4 to 6 comprehensive sections, each introduced by a dynamic story-specific <h3> heading that reflects the factual development.
-  * Deepen the factual analysis: explain verified timeline, legal/regulatory statutes, institutional background, market/citizen implications, and official stakeholder statements.
-  * Any draft containing fewer than 380 words will be rejected by the editorial quality gate.
+  * The article MUST contain between 400 and 700 WORDS total (long-form, high-retention investigative depth).
+  * Any draft containing fewer than 350 words will be rejected by the editorial quality gate.
 
-FACTUAL GUARDRAILS & ZERO HALLUCINATION:
-- STRICT GROUNDING: Extract ONLY verified names, dates, quotes, statistics, and government decisions established in the source text. NEVER invent fake numbers, fictitious officials, or unverified claims.
-- Expand depth through institutional context, regulatory statutes, and historical parallels rather than guessing new facts.
-- ZERO AI THOUGHTS & ZERO PRESET BOILERPLATE:
-  * NEVER leak thinking processes, internal monologues, <think> tags, or conversational intros/outros ("Here is the rewritten article", "Sure, here is", "As an AI language model"). Output ONLY pure JSON.
-  * Let the AI do the writing itself from raw facts. NO synthetic canned fallback stubs, NO preset info or boilerplate templates.
+CATEGORIES — pick EXACTLY ONE:
+- naija-news — Nigeria politics, security, society, culture, royalty, local incidents, government
+- business — economy, companies, markets, CBN, investment, trade, fintech, corporate news
+- sports — matches, athletes, clubs, leagues, tournaments, sports transfers only
+- world — primarily foreign/international stories without a strong Nigeria-lead angle
 
-STRICT DISREGARD OF PREVIOUS WRITER'S OPINIONS:
-- Completely discard the previous writer's or journalist's personal musings, subjective opinions, political bias, speculation, and first-person commentary ("In my view", "I believe", "The writer argues").
-- Extract ONLY verified factual developments, direct quotes, official government/institutional positions, dates, figures, and legal/economic implications. Rewrite everything 100% in 9jaBeacon's balanced, objective editorial voice.
-
-CATEGORY RULES (choose ONE primary by MAIN topic, not by incidental money words):
-- cat_naija_news → Politics, governance, security, police, courts, elections, public institutions, Nigeria-led social issues
-- cat_money_hustle → NGX, companies, inflation, FX, CBN, manufacturing data, banking, fiscal/macro as the subject
-- cat_sports → Matches, clubs, players, tournaments, Super Eagles, Premier League
-- cat_world → Foreign lead with no Nigeria-first angle
+HARD EDITORIAL & FACT-CHECK RULES:
+1. Every hard fact (name, age, place, date, score, amount, quote) must appear in the source excerpt OR be omitted.
+2. Do NOT add ILO, World Bank, Global Slavery Index, or other global statistics unless they appear in the source excerpt.
+3. Do NOT invent police ranks, case numbers, job multipliers, or quotes.
+4. First or second paragraph MUST attribute: "According to [SOURCE_OUTLET]..." or equivalent.
+5. Spelling of names must match the source excerpt exactly (do not "fix" Amarachi/Amaechi).
+6. Prefer news tone: what happened, who said it, what happens next — not a term-paper on systemic issues.
+7. If the source is opinion/column, start with "Opinion:" or mark clearly; do not present as hard news.
+8. If the source is rumor/speculation (e.g. fight venue "race"), say so or skip publish.
+9. Output CATEGORY as exactly one of: naija-news, business, sports, world
+10. Do NOT put entertainment, royalty, blockchain, education policy, or relationship drama under sports
+11. Liga MX / foreign football matches → sports (not naija-news)
+12. Olori / traditional rulers / polygamy culture → naija-news (not sports)
+13. Company investment, Coca-Cola, CBN rates → business
+14. Stay factual. Do not invent quotes or numbers.
+15. Do not mention AI, models, or "as an AI"
+16. ZERO AI THOUGHTS: Never leak reasoning tokens, <think> tags, internal monologues, or conversational intros/outros.
 
 Return ONLY valid JSON (no markdown fences, strictly parseable):
 {
   "title": "Compelling, factual, non-clickbait headline",
   "summary": "An executive 2-sentence briefing summarizing the core event and its primary significance.",
   "content": "<h3>[Dynamic Story-Derived Subheading 1]</h3><p>[Substantive paragraph 1, 85-115 words]</p><h3>[Dynamic Story-Derived Subheading 2]</h3><p>[Substantive paragraph 2, 85-115 words]</p><h3>[Dynamic Story-Derived Subheading 3]</h3><p>[Substantive paragraph 3, 85-115 words]</p><h3>[Dynamic Story-Derived Subheading 4]</h3><p>[Substantive paragraph 4, 85-115 words]</p>",
-  "category_id": "cat_naija_news | cat_money_hustle | cat_sports | cat_world",
+  "category": "naija-news | business | sports | world",
   "reading_time_minutes": 3,
   "key_takeaways": [
     "Key verified fact or primary figure",
@@ -661,13 +665,10 @@ function parseAiJsonResponse(
       return null;
     }
 
-    // ULTRA-STRONG category decision
-    const decision = decideCategories(
-      obj.title,
-      plainText + ' ' + summary,
-      obj.category_id || fallbackInput.categoryDefault,
-      fallbackInput.sourceName
-    );
+    // Spec-mandated Category Normalization with hard overrides
+    const rawCat = obj.category || obj.category_id || fallbackInput.categoryDefault || '';
+    const normSlug = normalizeCategory(rawCat, rawTitle, plainText + ' ' + summary);
+    const primaryCatId = categorySlugToId(normSlug);
 
     // Honest reading time based on 200 wpm standard
     const readingTime = Math.max(1, Math.ceil(wordCount / 200));
@@ -677,11 +678,10 @@ function parseAiJsonResponse(
       : [];
 
     return {
-      title: obj.title.trim(),
+      title: rawTitle,
       summary: summary.trim(),
       content: content.trim(),
-      categoryId: decision.primary,
-      secondaryCategoryId: decision.secondary,
+      categoryId: primaryCatId,
       readingTimeMinutes: readingTime,
       keyTakeaways: takeaways,
       wordCount,

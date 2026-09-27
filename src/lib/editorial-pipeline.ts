@@ -12,12 +12,17 @@
 
 export type ArticleCategory = 'naija-news' | 'business' | 'sports' | 'world';
 
+export const ALLOWED_CATEGORIES = new Set<string>(['naija-news', 'business', 'sports', 'world']);
+
 export interface QualityGateInput {
   title: string;
   bodyHtml?: string;
   bodyText: string;
   category: string;
   sourceOk: boolean;
+  sourceUrl?: string;
+  sourceOutlet?: string;
+  sourceExcerpt?: string;
 }
 
 export interface QualityGateResult {
@@ -40,15 +45,86 @@ export function readingMinutes(wordCount: number): number {
 }
 
 /**
+ * Spec-mandated Category Normalizer with keyword fallbacks and hard overrides:
+ * - Never defaults unknown to sports.
+ * - Forces royalty / Olori / polygamy -> naija-news
+ * - Forces blockchain / lisk -> business
+ * - Forces foreign football / Liga MX -> sports
+ */
+export function normalizeCategory(raw: string, title = '', body = ''): ArticleCategory {
+  let c = String(raw || '').toLowerCase().trim()
+    .replace(/\s+/g, '-')
+    .replace('naija_news', 'naija-news')
+    .replace('cat_naija_news', 'naija-news')
+    .replace('money_hustle', 'business')
+    .replace('cat_money_hustle', 'business')
+    .replace('money-hustle', 'business')
+    .replace('cat_business', 'business')
+    .replace('cat_sports', 'sports')
+    .replace('cat_world', 'world');
+
+  if (!ALLOWED_CATEGORIES.has(c)) {
+    // keyword fallback ONLY if model failed — still better than default sports
+    const t = `${title} ${body}`.toLowerCase();
+    if (/\b(match|league|player|coach|tournament|afcon|npfl|fifa|liga|goal|transfer|cruz azul|toluca)\b/.test(t)
+        && !/\b(olori|olu of|royal|polygamy|icpc|minister|blockchain|investment pledge)\b/.test(t)) {
+      c = 'sports';
+    } else if (/\b(cbn|naira|investment|company|fintech|trade surplus|coca-cola|stock|ipo)\b/.test(t)) {
+      c = 'business';
+    } else if (/\b(ukraine|gaza|washington|london|global|united nations)\b/.test(t)
+        && !/\bnigeria|lagos|abuja|rivers state\b/.test(t)) {
+      c = 'world';
+    } else {
+      c = 'naija-news';
+    }
+  }
+
+  // Hard overrides — enforce spec rules (File 1 Section 3 & File 2 Section 5)
+  const t = `${title} ${body}`.toLowerCase();
+  
+  // 1. Olori / traditional rulers / polygamy / culture / local incident / confinement -> strictly naija-news (never sports)
+  if (/\b(olori|olu of warri|polygamy|traditional ruler)\b/.test(t)) c = 'naija-news';
+  if (/\b(confinement|toilet confinement|rescued from toilet|police command|kidnap|icpc|efcc|arraign)\b/.test(t) && !/\b(match|player|stadium)\b/.test(t)) {
+    c = 'naija-news';
+  }
+
+  // 2. Blockchain / Lisk / Coca-Cola / investment pledge -> strictly business
+  if (/\b(blockchain|lisk|web3 network)\b/.test(t) && !/\b(match|player)\b/.test(t)) c = 'business';
+  if (/\b(coca-cola|investment pledge|cbn rates|monetary policy committee)\b/.test(t)) c = 'business';
+
+  // 3. Celebrity / entertainment / Nollywood -> strictly naija-news (never sports)
+  if (/\b(celebrity|entertainment|nollywood|reconcile|reconciliation)\b/.test(t) && !/\b(match|player|league)\b/.test(t)) {
+    c = 'naija-news';
+  }
+
+  // 4. Liga MX / Cruz Azul / Toluca / foreign football matches -> sports (not naija-news)
+  if (/\b(cruz azul|toluca|liga mx|premier league|champions league|la liga|serie a|bundesliga)\b/.test(t)
+      && /\b(draw|snatches draw|match|score|fixture|vs|table|goal)\b/.test(t)) {
+    c = 'sports';
+  }
+
+  // 5. Global stories with no Nigeria angle -> world
+  if (/\b(global clean energy|surpasses \$2 trillion|united nations|gaza|ukraine)\b/.test(t)
+      && !/\bnigeria|lagos|abuja|rivers state|port harcourt\b/.test(t)) {
+    c = 'world';
+  }
+
+  // 6. Demote sports if there is no sports signal
+  if (c === 'sports') {
+    const hasSportsSignal = /\b(match|league|player|coach|tournament|afcon|npfl|fifa|liga|goal|transfer|boxing|bout|striker|midfielder|winger|goalkeeper|defender|stadium|championship)\b/.test(t);
+    if (!hasSportsSignal) {
+      c = 'naija-news';
+    }
+  }
+
+  return (ALLOWED_CATEGORIES.has(c) ? c : 'naija-news') as ArticleCategory;
+}
+
+/**
  * Maps category slug or DB category ID to canonical allowed category slug
  */
 export function normalizeCategorySlug(rawCat?: string): ArticleCategory {
-  if (!rawCat) return 'naija-news';
-  const c = rawCat.toLowerCase().trim();
-  if (c === 'business' || c === 'cat_business' || c === 'cat_money_hustle' || c === 'money-hustle') return 'business';
-  if (c === 'sports' || c === 'cat_sports') return 'sports';
-  if (c === 'world' || c === 'cat_world') return 'world';
-  return 'naija-news';
+  return normalizeCategory(rawCat || '');
 }
 
 /**
@@ -158,16 +234,59 @@ export function classifyTopic(title: string, bodyText: string, aiSuggestedCatego
 }
 
 /**
+ * Spec-mandated post-rewrite validators:
+ */
+export function plainLen(html: string): number {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+}
+
+export function hasAttribution(html: string, outlet: string): boolean {
+  const t = html.toLowerCase();
+  const o = (outlet || '').toLowerCase();
+  return /according to|reported by|police said|in a statement|official|spokesperson|told newsmen|disclosed|confirmed that/.test(t)
+    || (Boolean(o && o.length > 2 && t.includes(o)));
+}
+
+export function looksLikeStub(html: string): boolean {
+  return /compiling|field dispatch|coming soon|lorem ipsum|as an ai|okay,\s*i need to/i.test(html);
+}
+
+export function bannedUnsourcedStats(html: string, excerpt: string): boolean {
+  // Flag common unsolicited AI padding if not in excerpt
+  const checks = [
+    /15 million.*children/i,
+    /global slavery index/i,
+    /international labour organization/i,
+    /world bank/i,
+  ];
+  const ex = (excerpt || '').toLowerCase();
+  for (const re of checks) {
+    if (re.test(html) && !re.test(ex)) return true;
+  }
+  return false;
+}
+
+/**
  * Fail-closed Quality Gate: Returns pass=false if article does not meet strict journalistic thresholds
  */
 export function qualityGate(input: QualityGateInput): QualityGateResult {
   const reasons: string[] = [];
+  const html = input.bodyHtml || '';
   const text = (input.bodyText || '').replace(/\s+/g, ' ').trim();
   const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+  const lengthChars = plainLen(html || text);
 
   // 1. Source availability check
   if (!input.sourceOk) {
     reasons.push('source_fetch_failed');
+  }
+
+  // Fail-closed source inputs
+  if (input.sourceUrl !== undefined && !input.sourceUrl.trim()) {
+    reasons.push('missing_source_url');
+  }
+  if (input.sourceExcerpt !== undefined && input.sourceExcerpt.trim().length < 50) {
+    reasons.push('missing_source_excerpt');
   }
 
   // 2. Headline length check
@@ -182,16 +301,19 @@ export function qualityGate(input: QualityGateInput): QualityGateResult {
   }
 
   // 4. Character count check (under 400 characters is rejected as a stub)
-  if (text.length < 400) {
-    reasons.push(`body_text_insufficient_length (${text.length} chars < 400 chars minimum)`);
+  if (lengthChars < 400) {
+    reasons.push(`body_text_insufficient_length (${lengthChars} chars < 400 chars minimum)`);
   }
 
-  // 5. Banned placeholder strings, stubs, and AI chat leakage
+  // 5. Banned stub / placeholder / AI leak patterns
+  if (looksLikeStub(text) || looksLikeStub(html)) {
+    reasons.push('looks_like_stub_or_ai_leak');
+  }
+
   const bannedPatterns = [
     /compiling further operational updates/i,
     /field dispatches and corroborating sources/i,
     /while pacing ai development might sound like a quick fix/i,
-    /okay,\s*i need to/i,
     /as an ai\b/i,
     /as an ai language model/i,
     /i cannot fulfill this request/i,
@@ -202,7 +324,6 @@ export function qualityGate(input: QualityGateInput): QualityGateResult {
     /placeholder/i,
   ];
 
-  const html = input.bodyHtml || '';
   for (const re of bannedPatterns) {
     if (re.test(text) || re.test(html)) {
       reasons.push(`placeholder_or_leak (${re.toString()})`);
@@ -210,7 +331,17 @@ export function qualityGate(input: QualityGateInput): QualityGateResult {
     }
   }
 
-  // 6. Generic boilerplate filter (No generic Nigeria regulatory oversight boilerplate on World/Sports)
+  // 6. Unsourced global statistics check
+  if (input.sourceExcerpt && bannedUnsourcedStats(html || text, input.sourceExcerpt)) {
+    reasons.push('banned_unsourced_global_statistics_in_body');
+  }
+
+  // 7. Attribution check (require according to / outlet mention)
+  if (input.sourceOutlet && !hasAttribution(html || text, input.sourceOutlet)) {
+    reasons.push(`missing_source_attribution (${input.sourceOutlet})`);
+  }
+
+  // 8. Generic boilerplate filter (No generic Nigeria regulatory oversight boilerplate on World/Sports)
   const normCat = normalizeCategorySlug(input.category);
   if (normCat === 'world' || normCat === 'sports') {
     if (
@@ -222,7 +353,7 @@ export function qualityGate(input: QualityGateInput): QualityGateResult {
     }
   }
 
-  // 7. Duplicate consecutive long sentences (detects broken/repetitive LLM loops)
+  // 9. Duplicate consecutive long sentences (detects broken/repetitive LLM loops)
   const sentences = text
     .split(/[.!?]+/)
     .map((s) => s.trim().toLowerCase())
@@ -235,9 +366,8 @@ export function qualityGate(input: QualityGateInput): QualityGateResult {
     }
   }
 
-  // 8. Category validity check
-  const allowedCategories = new Set(['naija-news', 'business', 'sports', 'world']);
-  if (!allowedCategories.has(normCat)) {
+  // 10. Category validity check
+  if (!ALLOWED_CATEGORIES.has(normCat)) {
     reasons.push(`invalid_category (${input.category})`);
   }
 

@@ -1775,9 +1775,41 @@ export async function createArticleComment(
       return { success: false, error: 'Perspective commentary must be at least 3 characters.' };
     }
 
-    const createdAt = new Date().toISOString();
     const parentId = data.parent_id || null;
     const replyToUser = data.reply_to_user ? data.reply_to_user.slice(0, 60) : null;
+
+    // Idempotency check: prevent duplicate insertion of the exact same comment/reply
+    const existing = await db.prepare(`
+      SELECT * FROM article_comments 
+      WHERE article_slug = ? 
+        AND user_name = ? 
+        AND content = ? 
+        AND ((parent_id IS NULL AND ? IS NULL) OR parent_id = ?)
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `).bind(data.article_slug, cleanName, cleanContent, parentId, parentId).first<any>();
+
+    if (existing && existing.id) {
+      return {
+        success: true,
+        comment: {
+          id: existing.id,
+          article_slug: existing.article_slug,
+          article_title: existing.article_title || '',
+          parent_id: existing.parent_id || null,
+          reply_to_user: existing.reply_to_user || null,
+          user_name: existing.user_name,
+          sentiment: existing.sentiment || 'perspective',
+          content: existing.content,
+          likes_count: Number(existing.likes_count) || 0,
+          created_at: existing.created_at,
+          status: existing.status || 'published',
+          replies: []
+        }
+      };
+    }
+
+    const createdAt = new Date().toISOString();
 
     await db.prepare(`
       INSERT INTO article_comments (

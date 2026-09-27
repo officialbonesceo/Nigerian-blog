@@ -14,7 +14,7 @@
 import { db } from '../src/lib/db';
 import { executeD1Query } from '../src/lib/d1-sync';
 import { EDITORIAL_PROFILES } from './profile-definitions';
-import { applyCategoryPostOverrides } from '../src/lib/category-mapper';
+import { normalizeCategory, categorySlugToId } from '../src/lib/editorial-pipeline';
 
 const cloudflareAccountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
 const cloudflareApiToken = (process.env.CLOUDFLARE_D1_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '').trim();
@@ -41,7 +41,8 @@ function fixLocalDb() {
 
   const transaction = db.transaction(() => {
     for (const art of rows) {
-      const targetCat = applyCategoryPostOverrides('cat_sports', art.title || '', (art.summary || '') + ' ' + (art.content || ''));
+      const slug = normalizeCategory('sports', art.title || '', (art.summary || '') + ' ' + (art.content || ''));
+      const targetCat = categorySlugToId(slug);
       if (targetCat !== 'cat_sports') {
         const profile = getEditorialProfile(targetCat);
         updateStmt.run(targetCat, profile.name, profile.role, profile.avatar, art.id);
@@ -80,7 +81,8 @@ async function fixRemoteD1() {
 
   const updates: Array<{ id: string; targetCat: string }> = [];
   for (const art of articles) {
-    const targetCat = applyCategoryPostOverrides('cat_sports', art.title || '', art.summary || '');
+    const slug = normalizeCategory('sports', art.title || '', art.summary || '');
+    const targetCat = categorySlugToId(slug);
     if (targetCat !== 'cat_sports') {
       updates.push({ id: art.id, targetCat });
     }

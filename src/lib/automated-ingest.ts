@@ -9,7 +9,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import type { D1Database } from '@cloudflare/workers-types';
 import {
-  classifyTopic,
+  normalizeCategory,
   qualityGate,
   getDeskAttribution,
   categorySlugToId,
@@ -226,182 +226,200 @@ export async function rewriteWithEditorialQuality(input: {
     };
   }
 
-  const rawLead = `
-Source Headline: ${input.title}
-Source Publisher: ${input.sourceName || 'Wire Dispatch'}
-Lead Summary / Snippet: ${(input.description || '').slice(0, 500)}
-Source Text: ${(input.content || input.description || '').slice(0, 2000)}
-Default Category Context: ${input.categoryDefault || 'naija-news'}
-`.trim();
+  const sourceUrl = (input.link || '').trim();
+  const rawExcerpt = (input.content || input.description || '').trim();
+  const sourceExcerpt = rawExcerpt.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000);
+  const sourceOutlet = (input.sourceName || 'Verified Wire').trim();
+  const sourceTitle = (input.title || '').trim();
 
-  const prompt = `
-You are the Executive Senior Investigative Editor at 9jaBeacon (Nigeria's premier digital newsroom).
-Rewrite this breaking wire dispatch into an original, authoritative, balanced, and verified Nigerian news report.
-
-STRICT EDITORIAL REQUIREMENTS & WORD LIMITS:
-1. TITLE: Engaging, journalistic headline (minimum 35 characters, maximum 100 characters). Factual, clear, non-clickbait.
-2. SUMMARY: A concise 2-sentence executive summary (under 250 characters).
-3. CONTENT: Substantive, comprehensive news report strictly between 350 and 500 WORDS total:
-   - Must be structured into EXACTLY 4 distinct paragraphs.
-   - Each paragraph MUST be preceded by a dynamic, context-derived <h3> heading that reflects the actual facts of that section (NO generic headings like "The Crux", "Background", "The Stakes").
-   - Paragraph 1 (Lead & Facts, 85-115 words): Immediate breaking development, key actors, locations, figures, and core announcement.
-   - Paragraph 2 (Institutional & Regulatory Backdrop, 85-115 words): Contextualize the development within relevant institutional policies, legal statutes, or economic circumstances. Explain systemic significance rather than guessing facts.
-   - Paragraph 3 (Official Records & Statements, 85-115 words): Direct quotes, verified institutional declarations, or stakeholder responses.
-   - Paragraph 4 (Public Impact & Forward Outlook, 85-115 words): Measurable consequences for citizens, market participants, next procedural milestones, or timelines.
-4. FACTUAL GUARDRAILS & ZERO HALLUCINATION:
-   - STRICT GROUNDING: Extract ONLY verified names, dates, quotes, statistics, and government decisions established in the source text. NEVER invent fake numbers, fictitious officials, or unverified claims.
-   - Completely discard the previous writer's personal opinions, subjective reactions, speculative takes, emotional bias, or first-person remarks ("In my opinion", "I think", "This writer notes").
-   - Rewrite everything 100% in 9jaBeacon's professional, neutral, objective newsroom voice.
-5. CATEGORY: One of 'naija-news', 'business', 'sports', or 'world'.
-   - High-priority rule: Politics, elections, courts, crime, Tinubu, Reno Omokri, police, military, EFCC, and governance MUST ALWAYS be 'naija-news', even if monetary sums/fees/prices are mentioned.
-6. TAGS: Array of 3-5 relevant lowercase search keywords.
-7. READ_TIME: Integer minutes (ceil(words / 200)).
-
-BANNED STRINGS & ZERO AI THOUGHT LEAKS (STRICT FAIL-CLOSED):
-- NEVER output reasoning tokens, <think> tags, internal monologues, or conversational intros/outros ("compiling further operational updates", "field dispatches and corroborating sources", "while pacing AI development might sound like a quick fix", "as an AI language model", "here is a rewritten version", or "As this development continues to unfold across Nigeria, key questions remain regarding regulatory oversight").
-- Do not output markdown code blocks (\`\`\`json). Output pure schema values.
-`;
-
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    // Use high-capacity flash models that do not hit 3.8 rate limit quotas
-    const candidateModels = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
-    let response: any = null;
-    let lastError: any = null;
-
-    for (const modelName of candidateModels) {
-      try {
-        response = await ai.models.generateContent({
-          model: modelName,
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { text: prompt },
-                { text: rawLead },
-              ],
-            },
-          ],
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                summary: { type: Type.STRING },
-                content: { type: Type.STRING, description: 'Substantive HTML article with <h3> headings and <p> paragraphs, >= 250 words' },
-                category: { type: Type.STRING, enum: ['naija-news', 'business', 'sports', 'world'] },
-                tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                readTime: { type: Type.INTEGER },
-              },
-              required: ['title', 'summary', 'content', 'category', 'tags', 'readTime'],
-            },
-          },
-        });
-        if (response && response.text) {
-          break; // Successfully generated!
-        }
-      } catch (err: any) {
-        lastError = err;
-        // Continue to next model in cascade
-      }
-    }
-
-    if (!response || !response.text) {
-      return {
-        success: false,
-        reasons: [`All Gemini model tiers failed. Last error: ${lastError?.message || 'No response'}`],
-        rawError: lastError?.message || 'Failed to generate across all candidate models',
-      };
-    }
-
-    const text = response.text || '';
-    if (!text || text.trim().length < 50) {
-      return {
-        success: false,
-        reasons: ['Gemini returned an empty or truncated response'],
-      };
-    }
-
-    let parsed: any;
-    try {
-      const sanitizedText = text
-        .replace(/<think>[\s\S]*?<\/think>/gi, '')
-        .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
-        .replace(/^```json\s*/i, '')
-        .replace(/\s*```$/i, '')
-        .trim();
-      parsed = JSON.parse(sanitizedText);
-    } catch {
-      // Strip any accidental markdown formatting or preambles if present
-      const cleaned = text
-        .replace(/<think>[\s\S]*?<\/think>/gi, '')
-        .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
-        .replace(/^```json\s*/i, '')
-        .replace(/\s*```$/i, '')
-        .trim();
-      parsed = JSON.parse(cleaned);
-    }
-
-    let finalTitle = (parsed.title || '')
-      .replace(/<think>[\s\S]*?<\/think>/gi, '')
-      .replace(/^(?:opinion|analysis|editorial|exclusive):\s*/i, '')
-      .trim();
-
-    let finalSummary = (parsed.summary || '')
-      .replace(/<think>[\s\S]*?<\/think>/gi, '')
-      .replace(/(?:in my opinion|in the writer's view|the author believes)[^.,;]*([.,;]|$)/gi, '')
-      .trim();
-
-    let finalHtml = cleanAndFormatArticleHtml(parsed.content || '');
-    const plainText = finalHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    const wordCount = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
-
-    // Fail-closed length threshold: minimum 250 words
-    if (wordCount < 250) {
-      return {
-        success: false,
-        reasons: [`Word count below journalistic threshold (${wordCount} words < 250 words minimum)`],
-      };
-    }
-
-    // Deterministic category validation
-    const classifiedCategory = classifyTopic(finalTitle, plainText, parsed.category);
-
-    // Fail-closed quality gate
-    const gate = qualityGate({
-      title: finalTitle,
-      bodyHtml: finalHtml,
-      bodyText: plainText,
-      category: classifiedCategory,
-      sourceOk: true,
-    });
-
-    if (!gate.pass) {
-      return {
-        success: false,
-        reasons: gate.reasons,
-      };
-    }
-
-    const honestReadTime = Math.max(1, Math.ceil(wordCount / 200));
-
-    return {
-      success: true,
-      title: finalTitle,
-      summary: finalSummary,
-      content: finalHtml,
-      category: classifiedCategory,
-      tags: Array.isArray(parsed.tags) ? parsed.tags : ['news', 'nigeria'],
-      readingTimeMinutes: honestReadTime,
-    };
-  } catch (err: any) {
+  // Fail-closed input requirements (File 2 Section 2.1)
+  if (!sourceUrl || !sourceExcerpt || sourceExcerpt.length < 50) {
     return {
       success: false,
-      reasons: [`Gemini generation failed: ${err.message || String(err)}`],
-      rawError: err.message,
+      reasons: ['Missing required source_url or source_excerpt before rewrite (fail-closed)'],
+      rawError: 'Missing source_url or source_excerpt',
     };
   }
+
+  const prompt = `
+You rewrite news for 9jaBeacon from ONE provided source excerpt only.
+
+CATEGORIES — pick EXACTLY ONE:
+- naija-news — Nigeria politics, security, society, culture, royalty, local incidents, government
+- business — economy, companies, markets, CBN, investment, trade, fintech, corporate news
+- sports — matches, athletes, clubs, leagues, tournaments, sports transfers only
+- world — primarily foreign/international stories without a strong Nigeria-lead angle
+
+HARD RULES:
+1. Every hard fact (name, age, place, date, score, amount, quote) must appear in the source excerpt OR be omitted.
+2. Do NOT add ILO, World Bank, Global Slavery Index, or other global statistics unless they appear in the source excerpt.
+3. Do NOT invent police ranks, case numbers, job multipliers, or quotes.
+4. First or second paragraph MUST attribute: "According to ${sourceOutlet}..." or equivalent.
+5. Spelling of names must match the source excerpt exactly (do not "fix" Amarachi/Amaechi).
+6. Prefer news tone: what happened, who said it, what happens next — not a term-paper on systemic issues.
+7. If the source is opinion/column, start with "Opinion:" or mark clearly; do not present as hard news.
+8. If the source is rumor/speculation (e.g. fight venue "race"), say so or skip publish.
+9. Output CATEGORY as exactly one of: naija-news, business, sports, world
+10. Do NOT put entertainment, royalty, blockchain, education policy, or relationship drama under sports
+11. Liga MX / foreign football matches → sports (not naija-news)
+12. Olori / traditional rulers / polygamy culture → naija-news (not sports)
+13. Company investment, Coca-Cola, CBN rates → business
+14. Stay factual. Do not invent quotes or numbers.
+15. Do not mention AI, models, or "as an AI"
+16. Body: clear HTML sections (h2, h3, p). Educational news tone. No Markdown.
+17. Never write chain-of-thought or planning text.
+
+SOURCE_TITLE: ${sourceTitle}
+SOURCE_OUTLET: ${sourceOutlet}
+SOURCE_URL: ${sourceUrl}
+SOURCE_EXCERPT:
+${sourceExcerpt}
+`.trim();
+
+  const candidateModels = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Retry loop: max 2 attempts (File 1 Section 5 & File 2 Section 4)
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      let response: any = null;
+      let lastError: any = null;
+
+      for (const modelName of candidateModels) {
+        try {
+          response = await ai.models.generateContent({
+            model: modelName,
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: prompt }],
+              },
+            ],
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  summary: { type: Type.STRING },
+                  content: { type: Type.STRING, description: 'Substantive HTML article with <h3> headings and <p> paragraphs, >= 400 characters plain text' },
+                  category: { type: Type.STRING, enum: ['naija-news', 'business', 'sports', 'world'] },
+                  tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  readTime: { type: Type.INTEGER },
+                },
+                required: ['title', 'summary', 'content', 'category', 'tags', 'readTime'],
+              },
+            },
+          });
+          if (response && response.text) break;
+        } catch (err: any) {
+          lastError = err;
+        }
+      }
+
+      if (!response || !response.text) {
+        if (attempt === 2) {
+          return {
+            success: false,
+            reasons: [`All Gemini model tiers failed. Last error: ${lastError?.message || 'No response'}`],
+            rawError: lastError?.message || 'Failed to generate across all candidate models',
+          };
+        }
+        continue;
+      }
+
+      const text = (response.text || '').trim();
+      if (text.length < 50) continue;
+
+      let parsed: any;
+      try {
+        const sanitized = text
+          .replace(/<think>[\s\S]*?<\/think>/gi, '')
+          .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+          .replace(/^```json\s*/i, '')
+          .replace(/\s*```$/i, '')
+          .trim();
+        parsed = JSON.parse(sanitized);
+      } catch {
+        continue;
+      }
+
+      let finalTitle = (parsed.title || '')
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/^(?:opinion|analysis|editorial|exclusive):\s*/i, '')
+        .trim();
+
+      let finalSummary = (parsed.summary || '')
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/(?:in my opinion|in the writer's view|the author believes)[^.,;]*([.,;]|$)/gi, '')
+        .trim();
+
+      let finalHtml = cleanAndFormatArticleHtml(parsed.content || '');
+      const plainText = finalHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const wordCount = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
+
+      // Fail-closed length threshold: minimum 400 chars plain text
+      if (plainText.length < 400) {
+        if (attempt === 2) {
+          return {
+            success: false,
+            reasons: [`Plain text length insufficient (${plainText.length} chars < 400 chars minimum)`],
+          };
+        }
+        continue;
+      }
+
+      // Spec-mandated Category Normalizer with keyword fallbacks and hard overrides
+      const normalizedCategory = normalizeCategory(parsed.category, finalTitle, plainText);
+
+      // Fail-closed quality gate with attribution, stub check, unsourced stats check
+      const gate = qualityGate({
+        title: finalTitle,
+        bodyHtml: finalHtml,
+        bodyText: plainText,
+        category: normalizedCategory,
+        sourceOk: true,
+        sourceUrl,
+        sourceOutlet,
+        sourceExcerpt,
+      });
+
+      if (!gate.pass) {
+        if (attempt === 2) {
+          return {
+            success: false,
+            reasons: gate.reasons,
+          };
+        }
+        continue; // Retry once if quality gate failed
+      }
+
+      const honestReadTime = Math.max(1, Math.ceil(wordCount / 200));
+
+      return {
+        success: true,
+        title: finalTitle,
+        summary: finalSummary,
+        content: finalHtml,
+        category: normalizedCategory,
+        tags: Array.isArray(parsed.tags) ? parsed.tags : ['news', 'nigeria'],
+        readingTimeMinutes: honestReadTime,
+      };
+    } catch (err: any) {
+      if (attempt === 2) {
+        return {
+          success: false,
+          reasons: [`Gemini generation failed: ${err.message || String(err)}`],
+          rawError: err.message,
+        };
+      }
+    }
+  }
+
+  return {
+    success: false,
+    reasons: ['Rewrite failed quality and category gates after 2 attempts (fail-closed)'],
+  };
 }
 
 /**
