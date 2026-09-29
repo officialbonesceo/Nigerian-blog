@@ -1,25 +1,34 @@
 ---
+import { presenters, getDefaultPresenterForCategory } from '../lib/presenters-data';
+
 interface Props {
   title: string;
   summary?: string;
   readingTimeMinutes?: number;
+  categoryId?: string;
 }
 
-const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
+const { title, summary = '', readingTimeMinutes = 3, categoryId } = Astro.props;
+const defaultPresenter = getDefaultPresenterForCategory(categoryId);
 ---
 
 <div 
-  class="article-audio-player my-6 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs transition-all not-prose"
+  class="article-audio-player my-6 p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm transition-all not-prose"
   data-audio-player
   data-article-title={title}
   data-article-summary={summary}
+  data-presenter-id={defaultPresenter.id}
+  data-presenter-pitch={defaultPresenter.voice_settings.pitch}
+  data-presenter-rate={defaultPresenter.voice_settings.rate}
+  data-presenter-gender={defaultPresenter.gender}
 >
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-    <!-- Left Info / Title -->
+    <!-- Left Section: Play Button + Presenter Avatar Sprite + Story Info -->
     <div class="flex items-center gap-3.5 min-w-0">
+      <!-- Play / Pause Button -->
       <button
         type="button"
-        class="audio-play-toggle-btn w-12 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white flex items-center justify-center shrink-0 shadow-sm hover:shadow-emerald-500/25 transition-all cursor-pointer focus:outline-hidden"
+        class="audio-play-toggle-btn w-12 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white flex items-center justify-center shrink-0 shadow-md hover:shadow-emerald-500/25 transition-all cursor-pointer focus:outline-hidden"
         aria-label="Play audio version of this report"
       >
         <!-- Play Icon -->
@@ -32,18 +41,62 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
         </svg>
       </button>
 
+      <!-- Presenter Sprite Avatar Window -->
+      <div 
+        class="audio-presenter-avatar-box relative w-12 h-12 rounded-2xl overflow-hidden shrink-0 border-2 border-emerald-500/30 bg-slate-100 dark:bg-slate-800 shadow-xs cursor-pointer group"
+        title={`Assigned Anchor: ${defaultPresenter.name}. Click to switch anchor.`}
+      >
+        <div 
+          class="audio-presenter-sprite-img absolute inset-0 w-full h-full bg-no-repeat transition-all duration-300"
+          style={`
+            background-image: url('${defaultPresenter.sprite_url}');
+            background-size: 200% 200%;
+            background-position: 0% 0%;
+          `}
+          role="img"
+          aria-label={`${defaultPresenter.name} news presenter avatar`}
+        ></div>
+        <!-- Live on-air dot -->
+        <span class="audio-presenter-live-dot absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 opacity-0 transition-opacity"></span>
+      </div>
+
+      <!-- Article and Presenter Details -->
       <div class="min-w-0">
         <div class="flex items-center gap-2">
           <span class="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
-            Audio Report
+            Audio News
           </span>
           <span class="audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
             Ready to listen
           </span>
         </div>
-        <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate mt-0.5">
-          Listen to this story
-        </h4>
+
+        <!-- Presenter Name & Role Selector -->
+        <div class="flex items-center gap-1.5 mt-0.5">
+          <span class="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+            Anchor:
+          </span>
+          <select 
+            class="audio-presenter-selector text-xs font-semibold bg-transparent text-emerald-600 dark:text-emerald-400 border-none p-0 cursor-pointer focus:outline-hidden hover:underline"
+            aria-label="Select news presenter"
+          >
+            {presenters.map((p) => (
+              <option 
+                value={p.id} 
+                selected={p.id === defaultPresenter.id}
+                data-sprite={p.sprite_url}
+                data-pitch={p.voice_settings.pitch}
+                data-rate={p.voice_settings.rate}
+                data-gender={p.gender}
+                data-name={p.name}
+                class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+              >
+                {p.name} ({p.role.split('&')[0].trim()})
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           <span class="audio-time-label">Approx. {readingTimeMinutes} min listen</span>
           <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
@@ -52,8 +105,8 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
       </div>
     </div>
 
-    <!-- Right Controls: Speed & Waveform / Stop -->
-    <div class="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+    <!-- Right Controls: Speed & Waveform / Stop / Anchor Hub Link -->
+    <div class="flex items-center gap-2 self-end sm:self-center shrink-0">
       <!-- Animated Visualizer Waves (active when playing) -->
       <div class="audio-visualizer hidden sm:flex items-center gap-1 h-6 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
         <span class="w-1 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -83,6 +136,15 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
           <path d="M6 6h12v12H6z" />
         </svg>
       </button>
+
+      <!-- Meet Anchors link -->
+      <a
+        href="/presenters"
+        class="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        title="Meet our 4 broadcast anchors"
+      >
+        <span>All Anchors &rarr;</span>
+      </a>
     </div>
   </div>
 
@@ -95,7 +157,7 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
 </div>
 
 <script>
-  // Global singleton audio engine for 9jaBeacon articles
+  // Global singleton audio engine with Presenter Sprite animation for 9jaBeacon
   class ArticleAudioEngine {
     private isPlaying = false;
     private isPaused = false;
@@ -105,6 +167,8 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
     private speeds = [1.0, 1.25, 1.5, 0.85];
     private speedIdx = 0;
     private currentRate = 1.0;
+    private currentPitch = 1.0;
+    private currentGender: 'male' | 'female' = 'male';
     private hasSpeech = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
 
     public init() {
@@ -128,10 +192,50 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
         const playBtn = player.querySelector('.audio-play-toggle-btn');
         const stopBtn = player.querySelector('.audio-stop-btn');
         const speedBtn = player.querySelector('.audio-speed-btn');
+        const presenterSelect = player.querySelector('.audio-presenter-selector') as HTMLSelectElement | null;
+        const spriteBox = player.querySelector('.audio-presenter-avatar-box');
+
+        // Read initial presenter metadata from player attributes
+        const initPitch = parseFloat(player.getAttribute('data-presenter-pitch') || '1.0');
+        const initGender = (player.getAttribute('data-presenter-gender') || 'male') as 'male' | 'female';
+
+        this.currentPitch = initPitch;
+        this.currentGender = initGender;
 
         playBtn?.addEventListener('click', () => this.togglePlay());
         stopBtn?.addEventListener('click', () => this.stop());
         speedBtn?.addEventListener('click', () => this.cycleSpeed());
+
+        // Handle presenter switching
+        presenterSelect?.addEventListener('change', (e) => {
+          const sel = e.target as HTMLSelectElement;
+          const opt = sel.selectedOptions[0];
+          if (!opt) return;
+
+          const spriteUrl = opt.getAttribute('data-sprite') || '';
+          const pitch = parseFloat(opt.getAttribute('data-pitch') || '1.0');
+          const gender = (opt.getAttribute('data-gender') || 'male') as 'male' | 'female';
+
+          this.currentPitch = pitch;
+          this.currentGender = gender;
+
+          // Update sprite background image
+          const spriteImg = player.querySelector('.audio-presenter-sprite-img') as HTMLElement | null;
+          if (spriteImg && spriteUrl) {
+            spriteImg.style.backgroundImage = `url('${spriteUrl}')`;
+          }
+
+          // If playing, restart with new voice parameters
+          if (this.isPlaying && !this.isPaused) {
+            window.speechSynthesis.cancel();
+            this.playNextChunk();
+          }
+        });
+
+        // Clicking avatar focuses selector
+        spriteBox?.addEventListener('click', () => {
+          presenterSelect?.focus();
+        });
       });
 
       // Wire quick listen button in article toolbar
@@ -141,7 +245,6 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
         btn.setAttribute('data-wired', 'true');
         btn.addEventListener('click', () => {
           this.togglePlay();
-          // Scroll smoothly to player if not visible
           const playerEl = document.querySelector('[data-audio-player]');
           if (playerEl) {
             const rect = playerEl.getBoundingClientRect();
@@ -151,12 +254,6 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
           }
         });
       });
-
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window && !window.speechSynthesis.onvoiceschanged) {
-        window.speechSynthesis.onvoiceschanged = () => {
-          // Voices populated asynchronously
-        };
-      }
 
       // Sync UI with current engine state
       this.broadcastUI();
@@ -297,6 +394,8 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
         const progressBar = player.querySelector('.audio-progress-bar') as HTMLElement | null;
         const visualizer = player.querySelector('.audio-visualizer');
         const speedBtn = player.querySelector('.audio-speed-btn');
+        const spriteImg = player.querySelector('.audio-presenter-sprite-img') as HTMLElement | null;
+        const liveDot = player.querySelector('.audio-presenter-live-dot') as HTMLElement | null;
 
         if (speedBtn) {
           speedBtn.textContent = `${this.currentRate.toFixed(this.currentRate === 1 ? 1 : 2).replace(/\.0$/, '.0')}x`;
@@ -307,8 +406,15 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
           pauseIcon?.classList.remove('hidden');
           visualizer?.classList.remove('hidden');
           visualizer?.classList.add('flex');
+          if (liveDot) liveDot.style.opacity = '1';
+
+          // Animate sprite to Speaking pose (Top-Right: 100% 0%)
+          if (spriteImg) {
+            spriteImg.style.backgroundPosition = '100% 0%';
+          }
+
           if (statusPill) {
-            statusPill.textContent = 'Listening now';
+            statusPill.textContent = 'Speaking now';
             statusPill.className = 'audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-mono';
           }
         } else if (this.isPaused) {
@@ -316,6 +422,13 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
           pauseIcon?.classList.add('hidden');
           visualizer?.classList.add('hidden');
           visualizer?.classList.remove('flex');
+          if (liveDot) liveDot.style.opacity = '0';
+
+          // Return sprite to Idle pose (Top-Left: 0% 0%)
+          if (spriteImg) {
+            spriteImg.style.backgroundPosition = '0% 0%';
+          }
+
           if (statusPill) {
             statusPill.textContent = 'Narration paused';
             statusPill.className = 'audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 font-mono';
@@ -326,6 +439,13 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
           pauseIcon?.classList.add('hidden');
           visualizer?.classList.add('hidden');
           visualizer?.classList.remove('flex');
+          if (liveDot) liveDot.style.opacity = '0';
+
+          // Return sprite to Idle pose (Top-Left: 0% 0%)
+          if (spriteImg) {
+            spriteImg.style.backgroundPosition = '0% 0%';
+          }
+
           if (statusPill) {
             statusPill.textContent = 'Ready to listen';
             statusPill.className = 'audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono';
@@ -345,6 +465,9 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
         const players = document.querySelectorAll('[data-audio-player]');
         players.forEach((p) => {
           const statusPill = p.querySelector('.audio-status-pill');
+          const spriteImg = p.querySelector('.audio-presenter-sprite-img') as HTMLElement | null;
+          // Switch to wrap pose on completion (Bottom-Right: 100% 100%)
+          if (spriteImg) spriteImg.style.backgroundPosition = '100% 100%';
           if (statusPill) {
             statusPill.textContent = 'Completed';
             statusPill.className = 'audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-mono';
@@ -356,13 +479,17 @@ const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
       const chunkText = this.chunks[this.currentChunkIdx];
       const utterance = new SpeechSynthesisUtterance(chunkText);
       utterance.rate = this.currentRate;
-      utterance.pitch = 1.0;
+      utterance.pitch = this.currentPitch;
 
       const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find((v) => 
-        (v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Neural') || v.name.includes('Google') || v.name.includes('Premium'))) ||
-        v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US'
-      );
+      const preferredVoice = voices.find((v) => {
+        const name = v.name.toLowerCase();
+        const matchesGender = this.currentGender === 'female'
+          ? (name.includes('female') || name.includes('zira') || name.includes('samantha') || name.includes('victoria') || name.includes('karen'))
+          : (name.includes('male') || name.includes('david') || name.includes('george') || name.includes('daniel'));
+        return (matchesGender && v.lang.startsWith('en')) || (v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
+      });
+
       if (preferredVoice) {
         utterance.voice = preferredVoice;
       }

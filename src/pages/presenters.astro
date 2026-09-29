@@ -1,0 +1,258 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PresenterSprite from '../components/PresenterSprite.astro';
+import { presenters } from '../lib/presenters-data';
+import { getD1, getSiteSettings } from '../lib/runtime-db';
+
+export const prerender = false;
+
+const db = getD1(Astro.locals);
+const settings = await getSiteSettings(db);
+const siteName = settings.site_name || '9jaBeacon';
+const rawSiteUrl = (settings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+const siteUrl = rawSiteUrl === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteUrl;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'AboutPage',
+  'name': `${siteName} Broadcast Presenters`,
+  'description': 'Meet the official broadcast anchors and digital news presenters of 9jaBeacon News.',
+  'mainEntity': {
+    '@type': 'ItemList',
+    'itemListElement': presenters.map((p, idx) => ({
+      '@type': 'Person',
+      'position': idx + 1,
+      'name': p.name,
+      'jobTitle': p.role,
+      'description': p.bio,
+      'image': `https://www.9jabeacon.name.ng${p.avatar_url}`,
+      'gender': p.gender
+    }))
+  }
+};
+---
+
+<Layout
+  title={`Broadcast Anchors & Presenters — Digital Newsroom | ${siteName}`}
+  description="Meet the 4 digital broadcast journalists of 9jaBeacon News: Femi Adeleke, Amaka Okafor, Babatunde Bello, and Zainab Aliyu. Interactive character sprites, voices, and editorial beats."
+  canonicalUrl={`${siteUrl}/presenters`}
+  activeNav="presenters"
+>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6" aria-label="Breadcrumb">
+      <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Home</a>
+      <span>/</span>
+      <span class="text-slate-900 dark:text-slate-200 font-semibold">Presenters & Anchors</span>
+    </nav>
+
+    <!-- Hero Header -->
+    <div class="mb-10 text-center sm:text-left sm:flex sm:items-end sm:justify-between border-b border-slate-200 dark:border-slate-800 pb-8">
+      <div class="max-w-2xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider font-mono mb-3">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          Digital Newsroom Roster
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+          9jaBeacon Broadcast Anchors
+        </h1>
+        <p class="mt-3 text-slate-600 dark:text-slate-400 text-base leading-relaxed">
+          Meet our 4 digital journalists powering real-time article narration, breaking news bulletins, and multimedia coverage across Nigeria and the diaspora.
+        </p>
+      </div>
+
+      <div class="mt-6 sm:mt-0 flex items-center justify-center sm:justify-end gap-3 text-xs font-mono text-slate-500 dark:text-slate-400">
+        <div class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <span class="font-bold text-slate-900 dark:text-slate-200">4</span> Presenters
+        </div>
+        <div class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <span class="font-bold text-slate-900 dark:text-slate-200">2</span> Male &bull; <span class="font-bold text-slate-900 dark:text-slate-200">2</span> Female
+        </div>
+      </div>
+    </div>
+
+    <!-- Presenters Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+      {presenters.map((presenter) => (
+        <article 
+          class="presenter-card flex flex-col p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all group"
+          id={`presenter-${presenter.id}`}
+        >
+          <!-- Top Row: Interactive Sprite & Identity -->
+          <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+            <!-- Sprite Box with 4 Poses -->
+            <div class="shrink-0 flex flex-col items-center">
+              <PresenterSprite 
+                presenterId={presenter.id} 
+                pose="idle" 
+                size="lg" 
+                interactive={true}
+              />
+              <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-2">
+                Click tabs above to switch pose
+              </span>
+            </div>
+
+            <!-- Identity & Role -->
+            <div class="flex-1 min-w-0 text-center sm:text-left">
+              <div class="flex items-center justify-center sm:justify-start gap-2">
+                <span class="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
+                  {presenter.department}
+                </span>
+                <span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono capitalize">
+                  {presenter.gender}
+                </span>
+              </div>
+
+              <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
+                {presenter.name}
+              </h2>
+
+              <p class="text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-0.5">
+                {presenter.role}
+              </p>
+
+              <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-3 leading-relaxed">
+                {presenter.bio}
+              </p>
+
+              <!-- Voice & Audition -->
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+                <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                  <span class="font-bold">Accent:</span> {presenter.accent}
+                </div>
+
+                <button
+                  type="button"
+                  class="audition-voice-btn px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold font-mono inline-flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                  data-presenter-name={presenter.name}
+                  data-presenter-gender={presenter.gender}
+                  data-presenter-pitch={presenter.voice_settings.pitch}
+                  data-presenter-rate={presenter.voice_settings.rate}
+                  data-presenter-id={presenter.id}
+                >
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  <span>Audition Voice</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom: Pose Guide & Metadata -->
+          <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-[10px] font-mono">
+            <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800">
+              <span class="font-bold text-slate-700 dark:text-slate-300 block">Frame 1: Idle</span>
+              <span class="text-slate-400">Top-Left (0% 0%)</span>
+            </div>
+            <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800">
+              <span class="font-bold text-slate-700 dark:text-slate-300 block">Frame 2: Report</span>
+              <span class="text-slate-400">Top-Right (100% 0%)</span>
+            </div>
+            <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800">
+              <span class="font-bold text-slate-700 dark:text-slate-300 block">Frame 3: Alert</span>
+              <span class="text-slate-400">Bottom-Left (0% 100%)</span>
+            </div>
+            <div class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800">
+              <span class="font-bold text-slate-700 dark:text-slate-300 block">Frame 4: Wrap</span>
+              <span class="text-slate-400">Bottom-Right (100% 100%)</span>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+
+    <!-- Developer & Integration Guide Section -->
+    <div class="mt-12 p-6 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+      <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+        Backend & Sprite Integration Architecture
+      </h3>
+      <p class="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+        Each presenter asset is stored as a high-density 2x2 sprite sheet in <code class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-emerald-600 dark:text-emerald-400">/public/presenters/[name].jpg</code>. Poses are switched instantly via CSS <code class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-emerald-600 dark:text-emerald-400">background-position</code> without incurring new HTTP requests or layout shifts.
+      </p>
+
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+        <div class="p-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+          <span class="font-bold text-emerald-600 dark:text-emerald-400 block mb-1">SQL Migration Ready:</span>
+          <span><code>migrations/0004_news_presenters.sql</code></span>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            Ready for Cloudflare D1, PostgreSQL, or SQLite production migration with JSON pose definitions and category mappings.
+          </p>
+        </div>
+
+        <div class="p-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+          <span class="font-bold text-emerald-600 dark:text-emerald-400 block mb-1">Zero Latency Voice Sync:</span>
+          <span>HTML5 SpeechSynthesis + Pose Trigger</span>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            Switches to 'speaking' pose automatically when narration starts, and reverts to 'idle' or 'wrap' on conclusion.
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  // Audition voice script
+  function setupAuditions() {
+    const auditionButtons = document.querySelectorAll('.audition-voice-btn');
+    if (!('speechSynthesis' in window)) return;
+
+    auditionButtons.forEach((btn) => {
+      if (btn.getAttribute('data-wired') === 'true') return;
+      btn.setAttribute('data-wired', 'true');
+
+      btn.addEventListener('click', () => {
+        window.speechSynthesis.cancel();
+
+        const name = btn.getAttribute('data-presenter-name') || 'Presenter';
+        const gender = btn.getAttribute('data-presenter-gender') || 'male';
+        const pitch = parseFloat(btn.getAttribute('data-presenter-pitch') || '1.0');
+        const rate = parseFloat(btn.getAttribute('data-presenter-rate') || '1.0');
+
+        const card = btn.closest('.presenter-card');
+        const spriteContainer = card?.querySelector('.presenter-sprite-container');
+        const reportBtn = spriteContainer?.querySelector('[data-pose="speaking"]') as HTMLButtonElement | null;
+        const idleBtn = spriteContainer?.querySelector('[data-pose="idle"]') as HTMLButtonElement | null;
+
+        // Animate sprite to speaking pose during audition
+        reportBtn?.click();
+
+        const sampleText = `Hello, I am ${name}, presenting for 9jaBeacon News. We bring you accurate, verified reporting on national affairs, economy, and culture. Stay informed with 9jaBeacon.`;
+        const utterance = new SpeechSynthesisUtterance(sampleText);
+        utterance.pitch = pitch;
+        utterance.rate = rate;
+
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = voices.find((v) => 
+          (gender === 'female' ? v.name.toLowerCase().includes('female') || v.name.includes('Zira') || v.name.includes('Samantha') || v.name.includes('Victoria') : v.name.toLowerCase().includes('male') || v.name.includes('David') || v.name.includes('George')) ||
+          v.lang.startsWith('en')
+        );
+        if (preferred) utterance.voice = preferred;
+
+        utterance.onend = () => {
+          idleBtn?.click();
+        };
+
+        utterance.onerror = () => {
+          idleBtn?.click();
+        };
+
+        window.speechSynthesis.speak(utterance);
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupAuditions);
+  } else {
+    setupAuditions();
+  }
+  document.addEventListener('astro:page-load', setupAuditions);
+</script>

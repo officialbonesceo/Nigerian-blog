@@ -166,3 +166,34 @@ export interface VideoQueryOptions {
   status?: string;
 }
 
+export type PresenterPose = 'idle' | 'speaking' | 'breaking' | 'wrap';
+
+export interface PresenterPoseCoordinates {
+  x: string;
+  y: string;
+  name: string;
+  description: string;
+}
+
+export interface NewsPresenter {
+  id: string;
+  name: string;
+  gender: 'male' | 'female';
+  role: string;
+  department: string;
+  bio: string;
+  avatar_url: string;
+  sprite_url: string;
+  poses: Record<PresenterPose, PresenterPoseCoordinates>;
+  preferred_categories: string[];
+  accent: string;
+  voice_settings: {
+    pitch: number;
+    rate: number;
+    lang: string;
+    preferred_gender: 'male' | 'female';
+  };
+  status: 'active' | 'archived';
+  display_order: number;
+}
+

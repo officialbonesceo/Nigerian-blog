@@ -319,11 +319,12 @@ const structuredData = [
       )}
     </div>
 
-    <!-- Client-Side Audio Reader (Under Article Content) -->
+    <!-- Client-Side Audio Reader with Presenter Sprite (Under Article Content) -->
     <ArticleAudioReader 
       title={article.title} 
       summary={article.summary} 
       readingTimeMinutes={displayReadingTime} 
+      categoryId={article.category_id}
     />
 
     <!-- Original Attribution Link -->
