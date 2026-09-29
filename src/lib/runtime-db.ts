@@ -1,6 +1,6 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle, ArticleComment } from './types';
-import { initialCategories, initialArticles, initialSources } from './seed-data';
+import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle, ArticleComment, VideoArticle, VideoQueryOptions } from './types';
+import { initialCategories, initialArticles, initialSources, initialVideos } from './seed-data';
 import { executeD1Query } from './d1-sync';
 
 let localSqliteDb: any = null;
@@ -272,6 +272,7 @@ export async function ensureTablesExist(db: D1Database, force = false) {
         db.prepare("SELECT 1 FROM advert_inquiries LIMIT 1").first(),
         db.prepare("SELECT 1 FROM visitor_analytics LIMIT 1").first(),
         db.prepare("SELECT 1 FROM article_comments LIMIT 1").first(),
+        db.prepare("SELECT 1 FROM video_articles LIMIT 1").first(),
       ]);
       tablesChecked = true;
       return;
@@ -435,14 +436,38 @@ export async function ensureTablesExist(db: D1Database, force = false) {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         status TEXT DEFAULT 'published'
       )`,
+      `CREATE TABLE IF NOT EXISTS video_articles (
+        id TEXT PRIMARY KEY,
+        slug TEXT UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        video_url TEXT NOT NULL,
+        video_type TEXT DEFAULT 'youtube',
+        thumbnail_url TEXT NOT NULL,
+        duration_seconds INTEGER DEFAULT 0,
+        category_id TEXT DEFAULT 'cat_naija_news',
+        views_count INTEGER DEFAULT 0,
+        is_featured INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'published',
+        source_name TEXT NOT NULL,
+        source_channel_url TEXT,
+        published_at TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`,
       `CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)`,
       `CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC)`,
       `CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`,
       `CREATE INDEX IF NOT EXISTS idx_comments_slug_created ON article_comments(article_slug, created_at DESC)`,
       `CREATE INDEX IF NOT EXISTS idx_comments_parent ON article_comments(parent_id)`,
       `CREATE INDEX IF NOT EXISTS idx_automation_logs_created ON automation_logs(created_at DESC)`,
-      `CREATE INDEX IF NOT EXISTS idx_visitor_date ON visitor_analytics(visit_date)`
+      `CREATE INDEX IF NOT EXISTS idx_visitor_date ON visitor_analytics(visit_date)`,
+      `CREATE INDEX IF NOT EXISTS idx_videos_slug ON video_articles(slug)`,
+      `CREATE INDEX IF NOT EXISTS idx_videos_published ON video_articles(published_at DESC)`,
+      `CREATE INDEX IF NOT EXISTS idx_videos_category ON video_articles(category_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_videos_featured ON video_articles(is_featured)`
     ];
+
 
     for (const stmt of statements) {
       try {
@@ -1862,4 +1887,284 @@ export async function likeArticleComment(db: D1Database, commentId: string): Pro
     return false;
   }
 }
+
+// =========================================================================
+// VIDEO NEWS REPOSITORY & AUTONOMOUS BROADCASTING
+// =========================================================================
+
+/**
+ * Retrieves video articles with pagination and category filtering
+ */
+export async function getVideoArticles(
+  db: D1Database,
+  options?: VideoQueryOptions
+): Promise<{ videos: VideoArticle[]; total: number }> {
+  try {
+    await ensureTablesExist(db);
+
+    const limit = options?.limit ?? 20;
+    const offset = options?.offset ?? 0;
+    const status = options?.status ?? 'published';
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (status !== 'all') {
+      conditions.push('v.status = ?');
+      params.push(status);
+    }
+
+    if (options?.categoryId) {
+      conditions.push('v.category_id = ?');
+      params.push(options.categoryId);
+    }
+
+    if (options?.featuredOnly) {
+      conditions.push('v.is_featured = 1');
+    }
+
+    if (options?.search) {
+      conditions.push('(v.title LIKE ? OR v.summary LIKE ?)');
+      params.push(`%${options.search}%`, `%${options.search}%`);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const countQuery = `SELECT COUNT(*) as count FROM video_articles v ${whereClause}`;
+    const countRow = await db.prepare(countQuery).bind(...params).first<{ count: number }>();
+    const total = countRow?.count ?? 0;
+
+    // If empty in D1, seed initial videos
+    if (total === 0 && (!options || (!options.categoryId && !options.search))) {
+      for (const v of initialVideos) {
+        try {
+          await createVideoArticle(db, v);
+        } catch {}
+      }
+      return { videos: initialVideos.slice(offset, offset + limit), total: initialVideos.length };
+    }
+
+    const query = `
+      SELECT v.*, c.name as category_name, c.slug as category_slug
+      FROM video_articles v
+      LEFT JOIN categories c ON v.category_id = c.id
+      ${whereClause}
+      ORDER BY v.is_featured DESC, v.published_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const result = await db.prepare(query).bind(...params, limit, offset).all<VideoArticle>();
+    return {
+      videos: result.results || [],
+      total
+    };
+  } catch (err) {
+    console.error('getVideoArticles error, falling back to seed videos:', err);
+    return {
+      videos: initialVideos.slice(0, options?.limit ?? 20),
+      total: initialVideos.length
+    };
+  }
+}
+
+/**
+ * Retrieves a single video article by slug
+ */
+export async function getVideoArticleBySlug(db: D1Database, slug: string): Promise<VideoArticle | null> {
+  try {
+    await ensureTablesExist(db);
+
+    const query = `
+      SELECT v.*, c.name as category_name, c.slug as category_slug
+      FROM video_articles v
+      LEFT JOIN categories c ON v.category_id = c.id
+      WHERE v.slug = ?
+    `;
+
+    const video = await db.prepare(query).bind(slug).first<VideoArticle>();
+    if (video) return video;
+
+    const fallback = initialVideos.find(v => v.slug === slug);
+    return fallback || null;
+  } catch (err) {
+    console.error('getVideoArticleBySlug error:', err);
+    return initialVideos.find(v => v.slug === slug) || null;
+  }
+}
+
+/**
+ * Retrieves a single video article by ID
+ */
+export async function getVideoArticleById(db: D1Database, id: string): Promise<VideoArticle | null> {
+  try {
+    await ensureTablesExist(db);
+
+    const query = `
+      SELECT v.*, c.name as category_name, c.slug as category_slug
+      FROM video_articles v
+      LEFT JOIN categories c ON v.category_id = c.id
+      WHERE v.id = ?
+    `;
+
+    const video = await db.prepare(query).bind(id).first<VideoArticle>();
+    return video || null;
+  } catch (err) {
+    console.error('getVideoArticleById error:', err);
+    return null;
+  }
+}
+
+/**
+ * Creates a new video article in D1
+ */
+export async function createVideoArticle(db: D1Database, data: Partial<VideoArticle>): Promise<VideoArticle> {
+  await ensureTablesExist(db);
+
+  const id = data.id || 'vid_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+  const now = new Date().toISOString();
+  const slug = data.slug || (data.title || 'video')
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .substring(0, 80);
+
+  const videoRecord: VideoArticle = {
+    id,
+    slug,
+    title: data.title || 'Untitled Broadcast',
+    summary: data.summary || '',
+    video_url: data.video_url || '',
+    video_type: (data.video_type as any) || 'youtube',
+    thumbnail_url: data.thumbnail_url || 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=1200&q=80',
+    duration_seconds: data.duration_seconds || 0,
+    category_id: data.category_id || 'cat_naija_news',
+    views_count: data.views_count || 0,
+    is_featured: data.is_featured ? 1 : 0,
+    status: data.status || 'published',
+    source_name: data.source_name || '9jaBeacon Video Desk',
+    source_channel_url: data.source_channel_url || null,
+    published_at: data.published_at || now,
+    created_at: now,
+    updated_at: now,
+  };
+
+  const insertQuery = `
+    INSERT INTO video_articles (
+      id, slug, title, summary, video_url, video_type, thumbnail_url,
+      duration_seconds, category_id, views_count, is_featured, status,
+      source_name, source_channel_url, published_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  await db.prepare(insertQuery).bind(
+    videoRecord.id,
+    videoRecord.slug,
+    videoRecord.title,
+    videoRecord.summary,
+    videoRecord.video_url,
+    videoRecord.video_type,
+    videoRecord.thumbnail_url,
+    videoRecord.duration_seconds,
+    videoRecord.category_id,
+    videoRecord.views_count,
+    videoRecord.is_featured ? 1 : 0,
+    videoRecord.status,
+    videoRecord.source_name,
+    videoRecord.source_channel_url || null,
+    videoRecord.published_at,
+    videoRecord.created_at,
+    videoRecord.updated_at
+  ).run();
+
+  return videoRecord;
+}
+
+/**
+ * Updates an existing video article
+ */
+export async function updateVideoArticle(
+  db: D1Database,
+  id: string,
+  data: Partial<VideoArticle>
+): Promise<boolean> {
+  try {
+    await ensureTablesExist(db);
+    const existing = await getVideoArticleById(db, id);
+    if (!existing) return false;
+
+    const now = new Date().toISOString();
+    const updated = {
+      ...existing,
+      ...data,
+      updated_at: now,
+    };
+
+    const query = `
+      UPDATE video_articles SET
+        title = ?,
+        summary = ?,
+        video_url = ?,
+        video_type = ?,
+        thumbnail_url = ?,
+        duration_seconds = ?,
+        category_id = ?,
+        is_featured = ?,
+        status = ?,
+        source_name = ?,
+        source_channel_url = ?,
+        updated_at = ?
+      WHERE id = ?
+    `;
+
+    await db.prepare(query).bind(
+      updated.title,
+      updated.summary,
+      updated.video_url,
+      updated.video_type,
+      updated.thumbnail_url,
+      updated.duration_seconds,
+      updated.category_id,
+      updated.is_featured ? 1 : 0,
+      updated.status,
+      updated.source_name,
+      updated.source_channel_url || null,
+      updated.updated_at,
+      id
+    ).run();
+
+    return true;
+  } catch (err) {
+    console.error('updateVideoArticle error:', err);
+    return false;
+  }
+}
+
+/**
+ * Deletes a video article from D1
+ */
+export async function deleteVideoArticle(db: D1Database, id: string): Promise<boolean> {
+  try {
+    await ensureTablesExist(db);
+    await db.prepare('DELETE FROM video_articles WHERE id = ?').bind(id).run();
+    return true;
+  } catch (err) {
+    console.error('deleteVideoArticle error:', err);
+    return false;
+  }
+}
+
+/**
+ * Increments video views counter (real view tracking)
+ */
+export async function incrementVideoViews(db: D1Database, idOrSlug: string): Promise<void> {
+  try {
+    await ensureTablesExist(db);
+    await db.prepare(
+      'UPDATE video_articles SET views_count = views_count + 1 WHERE id = ? OR slug = ?'
+    ).bind(idOrSlug, idOrSlug).run();
+  } catch (err) {
+    console.error('incrementVideoViews error:', err);
+  }
+}
+
 

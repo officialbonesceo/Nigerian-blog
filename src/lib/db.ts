@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
-import { initialCategories, initialSources, initialArticles } from './seed-data';
-import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle } from './types';
+import { initialCategories, initialSources, initialArticles, initialVideos } from './seed-data';
+import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle, VideoArticle } from './types';
+
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -200,6 +201,27 @@ function initDatabase() {
       status TEXT DEFAULT 'published'
     );
 
+    CREATE TABLE IF NOT EXISTS video_articles (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      video_url TEXT NOT NULL,
+      video_type TEXT DEFAULT 'youtube',
+      thumbnail_url TEXT NOT NULL,
+      duration_seconds INTEGER DEFAULT 0,
+      category_id TEXT DEFAULT 'cat_naija_news',
+      views_count INTEGER DEFAULT 0,
+      is_featured INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'published',
+      source_name TEXT NOT NULL,
+      source_channel_url TEXT,
+      published_at TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (category_id) REFERENCES categories(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC);
     CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC);
     CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug);
@@ -207,7 +229,12 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_comments_parent ON article_comments(parent_id);
     CREATE INDEX IF NOT EXISTS idx_automation_logs_created ON automation_logs(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_visitor_date ON visitor_analytics(visit_date);
+    CREATE INDEX IF NOT EXISTS idx_videos_slug ON video_articles(slug);
+    CREATE INDEX IF NOT EXISTS idx_videos_published ON video_articles(published_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_videos_category ON video_articles(category_id);
+    CREATE INDEX IF NOT EXISTS idx_videos_featured ON video_articles(is_featured);
   `);
+
 
   try { db.prepare(`ALTER TABLE article_comments ADD COLUMN parent_id TEXT DEFAULT NULL`).run(); } catch {}
   try { db.prepare(`ALTER TABLE article_comments ADD COLUMN reply_to_user TEXT DEFAULT NULL`).run(); } catch {}
@@ -366,6 +393,26 @@ function initDatabase() {
       'Empower your cross-border ventures with instant zero-fee settlement across 30+ African corridors.',
       'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead'
     );
+  }
+
+  // Seed initial video news if empty
+  try {
+    const videoCount = (db.prepare('SELECT COUNT(*) as count FROM video_articles').get() as { count: number })?.count || 0;
+    if (videoCount === 0) {
+      const insertVideo = db.prepare(`
+        INSERT INTO video_articles (id, slug, title, summary, video_url, video_type, thumbnail_url, duration_seconds, category_id, views_count, is_featured, status, source_name, source_channel_url, published_at, created_at, updated_at)
+        VALUES (@id, @slug, @title, @summary, @video_url, @video_type, @thumbnail_url, @duration_seconds, @category_id, @views_count, @is_featured, @status, @source_name, @source_channel_url, @published_at, @created_at, @updated_at)
+      `);
+      for (const v of initialVideos) {
+        try {
+          insertVideo.run(v);
+        } catch (vErr) {
+          console.warn('[Database] Seed video warning:', v.id, vErr);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Database] video_articles init check error:', err);
   }
 
   // Seed initial audit log
@@ -896,6 +943,10 @@ export function getAdminDashboardStats() {
   const totalViews = (db.prepare('SELECT SUM(views_count) as count FROM articles').get() as { count: number | null }).count || 0;
   const pendingReports = (db.prepare("SELECT COUNT(*) as count FROM article_reports WHERE status = 'pending'").get() as { count: number }).count || 0;
   const totalRejected = (db.prepare("SELECT COUNT(*) as count FROM rejected_articles").get() as { count: number }).count || 0;
+  let totalVideos = 0;
+  try {
+    totalVideos = (db.prepare("SELECT COUNT(*) as count FROM video_articles").get() as { count: number }).count || 0;
+  } catch {}
   
   return {
     totalArticles,
@@ -906,5 +957,191 @@ export function getAdminDashboardStats() {
     totalViews,
     pendingReports,
     totalRejected,
+    totalVideos,
   };
 }
+
+// --- Video Articles Functions ---
+
+export function getVideoArticles(options?: {
+  limit?: number;
+  offset?: number;
+  categoryId?: string;
+  featuredOnly?: boolean;
+  search?: string;
+  status?: string;
+}): { videos: VideoArticle[]; total: number } {
+  const limit = options?.limit ?? 20;
+  const offset = options?.offset ?? 0;
+  const status = options?.status ?? 'published';
+
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (status !== 'all') {
+    conditions.push('v.status = ?');
+    params.push(status);
+  }
+
+  if (options?.categoryId) {
+    conditions.push('v.category_id = ?');
+    params.push(options.categoryId);
+  }
+
+  if (options?.featuredOnly) {
+    conditions.push('v.is_featured = 1');
+  }
+
+  if (options?.search) {
+    conditions.push('(v.title LIKE ? OR v.summary LIKE ?)');
+    params.push(`%${options.search}%`, `%${options.search}%`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  try {
+    const totalRow = db.prepare(`SELECT COUNT(*) as count FROM video_articles v ${whereClause}`).get(...params) as { count: number };
+    const total = totalRow?.count || 0;
+
+    const query = `
+      SELECT v.*, c.name as category_name, c.slug as category_slug
+      FROM video_articles v
+      LEFT JOIN categories c ON v.category_id = c.id
+      ${whereClause}
+      ORDER BY v.is_featured DESC, v.published_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const videos = db.prepare(query).all(...params, limit, offset) as VideoArticle[];
+    return { videos, total };
+  } catch (err) {
+    console.warn('[Database] getVideoArticles error:', err);
+    return { videos: initialVideos, total: initialVideos.length };
+  }
+}
+
+export function getVideoArticleBySlug(slug: string): VideoArticle | null {
+  try {
+    const query = `
+      SELECT v.*, c.name as category_name, c.slug as category_slug
+      FROM video_articles v
+      LEFT JOIN categories c ON v.category_id = c.id
+      WHERE v.slug = ?
+    `;
+    const video = db.prepare(query).get(slug) as VideoArticle | undefined;
+    return video || initialVideos.find(v => v.slug === slug) || null;
+  } catch (err) {
+    console.warn('[Database] getVideoArticleBySlug error:', err);
+    return initialVideos.find(v => v.slug === slug) || null;
+  }
+}
+
+export function getVideoArticleById(id: string): VideoArticle | null {
+  try {
+    const query = `
+      SELECT v.*, c.name as category_name, c.slug as category_slug
+      FROM video_articles v
+      LEFT JOIN categories c ON v.category_id = c.id
+      WHERE v.id = ?
+    `;
+    const video = db.prepare(query).get(id) as VideoArticle | undefined;
+    return video || null;
+  } catch (err) {
+    console.warn('[Database] getVideoArticleById error:', err);
+    return null;
+  }
+}
+
+export function createVideoArticle(data: Partial<VideoArticle>): VideoArticle {
+  const id = data.id || 'vid_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+  const now = new Date().toISOString();
+  const slug = data.slug || (data.title || 'video')
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .substring(0, 80);
+
+  const videoRecord: VideoArticle = {
+    id,
+    slug,
+    title: data.title || 'Untitled Video',
+    summary: data.summary || '',
+    video_url: data.video_url || '',
+    video_type: (data.video_type as any) || 'youtube',
+    thumbnail_url: data.thumbnail_url || 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=1200&q=80',
+    duration_seconds: data.duration_seconds || 0,
+    category_id: data.category_id || 'cat_naija_news',
+    views_count: data.views_count || 0,
+    is_featured: data.is_featured ? 1 : 0,
+    status: data.status || 'published',
+    source_name: data.source_name || '9jaBeacon Video Desk',
+    source_channel_url: data.source_channel_url || null,
+    published_at: data.published_at || now,
+    created_at: now,
+    updated_at: now,
+  };
+
+  db.prepare(`
+    INSERT INTO video_articles (
+      id, slug, title, summary, video_url, video_type, thumbnail_url,
+      duration_seconds, category_id, views_count, is_featured, status,
+      source_name, source_channel_url, published_at, created_at, updated_at
+    ) VALUES (
+      @id, @slug, @title, @summary, @video_url, @video_type, @thumbnail_url,
+      @duration_seconds, @category_id, @views_count, @is_featured, @status,
+      @source_name, @source_channel_url, @published_at, @created_at, @updated_at
+    )
+  `).run(videoRecord);
+
+  return videoRecord;
+}
+
+export function updateVideoArticle(id: string, data: Partial<VideoArticle>): boolean {
+  const existing = getVideoArticleById(id);
+  if (!existing) return false;
+
+  const now = new Date().toISOString();
+  const updated = {
+    ...existing,
+    ...data,
+    updated_at: now,
+  };
+
+  db.prepare(`
+    UPDATE video_articles SET
+      title = @title,
+      summary = @summary,
+      video_url = @video_url,
+      video_type = @video_type,
+      thumbnail_url = @thumbnail_url,
+      duration_seconds = @duration_seconds,
+      category_id = @category_id,
+      is_featured = @is_featured,
+      status = @status,
+      source_name = @source_name,
+      source_channel_url = @source_channel_url,
+      updated_at = @updated_at
+    WHERE id = @id
+  `).run(updated);
+
+  return true;
+}
+
+export function deleteVideoArticle(id: string): boolean {
+  try {
+    const res = db.prepare('DELETE FROM video_articles WHERE id = ?').run(id);
+    return res.changes > 0;
+  } catch (err) {
+    console.warn('[Database] deleteVideoArticle error:', err);
+    return false;
+  }
+}
+
+export function incrementVideoViews(idOrSlug: string): void {
+  try {
+    db.prepare('UPDATE video_articles SET views_count = views_count + 1 WHERE id = ? OR slug = ?').run(idOrSlug, idOrSlug);
+  } catch (err) {
+    console.warn('[Database] incrementVideoViews error:', err);
+  }
+}
+

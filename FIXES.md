@@ -33,7 +33,40 @@ System falls back to AI-generated editorial image or `/fallback-image.svg`.
 - Added self-healing in `sync-d1-to-local.ts` to automatically populate base categories in D1 if empty instead of failing the workflow.
 - Aligned columns between D1 and local SQLite tables to eliminate insertion errors.
 
+### 7. Client-Side Text-To-Speech Audio Reader (Under Every Article)
+- Built `src/components/ArticleAudioReader.astro` located directly under each article body.
+- 100% Client-Side speech synthesis: $0 API costs, 0 server bandwidth, 0 rate limits.
+- Companion "Listen" trigger button in top reader toolbar that automatically coordinates playback state.
+- Controls: Play/Pause, 10-second rewind/skip, audio speed selector (0.75x, 1x, 1.25x, 1.5x), sentence-level progress bar, and waveform indicator.
+- Zero stack mentions or third-party branding.
+- Unified dark/light mode palette matching site theme.
+
+### 8. Complete Video News Hub & Autonomous Broadcasting System
+- **Video Tab & Mobile Drawer**: High-visibility "Videos" navigation tab with animated broadcast badge in desktop header and mobile drawer.
+- **Custom Video Player (`VideoPlayer.astro`)**:
+  - YouTube facade with zero initial iframe overhead until play, preventing performance degradation and tracker cookies.
+  - Full HTML5 Direct Player (MP4/WebM/HLS) with custom seeker bar, 10s rewind/skip, speed selector, volume slider, and fullscreen.
+- **Video Hub (`/videos`)**:
+  - Featured Spotlight hero player.
+  - Category filters: All Videos, Naija News, Business, Sports, World.
+  - Video grid with 16:9 thumbnails, duration pill badges, verified channel tags, view counts.
+  - Rich `VideoObject` + `CollectionPage` Schema.org JSON-LD for top Google Video ranking.
+- **Video Watch Page (`/videos/[slug]`)**:
+  - Full responsive theatre player, summary breakdown, verified source attribution, WhatsApp/X/Link sharing, and related recommendations.
+  - VideoObject structured data with `uploadDate`, `duration`, `embedUrl`, `thumbnailUrl`.
+- **Database Architecture & Migration**:
+  - D1 Migration `migrations/0003_video_news.sql` + local SQLite schema and automatic table self-healing.
+  - Pre-seeded with authentic Nigerian broadcast reports (Channels TV, Arise News, TVC News, BBC Africa).
+  - Clean schema ready for direct migration to PostgreSQL, Supabase, Cloudflare D1, or SQLite.
+- **Admin Command Desk (`/bonesceo/admin`)**:
+  - Dedicated "Video News" tab with live count badge.
+  - 1-Click "Fetch YouTube News" button invoking `/api/admin/fetch-videos` to parse public YouTube Atom feeds with 0 API keys and automatic topic classification.
+  - Complete CRUD modal to add, edit, feature, and delete video articles.
+- **Video Google Sitemap**:
+  - Google Video XML sitemap tags (`<video:video>`) added to `src/pages/sitemap.xml.ts`.
+
 ## 🔄 Still Recommended (Bigger Work)
+
 
 ### Full SQLite → Cloudflare D1 Migration
 Current architecture still uses `better-sqlite3` + local `9jabeacon.db` for development and some server routes.

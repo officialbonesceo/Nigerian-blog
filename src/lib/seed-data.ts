@@ -1,4 +1,4 @@
-import type { Category, Source, Article } from './types';
+import type { Category, Source, Article, VideoArticle } from './types';
 
 export const initialCategories: Category[] = [
   {
@@ -1316,3 +1316,121 @@ export const initialArticles: Article[] = [
     "status": "published"
   }
 ];
+
+export const initialVideos: VideoArticle[] = [
+  {
+    id: 'vid_channels_presidential_reforms',
+    slug: 'presidential-address-on-national-economic-reforms-infrastructure-milestones',
+    title: 'Presidential Address: Key Economic Reforms, Inflation Outlook & Major Infrastructure Milestones',
+    summary: 'Comprehensive broadcast analysis on the latest executive governance reforms, foreign exchange stabilization framework, and major highway progress across Nigeria.',
+    video_url: 'https://www.youtube.com/watch?v=34Na4j8AVgA',
+    video_type: 'youtube',
+    thumbnail_url: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=1200&q=80',
+    duration_seconds: 745, // 12m 25s
+    category_id: 'cat_naija_news',
+    views_count: 0,
+    is_featured: 1,
+    status: 'published',
+    source_name: 'Channels Television',
+    source_channel_url: 'https://www.youtube.com/@ChannelsTelevision',
+    published_at: '2026-09-28T08:00:00Z',
+    created_at: '2026-09-28 08:00:00',
+    updated_at: '2026-09-28 08:00:00'
+  },
+  {
+    id: 'vid_arise_cbn_mpc_review',
+    slug: 'cbn-monetary-policy-committee-briefing-naira-stabilization-interest-rates',
+    title: 'CBN MPC Briefing: Strategic Naira Stabilization & Key Interest Rates Review',
+    summary: 'The Central Bank of Nigeria Monetary Policy Committee convenes to address FX liquidity, benchmark interest rates, and foreign investment inflows.',
+    video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    video_type: 'youtube',
+    thumbnail_url: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
+    duration_seconds: 915, // 15m 15s
+    category_id: 'cat_money_hustle',
+    views_count: 0,
+    is_featured: 0,
+    status: 'published',
+    source_name: 'Arise News',
+    source_channel_url: 'https://www.youtube.com/@ARISEONLINE',
+    published_at: '2026-09-27T16:30:00Z',
+    created_at: '2026-09-27 16:30:00',
+    updated_at: '2026-09-27 16:30:00'
+  },
+  {
+    id: 'vid_tvc_coastal_highway_update',
+    slug: 'lagos-calabar-coastal-highway-aerial-construction-update-economic-impact',
+    title: 'Lagos-Calabar Coastal Highway: Aerial Construction Update & Economic Impact Assessment',
+    summary: 'Exclusive drone footage and field reports examining construction pace on Sections 1 & 2 of Nigeria’s flagship 700-kilometer coastal road network.',
+    video_url: 'https://www.youtube.com/watch?v=5qap5aO4i9A',
+    video_type: 'youtube',
+    thumbnail_url: 'https://images.unsplash.com/photo-1545459720-aac8509eb02c?auto=format&fit=crop&w=1200&q=80',
+    duration_seconds: 520, // 8m 40s
+    category_id: 'cat_naija_news',
+    views_count: 0,
+    is_featured: 0,
+    status: 'published',
+    source_name: 'TVC News Nigeria',
+    source_channel_url: 'https://www.youtube.com/@TVCNewsNigeria',
+    published_at: '2026-09-27T11:15:00Z',
+    created_at: '2026-09-27 11:15:00',
+    updated_at: '2026-09-27 11:15:00'
+  },
+  {
+    id: 'vid_channels_super_eagles_tactics',
+    slug: 'super-eagles-afcon-qualifiers-training-tactical-breakdown',
+    title: 'Super Eagles Camp Live: AFCON Qualifiers Training & Tactical Masterclass Breakdown',
+    summary: 'Inside the national team training camp in Uyo as the technical crew prepares tactical drills ahead of decisive international tournament fixtures.',
+    video_url: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
+    video_type: 'youtube',
+    thumbnail_url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
+    duration_seconds: 410, // 6m 50s
+    category_id: 'cat_sports',
+    views_count: 0,
+    is_featured: 1,
+    status: 'published',
+    source_name: 'Channels Sports Desk',
+    source_channel_url: 'https://www.youtube.com/@ChannelsTelevision',
+    published_at: '2026-09-26T19:00:00Z',
+    created_at: '2026-09-26 19:00:00',
+    updated_at: '2026-09-26 19:00:00'
+  },
+  {
+    id: 'vid_bbc_africa_tech_startups',
+    slug: 'nigerias-fintech-ecosystem-lagos-founders-raising-global-venture-capital',
+    title: 'Inside Nigeria’s Fintech Capital: How Lagos Founders Are Attracting Global Venture Capital',
+    summary: 'Investigative documentary into Yaba and Victoria Island startup clusters building cross-border payment rails and AI-enabled financial services for Africa.',
+    video_url: 'https://www.youtube.com/watch?v=21X5lGlDOfg',
+    video_type: 'youtube',
+    thumbnail_url: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80',
+    duration_seconds: 680, // 11m 20s
+    category_id: 'cat_money_hustle',
+    views_count: 0,
+    is_featured: 0,
+    status: 'published',
+    source_name: 'BBC News Africa',
+    source_channel_url: 'https://www.youtube.com/@bbcnewsafrica',
+    published_at: '2026-09-25T14:00:00Z',
+    created_at: '2026-09-25 14:00:00',
+    updated_at: '2026-09-25 14:00:00'
+  },
+  {
+    id: 'vid_arise_diplomacy_un_summit',
+    slug: 'nigeria-bilateral-accords-un-general-assembly-security-trade-pacts',
+    title: 'Global Diplomacy: Nigeria Secures Strategic Bilateral Security & Trade Pacts at UN Summit',
+    summary: 'Special delegation coverage from New York as Nigerian ministers finalize multi-billion dollar trade agreements with international economic partners.',
+    video_url: 'https://www.youtube.com/watch?v=JGwWNGJdvx8',
+    video_type: 'youtube',
+    thumbnail_url: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80',
+    duration_seconds: 605, // 10m 05s
+    category_id: 'cat_world',
+    views_count: 0,
+    is_featured: 0,
+    status: 'published',
+    source_name: 'Arise Global Desk',
+    source_channel_url: 'https://www.youtube.com/@ARISEONLINE',
+    published_at: '2026-09-24T18:20:00Z',
+    created_at: '2026-09-24 18:20:00',
+    updated_at: '2026-09-24 18:20:00'
+  }
+];
+

@@ -1,0 +1,234 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import VideoPlayer from '../../components/VideoPlayer.astro';
+import { getD1, getVideoArticleBySlug, getVideoArticles, incrementVideoViews } from '../../lib/runtime-db';
+
+const { slug } = Astro.params;
+const db = getD1(Astro.locals);
+
+if (!slug) {
+  return Astro.redirect('/videos', 302);
+}
+
+const video = await getVideoArticleBySlug(db, slug);
+
+if (!video) {
+  return Astro.redirect('/404', 302);
+}
+
+// Track real view count
+try {
+  await incrementVideoViews(db, video.slug);
+  video.views_count += 1;
+} catch {}
+
+// Fetch related video recommendations
+const relatedResult = await getVideoArticles(db, {
+  categoryId: video.category_id,
+  limit: 4,
+  status: 'published'
+});
+const relatedVideos = (relatedResult.videos || []).filter(v => v.id !== video.id).slice(0, 3);
+
+function formatDuration(sec: number): string {
+  if (!sec || sec <= 0) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+const currentUrl = `https://www.9jabeacon.name.ng/videos/${video.slug}`;
+
+// VideoObject Schema.org JSON-LD
+const videoJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": video.title,
+  "description": video.summary,
+  "thumbnailUrl": [video.thumbnail_url],
+  "uploadDate": video.published_at,
+  "duration": `PT${Math.floor(video.duration_seconds / 60)}M${video.duration_seconds % 60}S`,
+  "contentUrl": currentUrl,
+  "embedUrl": video.video_url,
+  "interactionStatistic": {
+    "@type": "InteractionCounter",
+    "interactionType": { "@type": "WatchAction" },
+    "userInteractionCount": video.views_count
+  },
+  "publisher": {
+    "@type": "NewsMediaOrganization",
+    "name": "9jaBeacon",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.9jabeacon.name.ng/favicon.svg"
+    }
+  }
+};
+---
+
+<Layout
+  title={`${video.title} - 9jaBeacon Video`}
+  description={video.summary}
+  image={video.thumbnail_url}
+  canonicalUrl={currentUrl}
+  activeNav="videos"
+>
+  <!-- Rich VideoObject JSON-LD -->
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(videoJsonLd)} />
+
+
+  <article class="max-w-4xl mx-auto px-3 sm:px-6 py-4 space-y-6">
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-mono">
+      <a href="/" class="hover:underline">Home</a>
+      <span>/</span>
+      <a href="/videos" class="hover:underline">Videos</a>
+      <span>/</span>
+      <span class="truncate max-w-[200px] text-slate-700 dark:text-slate-300">{video.category_name || 'Broadcast'}</span>
+    </nav>
+
+    <!-- Top Video Player Box -->
+    <div class="rounded-2xl overflow-hidden bg-slate-950 shadow-xl border border-slate-800">
+      <VideoPlayer
+        videoUrl={video.video_url}
+        videoType={video.video_type}
+        title={video.title}
+        thumbnailUrl={video.thumbnail_url}
+        durationSeconds={video.duration_seconds}
+      />
+    </div>
+
+    <!-- Video Meta & Header -->
+    <div class="space-y-4">
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200/60 dark:border-emerald-800/60 uppercase tracking-wider">
+          {video.category_name || 'Naija News'}
+        </span>
+        <span class="text-slate-400">•</span>
+        <span class="inline-flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200">
+          <svg class="w-3.5 h-3.5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          {video.source_name}
+        </span>
+        <span class="text-slate-400">•</span>
+        <time datetime={video.published_at} class="text-slate-500 dark:text-slate-400 font-mono">
+          {new Date(video.published_at).toLocaleDateString('en-NG', { month: 'long', day: 'numeric', year: 'numeric' })}
+        </time>
+        <span class="text-slate-400">•</span>
+        <span class="text-slate-500 dark:text-slate-400 font-mono">
+          {video.views_count.toLocaleString()} views
+        </span>
+      </div>
+
+      <h1 class="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+        {video.title}
+      </h1>
+
+      <!-- Social Share Strip -->
+      <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+        <span class="text-xs font-bold text-slate-600 dark:text-slate-400 font-mono uppercase tracking-wider">
+          Share Broadcast
+        </span>
+        <div class="flex items-center gap-2">
+          <!-- WhatsApp -->
+          <a
+            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(video.title + ' ' + currentUrl)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="p-2 rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white transition-colors"
+            title="Share on WhatsApp"
+            aria-label="Share on WhatsApp"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.697c1.004.57 2.083.87 3.206.87 3.181 0 5.767-2.587 5.767-5.766.001-3.182-2.585-5.768-5.767-5.768zm0 10.428c-.961 0-1.895-.262-2.709-.757l-.194-.118-2.012.528.537-1.961-.128-.204c-.544-.865-.83-1.874-.83-2.916 0-2.906 2.364-5.27 5.27-5.27 2.905 0 5.27 2.364 5.27 5.27s-2.365 5.27-5.27 5.27z"/></svg>
+          </a>
+
+          <!-- Twitter / X -->
+          <a
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(video.title)}&url=${encodeURIComponent(currentUrl)}&via=9jaBeacon`}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="p-2 rounded-lg bg-slate-900/10 dark:bg-white/10 text-slate-900 dark:text-white hover:bg-black dark:hover:bg-white dark:hover:text-black hover:text-white transition-colors"
+            title="Share on X"
+            aria-label="Share on X"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          </a>
+
+          <!-- Copy Link -->
+          <button
+            type="button"
+            onclick={`navigator.clipboard.writeText('${currentUrl}'); alert('Link copied to clipboard!');`}
+            class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-emerald-500 transition-colors cursor-pointer"
+            title="Copy Video Link"
+            aria-label="Copy Video Link"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Video Summary & Editorial Notes -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-3">
+        <h3 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+          Report Overview & Key Context
+        </h3>
+        <p class="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
+          {video.summary}
+        </p>
+
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <span>Source Attribution: <strong>{video.source_name}</strong></span>
+          <a href={video.video_url} target="_blank" rel="noopener noreferrer" class="text-emerald-600 dark:text-emerald-400 hover:underline">
+            Watch Original Source &rarr;
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Related Videos Section -->
+    {relatedVideos.length > 0 && (
+      <div class="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-bold text-slate-900 dark:text-white">
+            Related Video Reports
+          </h3>
+          <a href="/videos" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
+            View All &rarr;
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {relatedVideos.map((rv) => (
+            <a href={`/videos/${rv.slug}`} class="group flex flex-col rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-colors shadow-xs">
+              <div class="relative aspect-video w-full overflow-hidden bg-black">
+                <img
+                  src={rv.thumbnail_url}
+                  alt={rv.title}
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+                {rv.duration_seconds > 0 && (
+                  <span class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 text-white text-[9px] font-mono font-bold">
+                    {formatDuration(rv.duration_seconds)}
+                  </span>
+                )}
+              </div>
+              <div class="p-3 flex-1 flex flex-col justify-between">
+                <h4 class="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-emerald-500 transition-colors">
+                  {rv.title}
+                </h4>
+                <div class="mt-2 text-[10px] text-slate-400 flex items-center justify-between font-mono">
+                  <span>{rv.source_name}</span>
+                  <span>{rv.views_count} views</span>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+  </article>
+</Layout>

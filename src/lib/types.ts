@@ -134,3 +134,35 @@ export interface ArticleComment {
   status: 'published' | 'hidden';
   replies?: ArticleComment[];
 }
+
+export interface VideoArticle {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  video_url: string;
+  video_type: 'youtube' | 'mp4' | 'vimeo' | 'hls';
+  thumbnail_url: string;
+  duration_seconds: number;
+  category_id: string;
+  category_name?: string;
+  category_slug?: string;
+  views_count: number;
+  is_featured: number | boolean;
+  status: 'published' | 'draft' | 'archived';
+  source_name: string;
+  source_channel_url?: string | null;
+  published_at: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface VideoQueryOptions {
+  limit?: number;
+  offset?: number;
+  categoryId?: string;
+  featuredOnly?: boolean;
+  search?: string;
+  status?: string;
+}
+

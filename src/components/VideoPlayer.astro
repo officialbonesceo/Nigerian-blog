@@ -1,0 +1,384 @@
+---
+interface Props {
+  videoUrl: string;
+  videoType?: 'youtube' | 'mp4' | 'vimeo' | 'hls';
+  title: string;
+  thumbnailUrl: string;
+  durationSeconds?: number;
+}
+
+const {
+  videoUrl,
+  videoType = 'youtube',
+  title,
+  thumbnailUrl,
+  durationSeconds = 0,
+} = Astro.props;
+
+
+// Extract YouTube ID if applicable
+function getYouTubeId(url: string): string | null {
+  if (!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/i);
+  return match ? match[1] : null;
+}
+
+const youtubeId = videoType === 'youtube' ? getYouTubeId(videoUrl) : null;
+const isDirectVideo = videoType === 'mp4' || videoType === 'hls' || (!youtubeId && (videoUrl.endsWith('.mp4') || videoUrl.endsWith('.webm')));
+
+function formatDuration(totalSec: number): string {
+  if (!totalSec || totalSec <= 0) return '0:00';
+  const m = Math.floor(totalSec / 60);
+  const s = Math.floor(totalSec % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+---
+
+<div
+  class="relative w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl group select-none transition-all duration-300 video-player-container not-prose"
+  data-video-player
+  data-video-type={isDirectVideo ? 'direct' : (youtubeId ? 'youtube' : 'iframe')}
+  data-video-url={videoUrl}
+  data-youtube-id={youtubeId || ''}
+>
+  <!-- 16:9 Aspect Ratio Container -->
+  <div class="relative w-full aspect-video flex items-center justify-center bg-black overflow-hidden">
+    {youtubeId ? (
+      <!-- YouTube Facade & Interactive Embed Player -->
+      <div class="youtube-wrapper w-full h-full relative" data-yt-container>
+        <!-- Facade Poster (Instant Load, Zero Heavy YouTube Iframe Overhead Until User Plays) -->
+        <div class="yt-facade absolute inset-0 z-10 cursor-pointer overflow-hidden group">
+          <img
+            src={thumbnailUrl || `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`}
+            alt={title}
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+          />
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-black/20 to-black/40"></div>
+
+          <!-- Top Broadcast Badge -->
+          <div class="absolute top-4 left-4 flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600/90 text-white text-[11px] font-black uppercase tracking-wider backdrop-blur-md shadow-md">
+              <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+              Video Broadcast
+            </span>
+            {durationSeconds > 0 && (
+              <span class="px-2.5 py-1 rounded-full bg-slate-900/80 text-white/90 text-xs font-mono font-semibold backdrop-blur-md border border-white/10">
+                {formatDuration(durationSeconds)}
+              </span>
+            )}
+          </div>
+
+          <!-- Center Play Button with Beacon Wave Ripple -->
+          <div class="absolute inset-0 flex items-center justify-center">
+            <button
+              type="button"
+              class="yt-play-trigger relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white flex items-center justify-center shadow-xl shadow-emerald-950/60 transition-all duration-300 group-hover:scale-110 cursor-pointer"
+              aria-label={`Play ${title}`}
+            >
+              <div class="absolute -inset-2 rounded-3xl bg-emerald-500/30 animate-ping pointer-events-none"></div>
+              <svg class="w-8 h-8 sm:w-10 sm:h-10 ml-1 drop-shadow" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Bottom Title Overlay -->
+          <div class="absolute bottom-4 left-4 right-4 text-left">
+            <h3 class="text-white text-sm sm:text-base font-bold line-clamp-2 drop-shadow-md">
+              {title}
+            </h3>
+          </div>
+        </div>
+
+        <!-- Real IFrame (Injected upon play click or if autoplay) -->
+        <div class="yt-iframe-slot w-full h-full hidden"></div>
+      </div>
+    ) : isDirectVideo ? (
+      <!-- Custom Direct Video Player (MP4 / WebM / HLS) -->
+      <div class="direct-video-wrapper w-full h-full relative" data-direct-player>
+        <video
+          class="direct-video-element w-full h-full object-contain cursor-pointer"
+          poster={thumbnailUrl}
+          playsinline
+          preload="metadata"
+        >
+          <source src={videoUrl} type="video/mp4" />
+          Your browser does not support HTML5 video streaming.
+        </video>
+
+        <!-- Big Center Play Button Overlay on Pause -->
+        <div class="direct-center-play absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-200">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-emerald-600/90 text-white flex items-center justify-center shadow-2xl backdrop-blur-xs">
+            <svg class="w-8 h-8 sm:w-10 sm:h-10 ml-1" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Custom Controls Bar -->
+        <div class="direct-controls absolute bottom-0 left-0 right-0 p-3 sm:p-4 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent flex flex-col gap-2 transition-opacity duration-300 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+          
+          <!-- Scrubber Timeline Bar -->
+          <div class="relative w-full h-2 flex items-center cursor-pointer group/bar timeline-container">
+            <!-- Background Track -->
+            <div class="absolute inset-x-0 h-1.5 rounded-full bg-white/20"></div>
+            <!-- Buffered Progress -->
+            <div class="timeline-buffered absolute left-0 h-1.5 rounded-full bg-white/40 w-0 transition-all duration-150"></div>
+            <!-- Played Progress -->
+            <div class="timeline-played absolute left-0 h-1.5 rounded-full bg-emerald-500 w-0"></div>
+            <!-- Scrubber Thumb -->
+            <div class="timeline-thumb absolute -ml-2 w-4 h-4 rounded-full bg-white shadow-md scale-0 group-hover/bar:scale-100 transition-transform"></div>
+          </div>
+
+          <!-- Bottom Buttons & Time -->
+          <div class="flex items-center justify-between text-white text-xs gap-3">
+            <div class="flex items-center gap-2 sm:gap-3">
+              <!-- Play / Pause Button -->
+              <button type="button" class="btn-direct-play-pause p-1.5 hover:text-emerald-400 cursor-pointer" aria-label="Play/Pause">
+                <svg class="icon-play w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <svg class="icon-pause w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              </button>
+
+              <!-- Rewind 10s -->
+              <button type="button" class="btn-direct-rewind p-1.5 hover:text-emerald-400 cursor-pointer" title="Rewind 10 seconds" aria-label="Rewind 10 seconds">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+                </svg>
+              </button>
+
+              <!-- Forward 10s -->
+              <button type="button" class="btn-direct-forward p-1.5 hover:text-emerald-400 cursor-pointer" title="Fast forward 10 seconds" aria-label="Fast forward 10 seconds">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
+                </svg>
+              </button>
+
+              <!-- Volume Control -->
+              <div class="flex items-center gap-1.5 group/volume">
+                <button type="button" class="btn-direct-mute p-1.5 hover:text-emerald-400 cursor-pointer" aria-label="Mute/Unmute">
+                  <svg class="icon-vol-high w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                  <svg class="icon-vol-mute w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value="1"
+                  class="volume-slider w-16 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                  aria-label="Volume Slider"
+                />
+              </div>
+
+              <!-- Time Counter -->
+              <span class="font-mono text-[11px] text-slate-300">
+                <span class="direct-current-time">0:00</span> / <span class="direct-duration-time">{formatDuration(durationSeconds)}</span>
+              </span>
+            </div>
+
+            <!-- Right Controls: Speed & Fullscreen -->
+            <div class="flex items-center gap-2">
+              <!-- Playback Speed -->
+              <select class="direct-speed-select bg-slate-900/80 border border-slate-700 text-white text-[11px] rounded px-1.5 py-0.5 cursor-pointer focus:outline-hidden">
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.0x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2.0x</option>
+              </select>
+
+              <!-- Fullscreen -->
+              <button type="button" class="btn-direct-fullscreen p-1.5 hover:text-emerald-400 cursor-pointer" aria-label="Toggle Fullscreen">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <!-- Generic IFrame Fallback (Vimeo or Web Video) -->
+      <iframe
+        src={videoUrl}
+        title={title}
+        class="w-full h-full border-0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen
+        loading="lazy"
+      ></iframe>
+    )}
+  </div>
+</div>
+
+<script is:inline>
+  function setupVideoPlayers() {
+    const containers = document.querySelectorAll('[data-video-player]');
+    containers.forEach((container) => {
+      if (container.dataset.wired === 'true') return;
+      container.dataset.wired = 'true';
+
+      const type = container.dataset.videoType;
+
+      // 1. YouTube Handler (Facade -> Lazy Iframe)
+      if (type === 'youtube') {
+        const ytId = container.dataset.youtubeId;
+        const trigger = container.querySelector('.yt-play-trigger');
+        const facade = container.querySelector('.yt-facade');
+        const slot = container.querySelector('.yt-iframe-slot');
+
+        function startYouTube() {
+          if (!slot || !ytId) return;
+          facade?.classList.add('hidden');
+          slot.classList.remove('hidden');
+          slot.innerHTML = `
+            <iframe
+              src="https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1&playsinline=1"
+              title="Video Player"
+              class="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+            ></iframe>
+          `;
+        }
+
+        trigger?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          startYouTube();
+        });
+        facade?.addEventListener('click', startYouTube);
+      }
+
+      // 2. Direct HTML5 Video Player
+      if (type === 'direct') {
+        const video = container.querySelector('.direct-video-element');
+        const centerPlay = container.querySelector('.direct-center-play');
+        const btnPlayPause = container.querySelector('.btn-direct-play-pause');
+        const iconPlay = container.querySelector('.icon-play');
+        const iconPause = container.querySelector('.icon-pause');
+        const btnRewind = container.querySelector('.btn-direct-rewind');
+        const btnForward = container.querySelector('.btn-direct-forward');
+        const btnMute = container.querySelector('.btn-direct-mute');
+        const iconVolHigh = container.querySelector('.icon-vol-high');
+        const iconVolMute = container.querySelector('.icon-vol-mute');
+        const volumeSlider = container.querySelector('.volume-slider');
+        const speedSelect = container.querySelector('.direct-speed-select');
+        const btnFullscreen = container.querySelector('.btn-direct-fullscreen');
+        const currentTimeEl = container.querySelector('.direct-current-time');
+        const durationTimeEl = container.querySelector('.direct-duration-time');
+        const timelineContainer = container.querySelector('.timeline-container');
+        const timelinePlayed = container.querySelector('.timeline-played');
+        const timelineBuffered = container.querySelector('.timeline-buffered');
+
+        if (!video) return;
+
+        function formatTime(s) {
+          if (!s || isNaN(s)) return '0:00';
+          const mins = Math.floor(s / 60);
+          const secs = Math.floor(s % 60);
+          return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function togglePlay() {
+          if (video.paused || video.ended) {
+            video.play();
+          } else {
+            video.pause();
+          }
+        }
+
+        video.addEventListener('click', togglePlay);
+        btnPlayPause?.addEventListener('click', togglePlay);
+
+        video.addEventListener('play', () => {
+          iconPlay?.classList.add('hidden');
+          iconPause?.classList.remove('hidden');
+          if (centerPlay) centerPlay.style.opacity = '0';
+        });
+
+        video.addEventListener('pause', () => {
+          iconPlay?.classList.remove('hidden');
+          iconPause?.classList.add('hidden');
+          if (centerPlay) centerPlay.style.opacity = '1';
+        });
+
+        video.addEventListener('timeupdate', () => {
+          if (!video.duration) return;
+          const pct = (video.currentTime / video.duration) * 100;
+          if (timelinePlayed) timelinePlayed.style.width = pct + '%';
+          if (currentTimeEl) currentTimeEl.textContent = formatTime(video.currentTime);
+        });
+
+        video.addEventListener('progress', () => {
+          if (video.buffered.length > 0 && video.duration) {
+            const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+            const pct = (bufferedEnd / video.duration) * 100;
+            if (timelineBuffered) timelineBuffered.style.width = pct + '%';
+          }
+        });
+
+        video.addEventListener('loadedmetadata', () => {
+          if (durationTimeEl) durationTimeEl.textContent = formatTime(video.duration);
+        });
+
+        timelineContainer?.addEventListener('click', (e) => {
+          const rect = timelineContainer.getBoundingClientRect();
+          const pos = (e.clientX - rect.left) / rect.width;
+          video.currentTime = pos * video.duration;
+        });
+
+        btnRewind?.addEventListener('click', () => {
+          video.currentTime = Math.max(0, video.currentTime - 10);
+        });
+
+        btnForward?.addEventListener('click', () => {
+          video.currentTime = Math.min(video.duration, video.currentTime + 10);
+        });
+
+        btnMute?.addEventListener('click', () => {
+          video.muted = !video.muted;
+          if (video.muted) {
+            iconVolHigh?.classList.add('hidden');
+            iconVolMute?.classList.remove('hidden');
+          } else {
+            iconVolHigh?.classList.remove('hidden');
+            iconVolMute?.classList.add('hidden');
+          }
+        });
+
+        volumeSlider?.addEventListener('input', (e) => {
+          video.volume = parseFloat(e.target.value);
+          video.muted = video.volume === 0;
+          if (video.muted) {
+            iconVolHigh?.classList.add('hidden');
+            iconVolMute?.classList.remove('hidden');
+          } else {
+            iconVolHigh?.classList.remove('hidden');
+            iconVolMute?.classList.add('hidden');
+          }
+        });
+
+        speedSelect?.addEventListener('change', (e) => {
+          video.playbackRate = parseFloat(e.target.value);
+        });
+
+        btnFullscreen?.addEventListener('click', () => {
+          if (!document.fullscreenElement) {
+            container.requestFullscreen?.().catch(() => {});
+          } else {
+            document.exitFullscreen?.().catch(() => {});
+          }
+        });
+      }
+    });
+  }
+
+  // Initialize on dom ready and astro page swaps
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupVideoPlayers);
+  } else {
+    setupVideoPlayers();
+  }
+  document.addEventListener('astro:page-load', setupVideoPlayers);
+</script>

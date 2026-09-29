@@ -5,6 +5,7 @@ import BookmarkButton from '../../components/BookmarkButton.astro';
 import ShareBar from '../../components/ShareBar.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import ArticleComments from '../../components/ArticleComments.astro';
+import ArticleAudioReader from '../../components/ArticleAudioReader.astro';
 import { getD1, getArticleBySlug, getRelatedArticles, getSiteSettings } from '../../lib/runtime-db';
 import { DEFAULT_FALLBACK_IMAGE_URL } from '../../lib/fallback-image';
 import { cleanAndFormatArticleHtml, partitionArticleForAds } from '../../lib/content-formatter';
@@ -171,6 +172,16 @@ const structuredData = [
         <button id="btn-size-dec" class="px-1.5 py-0.5 rounded hover:text-slate-900 dark:hover:text-white cursor-pointer" title="Decrease font size">A-</button>
         <button id="btn-size-inc" class="px-1.5 py-0.5 rounded hover:text-slate-900 dark:hover:text-white cursor-pointer" title="Increase font size">A+</button>
       </div>
+      <button
+        id="quick-audio-listen-btn"
+        type="button"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all cursor-pointer shadow-2xs active:scale-95 focus:outline-hidden"
+        title="Listen to this article"
+      >
+        <svg class="quick-play-icon w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+        <svg class="quick-pause-icon w-3.5 h-3.5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+        <span class="quick-play-text">Listen</span>
+      </button>
       <BookmarkButton article={article} />
     </div>
   </nav>
@@ -307,6 +318,13 @@ const structuredData = [
         />
       )}
     </div>
+
+    <!-- Client-Side Audio Reader (Under Article Content) -->
+    <ArticleAudioReader 
+      title={article.title} 
+      summary={article.summary} 
+      readingTimeMinutes={displayReadingTime} 
+    />
 
     <!-- Original Attribution Link -->
     {article.source_original_url && (

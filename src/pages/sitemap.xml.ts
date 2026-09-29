@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getD1, getArticles, getCategories, getSiteSettings } from '../lib/runtime-db';
+import { getD1, getArticles, getCategories, getSiteSettings, getVideoArticles } from '../lib/runtime-db';
 
 export const prerender = false;
 
@@ -14,11 +14,14 @@ function escapeXml(unsafe: string): string {
 
 export const GET: APIRoute = async ({ url, locals, request }) => {
   const db = getD1(locals);
-  const [articles, categories, settings] = await Promise.all([
+  const [articles, categories, settings, videoResult] = await Promise.all([
     getArticles(db, { limit: 1500 }),
     getCategories(db),
     getSiteSettings(db),
+    getVideoArticles(db, { limit: 300, status: 'published' }),
   ]);
+  const videos = videoResult.videos || [];
+
 
   let siteBase = (settings.site_url || '').trim();
   if (!siteBase) {
@@ -88,14 +91,46 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
   </url>`;
   }).join('');
 
+  const videoUrls = videos.map(v => {
+    const rawDate = v.published_at || now.toISOString();
+    const dateStr = rawDate.split('T')[0];
+    const titleEsc = escapeXml(v.title);
+    const descEsc = escapeXml(v.summary);
+    const thumbEsc = escapeXml(v.thumbnail_url);
+    const playerLoc = escapeXml(v.video_url);
+
+    return `
+  <url>
+    <loc>${siteBase}/videos/${escapeXml(v.slug)}</loc>
+    <lastmod>${dateStr}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+    <video:video>
+      <video:thumbnail_loc>${thumbEsc}</video:thumbnail_loc>
+      <video:title>${titleEsc}</video:title>
+      <video:description>${descEsc}</video:description>
+      <video:player_loc>${playerLoc}</video:player_loc>
+      <video:duration>${v.duration_seconds || 300}</video:duration>
+      <video:publication_date>${rawDate}</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+    </video:video>
+  </url>`;
+  }).join('');
+
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
   <url>
     <loc>${siteBase}/</loc>
     <changefreq>always</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${siteBase}/videos</loc>
+    <changefreq>hourly</changefreq>
+    <priority>0.95</priority>
   </url>
   <url>
     <loc>${siteBase}/about</loc>
@@ -121,8 +156,9 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
     <loc>${siteBase}/disclaimer</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
-  </url>${categoryUrls}${articleUrls}
+  </url>${categoryUrls}${articleUrls}${videoUrls}
 </urlset>`.trim();
+
 
   return new Response(xml, {
     headers: {
