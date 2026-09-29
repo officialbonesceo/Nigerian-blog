@@ -1,0 +1,101 @@
+name: Generate AI Broadcast Video (Option A)
+
+on:
+  workflow_dispatch:
+    inputs:
+      presenter_id:
+        description: 'Broadcast Presenter'
+        required: true
+        default: 'presenter_femi'
+        type: choice
+        options:
+          - presenter_femi
+          - presenter_amaka
+          - presenter_tunde
+          - presenter_zainab
+      article_id:
+        description: 'Source Article ID (optional)'
+        required: false
+        default: ''
+        type: string
+      headline:
+        description: 'Lower-Third Headline'
+        required: true
+        default: 'Breaking News: Major Economic Reform Package Announced'
+        type: string
+      custom_script:
+        description: 'Broadcast Narration Script'
+        required: true
+        default: 'Good evening. This is 9jaBeacon National News. The Federal Government has today unveiled a comprehensive economic framework aimed at strengthening domestic production, curbing inflation, and creating tech opportunities across all 36 states.'
+        type: string
+      has_breaking_alert:
+        description: 'Trigger Breaking News Stance & Alert Banner'
+        required: false
+        default: false
+        type: boolean
+      output_format:
+        description: 'Video Aspect Ratio'
+        required: true
+        default: 'landscape'
+        type: choice
+        options:
+          - landscape
+          - vertical
+
+concurrency:
+  group: broadcast-video-generator
+  cancel-in-progress: false
+
+jobs:
+  render-video:
+    name: 🎬 Render Broadcast Video (Option A Headless Engine)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📦 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 🟢 Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          check-latest: false
+
+      - name: 🛠️ Install System ffmpeg
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg
+
+      - name: 📦 Install Project Dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: 🚀 Execute Option A Headless Video Generator
+        env:
+          PRESENTER_ID: ${{ github.event.inputs.presenter_id }}
+          ARTICLE_ID: ${{ github.event.inputs.article_id }}
+          HEADLINE: ${{ github.event.inputs.headline }}
+          CUSTOM_SCRIPT: ${{ github.event.inputs.custom_script }}
+          HAS_BREAKING_ALERT: ${{ github.event.inputs.has_breaking_alert }}
+          OUTPUT_FORMAT: ${{ github.event.inputs.output_format }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+        run: node scripts/generate-broadcast-video.cjs
+
+      - name: 📤 Upload Broadcast MP4 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 9jabeacon-broadcast-${{ github.event.inputs.presenter_id }}-${{ github.run_number }}
+          path: |
+            output/broadcast-video.mp4
+            output/broadcast-thumbnail.jpg
+            output/broadcast-timeline.json
+          retention-days: 14
+          if-no-files-found: warn

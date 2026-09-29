@@ -1,0 +1,14 @@
+{
+  "presenterId": "presenter_femi",
+  "presenterName": "Femi Adeleke",
+  "headline": "Breaking News: Major National Development Reported",
+  "durationSec": 10,
+  "outputFormat": "landscape",
+  "resolution": "1920x1080",
+  "hasBreakingAlert": false,
+  "generatedAt": "2026-09-29T13:09:32.939Z",
+  "files": {
+    "video": "output/broadcast-video.mp4",
+    "thumbnail": "output/broadcast-thumbnail.jpg"
+  }
+}

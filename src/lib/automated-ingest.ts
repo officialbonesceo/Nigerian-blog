@@ -244,30 +244,29 @@ export async function rewriteWithEditorialQuality(input: {
   const prompt = `
 You rewrite news for 9jaBeacon from ONE provided source excerpt only.
 
-CATEGORIES — pick EXACTLY ONE:
-- naija-news — Nigeria politics, security, society, culture, royalty, local incidents, government
-- business — economy, companies, markets, CBN, investment, trade, fintech, corporate news
-- sports — matches, athletes, clubs, leagues, tournaments, sports transfers only
-- world — primarily foreign/international stories without a strong Nigeria-lead angle
+CATEGORY ALLOW-LIST — pick EXACTLY ONE based on the TOPIC of the lead fact:
+- naija-news — Nigeria politics, courts, police, INEC, security, governors, states, national institutions, traditional rulers, societal news
+- business — CBN, banks, FX, trade, investment, corporate Nigeria, fintech, energy deals, macroeconomic trends
+- sports — football, athletics, boxing, match results, coaching staff, athletes, league/tournament results only
+- world — foreign politics, international disputes, non-Nigeria primary events
 
-HARD RULES:
+TOPIC-FIRST CLASSIFICATION RULES:
+1. Topic of the lead fact wins, not money keywords (price, million, naira alone do not make a story business).
+2. Court / police / INEC / governors / presidency → naija-news (even if funds or naira are mentioned).
+3. CBN / banks / FX / fintech / business acquisitions → business.
+4. Match results / athletes / clubs → sports. Foreign matches (Liga MX, etc.) → sports.
+5. Foreign oil disputes, UK/US politics with no Nigeria lead → world.
+6. Olori, palace/royal affairs, celebrity news, relationship drama → naija-news (NEVER sports).
+7. Blockchain, fintech products, corporate investments → business (never sports).
+
+FACT-LOCK & QUALITY RULES:
 1. Every hard fact (name, age, place, date, score, amount, quote) must appear in the source excerpt OR be omitted.
-2. Do NOT add ILO, World Bank, Global Slavery Index, or other global statistics unless they appear in the source excerpt.
-3. Do NOT invent police ranks, case numbers, job multipliers, or quotes.
-4. First or second paragraph MUST attribute: "According to ${sourceOutlet}..." or equivalent.
-5. Spelling of names must match the source excerpt exactly (do not "fix" Amarachi/Amaechi).
-6. Prefer news tone: what happened, who said it, what happens next — not a term-paper on systemic issues.
-7. If the source is opinion/column, start with "Opinion:" or mark clearly; do not present as hard news.
-8. If the source is rumor/speculation (e.g. fight venue "race"), say so or skip publish.
-9. Output CATEGORY as exactly one of: naija-news, business, sports, world
-10. Do NOT put entertainment, royalty, blockchain, education policy, or relationship drama under sports
-11. Liga MX / foreign football matches → sports (not naija-news)
-12. Olori / traditional rulers / polygamy culture → naija-news (not sports)
-13. Company investment, Coca-Cola, CBN rates → business
-14. Stay factual. Do not invent quotes or numbers.
-15. Do not mention AI, models, or "as an AI"
-16. Body: clear HTML sections (h2, h3, p). Educational news tone. No Markdown.
-17. Never write chain-of-thought or planning text.
+2. At least one named source (${sourceOutlet}) must be explicitly cited in the lead: "According to ${sourceOutlet}..."
+3. Absolutely NO invented statistics (search volume, "200 concurrent queries", fake read counts, unsourced surveys).
+4. Ban filler: NEVER write "Observers anticipate...", "the situation remains fluid...", or "Nigerian search interest surges".
+5. No duplicate paragraphs or repetitive sentences.
+6. No chain-of-thought, planning text, or "as an AI".
+7. Minimum 120 words of substantive factual news content across clear <h3> and <p> blocks. No Markdown asterisks.
 
 SOURCE_TITLE: ${sourceTitle}
 SOURCE_OUTLET: ${sourceOutlet}
@@ -564,9 +563,18 @@ function sanitizeSnippet(raw: string): string {
 }
 
 function generateBaseSlug(title: string): string {
-  return (title || 'news-report')
+  const clean = (title || 'news-report')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 65);
+    .replace(/^-+|-+$/g, '');
+
+  if (clean.length <= 80) return clean;
+
+  // Section 7: Clean cutoff at word boundary without truncated words or hanging hyphens
+  const sub = clean.slice(0, 85);
+  const lastHyphen = sub.lastIndexOf('-');
+  if (lastHyphen > 35) {
+    return sub.slice(0, lastHyphen);
+  }
+  return sub.replace(/-+$/, '');
 }

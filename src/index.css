@@ -3,6 +3,53 @@
 @tailwind utilities;
 
 @layer base {
+  /* Dynamic Responsive Viewport Scaling: Progressively scales and reduces site elements based on screen width */
+  :root {
+    font-size: clamp(12px, 0.72rem + 0.45vw, 16px);
+  }
+
+  /* Ultra-compact mobile screens (e.g. 320px - 360px: iPhone SE, compact Androids) */
+  @media (max-width: 360px) {
+    :root {
+      font-size: 12px;
+    }
+  }
+
+  /* Compact smartphones (361px - 420px: standard Android & iPhone) */
+  @media (min-width: 361px) and (max-width: 420px) {
+    :root {
+      font-size: 13px;
+    }
+  }
+
+  /* Large smartphones & mini-tablets (421px - 640px) */
+  @media (min-width: 421px) and (max-width: 640px) {
+    :root {
+      font-size: 13.75px;
+    }
+  }
+
+  /* Tablets (641px - 1024px) */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    :root {
+      font-size: 14.5px;
+    }
+  }
+
+  /* Laptops & Desktops (1025px - 1440px) */
+  @media (min-width: 1025px) and (max-width: 1440px) {
+    :root {
+      font-size: 15.5px;
+    }
+  }
+
+  /* Wide screens (1441px+) */
+  @media (min-width: 1441px) {
+    :root {
+      font-size: 16.5px;
+    }
+  }
+
   html, body {
     max-width: 100%;
     overflow-x: hidden;
@@ -17,7 +64,7 @@
   }
 
   /* Prevent media and embeds from overflowing mobile viewports */
-  img, video, iframe, embed, object {
+  img, video, iframe, embed, object, canvas {
     max-width: 100%;
     height: auto;
   }
@@ -27,6 +74,54 @@
     max-width: 100%;
     overflow-x: auto;
   }
+}
+
+/* Presenter Option A: Subtle breathing micro-motion */
+@keyframes presenter-breathe {
+  0%, 100% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.012) translateY(-1px);
+  }
+}
+
+/* Presenter Option A: Speech cadence subtle head nod */
+@keyframes presenter-speak-nod {
+  0%, 100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  25% {
+    transform: rotate(0.4deg) translateY(1px);
+  }
+  75% {
+    transform: rotate(-0.3deg) translateY(-0.5px);
+  }
+}
+
+/* Presenter Option A: Dynamic Lip-Sync Flap (Alternating between mouth-closed and mouth-open) */
+@keyframes presenter-lip-flap {
+  0%, 48% {
+    background-position: 100% 0%; /* Open mouth / active speaking */
+  }
+  50%, 98% {
+    background-position: 0% 0%; /* Closed mouth / idle pause */
+  }
+  100% {
+    background-position: 100% 0%;
+  }
+}
+
+.presenter-viewport-live {
+  animation: presenter-breathe 3.6s ease-in-out infinite;
+}
+
+.presenter-viewport-speaking {
+  animation: presenter-speak-nod 1.6s ease-in-out infinite;
+}
+
+.presenter-lip-active {
+  animation: presenter-lip-flap 0.22s step-end infinite;
 }
 
 /* Unobtrusive Native Banner Headings for Paragraphs */

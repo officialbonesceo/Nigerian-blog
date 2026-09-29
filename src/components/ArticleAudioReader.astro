@@ -1,6 +1,4 @@
 ---
-import { presenters, getDefaultPresenterForCategory } from '../lib/presenters-data';
-
 interface Props {
   title: string;
   summary?: string;
@@ -8,28 +6,23 @@ interface Props {
   categoryId?: string;
 }
 
-const { title, summary = '', readingTimeMinutes = 3, categoryId } = Astro.props;
-const defaultPresenter = getDefaultPresenterForCategory(categoryId);
+const { title, summary = '', readingTimeMinutes = 3 } = Astro.props;
 ---
 
 <div 
-  class="article-audio-player my-6 p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 shadow-sm transition-all not-prose"
+  class="article-audio-player my-6 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs transition-all not-prose"
   data-audio-player
   data-article-title={title}
   data-article-summary={summary}
-  data-presenter-id={defaultPresenter.id}
-  data-presenter-pitch={defaultPresenter.voice_settings.pitch}
-  data-presenter-rate={defaultPresenter.voice_settings.rate}
-  data-presenter-gender={defaultPresenter.gender}
 >
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-    <!-- Left Section: Play Button + Presenter Avatar Sprite + Story Info -->
+    <!-- Left Section: Play / Stop Button + Status & Progress -->
     <div class="flex items-center gap-3.5 min-w-0">
-      <!-- Play / Pause Button -->
+      <!-- Play / Stop Toggle Button -->
       <button
         type="button"
-        class="audio-play-toggle-btn w-12 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white flex items-center justify-center shrink-0 shadow-md hover:shadow-emerald-500/25 transition-all cursor-pointer focus:outline-hidden"
-        aria-label="Play audio version of this report"
+        class="audio-play-toggle-btn w-12 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white flex items-center justify-center shrink-0 shadow-sm hover:shadow-emerald-500/25 transition-all cursor-pointer focus:outline-hidden"
+        aria-label="Listen to audio version of this report"
       >
         <!-- Play Icon -->
         <svg class="play-icon w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
@@ -41,63 +34,22 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
         </svg>
       </button>
 
-      <!-- Presenter Sprite Avatar Window -->
-      <div 
-        class="audio-presenter-avatar-box relative w-12 h-12 rounded-2xl overflow-hidden shrink-0 border-2 border-emerald-500/30 bg-slate-100 dark:bg-slate-800 shadow-xs cursor-pointer group"
-        title={`Assigned Anchor: ${defaultPresenter.name}. Click to switch anchor.`}
-      >
-        <div 
-          class="audio-presenter-sprite-img absolute inset-0 w-full h-full bg-no-repeat transition-all duration-300"
-          style={`
-            background-image: url('${defaultPresenter.sprite_url}');
-            background-size: 200% 200%;
-            background-position: 0% 0%;
-          `}
-          role="img"
-          aria-label={`${defaultPresenter.name} news presenter avatar`}
-        ></div>
-        <!-- Live on-air dot -->
-        <span class="audio-presenter-live-dot absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 opacity-0 transition-opacity"></span>
-      </div>
-
-      <!-- Article and Presenter Details -->
+      <!-- Details -->
       <div class="min-w-0">
         <div class="flex items-center gap-2">
           <span class="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
-            Audio News
+            Audio Report
           </span>
           <span class="audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
             Ready to listen
           </span>
         </div>
 
-        <!-- Presenter Name & Role Selector -->
-        <div class="flex items-center gap-1.5 mt-0.5">
-          <span class="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-            Anchor:
-          </span>
-          <select 
-            class="audio-presenter-selector text-xs font-semibold bg-transparent text-emerald-600 dark:text-emerald-400 border-none p-0 cursor-pointer focus:outline-hidden hover:underline"
-            aria-label="Select news presenter"
-          >
-            {presenters.map((p) => (
-              <option 
-                value={p.id} 
-                selected={p.id === defaultPresenter.id}
-                data-sprite={p.sprite_url}
-                data-pitch={p.voice_settings.pitch}
-                data-rate={p.voice_settings.rate}
-                data-gender={p.gender}
-                data-name={p.name}
-                class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
-              >
-                {p.name} ({p.role.split('&')[0].trim()})
-              </option>
-            ))}
-          </select>
-        </div>
+        <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate mt-0.5">
+          Listen to this story
+        </h4>
 
-        <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+        <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
           <span class="audio-time-label">Approx. {readingTimeMinutes} min listen</span>
           <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
           <span class="audio-progress-label">0% completed</span>
@@ -105,10 +57,10 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
       </div>
     </div>
 
-    <!-- Right Controls: Speed & Waveform / Stop / Anchor Hub Link -->
+    <!-- Right Controls: Animated Waveform + Speed Toggle + Stop Button -->
     <div class="flex items-center gap-2 self-end sm:self-center shrink-0">
       <!-- Animated Visualizer Waves (active when playing) -->
-      <div class="audio-visualizer hidden sm:flex items-center gap-1 h-6 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+      <div class="audio-visualizer hidden items-center gap-1 h-6 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
         <span class="w-1 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
         <span class="w-1 h-4 bg-emerald-500 rounded-full animate-pulse [animation-delay:150ms]"></span>
         <span class="w-1 h-5 bg-emerald-500 rounded-full animate-pulse [animation-delay:300ms]"></span>
@@ -129,46 +81,41 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
       <button
         type="button"
         class="audio-stop-btn w-9 h-9 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 focus:outline-hidden"
-        title="Stop and reset narration"
+        title="Stop narration"
         aria-label="Stop audio"
       >
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M6 6h12v12H6z" />
         </svg>
       </button>
-
-      <!-- Meet Anchors link -->
-      <a
-        href="/presenters"
-        class="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        title="Meet our 4 broadcast anchors"
-      >
-        <span>All Anchors &rarr;</span>
-      </a>
     </div>
   </div>
 
   <!-- Progress Bar Line -->
   <div class="mt-3.5 w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
     <div 
-      class="audio-progress-bar bg-emerald-600 dark:bg-emerald-500 h-full w-0 rounded-full transition-all duration-300"
+      class="audio-progress-bar bg-emerald-600 dark:bg-emerald-500 h-full w-0 rounded-full transition-all duration-150"
     ></div>
   </div>
 </div>
 
 <script>
-  // Global singleton audio engine with Presenter Sprite animation for 9jaBeacon
+  // Robust Client-Side Article SpeechSynthesis Engine for 9jaBeacon
+  // Implements Section 3 of 9jabeacon-pipeline-fix-v4.md:
+  // - Direct user-gesture instantiation
+  // - Wait for voices if needed
+  // - Delayed speak after cancel (prevents Android Chrome IPC drop)
+  // - Real-time word boundary progress updates
+  // - Keep-alive heartbeat against Chrome 15s freeze bug
   class ArticleAudioEngine {
     private isPlaying = false;
     private isPaused = false;
-    private chunks: string[] = [];
-    private currentChunkIdx = 0;
-    private keepAliveInterval: any = null;
+    private totalChars = 0;
+    private currentCharIdx = 0;
     private speeds = [1.0, 1.25, 1.5, 0.85];
     private speedIdx = 0;
     private currentRate = 1.0;
-    private currentPitch = 1.0;
-    private currentGender: 'male' | 'female' = 'male';
+    private keepAliveTimer: any = null;
     private hasSpeech = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
 
     public init() {
@@ -179,7 +126,7 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
         players.forEach((player) => {
           const statusPill = player.querySelector('.audio-status-pill') as HTMLElement | null;
           const playBtn = player.querySelector('.audio-play-toggle-btn') as HTMLButtonElement | null;
-          if (statusPill) statusPill.textContent = 'Audio not supported';
+          if (statusPill) statusPill.textContent = 'Voice not supported on this device';
           if (playBtn) playBtn.disabled = true;
         });
         return;
@@ -192,53 +139,13 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
         const playBtn = player.querySelector('.audio-play-toggle-btn');
         const stopBtn = player.querySelector('.audio-stop-btn');
         const speedBtn = player.querySelector('.audio-speed-btn');
-        const presenterSelect = player.querySelector('.audio-presenter-selector') as HTMLSelectElement | null;
-        const spriteBox = player.querySelector('.audio-presenter-avatar-box');
-
-        // Read initial presenter metadata from player attributes
-        const initPitch = parseFloat(player.getAttribute('data-presenter-pitch') || '1.0');
-        const initGender = (player.getAttribute('data-presenter-gender') || 'male') as 'male' | 'female';
-
-        this.currentPitch = initPitch;
-        this.currentGender = initGender;
 
         playBtn?.addEventListener('click', () => this.togglePlay());
         stopBtn?.addEventListener('click', () => this.stop());
         speedBtn?.addEventListener('click', () => this.cycleSpeed());
-
-        // Handle presenter switching
-        presenterSelect?.addEventListener('change', (e) => {
-          const sel = e.target as HTMLSelectElement;
-          const opt = sel.selectedOptions[0];
-          if (!opt) return;
-
-          const spriteUrl = opt.getAttribute('data-sprite') || '';
-          const pitch = parseFloat(opt.getAttribute('data-pitch') || '1.0');
-          const gender = (opt.getAttribute('data-gender') || 'male') as 'male' | 'female';
-
-          this.currentPitch = pitch;
-          this.currentGender = gender;
-
-          // Update sprite background image
-          const spriteImg = player.querySelector('.audio-presenter-sprite-img') as HTMLElement | null;
-          if (spriteImg && spriteUrl) {
-            spriteImg.style.backgroundImage = `url('${spriteUrl}')`;
-          }
-
-          // If playing, restart with new voice parameters
-          if (this.isPlaying && !this.isPaused) {
-            window.speechSynthesis.cancel();
-            this.playNextChunk();
-          }
-        });
-
-        // Clicking avatar focuses selector
-        spriteBox?.addEventListener('click', () => {
-          presenterSelect?.focus();
-        });
       });
 
-      // Wire quick listen button in article toolbar
+      // Wire any toolbar quick-listen button
       const quickBtns = document.querySelectorAll('#quick-audio-listen-btn');
       quickBtns.forEach((btn) => {
         if (btn.getAttribute('data-wired') === 'true') return;
@@ -255,12 +162,20 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
         });
       });
 
-      // Sync UI with current engine state
-      this.broadcastUI();
+      this.updateUI();
+    }
+
+    private cleanText(raw: string): string {
+      return (raw || '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/https?:\/\/[^\s]+/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
     }
 
     private gatherArticleText(): string {
-      const headlineEl = document.querySelector('.article-headline');
+      const headlineEl = document.querySelector('.article-headline') || document.querySelector('h1');
       const summaryEl = document.querySelector('.article-summary');
       const contentContainers = document.querySelectorAll(
         '#article-content-body-lead, #article-content-body-middle1, #article-content-body-middle2, #article-content-body-middle3'
@@ -269,103 +184,190 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
       const parts: string[] = [];
 
       if (headlineEl) {
-        const headline = (headlineEl.textContent || '').trim();
+        const headline = this.cleanText(headlineEl.textContent || '');
         if (headline) parts.push(headline + '.');
       }
 
       if (summaryEl) {
-        const summary = (summaryEl.textContent || '')
-          .replace(/executive summary/i, '')
-          .trim();
-        if (summary) parts.push(summary);
+        const summary = this.cleanText(summaryEl.textContent || '').replace(/executive summary/i, '').trim();
+        if (summary) parts.push(summary + '.');
       }
 
       contentContainers.forEach((container) => {
         const clone = container.cloneNode(true) as HTMLElement;
-        clone.querySelectorAll('script, style, iframe, [data-ad-unit], .not-prose, figcaption').forEach((el) => el.remove());
-        const text = clone.innerText || clone.textContent || '';
-        const cleaned = text
-          .replace(/\s+/g, ' ')
-          .replace(/Click here to join.*?$/i, '')
-          .replace(/According to verified.*?report/i, '')
-          .trim();
-        if (cleaned) parts.push(cleaned);
+        clone.querySelectorAll('script, style, iframe, [data-ad-unit], .not-prose, figcaption, button').forEach((el) => el.remove());
+        const text = this.cleanText(clone.innerText || clone.textContent || '');
+        if (text) parts.push(text);
       });
 
       if (parts.length <= 1) {
         const mainArticle = document.querySelector('article');
         if (mainArticle) {
           const clone = mainArticle.cloneNode(true) as HTMLElement;
-          clone.querySelectorAll('script, style, iframe, [data-ad-unit], .not-prose, figure, header, figcaption').forEach((el) => el.remove());
-          parts.push(clone.innerText || clone.textContent || '');
+          clone.querySelectorAll('script, style, iframe, [data-ad-unit], .not-prose, figure, header, figcaption, button').forEach((el) => el.remove());
+          const text = this.cleanText(clone.innerText || clone.textContent || '');
+          if (text) parts.push(text);
         }
       }
 
-      return parts.join('\n\n').trim();
+      const combined = parts.join(' ').trim();
+      // Cap at ~8,000 characters per v4 spec
+      return combined.slice(0, 8000);
     }
 
-    private prepareChunks(fullText: string): string[] {
-      if (!fullText) return [];
-      const clean = fullText.replace(/\r?\n+/g, ' ').replace(/\s+/g, ' ').trim();
-      const rawSentences = clean.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [clean];
-      const resultChunks: string[] = [];
-      let temp = '';
+    private getPreferredVoice(): SpeechSynthesisVoice | null {
+      const voices = window.speechSynthesis.getVoices();
+      if (!voices || !voices.length) return null;
 
-      const pushSubChunk = (str: string) => {
-        const trimmed = str.trim();
-        if (!trimmed) return;
-        if (trimmed.length <= 180) {
-          if ((temp + ' ' + trimmed).length <= 180) {
-            temp = temp ? `${temp} ${trimmed}` : trimmed;
-          } else {
-            if (temp) resultChunks.push(temp);
-            temp = trimmed;
-          }
-        } else {
-          if (temp) {
-            resultChunks.push(temp);
-            temp = '';
-          }
-          const subClauses = trimmed.match(/[^,;:—–]+[,;:—–]+(\s+|$)|[^,;:—–]+$/g) || [trimmed];
-          for (const clause of subClauses) {
-            const clTrim = clause.trim();
-            if (!clTrim) continue;
-            if (clTrim.length <= 180) {
-              if ((temp + ' ' + clTrim).length <= 180) {
-                temp = temp ? `${temp} ${clTrim}` : clTrim;
-              } else {
-                if (temp) resultChunks.push(temp);
-                temp = clTrim;
-              }
-            } else {
-              const words = clTrim.split(/\s+/);
-              for (const w of words) {
-                if ((temp + ' ' + w).length <= 180) {
-                  temp = temp ? `${temp} ${w}` : w;
-                } else {
-                  if (temp) resultChunks.push(temp);
-                  temp = w;
-                }
-              }
-            }
-          }
+      // 1. Nigerian English voice if present on device
+      const ngVoice = voices.find((v) => v.lang === 'en-NG' || v.lang.startsWith('en_NG'));
+      if (ngVoice) return ngVoice;
+
+      // 2. Natural / Neural / Premium English voices
+      const neuralVoice = voices.find(
+        (v) =>
+          v.lang.startsWith('en') &&
+          (v.name.includes('Natural') || v.name.includes('Neural') || v.name.includes('Google') || v.name.includes('Premium'))
+      );
+      if (neuralVoice) return neuralVoice;
+
+      // 3. British English or US English
+      const enVoice = voices.find((v) => v.lang === 'en-GB' || v.lang === 'en-US' || v.lang.startsWith('en'));
+      return enVoice || voices[0] || null;
+    }
+
+    private startKeepAlive() {
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = setInterval(() => {
+        if (this.isPlaying && !this.isPaused && window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }, 10000);
+    }
+
+    private stopKeepAlive() {
+      clearInterval(this.keepAliveTimer);
+      this.keepAliveTimer = null;
+    }
+
+    public togglePlay() {
+      if (!this.hasSpeech) return;
+
+      // If paused, resume
+      if (this.isPaused) {
+        this.isPaused = false;
+        this.isPlaying = true;
+        window.speechSynthesis.resume();
+        this.startKeepAlive();
+        this.updateUI();
+        return;
+      }
+
+      // If playing, pause
+      if (this.isPlaying) {
+        this.isPaused = true;
+        window.speechSynthesis.pause();
+        this.stopKeepAlive();
+        this.updateUI();
+        return;
+      }
+
+      // Starting fresh speak: cancel existing queue first
+      window.speechSynthesis.cancel();
+      this.stopKeepAlive();
+
+      const text = this.gatherArticleText();
+      if (!text) return;
+
+      this.totalChars = text.length;
+      this.currentCharIdx = 0;
+
+      // Instantiate utterance directly inside user click handler (iOS Safari requirement)
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = this.currentRate;
+      utterance.pitch = 1.0;
+
+      const voice = this.getPreferredVoice();
+      if (voice) {
+        utterance.voice = voice;
+      }
+
+      // Boundary event: fires as words are spoken, providing smooth progress tracking
+      utterance.onboundary = (e: SpeechSynthesisEvent) => {
+        if (e.name === 'word' || e.charIndex !== undefined) {
+          this.currentCharIdx = e.charIndex;
+          this.updateUI();
         }
       };
 
-      for (const s of rawSentences) {
-        pushSubChunk(s);
-      }
-      if (temp) resultChunks.push(temp);
-      return resultChunks;
+      utterance.onend = () => {
+        this.isPlaying = false;
+        this.isPaused = false;
+        this.currentCharIdx = this.totalChars;
+        this.stopKeepAlive();
+        this.updateUI(true);
+      };
+
+      utterance.onerror = (e) => {
+        if (e.error === 'canceled' || e.error === 'interrupted') return;
+        console.warn('[Audio] TTS warning:', e.error);
+        this.isPlaying = false;
+        this.isPaused = false;
+        this.stopKeepAlive();
+        this.updateUI();
+      };
+
+      this.isPlaying = true;
+      this.isPaused = false;
+      this.startKeepAlive();
+      this.updateUI();
+
+      // Crucial: 50ms transition delay allows the speech synthesis engine IPC to clear the cancel state
+      setTimeout(() => {
+        try {
+          window.speechSynthesis.speak(utterance);
+        } catch (err) {
+          console.error('[Audio] SpeechSynthesis speak failed:', err);
+          this.isPlaying = false;
+          this.isPaused = false;
+          this.updateUI();
+        }
+      }, 50);
     }
 
-    private broadcastUI() {
+    public stop() {
+      if (!this.hasSpeech) return;
+      window.speechSynthesis.cancel();
+      this.stopKeepAlive();
+      this.isPlaying = false;
+      this.isPaused = false;
+      this.currentCharIdx = 0;
+      this.updateUI();
+    }
+
+    public cycleSpeed() {
+      this.speedIdx = (this.speedIdx + 1) % this.speeds.length;
+      this.currentRate = this.speeds[this.speedIdx];
+
+      if (this.isPlaying && !this.isPaused && this.hasSpeech) {
+        // Restart speech at new rate seamlessly
+        this.stop();
+        this.togglePlay();
+      } else {
+        this.updateUI();
+      }
+    }
+
+    private updateUI(isFinished = false) {
       const players = document.querySelectorAll('[data-audio-player]');
-      const pct = this.chunks.length > 0 
-        ? Math.min(100, Math.round(((this.currentChunkIdx + 1) / this.chunks.length) * 100))
+      const pct = isFinished 
+        ? 100 
+        : this.totalChars > 0 
+        ? Math.min(100, Math.round((this.currentCharIdx / this.totalChars) * 100)) 
         : 0;
 
-      // Also sync any quick listen buttons on page
+      // Sync quick listen buttons
       const quickBtns = document.querySelectorAll('#quick-audio-listen-btn');
       quickBtns.forEach((btn) => {
         const qPlay = btn.querySelector('.quick-play-icon');
@@ -394,8 +396,6 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
         const progressBar = player.querySelector('.audio-progress-bar') as HTMLElement | null;
         const visualizer = player.querySelector('.audio-visualizer');
         const speedBtn = player.querySelector('.audio-speed-btn');
-        const spriteImg = player.querySelector('.audio-presenter-sprite-img') as HTMLElement | null;
-        const liveDot = player.querySelector('.audio-presenter-live-dot') as HTMLElement | null;
 
         if (speedBtn) {
           speedBtn.textContent = `${this.currentRate.toFixed(this.currentRate === 1 ? 1 : 2).replace(/\.0$/, '.0')}x`;
@@ -406,15 +406,8 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
           pauseIcon?.classList.remove('hidden');
           visualizer?.classList.remove('hidden');
           visualizer?.classList.add('flex');
-          if (liveDot) liveDot.style.opacity = '1';
-
-          // Animate sprite to Speaking pose (Top-Right: 100% 0%)
-          if (spriteImg) {
-            spriteImg.style.backgroundPosition = '100% 0%';
-          }
-
           if (statusPill) {
-            statusPill.textContent = 'Speaking now';
+            statusPill.textContent = 'Listening now';
             statusPill.className = 'audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-mono';
           }
         } else if (this.isPaused) {
@@ -422,30 +415,24 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
           pauseIcon?.classList.add('hidden');
           visualizer?.classList.add('hidden');
           visualizer?.classList.remove('flex');
-          if (liveDot) liveDot.style.opacity = '0';
-
-          // Return sprite to Idle pose (Top-Left: 0% 0%)
-          if (spriteImg) {
-            spriteImg.style.backgroundPosition = '0% 0%';
-          }
-
           if (statusPill) {
             statusPill.textContent = 'Narration paused';
             statusPill.className = 'audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 font-mono';
           }
-        } else {
-          // Idle
+        } else if (isFinished) {
           playIcon?.classList.remove('hidden');
           pauseIcon?.classList.add('hidden');
           visualizer?.classList.add('hidden');
           visualizer?.classList.remove('flex');
-          if (liveDot) liveDot.style.opacity = '0';
-
-          // Return sprite to Idle pose (Top-Left: 0% 0%)
-          if (spriteImg) {
-            spriteImg.style.backgroundPosition = '0% 0%';
+          if (statusPill) {
+            statusPill.textContent = 'Completed';
+            statusPill.className = 'audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-mono';
           }
-
+        } else {
+          playIcon?.classList.remove('hidden');
+          pauseIcon?.classList.add('hidden');
+          visualizer?.classList.add('hidden');
+          visualizer?.classList.remove('flex');
           if (statusPill) {
             statusPill.textContent = 'Ready to listen';
             statusPill.className = 'audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono';
@@ -456,134 +443,8 @@ const defaultPresenter = getDefaultPresenterForCategory(categoryId);
         if (progressBar) progressBar.style.width = `${pct}%`;
       });
     }
-
-    private playNextChunk() {
-      if (!this.isPlaying || this.isPaused) return;
-
-      if (this.currentChunkIdx >= this.chunks.length) {
-        this.stop();
-        const players = document.querySelectorAll('[data-audio-player]');
-        players.forEach((p) => {
-          const statusPill = p.querySelector('.audio-status-pill');
-          const spriteImg = p.querySelector('.audio-presenter-sprite-img') as HTMLElement | null;
-          // Switch to wrap pose on completion (Bottom-Right: 100% 100%)
-          if (spriteImg) spriteImg.style.backgroundPosition = '100% 100%';
-          if (statusPill) {
-            statusPill.textContent = 'Completed';
-            statusPill.className = 'audio-status-pill text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-mono';
-          }
-        });
-        return;
-      }
-
-      const chunkText = this.chunks[this.currentChunkIdx];
-      const utterance = new SpeechSynthesisUtterance(chunkText);
-      utterance.rate = this.currentRate;
-      utterance.pitch = this.currentPitch;
-
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find((v) => {
-        const name = v.name.toLowerCase();
-        const matchesGender = this.currentGender === 'female'
-          ? (name.includes('female') || name.includes('zira') || name.includes('samantha') || name.includes('victoria') || name.includes('karen'))
-          : (name.includes('male') || name.includes('david') || name.includes('george') || name.includes('daniel'));
-        return (matchesGender && v.lang.startsWith('en')) || (v.lang === 'en-NG' || v.lang === 'en-GB' || v.lang === 'en-US');
-      });
-
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
-
-      utterance.onend = () => {
-        if (!this.isPlaying || this.isPaused) return;
-        this.currentChunkIdx++;
-        this.broadcastUI();
-        this.playNextChunk();
-      };
-
-      utterance.onerror = (e) => {
-        if (e.error === 'canceled' || e.error === 'interrupted') return;
-        console.warn('[Audio] Chunk playback warning:', e.error);
-        this.currentChunkIdx++;
-        this.broadcastUI();
-        this.playNextChunk();
-      };
-
-      window.speechSynthesis.speak(utterance);
-    }
-
-    private startKeepAlive() {
-      clearInterval(this.keepAliveInterval);
-      this.keepAliveInterval = setInterval(() => {
-        if (this.isPlaying && !this.isPaused && window.speechSynthesis.speaking) {
-          window.speechSynthesis.pause();
-          window.speechSynthesis.resume();
-        }
-      }, 12000);
-    }
-
-    private stopKeepAlive() {
-      clearInterval(this.keepAliveInterval);
-    }
-
-    public togglePlay() {
-      if (!this.hasSpeech) return;
-
-      if (this.isPaused) {
-        this.isPaused = false;
-        this.isPlaying = true;
-        window.speechSynthesis.resume();
-        this.broadcastUI();
-        this.startKeepAlive();
-        return;
-      }
-
-      if (this.isPlaying) {
-        this.isPaused = true;
-        window.speechSynthesis.pause();
-        this.broadcastUI();
-        this.stopKeepAlive();
-        return;
-      }
-
-      // Start fresh
-      window.speechSynthesis.cancel();
-      const text = this.gatherArticleText();
-      this.chunks = this.prepareChunks(text);
-      if (!this.chunks.length) return;
-
-      this.currentChunkIdx = 0;
-      this.isPlaying = true;
-      this.isPaused = false;
-      this.broadcastUI();
-      this.startKeepAlive();
-      this.playNextChunk();
-    }
-
-    public stop() {
-      this.isPlaying = false;
-      this.isPaused = false;
-      this.currentChunkIdx = 0;
-      this.stopKeepAlive();
-      if (this.hasSpeech) {
-        window.speechSynthesis.cancel();
-      }
-      this.broadcastUI();
-    }
-
-    public cycleSpeed() {
-      this.speedIdx = (this.speedIdx + 1) % this.speeds.length;
-      this.currentRate = this.speeds[this.speedIdx];
-
-      if (this.isPlaying && !this.isPaused && this.hasSpeech) {
-        window.speechSynthesis.cancel();
-        this.playNextChunk();
-      }
-      this.broadcastUI();
-    }
   }
 
-  // Create or retrieve global instance
   const globalObj = window as any;
   if (!globalObj.__9b_audio_engine) {
     globalObj.__9b_audio_engine = new ArticleAudioEngine();

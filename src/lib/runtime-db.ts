@@ -943,21 +943,19 @@ export async function incrementArticleView(db: D1Database, id: string) {
 
 export async function getRelatedArticles(db: D1Database, id: string, categoryId: string, limit = 5) {
   try {
-    const res = await db.prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) AND a.id!=? AND a.category_id=? ORDER BY a.published_at DESC LIMIT ?`).bind(id, categoryId, limit).all<Article>();
-    let list = (res?.results || []).map(formatArticle);
-    if (list.length < limit) {
-      const existingIds = [id, ...list.map((a) => a.id)];
-      const placeholders = existingIds.map(() => '?').join(',');
-      const more = await db.prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) AND a.id NOT IN (${placeholders}) ORDER BY a.published_at DESC LIMIT ?`).bind(...existingIds, limit - list.length).all<Article>();
-      if (more?.results?.length) {
-        list = list.concat(more.results.map(formatArticle));
-      }
+    // Section 6: Strictly query the same category as current post, excluding current article ID, newest first
+    const res = await db.prepare(
+      `${select} WHERE (a.status='published' OR a.status IS NULL) AND a.id!=? AND a.category_id=? ORDER BY a.published_at DESC LIMIT ?`
+    ).bind(id, categoryId, limit).all<Article>();
+    
+    if (res?.results?.length) {
+      return res.results.map(formatArticle);
     }
-    if (list.length > 0) return list.slice(0, limit);
   } catch {}
+
+  // Fallback strictly to matching category only - never pull other categories per Section 6
   const filtered = (initialArticles as Article[]).filter((a) => a.id !== id && a.category_id === categoryId);
-  const remaining = (initialArticles as Article[]).filter((a) => a.id !== id && a.category_id !== categoryId);
-  return [...filtered, ...remaining].slice(0, limit).map(formatArticle);
+  return filtered.slice(0, limit).map(formatArticle);
 }
 
 export async function getTopStory(db: D1Database) {
@@ -1012,43 +1010,40 @@ export async function getMostReadArticles(db: D1Database, limit = 5) {
   await ensureTablesExist(db);
   let list: Article[] = [];
   try {
-    // Dynamic popularity score: actual views + real-time breaking/trending weighting + recency
-    const res = await db.prepare(`
+    // Section 5: Real aggregate reads from DB/analytics within the last 7 days
+    const res7d = await db.prepare(`
       ${select} 
       WHERE (a.status='published' OR a.status IS NULL) 
-      ORDER BY (
-        COALESCE(a.views_count, 0) + 
-        (CASE WHEN a.is_breaking = 1 THEN 85 WHEN a.is_top_story = 1 THEN 65 WHEN a.is_trending = 1 THEN 50 ELSE 0 END)
-      ) DESC, a.published_at DESC 
+        AND a.published_at >= datetime('now', '-7 days')
+      ORDER BY COALESCE(a.views_count, 0) DESC, a.published_at DESC 
       LIMIT ?
     `).bind(limit).all<Article>();
 
-    if (res?.results?.length) {
-      list = res.results.map(formatArticle);
-    } else {
-      const directRes = await db.prepare(`
-        SELECT * FROM articles 
-        WHERE (status='published' OR status IS NULL) 
-        ORDER BY (
-          COALESCE(views_count, 0) + 
-          (CASE WHEN is_breaking = 1 THEN 85 WHEN is_top_story = 1 THEN 65 WHEN is_trending = 1 THEN 50 ELSE 0 END)
-        ) DESC, published_at DESC 
-        LIMIT ?
-      `).bind(limit).all<Article>();
+    if (res7d?.results?.length) {
+      list = res7d.results.map(formatArticle);
+    }
 
-      if (directRes?.results?.length) {
-        list = directRes.results.map(formatArticle);
+    // If fewer than limit articles in the last 7 days, retrieve top read overall
+    if (list.length < limit) {
+      const existingIds = list.map((a) => a.id);
+      const placeholders = existingIds.length ? existingIds.map(() => '?').join(',') : "''";
+      const resOverall = await db.prepare(`
+        ${select} 
+        WHERE (a.status='published' OR a.status IS NULL) 
+          AND a.id NOT IN (${placeholders})
+        ORDER BY COALESCE(a.views_count, 0) DESC, a.published_at DESC 
+        LIMIT ?
+      `).bind(...(existingIds.length ? existingIds : []), limit - list.length).all<Article>();
+
+      if (resOverall?.results?.length) {
+        list = list.concat(resOverall.results.map(formatArticle));
       }
     }
   } catch {}
 
   if (!list.length) {
     list = [...(initialArticles as Article[])]
-      .sort((a, b) => {
-        const scoreA = (a.views_count || 0) + (a.is_breaking ? 85 : 0) + (a.is_top_story ? 65 : 0) + (a.is_trending ? 50 : 0);
-        const scoreB = (b.views_count || 0) + (b.is_breaking ? 85 : 0) + (b.is_top_story ? 65 : 0) + (b.is_trending ? 50 : 0);
-        return scoreB - scoreA;
-      })
+      .sort((a, b) => (b.views_count || 0) - (a.views_count || 0))
       .slice(0, limit)
       .map(formatArticle);
   }

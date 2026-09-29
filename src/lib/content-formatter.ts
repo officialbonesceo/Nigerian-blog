@@ -25,22 +25,29 @@ export function cleanAndFormatArticleHtml(raw: string | undefined | null): strin
     .replace(/(?:in my opinion|in my view|from my perspective|personally speaking|as this writer believes)[^.,;]*([.,;]|$)/gi, '')
     .replace(/(?:the author believes|the writer argues|the original journalist noted)[^.,;]*([.,;]|$)/gi, '');
 
-  // 3. Purge all deprecated fallback template boilerplate and generic filler blocks
-  text = text
-    .replace(/<div[^>]*class="[^"]*editorial-take[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
-    .replace(/<section[^>]*class="[^"]*editorial-take[^"]*"[^>]*>[\s\S]*?<\/section>/gi, '')
-    .replace(/<h3>(?:9jaBeacon\s+)?Editorial Take<\/h3>[\s\S]*?(?=<h[23]|$)/gi, '')
-    .replace(/<p>[^<]*As this development continues to unfold across Nigeria,?\s*key questions remain regarding regulatory oversight[^<]*<\/p>/gi, '')
-    .replace(/As this development continues to unfold across Nigeria,?\s*key questions remain regarding regulatory oversight[^.\n<]*(\.|\n|<)/gi, '')
-    .replace(/<h3>The Stakes<\/h3>[\s\S]*?<p>This development is poised to impact governance, citizens, and relevant market sectors across Nigeria\.?<\/p>/gi, '')
-    .replace(/<p>This development is poised to impact governance, citizens, and relevant market sectors across Nigeria\.?<\/p>/gi, '')
-    .replace(/<h3>The Stats<\/h3>[\s\S]*?<\/ul>/gi, '')
-    .replace(/<blockquote>["']?Accurate, verified reporting remains vital for public awareness["']?[^<]*<\/blockquote>/gi, '')
-    .replace(/<li><strong>Status:<\/strong>\s*Active lead verified by 9jaBeacon Editorial Desk<\/li>/gi, '')
-    .replace(/<p>Authorities and industry stakeholders are actively monitoring the situation\.?<\/p>/gi, '')
-    .replace(/<p>compiling further operational updates[^<]*<\/p>/gi, '')
-    .replace(/<p>Field dispatches and corroborating sources[^<]*<\/p>/gi, '')
-    .replace(/<h3>The Scoop<\/h3>/gi, '<h3>The Crux: What Happened & Verified Facts</h3>');
+    // 3. Purge all deprecated fallback template boilerplate, speculative filler, and fake search surges (Section 2)
+    text = text
+      .replace(/<p>[^<]*observers anticipate[^<]*<\/p>/gi, '')
+      .replace(/observers anticipate[^.\n<]*(\.|\n|<|$)/gi, '')
+      .replace(/<p>[^<]*the situation remains fluid[^<]*<\/p>/gi, '')
+      .replace(/the situation remains fluid[^.\n<]*(\.|\n|<|$)/gi, '')
+      .replace(/<p>[^<]*(?:nigerian\s+)?search interest surges[^<]*<\/p>/gi, '')
+      .replace(/(?:nigerian\s+)?search interest surges[^.\n<]*(\.|\n|<|$)/gi, '')
+      .replace(/200 concurrent queries[^.\n<]*(\.|\n|<|$)/gi, '')
+      .replace(/<div[^>]*class="[^"]*editorial-take[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+      .replace(/<section[^>]*class="[^"]*editorial-take[^"]*"[^>]*>[\s\S]*?<\/section>/gi, '')
+      .replace(/<h3>(?:9jaBeacon\s+)?Editorial Take<\/h3>[\s\S]*?(?=<h[23]|$)/gi, '')
+      .replace(/<p>[^<]*As this development continues to unfold across Nigeria,?\s*key questions remain regarding regulatory oversight[^<]*<\/p>/gi, '')
+      .replace(/As this development continues to unfold across Nigeria,?\s*key questions remain regarding regulatory oversight[^.\n<]*(\.|\n|<)/gi, '')
+      .replace(/<h3>The Stakes<\/h3>[\s\S]*?<p>This development is poised to impact governance, citizens, and relevant market sectors across Nigeria\.?<\/p>/gi, '')
+      .replace(/<p>This development is poised to impact governance, citizens, and relevant market sectors across Nigeria\.?<\/p>/gi, '')
+      .replace(/<h3>The Stats<\/h3>[\s\S]*?<\/ul>/gi, '')
+      .replace(/<blockquote>["']?Accurate, verified reporting remains vital for public awareness["']?[^<]*<\/blockquote>/gi, '')
+      .replace(/<li><strong>Status:<\/strong>\s*Active lead verified by 9jaBeacon Editorial Desk<\/li>/gi, '')
+      .replace(/<p>Authorities and industry stakeholders are actively monitoring the situation\.?<\/p>/gi, '')
+      .replace(/<p>compiling further operational updates[^<]*<\/p>/gi, '')
+      .replace(/<p>Field dispatches and corroborating sources[^<]*<\/p>/gi, '')
+      .replace(/<h3>The Scoop<\/h3>/gi, '<h3>The Crux: What Happened & Verified Facts</h3>');
 
   // 4. Strip raw RSS junk, bylines, and attribution footers
   text = text

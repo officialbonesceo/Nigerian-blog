@@ -192,7 +192,8 @@ const filteredLatest = page === 1 && effectiveTopStory
         {filteredLatest.map((article, idx) => (
           <>
             <ArticleCard article={article} />
-            {((filteredLatest.length <= 3 && idx === 1) || (filteredLatest.length > 3 && idx === 2) || (idx === 5 && filteredLatest.length >= 6)) && (
+            {/* Section 4 compliance: Exactly one sponsored row per feed page, eliminating duplicate cards */}
+            {((filteredLatest.length <= 3 && idx === 1) || (filteredLatest.length > 3 && idx === 3)) && (
               <AdSlot format="feed" />
             )}
           </>

@@ -322,6 +322,10 @@ export function qualityGate(input: QualityGateInput): QualityGateResult {
     /certainly,\s*here is/i,
     /based on the provided text/i,
     /placeholder/i,
+    /observers anticipate/i,
+    /the situation remains fluid/i,
+    /search interest surges/i,
+    /200 concurrent queries/i,
   ];
 
   for (const re of bannedPatterns) {

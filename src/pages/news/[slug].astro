@@ -236,7 +236,7 @@ const structuredData = [
         <span>Published {publishedDate}</span>
         {isUpdated && <span>· Updated {updatedDate}</span>}
         <span>· {displayReadingTime} min read</span>
-        {Boolean(article.views_count && article.views_count > 0) && (
+        {Boolean(article.views_count && article.views_count > 5) && (
           <span>· {article.views_count.toLocaleString()} verified reads</span>
         )}
       </div>
@@ -270,10 +270,7 @@ const structuredData = [
       </aside>
     )}
 
-    <!-- Top Horizontal Ad Banner (Eager loading to eliminate delayed display) -->
-    <AdSlot format="banner-320x50" loading="eager" />
-
-    <!-- Story Content Body (Sanitized, Semantic Paragraphs, with In-Between Native Ads) -->
+    <!-- Story Content Body with Mathematical Ad Distribution (Section 4 Compliance) -->
     <div class="space-y-6 max-w-full min-w-0">
       <div
         id="article-content-body-lead"
@@ -281,33 +278,57 @@ const structuredData = [
         set:html={articleParts.lead}
       />
 
-      <!-- Contextual Curiosity Smartlink Callout (High CTR, policy compliant) -->
-      <AdSlot format="read-also" />
+      {/* Case 1: Short stories (<200 words) -> At most 1 ad after lead section */}
+      {estimatedWordCount < 200 && (
+        <AdSlot format="banner-300x250" />
+      )}
 
-      {articleParts.middle1 && (
+      {/* Case 2: Stories between 200 and 450 words -> Exactly 1 mid-body ad */}
+      {estimatedWordCount >= 200 && estimatedWordCount <= 450 && (
         <>
-          <!-- Banner 2 of 3: Primary Mid-Article Native 300x250 Banner -->
+          {articleParts.middle1 && (
+            <div
+              id="article-content-body-middle1"
+              class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
+              set:html={articleParts.middle1}
+            />
+          )}
           <AdSlot format="banner-300x250" />
-
-          <div
-            id="article-content-body-middle1"
-            class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
-            set:html={articleParts.middle1}
-          />
         </>
       )}
 
-      {articleParts.middle2 && (
+      {/* Case 3: Long stories (>450 words) -> Up to 2 mid-body ads separated by min ~200 words */}
+      {estimatedWordCount > 450 && (
         <>
-          <!-- High-Converting Native Smartlink Editorial Dispatch (Native card, not a banner) -->
-          <AdSlot format="smartlink" />
+          <AdSlot format="banner-300x250" />
 
-          <div
-            id="article-content-body-middle2"
-            class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
-            set:html={articleParts.middle2}
-          />
+          {articleParts.middle1 && (
+            <div
+              id="article-content-body-middle1"
+              class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
+              set:html={articleParts.middle1}
+            />
+          )}
+
+          {articleParts.middle2 && (
+            <div
+              id="article-content-body-middle2"
+              class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
+              set:html={articleParts.middle2}
+            />
+          )}
+
+          <AdSlot format="smartlink" />
         </>
+      )}
+
+      {/* Trailing content blocks for short/medium stories */}
+      {estimatedWordCount <= 450 && articleParts.middle2 && (
+        <div
+          id="article-content-body-middle2"
+          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
+          set:html={articleParts.middle2}
+        />
       )}
 
       {articleParts.middle3 && (
@@ -319,12 +340,11 @@ const structuredData = [
       )}
     </div>
 
-    <!-- Client-Side Audio Reader with Presenter Sprite (Under Article Content) -->
+    <!-- Client-Side Audio Reader (Under Article Content) -->
     <ArticleAudioReader 
       title={article.title} 
       summary={article.summary} 
       readingTimeMinutes={displayReadingTime} 
-      categoryId={article.category_id}
     />
 
     <!-- Original Attribution Link -->
@@ -435,10 +455,7 @@ const structuredData = [
     </div>
   </section>
 
-  <!-- Native Ad Banner (Under Article / Above Community Perspectives) -->
-  <AdSlot format="banner-300x250" />
-
-  <!-- Trending Opportunities Grid (Smartlink High-Intent Grid) -->
+  <!-- Trending Opportunities Grid (Smartlink High-Intent Grid - Single Unit per Section 4) -->
   <AdSlot format="opportunities-grid" />
 
   <!-- Reader Opinions & Perspectives -->
