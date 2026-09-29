@@ -2644,40 +2644,51 @@ for (const s of autoSettings) {
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <!-- LEFT: 16:9 LIVE BROADCAST MONITOR (STAGE) -->
         <div class="lg:col-span-7 flex flex-col space-y-4">
-          <div class="relative w-full aspect-video rounded-2xl bg-slate-950 border-2 border-slate-800 overflow-hidden shadow-2xl flex flex-col justify-between p-4 sm:p-6 group select-none">
+          <!-- Hidden Audio Element for Background Tension Music Bed -->
+          <audio id="wb-bg-music" loop preload="none">
+            <source src="/audio/breaking-news-tension-bed.wav" type="audio/wav" />
+          </audio>
+
+          <div class="relative w-full aspect-video rounded-2xl bg-slate-950 border-2 border-slate-800 overflow-hidden shadow-2xl flex flex-col justify-between p-3.5 sm:p-5 group select-none">
             <!-- Studio Ambient Background & Digital Grid -->
-            <div class="absolute inset-0 bg-radial from-slate-900/60 via-slate-950 to-slate-950 pointer-events-none"></div>
+            <div class="absolute inset-0 bg-radial from-slate-900/70 via-slate-950 to-slate-950 pointer-events-none"></div>
             <div class="absolute inset-0 opacity-15 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none"></div>
 
-            <!-- Top Broadcast Header Bar -->
+            <!-- Top Broadcast Header Bar & Storyboard Watermark -->
             <div class="relative z-10 flex items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <div class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-black text-xs tracking-wider flex items-center gap-1.5 shadow-md">
-                  <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
-                  <span>9jaBEACON</span>
-                </div>
-                <div id="wb-status-badge" class="px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700 text-slate-300 font-mono text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <div id="wb-status-badge" class="px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700 text-slate-300 font-mono text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
                   <span id="wb-status-dot" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                   <span id="wb-status-text">STANDBY</span>
                 </div>
+
+                <!-- Tension Audio Bed Active Indicator -->
+                <div id="wb-audio-indicator" class="hidden items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Tension Bed ON</span>
+                </div>
               </div>
 
-              <!-- Audio Waveform Indicator -->
-              <div id="wb-waveform" class="flex items-end gap-1 h-5 opacity-40 transition-opacity">
-                <span class="w-1 bg-emerald-400 rounded-full h-2 animate-[pulse_0.4s_ease-in-out_infinite]"></span>
-                <span class="w-1 bg-emerald-400 rounded-full h-4 animate-[pulse_0.6s_ease-in-out_infinite_0.1s]"></span>
-                <span class="w-1 bg-emerald-400 rounded-full h-5 animate-[pulse_0.5s_ease-in-out_infinite_0.2s]"></span>
-                <span class="w-1 bg-emerald-400 rounded-full h-3 animate-[pulse_0.7s_ease-in-out_infinite_0.15s]"></span>
+              <!-- Top-Right 9JA BEACON LIVE Watermark (Matching Storyboard) -->
+              <div class="flex items-center shadow-lg">
+                <div class="px-2 sm:px-2.5 py-1 rounded-l-lg bg-slate-900/95 border border-slate-700/80 border-r-0 text-white font-black text-[11px] sm:text-xs tracking-wider flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>9JA BEACON</span>
+                </div>
+                <div class="px-2 sm:px-2.5 py-1 rounded-r-lg bg-red-600 text-white font-black text-[10px] sm:text-[11px] tracking-wider uppercase flex items-center gap-1 shadow-xs">
+                  <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                  <span>LIVE</span>
+                </div>
               </div>
             </div>
 
-            <!-- Stage Center: Presenter Cutout with Option A Movement & Lip Flap -->
-            <div class="relative z-10 flex-1 flex items-center justify-center my-auto">
-              <div class="relative flex flex-col items-center">
-                <!-- Presenter Viewport Canvas/Image Box -->
+            <!-- STAGE CENTER: ANCHOR SEATED AT DESK + SIDE PROJECTION SCREEN -->
+            <div class="relative z-10 flex-1 grid grid-cols-12 gap-3 items-center my-auto min-h-0">
+              <!-- Left/Center: Anchor Seated at Newsroom Desk -->
+              <div class="col-span-6 sm:col-span-5 flex flex-col items-center justify-center">
                 <div 
                   id="wb-presenter-box" 
-                  class="relative w-44 h-44 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-2xl overflow-hidden border border-slate-700/60 shadow-xl transition-all duration-200 bg-slate-900 presenter-viewport-live"
+                  class="relative w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl transition-all duration-200 bg-slate-900 presenter-viewport-live"
                 >
                   <!-- 2x2 Sprite Sheet Background Div -->
                   <div 
@@ -2687,40 +2698,88 @@ for (const s of autoSettings) {
                   ></div>
 
                   <!-- Active Pose Indicator Overlay -->
-                  <div class="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-slate-950/80 backdrop-blur-xs border border-slate-700/80 text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
+                  <div class="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-slate-950/85 backdrop-blur-xs border border-slate-700/80 text-[9px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
                     <span id="wb-pose-label">Pose: Idle</span>
                   </div>
                 </div>
 
                 <!-- Virtual Studio Desk Shadow & Reflection -->
-                <div class="w-52 sm:w-64 h-3 bg-emerald-950/40 rounded-full blur-sm mt-1"></div>
+                <div class="w-40 sm:w-48 h-2.5 bg-emerald-950/50 rounded-full blur-xs mt-1"></div>
+              </div>
+
+              <!-- Right: Side Projection Screen (Matching Storyboard Panel 4 & 7) -->
+              <div class="col-span-6 sm:col-span-7 flex flex-col justify-center">
+                <div class="p-3 sm:p-4 rounded-xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-2xl space-y-2 relative overflow-hidden group">
+                  <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600"></div>
+
+                  <!-- Projection Screen Header -->
+                  <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                    <div class="flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span id="wb-proj-title" class="text-[10px] sm:text-xs font-black uppercase tracking-wider text-emerald-400 font-mono">
+                        THE BIG PICTURE
+                      </span>
+                    </div>
+                    <span class="text-[9px] font-mono text-slate-400 px-1.5 py-0.5 rounded-sm bg-slate-950 border border-slate-800">
+                      SIDE PROJECTION
+                    </span>
+                  </div>
+
+                  <!-- Dynamic Key Points / Takeaway Bullets -->
+                  <div id="wb-proj-bullets" class="space-y-1.5 text-[10px] sm:text-xs font-medium text-slate-200">
+                    <div class="flex items-start gap-1.5">
+                      <span class="text-emerald-400 shrink-0 font-bold">✓</span>
+                      <span id="wb-proj-p1" class="line-clamp-2">Federal policy shift announced with nationwide implementation.</span>
+                    </div>
+                    <div class="flex items-start gap-1.5">
+                      <span class="text-emerald-400 shrink-0 font-bold">✓</span>
+                      <span id="wb-proj-p2" class="line-clamp-2">Key stakeholders and market analysts monitor immediate economic impact.</span>
+                    </div>
+                    <div class="flex items-start gap-1.5">
+                      <span class="text-emerald-400 shrink-0 font-bold">✓</span>
+                      <span id="wb-proj-p3" class="line-clamp-2 text-slate-400">Full verified citizen reporting on www.9jabeacon.name.ng</span>
+                    </div>
+                  </div>
+
+                  <div class="pt-1 flex items-center justify-between text-[9px] font-mono text-slate-400 border-t border-slate-800/80">
+                    <span>9jaBEACON REAL-TIME REPORTING</span>
+                    <span class="text-emerald-400">VERIFIED STORY</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <!-- Lower Third News Banner (Headline & Ticker) -->
+            <!-- LOWER-THIRD NEWS STRAP (MATCHING STORYBOARD BREAKING NEWS STRAP) -->
             <div class="relative z-10 mt-auto pt-2">
-              <div class="p-3 sm:p-3.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-slate-800 shadow-xl space-y-1.5">
-                <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-1">
-                  <div class="flex items-center gap-2">
-                    <span id="wb-strap-tag" class="text-[10px] font-mono font-black uppercase tracking-wider text-emerald-400">
-                      FEMI ADELEKE &bull; SENIOR NATIONAL AFFAIRS ANCHOR
-                    </span>
+              <div class="rounded-xl overflow-hidden shadow-2xl border border-slate-800">
+                <!-- Red BREAKING NEWS Badge -->
+                <div class="flex items-center justify-between bg-red-600 px-3 py-1 text-white">
+                  <div class="flex items-center gap-2 font-black text-xs uppercase tracking-wider font-mono">
+                    <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                    <span id="wb-breaking-badge">BREAKING NEWS</span>
                   </div>
-                  <span id="wb-time-display" class="text-[10px] font-mono text-slate-400">
+                  <span id="wb-time-display" class="text-[10px] font-mono text-red-100 font-bold">
                     00:00.000 / 00:00.000
                   </span>
                 </div>
 
-                <h3 id="wb-display-headline" class="text-sm sm:text-base font-black text-white line-clamp-2 tracking-tight">
-                  Federal Executive Council Approves Major Tech Infrastructure Initiative
-                </h3>
+                <!-- Main White Headline Banner -->
+                <div class="bg-slate-900/98 px-3.5 py-2 border-t border-slate-800">
+                  <h3 id="wb-display-headline" class="text-xs sm:text-sm md:text-base font-black text-white line-clamp-2 tracking-tight">
+                    Federal Executive Council Approves Major Tech Infrastructure Initiative
+                  </h3>
+                </div>
 
-                <!-- Real-Time Ticker -->
-                <div class="w-full overflow-hidden bg-slate-950/80 rounded-md py-1 px-2 text-[10px] font-mono text-slate-400 flex items-center gap-2">
-                  <span class="text-red-400 font-bold shrink-0">NEWS TICKER:</span>
-                  <div class="truncate">
-                    <span id="wb-display-ticker">9jaBEACON REAL-TIME REPORTING &bull; VERIFIED CITIZEN JOURNALISM &bull; POLITICS &bull; ECONOMY &bull; TECH</span>
+                <!-- Domain & Tagline Underneath Headline (Matching User Storyboard) -->
+                <div class="bg-slate-950 px-3.5 py-1 text-[10px] sm:text-[11px] font-mono flex items-center justify-between gap-2 border-t border-slate-800/80">
+                  <div class="text-slate-300 truncate">
+                    <span class="text-slate-400">Stay informed | </span>
+                    <strong class="text-emerald-400">www.9jabeacon.name.ng</strong>
+                    <span class="text-slate-400"> &bull; Nigeria's Independent Newsroom</span>
                   </div>
+                  <span id="wb-strap-tag" class="text-[10px] font-bold text-slate-400 shrink-0 hidden sm:inline">
+                    FEMI ADELEKE &bull; SENIOR NATIONAL ANCHOR
+                  </span>
                 </div>
               </div>
             </div>
@@ -2778,19 +2837,55 @@ for (const s of autoSettings) {
               />
               <div class="flex justify-between text-[10px] font-mono text-slate-500">
                 <span>00:00.000 (Standby)</span>
-                <span>Scrub to inspect pose & lip-sync</span>
+                <span>Scrub to inspect pose, lip-sync & projection</span>
                 <span id="wb-total-time-label">00:00.000</span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- RIGHT: DIRECTOR DESK & SCRIPT CONTROLS -->
+        <!-- RIGHT: DIRECTOR DESK, AUDIO MIXER & SCRIPT CONTROLS -->
         <div class="lg:col-span-5 flex flex-col space-y-4">
+          <!-- 1-CLICK AUTO-SELECT REAL TRENDING / MOST READ STORY -->
+          <div class="p-4 rounded-2xl bg-slate-900 border border-emerald-500/40 space-y-3 shadow-lg">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                <label class="text-xs font-black uppercase tracking-wider text-emerald-400 font-mono">
+                  1. Auto-Transform Real News Story
+                </label>
+              </div>
+              <span class="text-[10px] font-mono text-slate-400">1-Click Pipeline</span>
+            </div>
+
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+              Instantly pick the #1 trending or most-read article from the database. It auto-generates the broadcast headline, anchor script, side projection facts, and category anchor!
+            </p>
+
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                id="btn-auto-trending"
+                onclick="autoSelectRealStory('trending')"
+                class="px-3 py-2 rounded-xl bg-gradient-to-r from-red-600/30 to-amber-600/30 hover:from-red-600/50 hover:to-amber-600/50 border border-red-500/40 text-white text-xs font-bold font-mono inline-flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+              >
+                <span>🔥 #1 Trending Story</span>
+              </button>
+              <button
+                type="button"
+                id="btn-auto-mostread"
+                onclick="autoSelectRealStory('most_read')"
+                class="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-600/50 hover:to-teal-600/50 border border-emerald-500/40 text-white text-xs font-bold font-mono inline-flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+              >
+                <span>📈 #1 Most Read Story</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Presenter Selector -->
           <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
             <label class="block text-xs font-black uppercase tracking-wider text-slate-400 font-mono">
-              1. Choose Broadcast Anchor
+              2. Choose Broadcast Anchor
             </label>
             <div class="grid grid-cols-2 gap-2">
               {presenters.map((p) => (
@@ -2818,47 +2913,10 @@ for (const s of autoSettings) {
             </div>
           </div>
 
-          <!-- Quick Story Presets -->
+          <!-- Headline & Script Controls -->
           <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-            <div class="flex items-center justify-between">
-              <label class="block text-xs font-black uppercase tracking-wider text-slate-400 font-mono">
-                2. Story Presets
-              </label>
-              <span class="text-[10px] font-mono text-emerald-400">Click to autofill</span>
-            </div>
-            <div class="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onclick="loadScriptPreset('national')"
-                class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-300 transition cursor-pointer"
-              >
-                🏛️ National Economy
-              </button>
-              <button
-                type="button"
-                onclick="loadScriptPreset('investigation')"
-                class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-300 transition cursor-pointer"
-              >
-                🔍 Primetime Probe
-              </button>
-              <button
-                type="button"
-                onclick="loadScriptPreset('business')"
-                class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-300 transition cursor-pointer"
-              >
-                📈 Markets & FinTech
-              </button>
-              <button
-                type="button"
-                onclick="loadScriptPreset('sports')"
-                class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-300 transition cursor-pointer"
-              >
-                ⚽ Culture & Sports
-              </button>
-            </div>
-
             <!-- Headline Input -->
-            <div class="space-y-1 pt-1">
+            <div class="space-y-1">
               <label class="text-[11px] font-bold text-slate-300">Lower-Third Headline</label>
               <input
                 type="text"
@@ -2877,10 +2935,62 @@ for (const s of autoSettings) {
               </div>
               <textarea
                 id="wb-input-script"
-                rows="4"
+                rows="3"
                 oninput="handleScriptInput(this.value)"
                 class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono leading-relaxed focus:border-emerald-500 focus:outline-hidden resize-none"
               >Good evening. This is 9jaBeacon National News. The Federal Government has today approved an extensive digital infrastructure roadmap aimed at accelerating nationwide broadband, powering startups, and modernizing public services across Nigeria.</textarea>
+            </div>
+
+            <!-- Side Projection Bullets Editor -->
+            <div class="space-y-1 pt-1 border-t border-slate-800/80">
+              <label class="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+                <span>Side Projection Key Points (1 per line)</span>
+                <span class="text-[10px] text-emerald-400 font-mono">Infographic Screen</span>
+              </label>
+              <textarea
+                id="wb-input-bullets"
+                rows="2"
+                oninput="updateProjectionBullets(this.value)"
+                class="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono leading-relaxed focus:border-emerald-500 focus:outline-hidden resize-none"
+              >Federal policy shift announced with nationwide implementation.
+Key stakeholders and market analysts monitor immediate economic impact.
+Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
+            </div>
+
+            <!-- Background Music & Tension Sound Controls -->
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2 pt-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                  <span class="text-emerald-400">🎵</span> Background Tension Sound
+                </span>
+                <span class="text-[10px] font-mono text-emerald-400">-16dB Ducked</span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <select
+                  id="wb-select-bg-music"
+                  onchange="changeBackgroundMusic(this.value)"
+                  class="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-[11px] font-mono font-bold"
+                >
+                  <option value="/audio/breaking-news-tension-bed.wav" selected>🚨 Intense Tension Pulse</option>
+                  <option value="/audio/news-bulletin-bed.wav">💼 Ambient Bulletin Bed</option>
+                  <option value="none">🔇 Music Muted</option>
+                </select>
+
+                <div class="flex items-center gap-1.5 text-xs font-mono text-slate-400">
+                  <span class="text-[10px]">Vol:</span>
+                  <input
+                    type="range"
+                    id="wb-music-volume"
+                    min="0"
+                    max="50"
+                    value="15"
+                    oninput="updateMusicVolume(this.value)"
+                    class="w-full accent-emerald-500 bg-slate-900 h-1.5 rounded-lg"
+                  />
+                  <span id="wb-vol-val" class="text-[10px]">15%</span>
+                </div>
+              </div>
             </div>
 
             <!-- Breaking Alert & Speed Settings -->
@@ -2956,6 +3066,10 @@ for (const s of autoSettings) {
               <div class="flex justify-between">
                 <span>Engine:</span>
                 <code class="text-slate-300">scripts/generate-broadcast-video.cjs</code>
+              </div>
+              <div class="flex justify-between">
+                <span>Tension Music:</span>
+                <code class="text-emerald-400">public/audio/breaking-news-tension-bed.wav</code>
               </div>
             </div>
           </div>
@@ -3396,6 +3510,7 @@ for (const s of autoSettings) {
       const statusDot = document.getElementById('wb-status-dot');
       const statusBadge = document.getElementById('wb-status-badge');
       const waveform = document.getElementById('wb-waveform');
+      const audioIndicator = document.getElementById('wb-audio-indicator');
 
       if (playText) playText.textContent = 'Pause Test';
       if (playIcon) playIcon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
@@ -3404,6 +3519,22 @@ for (const s of autoSettings) {
       if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping';
       if (statusBadge) statusBadge.className = 'px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5';
       if (waveform) waveform.classList.remove('opacity-40');
+
+      // Play Background Tension Music Bed
+      const bgAudio = document.getElementById('wb-bg-music');
+      const musicSelect = document.getElementById('wb-select-bg-music');
+      const chosenMusic = musicSelect ? musicSelect.value : '/audio/breaking-news-tension-bed.wav';
+
+      if (bgAudio && chosenMusic !== 'none') {
+        if (!bgAudio.src.endsWith(chosenMusic)) {
+          bgAudio.src = chosenMusic;
+        }
+        const volSlider = document.getElementById('wb-music-volume');
+        const vol = volSlider ? parseFloat(volSlider.value) / 100 : 0.15;
+        bgAudio.volume = vol;
+        bgAudio.play().catch(() => {});
+        if (audioIndicator) audioIndicator.classList.remove('hidden');
+      }
 
       const p = workbenchPresentersData[workbenchSettings.activePresenterId] || workbenchPresentersData['presenter_femi'];
 
@@ -3456,6 +3587,9 @@ for (const s of autoSettings) {
       if (workbenchSettings.timerInterval) clearInterval(workbenchSettings.timerInterval);
       if ('speechSynthesis' in window) window.speechSynthesis.pause();
 
+      const bgAudio = document.getElementById('wb-bg-music');
+      if (bgAudio) bgAudio.pause();
+
       const playText = document.getElementById('wb-play-text');
       const playIcon = document.getElementById('wb-play-icon');
       const statusText = document.getElementById('wb-status-text');
@@ -3476,6 +3610,14 @@ for (const s of autoSettings) {
       if (workbenchSettings.timerInterval) clearInterval(workbenchSettings.timerInterval);
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
+      const bgAudio = document.getElementById('wb-bg-music');
+      const audioIndicator = document.getElementById('wb-audio-indicator');
+      if (bgAudio) {
+        bgAudio.pause();
+        bgAudio.currentTime = 0;
+      }
+      if (audioIndicator) audioIndicator.classList.add('hidden');
+
       const playText = document.getElementById('wb-play-text');
       const playIcon = document.getElementById('wb-play-icon');
       const statusText = document.getElementById('wb-status-text');
@@ -3493,6 +3635,98 @@ for (const s of autoSettings) {
       // Reset to Standby idle
       const ev = getEventAtTimeMs(0);
       applyTimelineEventToMonitor(ev, 0);
+    };
+
+    // 1-Click Auto-Select Real Trending Story Handler
+    window.autoSelectRealStory = async function(mode) {
+      const btn = mode === 'trending' ? document.getElementById('btn-auto-trending') : document.getElementById('btn-auto-mostread');
+      const originalHtml = btn ? btn.innerHTML : '';
+      if (btn) btn.innerHTML = '<span>⏳ Fetching story...</span>';
+
+      try {
+        const res = await fetch(`/api/admin/auto-select-story?mode=${mode}`);
+        const data = await res.json();
+        if (data.success) {
+          // 1. Headline
+          const headlineInput = document.getElementById('wb-input-headline');
+          const headlineDisplay = document.getElementById('wb-display-headline');
+          if (headlineInput) headlineInput.value = data.headline;
+          if (headlineDisplay) headlineDisplay.textContent = data.headline;
+
+          // 2. Script
+          const scriptInput = document.getElementById('wb-input-script');
+          if (scriptInput) {
+            scriptInput.value = data.script;
+            handleScriptInput(data.script);
+          }
+
+          // 3. Side Projection Bullets
+          if (data.keyPoints && data.keyPoints.length) {
+            const bulletsText = data.keyPoints.join('\n');
+            const bulletsInput = document.getElementById('wb-input-bullets');
+            if (bulletsInput) bulletsInput.value = bulletsText;
+            updateProjectionBullets(bulletsText);
+          }
+
+          // 4. Auto-select matching presenter
+          if (data.presenter && data.presenter.id) {
+            selectWorkbenchPresenter(data.presenter.id);
+          }
+
+          if (btn) {
+            btn.innerHTML = `<span>✅ Loaded: ${data.category}</span>`;
+            setTimeout(() => { btn.innerHTML = originalHtml; }, 2500);
+          }
+        } else {
+          if (btn) {
+            btn.innerHTML = `<span>⚠️ ${data.error || 'Failed'}</span>`;
+            setTimeout(() => { btn.innerHTML = originalHtml; }, 2500);
+          }
+        }
+      } catch (e) {
+        if (btn) {
+          btn.innerHTML = '<span>⚠️ Network error</span>';
+          setTimeout(() => { btn.innerHTML = originalHtml; }, 2500);
+        }
+      }
+    };
+
+    window.updateProjectionBullets = function(text) {
+      const lines = (text || '').split('\n').map(l => l.trim()).filter(Boolean);
+      const p1 = document.getElementById('wb-proj-p1');
+      const p2 = document.getElementById('wb-proj-p2');
+      const p3 = document.getElementById('wb-proj-p3');
+      if (p1) p1.textContent = lines[0] || 'Major structural policy update announced.';
+      if (p2) p2.textContent = lines[1] || 'Key stakeholders monitor nationwide impact.';
+      if (p3) p3.textContent = lines[2] || 'Full verified citizen reporting on www.9jabeacon.name.ng';
+    };
+
+    window.changeBackgroundMusic = function(val) {
+      const bgAudio = document.getElementById('wb-bg-music');
+      const audioIndicator = document.getElementById('wb-audio-indicator');
+      if (bgAudio) {
+        if (val === 'none') {
+          bgAudio.pause();
+          if (audioIndicator) audioIndicator.classList.add('hidden');
+        } else {
+          bgAudio.src = val;
+          if (workbenchSettings.isPlaying) {
+            const volSlider = document.getElementById('wb-music-volume');
+            const vol = volSlider ? parseFloat(volSlider.value) / 100 : 0.15;
+            bgAudio.volume = vol;
+            bgAudio.play().catch(() => {});
+            if (audioIndicator) audioIndicator.classList.remove('hidden');
+          }
+        }
+      }
+    };
+
+    window.updateMusicVolume = function(val) {
+      const vol = parseFloat(val) / 100;
+      const volLabel = document.getElementById('wb-vol-val');
+      if (volLabel) volLabel.textContent = `${val}%`;
+      const bgAudio = document.getElementById('wb-bg-music');
+      if (bgAudio) bgAudio.volume = vol;
     };
 
     window.copyGithubWorkflowCommand = function(evt) {

@@ -1,12 +1,33 @@
 {
-  "presenterId": "presenter_femi",
-  "presenterName": "Femi Adeleke",
-  "headline": "Breaking News: Major National Development Reported",
+  "title": "Breaking News: Major National Development Reported",
+  "format": "1920x1080",
+  "aspectRatio": "landscape",
   "durationSec": 10,
-  "outputFormat": "landscape",
-  "resolution": "1920x1080",
-  "hasBreakingAlert": false,
-  "generatedAt": "2026-09-29T13:09:32.939Z",
+  "presenter": {
+    "id": "presenter_femi",
+    "name": "Femi Adeleke",
+    "role": "Senior National Affairs Anchor"
+  },
+  "audio": {
+    "voiceover": "espeak_speech_synthesizer",
+    "tensionBed": "breaking-news-tension-bed.wav",
+    "musicDuckingLevel": "-16dB"
+  },
+  "sideProjection": {
+    "header": "THE BIG PICTURE",
+    "keyPoints": [
+      "Major structural policy update announced with immediate effect.",
+      "Federal and state stakeholders align on comprehensive implementation.",
+      "Verified coverage and real-time updates on www.9jabeacon.name.ng"
+    ]
+  },
+  "lowerThird": {
+    "badge": "BREAKING NEWS",
+    "headline": "Breaking News: Major National Development Reported",
+    "domainStrap": "Stay informed | www.9jabeacon.name.ng - Your trusted independent newsroom"
+  },
+  "watermark": "9JA BEACON LIVE",
+  "generatedAt": "2026-09-29T22:26:46.918Z",
   "files": {
     "video": "output/broadcast-video.mp4",
     "thumbnail": "output/broadcast-thumbnail.jpg"
