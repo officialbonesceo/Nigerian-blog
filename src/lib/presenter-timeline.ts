@@ -51,7 +51,7 @@ export function generatePresenterTimeline(
     pose: 'idle',
     mouth: 'closed',
     gesture: 'desk_rest',
-    coords: { x: '0%', y: '0%' },
+    coords: { x: '50%', y: '50%' },
     action: 'broadcast_standby'
   });
 
@@ -61,7 +61,7 @@ export function generatePresenterTimeline(
     pose: 'speaking',
     mouth: 'open',
     gesture: 'hand_raised',
-    coords: { x: '100%', y: '0%' },
+    coords: { x: '50%', y: '50%' },
     action: 'speech_commence'
   });
 
@@ -79,7 +79,7 @@ export function generatePresenterTimeline(
         pose: 'breaking',
         mouth: isMouthOpen ? 'open' : 'alert',
         gesture: 'earpiece_focus',
-        coords: { x: '0%', y: '100%' },
+        coords: { x: '50%', y: '50%' },
         action: 'breaking_news_bulletin'
       });
     } else {
@@ -88,7 +88,7 @@ export function generatePresenterTimeline(
         pose: 'speaking',
         mouth: isMouthOpen ? 'open' : 'closed',
         gesture: 'articulate_gesture',
-        coords: isMouthOpen ? { x: '100%', y: '0%' } : { x: '0%', y: '0%' },
+        coords: { x: '50%', y: '50%' },
         action: 'active_narration'
       });
     }
@@ -98,9 +98,9 @@ export function generatePresenterTimeline(
   events.push({
     timeMs: speechEndMs,
     pose: 'wrap',
-    mouth: 'smile',
+    mouth: 'closed',
     gesture: 'wrap_closing',
-    coords: { x: '100%', y: '100%' },
+    coords: { x: '50%', y: '50%' },
     action: 'segment_wrap'
   });
 
@@ -110,7 +110,7 @@ export function generatePresenterTimeline(
     pose: 'idle',
     mouth: 'closed',
     gesture: 'desk_rest',
-    coords: { x: '0%', y: '0%' },
+    coords: { x: '50%', y: '50%' },
     action: 'broadcast_concluded'
   });
 

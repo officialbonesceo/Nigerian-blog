@@ -2654,22 +2654,9 @@ for (const s of autoSettings) {
             <div class="absolute inset-0 bg-radial from-slate-900/70 via-slate-950 to-slate-950 pointer-events-none"></div>
             <div class="absolute inset-0 opacity-15 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none"></div>
 
-            <!-- Top Broadcast Header Bar & Storyboard Watermark -->
+            <!-- Top Broadcast Header Bar: Top-Left Watermark (Matching Storyboard) & Status Indicators -->
             <div class="relative z-10 flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <div id="wb-status-badge" class="px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700 text-slate-300 font-mono text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
-                  <span id="wb-status-dot" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                  <span id="wb-status-text">STANDBY</span>
-                </div>
-
-                <!-- Tension Audio Bed Active Indicator -->
-                <div id="wb-audio-indicator" class="hidden items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>Tension Bed ON</span>
-                </div>
-              </div>
-
-              <!-- Top-Right 9JA BEACON LIVE Watermark (Matching Storyboard) -->
+              <!-- Top-Left 9JA BEACON LIVE Watermark (Directly Above Anchor) -->
               <div class="flex items-center shadow-lg">
                 <div class="px-2 sm:px-2.5 py-1 rounded-l-lg bg-slate-900/95 border border-slate-700/80 border-r-0 text-white font-black text-[11px] sm:text-xs tracking-wider flex items-center gap-1.5">
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
@@ -2678,6 +2665,20 @@ for (const s of autoSettings) {
                 <div class="px-2 sm:px-2.5 py-1 rounded-r-lg bg-red-600 text-white font-black text-[10px] sm:text-[11px] tracking-wider uppercase flex items-center gap-1 shadow-xs">
                   <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
                   <span>LIVE</span>
+                </div>
+              </div>
+
+              <!-- Top-Right Status & Tension Bed Active Indicator -->
+              <div class="flex items-center gap-2">
+                <!-- Tension Audio Bed Active Indicator -->
+                <div id="wb-audio-indicator" class="hidden items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Tension Bed ON</span>
+                </div>
+
+                <div id="wb-status-badge" class="px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700 text-slate-300 font-mono text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+                  <span id="wb-status-dot" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                  <span id="wb-status-text">STANDBY</span>
                 </div>
               </div>
             </div>
@@ -2690,12 +2691,38 @@ for (const s of autoSettings) {
                   id="wb-presenter-box" 
                   class="relative w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl transition-all duration-200 bg-slate-900 presenter-viewport-live"
                 >
-                  <!-- 2x2 Sprite Sheet Background Div -->
+                  <!-- Stable Single Portrait Anchor Base (Zero jump, zero flicker, zero disappearing book) -->
                   <div 
                     id="wb-sprite-canvas" 
-                    class="w-full h-full transition-[background-position] duration-100"
-                    style="background-image: url('/presenters/femi.jpg'); background-size: 200% 200%; background-position: 0% 0%;"
+                    class="w-full h-full bg-cover bg-center transition-transform duration-300"
+                    style="background-image: url('/presenters/femi.jpg'); background-position: center center !important;"
                   ></div>
+
+                  <!-- Articulated Natural Lip-Sync Aperture (Opens and closes dynamically in sync with speech) -->
+                  <div 
+                    id="wb-mouth-aperture" 
+                    class="absolute pointer-events-none transition-opacity duration-150 opacity-0"
+                    style="left: 50%; top: 55.2%; width: 13.5%; height: 5.6%; transform: translate(-50%, -50%);"
+                  >
+                    <svg viewBox="0 0 160 80" class="w-full h-full drop-shadow-xs overflow-visible">
+                      <defs>
+                        <linearGradient id="lipShineAdmin" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stop-color="#6e242d" stop-opacity="0.95" />
+                          <stop offset="50%" stop-color="#8c2f3b" stop-opacity="0.8" />
+                          <stop offset="100%" stop-color="#4a151b" stop-opacity="0.95" />
+                        </linearGradient>
+                        <radialGradient id="mouthCavityAdmin" cx="50%" cy="65%" r="50%">
+                          <stop offset="0%" stop-color="#0f0304" />
+                          <stop offset="60%" stop-color="#24070b" />
+                          <stop offset="100%" stop-color="#3b1016" />
+                        </radialGradient>
+                      </defs>
+                      <path d="M 15 38 Q 80 18 145 38 Q 120 68 80 70 Q 40 68 15 38 Z" fill="url(#lipShineAdmin)" />
+                      <path d="M 26 39 Q 80 26 134 39 Q 115 63 80 65 Q 45 63 26 39 Z" fill="url(#mouthCavityAdmin)" />
+                      <path d="M 42 38 Q 80 33 118 38 Q 112 46 80 47 Q 48 46 42 38 Z" fill="#f8fafc" opacity="0.92" />
+                      <ellipse cx="80" cy="58" rx="28" ry="5" fill="#a83f4d" opacity="0.5" />
+                    </svg>
+                  </div>
 
                   <!-- Active Pose Indicator Overlay -->
                   <div class="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-slate-950/85 backdrop-blur-xs border border-slate-700/80 text-[9px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
@@ -3279,11 +3306,12 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         }
       });
 
-      // Update Stage Presenter Box
+      // Update Stage Presenter Box with stable clean anchor portrait (zero jumping, zero flicker)
       const spriteCanvas = document.getElementById('wb-sprite-canvas');
       if (spriteCanvas) {
         spriteCanvas.style.backgroundImage = `url('${p.sprite}')`;
-        spriteCanvas.style.backgroundPosition = '0% 0%';
+        spriteCanvas.style.backgroundPosition = 'center center';
+        spriteCanvas.style.backgroundSize = 'cover';
       }
 
       const strapTag = document.getElementById('wb-strap-tag');
@@ -3356,20 +3384,20 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
       workbenchSettings.totalDurationMs = totalDurationMs;
 
       const events = [];
-      // 0ms Standby
+      // 0ms Standby (Anchor calm and focused at desk)
       events.push({
         timeMs: 0,
         pose: 'idle',
         mouth: 'closed',
-        coords: { x: '0%', y: '0%' }
+        coords: { x: 'center', y: 'center' }
       });
 
-      // 200ms Pre-speech transition
+      // 200ms Pre-speech transition (Mouth opens naturally for first syllable)
       events.push({
         timeMs: 200,
         pose: 'speaking',
         mouth: 'open',
-        coords: { x: '100%', y: '0%' }
+        coords: { x: 'center', y: 'center' }
       });
 
       const cycleMs = 190;
@@ -3382,14 +3410,14 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
             timeMs: t,
             pose: 'breaking',
             mouth: isMouthOpen ? 'open' : 'alert',
-            coords: { x: '0%', y: '100%' }
+            coords: { x: 'center', y: 'center' }
           });
         } else {
           events.push({
             timeMs: t,
             pose: 'speaking',
             mouth: isMouthOpen ? 'open' : 'closed',
-            coords: isMouthOpen ? { x: '100%', y: '0%' } : { x: '0%', y: '0%' }
+            coords: { x: 'center', y: 'center' }
           });
         }
       }
@@ -3398,8 +3426,8 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
       events.push({
         timeMs: speechEndMs,
         pose: 'wrap',
-        mouth: 'smile',
-        coords: { x: '100%', y: '100%' }
+        mouth: 'closed',
+        coords: { x: 'center', y: 'center' }
       });
 
       // Concluded
@@ -3407,7 +3435,7 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         timeMs: totalDurationMs,
         pose: 'idle',
         mouth: 'closed',
-        coords: { x: '0%', y: '0%' }
+        coords: { x: 'center', y: 'center' }
       });
 
       workbenchSettings.timelineEvents = events;
@@ -3442,8 +3470,8 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
 
     function applyTimelineEventToMonitor(event, timeMs) {
       if (!event) return;
-      const spriteCanvas = document.getElementById('wb-sprite-canvas');
       const presenterBox = document.getElementById('wb-presenter-box');
+      const mouthAperture = document.getElementById('wb-mouth-aperture');
       const poseLabel = document.getElementById('wb-pose-label');
       const mouthLabel = document.getElementById('wb-mouth-state');
       const coordsVal = document.getElementById('wb-coords-val');
@@ -3451,10 +3479,19 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
       const timeDisplay = document.getElementById('wb-time-display');
       const scrubSlider = document.getElementById('wb-scrub-slider');
 
-      if (spriteCanvas && event.coords) {
-        spriteCanvas.style.backgroundPosition = `${event.coords.x} ${event.coords.y}`;
+      // The presenter portrait base is 100% stable: no jumping coordinates, no vanishing book!
+      // Dynamic organic lip-sync articulation toggles dynamically with speech rhythm
+      if (mouthAperture) {
+        if (event.mouth === 'open' || event.pose === 'speaking') {
+          mouthAperture.classList.remove('opacity-0');
+          mouthAperture.classList.add('presenter-mouth-active');
+        } else {
+          mouthAperture.classList.remove('presenter-mouth-active');
+          mouthAperture.classList.add('opacity-0');
+        }
       }
 
+      // Subtle broadcast speaking nod on the presenter viewport
       if (presenterBox) {
         if (event.pose === 'speaking' || event.mouth === 'open') {
           presenterBox.classList.add('presenter-viewport-speaking');
@@ -3465,7 +3502,7 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
 
       if (poseLabel) poseLabel.textContent = `Pose: ${event.pose.charAt(0).toUpperCase() + event.pose.slice(1)}`;
       if (mouthLabel) mouthLabel.textContent = event.mouth;
-      if (coordsVal && event.coords) coordsVal.textContent = `${event.coords.x} ${event.coords.y}`;
+      if (coordsVal) coordsVal.textContent = event.mouth === 'open' ? 'Articulating' : 'Closed';
       if (frameNum) frameNum.textContent = String(Math.round((timeMs / 1000) * 30));
 
       if (timeDisplay) {

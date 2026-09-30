@@ -112,23 +112,21 @@ async function main() {
     }
   }
 
-  console.log(`🖼️ Using Sprite Sheet: ${spritePath}`);
+  console.log(`🖼️ Using Clean Presenter Portrait: ${spritePath}`);
 
-  // 2. Crop 4 poses (each 512x512) from the 1024x1024 sheet
-  const idlePose = path.join(tempDir, 'pose_idle.jpg');
-  const speakingPose = path.join(tempDir, 'pose_speaking.jpg');
-  const breakingPose = path.join(tempDir, 'pose_breaking.jpg');
-  const wrapPose = path.join(tempDir, 'pose_wrap.jpg');
-
-  console.log('✂️ Extracting 2x2 sprite quadrants...');
-  execSync(`ffmpeg -y -v error -i "${spritePath}" -filter_complex "[0:v]crop=512:512:0:0[idle];[0:v]crop=512:512:512:0[speaking];[0:v]crop=512:512:0:512[breaking];[0:v]crop=512:512:512:512[wrap]" -map "[idle]" "${idlePose}" -map "[speaking]" "${speakingPose}" -map "[breaking]" "${breakingPose}" -map "[wrap]" "${wrapPose}"`);
+  // 2. Locate feathered mouth overlay
+  const mouthOverlayPath = path.join(process.cwd(), 'public', 'presenters', 'mouth_open.png');
+  if (!fs.existsSync(mouthOverlayPath)) {
+    throw new Error(`Mouth overlay not found at ${mouthOverlayPath}`);
+  }
 
   // 3. Compute speech timing & duration
   const words = script.trim().split(/\s+/).filter(Boolean);
   const wordCount = Math.max(words.length, 1);
   const wpm = 135;
   const durationSec = Math.max(Math.ceil((wordCount / wpm) * 60) + 1, 6);
-  console.log(`⏱️ Computed broadcast duration: ${durationSec} seconds`);
+  const speechEndSec = Math.max(durationSec - 1.2, 2.0);
+  console.log(`⏱️ Computed broadcast duration: ${durationSec} seconds (speech ends at ~${speechEndSec}s)`);
 
   // 4. Generate audio voiceover track
   const narrationFile = path.join(tempDir, 'narration.wav');
@@ -172,14 +170,20 @@ async function main() {
   const height = outputFormat === 'vertical' ? 1920 : 1080;
 
   // In 16:9 Landscape:
-  // Anchor sits on the left/center (X: 120, Y: 180, scale 700x700)
-  // Side Projection Screen sits on the right (X: 960, Y: 160, width 860, height 520)
+  // Anchor sits on the left/center (X: 100, Y: 170, scale 680x680)
+  // Side Projection Screen sits on the right (X: 920, Y: 180, width 900, height 460)
   const isLandscape = outputFormat !== 'vertical';
-  const presenterScale = isLandscape ? '680:680' : '620:620';
+  const pSize = isLandscape ? 680 : 620;
   const presenterX = isLandscape ? '100' : '(W-w)/2';
   const presenterY = isLandscape ? '170' : '220';
 
-  console.log(`🎥 Rendering ${outputFormat} (${width}x${height}) broadcast video matching storyboard...`);
+  // Calculate precise relative mouth position on presenter box (centered at x: 50%, y: 55.2%)
+  const mouthW = Math.round(pSize * 0.135);
+  const mouthH = Math.round(pSize * 0.058);
+  const mouthRelX = Math.round(pSize * 0.50 - mouthW / 2);
+  const mouthRelY = Math.round(pSize * 0.552 - mouthH / 2);
+
+  console.log(`🎥 Rendering ${outputFormat} (${width}x${height}) broadcast video with stable anchor portrait & organic lip-sync...`);
 
   // Sanitize text strings for ffmpeg drawtext filter
   const cleanFfmpegText = (str) => str.replace(/[:\\'%]/g, ' ').replace(/"/g, '').trim();
@@ -200,13 +204,14 @@ async function main() {
     `[bg]drawbox=x=0:y=0:w=${width}:h=${height}:color=0x064e3b@0.22:t=fill[bg_glow]`,
     `[bg_glow]drawgrid=width=90:height=90:thickness=1:color=0x1e293b@0.25[grid_bg]`,
 
-    // Presenter 2x2 sprite lip-flap animation
-    `[1:v]scale=${presenterScale}[idle_scaled]`,
-    `[2:v]scale=${presenterScale}[speaking_scaled]`,
-    `[idle_scaled][speaking_scaled]blend=all_expr='if(lt(mod(T*4.5,2),1),A,B)'[presenter_anim]`,
-    `[grid_bg][presenter_anim]overlay=x='${presenterX}':y='${presenterY}':shortest=1[studio_stage]`,
+    // Presenter Stable Anchor Portrait + Organic Articulated Mouth Overlay
+    // Anchor portrait never glitches or jumps (Zero disappearing books, zero body shifts)
+    `[1:v]scale=${pSize}:${pSize}[presenter_base]`,
+    `[2:v]scale=${mouthW}:${mouthH}[mouth_scaled]`,
+    `[presenter_base][mouth_scaled]overlay=x=${mouthRelX}:y=${mouthRelY}:enable='between(t,0.3,${speechEndSec})*lt(mod(t*4.2,1),0.52)'[presenter_articulated]`,
+    `[grid_bg][presenter_articulated]overlay=x='${presenterX}':y='${presenterY}':shortest=1[studio_stage]`,
 
-    // Side Projection Card on Right (Landscape only)
+    // Side Projection Card on Right (Landscape only, matching Storyboard)
     ...(isLandscape ? [
       // Projection Glass Card Background
       `[studio_stage]drawbox=x=920:y=180:w=900:h=460:color=0x0f172a@0.90:t=fill[proj_card]`,
@@ -227,11 +232,11 @@ async function main() {
       `[studio_stage]null[stage_with_card]`
     ]),
 
-    // Top-Right Watermark (Matching Storyboard 9JA BEACON LIVE)
-    `[stage_with_card]drawbox=x=${width - 290}:y=40:w=160:h=44:color=0x0f172a@0.95:t=fill[wm_bg]`,
-    `[wm_bg]drawtext=text='9JA BEACON':fontcolor=white:fontsize=20:x=${width - 275}:y=52[wm_text]`,
-    `[wm_text]drawbox=x=${width - 120}:y=40:w=80:h=44:color=0xdc2626:t=fill[live_box]`,
-    `[live_box]drawtext=text='LIVE':fontcolor=white:fontsize=20:x=${width - 102}:y=52[live_text]`,
+    // Top-Left Watermark (Matching User Storyboard: Top-left of presenter)
+    `[stage_with_card]drawbox=x=80:y=60:w=160:h=44:color=0x0f172a@0.95:t=fill[wm_bg]`,
+    `[wm_bg]drawtext=text='9JA BEACON':fontcolor=white:fontsize=20:x=95:y=72[wm_text]`,
+    `[wm_text]drawbox=x=240:y=60:w=80:h=44:color=0xdc2626:t=fill[live_box]`,
+    `[live_box]drawtext=text='LIVE':fontcolor=white:fontsize=20:x=258:y=72[live_text]`,
 
     // Lower-Third News Strap:
     // 1. Red BREAKING NEWS Badge Box
@@ -243,19 +248,19 @@ async function main() {
     `[head_box]drawbox=x=60:y=${height - 184}:w=6:h=74:color=0x10b981:t=fill[head_accent]`,
     `[head_accent]drawtext=text='${safeHeadline}':fontcolor=white:fontsize=28:x=85:y=${height - 158}[head_text]`,
 
-    // 3. Domain & Slogan Underneath Headline
+    // 3. Domain & Slogan Underneath Headline (Matching User Storyboard)
     `[head_text]drawbox=x=60:y=${height - 108}:w=${width - 120}:h=46:color=0x020617@0.98:t=fill[sub_box]`,
-    `[sub_box]drawtext=text='Stay informed | www.9jabeacon.name.ng - Your trusted independent newsroom':fontcolor=0x94a3b8:fontsize=18:x=85:y=${height - 94}[sub_text]`,
+    `[sub_box]drawtext=text='Stay informed | www.9jabeacon.name.ng - Nigeria Independent Newsroom':fontcolor=0x94a3b8:fontsize=18:x=85:y=${height - 94}[sub_text]`,
 
     // 4. Anchor Tag
-    `[sub_text]drawtext=text='${safePresenterName}':fontcolor=0x34d399:fontsize=15:x=${width - 480}:y=${height - 94}[final_video]`
+    `[sub_text]drawtext=text='${safePresenterName}':fontcolor=0x34d399:fontsize=15:x=${width - 500}:y=${height - 94}[final_video]`
   ].join(';');
 
   const ffmpegCmd = [
     'ffmpeg -y',
     `-f lavfi -i "color=c=#070b14:s=${width}x${height}:d=${durationSec}"`,
-    `-loop 1 -i "${idlePose}"`,
-    `-loop 1 -i "${speakingPose}"`,
+    `-loop 1 -i "${spritePath}"`,
+    `-loop 1 -i "${mouthOverlayPath}"`,
     `-i "${finalAudioFile}"`,
     `-filter_complex "${filterScript}"`,
     '-map "[final_video]"',

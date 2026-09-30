@@ -99,29 +99,41 @@
   }
 }
 
-/* Presenter Option A: Dynamic Lip-Sync Flap (Alternating between mouth-closed and mouth-open) */
-@keyframes presenter-lip-flap {
-  0%, 48% {
-    background-position: 100% 0%; /* Open mouth / active speaking */
+/* Presenter Option A: Dynamic Organic Lip-Sync (Smooth articulated mouth opening/closing on static anchor base) */
+@keyframes presenter-mouth-articulate {
+  0%, 100% {
+    transform: translate(-50%, -50%) scaleY(0.15) scaleX(0.88);
+    opacity: 0.15;
   }
-  50%, 98% {
-    background-position: 0% 0%; /* Closed mouth / idle pause */
+  20% {
+    transform: translate(-50%, -50%) scaleY(0.85) scaleX(1.0);
+    opacity: 0.98;
   }
-  100% {
-    background-position: 100% 0%;
+  45% {
+    transform: translate(-50%, -50%) scaleY(0.35) scaleX(0.92);
+    opacity: 0.55;
+  }
+  70% {
+    transform: translate(-50%, -50%) scaleY(1.02) scaleX(1.04);
+    opacity: 1;
+  }
+  88% {
+    transform: translate(-50%, -50%) scaleY(0.42) scaleX(0.95);
+    opacity: 0.7;
   }
 }
 
 .presenter-viewport-live {
-  animation: presenter-breathe 3.6s ease-in-out infinite;
+  animation: presenter-breathe 4s ease-in-out infinite;
 }
 
 .presenter-viewport-speaking {
-  animation: presenter-speak-nod 1.6s ease-in-out infinite;
+  animation: presenter-speak-nod 1.8s ease-in-out infinite;
 }
 
-.presenter-lip-active {
-  animation: presenter-lip-flap 0.22s step-end infinite;
+.presenter-mouth-active {
+  opacity: 1 !important;
+  animation: presenter-mouth-articulate 0.22s ease-in-out infinite;
 }
 
 /* Unobtrusive Native Banner Headings for Paragraphs */

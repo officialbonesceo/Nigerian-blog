@@ -30,15 +30,6 @@ const sizeClasses = {
   xl: 'w-44 sm:w-64 h-44 sm:h-64 rounded-2xl sm:rounded-3xl'
 };
 
-// 2x2 sprite grid coordinates
-const poseCoords: Record<PresenterPose, string> = {
-  idle: '0% 0%',
-  speaking: '100% 0%',
-  breaking: '0% 100%',
-  wrap: '100% 100%'
-};
-
-const currentCoord = poseCoords[pose] || '0% 0%';
 ---
 
 <div 
@@ -55,18 +46,43 @@ const currentCoord = poseCoords[pose] || '0% 0%';
   <div 
     class={`presenter-sprite-viewport presenter-viewport-live relative overflow-hidden shadow-md border-2 border-emerald-500/20 dark:border-emerald-500/30 bg-slate-100 dark:bg-slate-800 transition-all duration-300 ${sizeClasses[size]}`}
   >
-    <!-- Sprite background layer (using 200% x 200% zoom to isolate 1 quadrant of the 2x2 sheet) -->
+    <!-- Stable Portrait Anchor Base -->
     <div 
-      class="presenter-sprite-image absolute inset-0 w-full h-full bg-no-repeat transition-[background-position] duration-150"
-      style={`
-        background-image: url('${presenter.sprite_url}');
-        background-size: 200% 200%;
-        background-position: ${currentCoord};
-      `}
-      title={`${presenter.name} - ${pose.toUpperCase()} pose`}
+      class="presenter-sprite-image absolute inset-0 w-full h-full bg-cover bg-center transition-transform duration-300"
+      style={`background-image: url('${presenter.sprite_url}');`}
+      title={`${presenter.name}`}
       role="img"
       aria-label={`${presenter.name} news presenter avatar in ${pose} pose`}
     ></div>
+
+    <!-- Articulated Natural Lip-Sync Aperture Overlay (Opens & closes in rhythm with speech) -->
+    <div 
+      class={`presenter-mouth-aperture absolute pointer-events-none transition-opacity duration-150 ${pose === 'speaking' ? 'presenter-mouth-active' : 'opacity-0'}`}
+      style="left: 50%; top: 55.2%; width: 13.5%; height: 5.8%; transform: translate(-50%, -50%);"
+    >
+      <svg viewBox="0 0 160 80" class="w-full h-full drop-shadow-xs overflow-visible">
+        <defs>
+          <linearGradient id={`lipShine_${presenter.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#6e242d" stop-opacity="0.95" />
+            <stop offset="50%" stop-color="#8c2f3b" stop-opacity="0.8" />
+            <stop offset="100%" stop-color="#4a151b" stop-opacity="0.95" />
+          </linearGradient>
+          <radialGradient id={`mouthCavity_${presenter.id}`} cx="50%" cy="65%" r="50%">
+            <stop offset="0%" stop-color="#0f0304" />
+            <stop offset="60%" stop-color="#24070b" />
+            <stop offset="100%" stop-color="#3b1016" />
+          </radialGradient>
+        </defs>
+        <!-- Outer Lip Margin -->
+        <path d="M 15 38 Q 80 18 145 38 Q 120 68 80 70 Q 40 68 15 38 Z" fill={`url(#lipShine_${presenter.id})`} />
+        <!-- Open Oral Cavity -->
+        <path d="M 26 39 Q 80 26 134 39 Q 115 63 80 65 Q 45 63 26 39 Z" fill={`url(#mouthCavity_${presenter.id})`} />
+        <!-- Top Teeth Edge -->
+        <path d="M 42 38 Q 80 33 118 38 Q 112 46 80 47 Q 48 46 42 38 Z" fill="#f8fafc" opacity="0.92" />
+        <!-- Lower tongue pink highlight -->
+        <ellipse cx="80" cy="58" rx="28" ry="5" fill="#a83f4d" opacity="0.5" />
+      </svg>
+    </div>
 
     <!-- Live On-Air Pill (when speaking or breaking) -->
     <div 
@@ -159,21 +175,20 @@ const currentCoord = poseCoords[pose] || '0% 0%';
       const poseButtons = container.querySelectorAll('.pose-btn');
       const motionTestBtn = container.querySelector('.presenter-motion-test-btn');
 
-      const coords: Record<string, string> = {
-        idle: '0% 0%',
-        speaking: '100% 0%',
-        breaking: '0% 100%',
-        wrap: '100% 100%'
-      };
+      const mouthAperture = container.querySelector('.presenter-mouth-aperture') as HTMLElement | null;
 
       const setPose = (targetPose: string) => {
         if (!imageEl) return;
-        // Stop any speech lip-flap when explicitly setting a pose
-        imageEl.classList.remove('presenter-lip-active');
+        // Stop speech animation
+        mouthAperture?.classList.remove('presenter-mouth-active');
         viewportEl?.classList.remove('presenter-viewport-speaking');
 
-        imageEl.style.backgroundPosition = coords[targetPose] || '0% 0%';
         container.setAttribute('data-current-pose', targetPose);
+
+        if (targetPose === 'speaking') {
+          mouthAperture?.classList.add('presenter-mouth-active');
+          viewportEl?.classList.add('presenter-viewport-speaking');
+        }
 
         poseButtons.forEach((b) => {
           b.className = 'pose-btn px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800';
@@ -208,7 +223,7 @@ const currentCoord = poseCoords[pose] || '0% 0%';
         });
       });
 
-      // Option A: Live Motion and Lip Flap Test
+      // Option A: Live Motion and Lip-Sync Test
       motionTestBtn?.addEventListener('click', () => {
         if (!('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
@@ -218,15 +233,15 @@ const currentCoord = poseCoords[pose] || '0% 0%';
         const pitch = parseFloat(container.getAttribute('data-presenter-pitch') || '1.0');
         const rate = parseFloat(container.getAttribute('data-presenter-rate') || '1.0');
 
-        // Activate Option A Motion & Lip-Sync Animation
+        // Activate Natural Lip-Sync & Speaking Head Nod (Zero Body Jump)
         viewportEl?.classList.add('presenter-viewport-speaking');
-        imageEl?.classList.add('presenter-lip-active');
+        mouthAperture?.classList.add('presenter-mouth-active');
         if (indicatorEl && indicatorText) {
           indicatorEl.className = 'presenter-live-indicator absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider backdrop-blur-xs bg-emerald-600/90 text-white';
           indicatorText.textContent = 'LIVE';
         }
 
-        const sampleText = `Hello, I am ${name}. Testing Option A motion sync. The sprite alternates between resting and speaking poses to simulate live presentation speech.`;
+        const sampleText = `Hello, I am ${name}. Testing natural broadcast lip-sync. The character remains stable while speech cadence articulates seamlessly.`;
         const utterance = new SpeechSynthesisUtterance(sampleText);
         utterance.pitch = pitch;
         utterance.rate = rate;
@@ -240,14 +255,14 @@ const currentCoord = poseCoords[pose] || '0% 0%';
         if (preferred) utterance.voice = preferred;
 
         utterance.onend = () => {
-          imageEl?.classList.remove('presenter-lip-active');
+          mouthAperture?.classList.remove('presenter-mouth-active');
           viewportEl?.classList.remove('presenter-viewport-speaking');
           setPose('wrap');
           setTimeout(() => setPose('idle'), 2500);
         };
 
         utterance.onerror = () => {
-          imageEl?.classList.remove('presenter-lip-active');
+          mouthAperture?.classList.remove('presenter-mouth-active');
           viewportEl?.classList.remove('presenter-viewport-speaking');
           setPose('idle');
         };
