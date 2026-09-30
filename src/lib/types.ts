@@ -167,12 +167,17 @@ export interface VideoQueryOptions {
 }
 
 export type PresenterPose = 'idle' | 'speaking' | 'breaking' | 'wrap';
+export type PresenterGaze = 'audience' | 'book' | 'screen';
+export type PresenterArmState = 'desk_rest' | 'gesture_screen' | 'hold_notes';
+export type BroadcastStageMode = 'studio' | 'b_roll';
 
 export interface PresenterPoseCoordinates {
   x: string;
   y: string;
   name: string;
   description: string;
+  gaze?: PresenterGaze;
+  armState?: PresenterArmState;
 }
 
 export interface NewsPresenter {

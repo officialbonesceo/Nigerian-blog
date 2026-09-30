@@ -2685,58 +2685,247 @@ for (const s of autoSettings) {
 
             <!-- STAGE CENTER: ANCHOR SEATED AT DESK + SIDE PROJECTION SCREEN -->
             <div class="relative z-10 flex-1 grid grid-cols-12 gap-3 items-center my-auto min-h-0">
-              <!-- Left/Center: Anchor Seated at Newsroom Desk -->
+              <!-- Left/Center: Modular Articulated Anchor Seated at Newsroom Desk -->
               <div class="col-span-6 sm:col-span-5 flex flex-col items-center justify-center">
                 <div 
                   id="wb-presenter-box" 
-                  class="relative w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl transition-all duration-200 bg-slate-900 presenter-viewport-live"
+                  class="relative w-40 h-40 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl transition-all duration-200 bg-gradient-to-b from-slate-900 via-slate-950 to-black select-none"
                 >
-                  <!-- Stable Single Portrait Anchor Base (Zero jump, zero flicker, zero disappearing book) -->
-                  <div 
-                    id="wb-sprite-canvas" 
-                    class="w-full h-full bg-cover bg-center transition-transform duration-300"
-                    style="background-image: url('/presenters/femi.jpg'); background-position: center center !important;"
-                  ></div>
+                  <!-- SVG Modular Broadcast Puppet (Switchable Heads, Arms, Desk Props, and Locked Mouth) -->
+                  <svg id="wb-puppet-svg" viewBox="0 0 500 500" class="w-full h-full overflow-visible drop-shadow-md">
+                    <defs>
+                      <linearGradient id="wbSkinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop id="wbSkinStop1" offset="0%" stop-color="#5c3317" />
+                        <stop id="wbSkinStop2" offset="100%" stop-color="#3d200d" />
+                      </linearGradient>
+                      <linearGradient id="wbSuitGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop id="wbSuitStop1" offset="0%" stop-color="#1e293b" />
+                        <stop id="wbSuitStop2" offset="100%" stop-color="#0f172a" />
+                      </linearGradient>
+                      <linearGradient id="wbDeskVeneer" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#1e293b" />
+                        <stop offset="30%" stop-color="#0f172a" />
+                        <stop offset="100%" stop-color="#020617" />
+                      </linearGradient>
+                      <linearGradient id="wbDeskRim" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#10b981" stop-opacity="0.2" />
+                        <stop offset="50%" stop-color="#34d399" stop-opacity="0.9" />
+                        <stop offset="100%" stop-color="#10b981" stop-opacity="0.2" />
+                      </linearGradient>
+                      <linearGradient id="wbBookGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#0f172a" />
+                        <stop offset="50%" stop-color="#1e293b" />
+                        <stop offset="100%" stop-color="#0f172a" />
+                      </linearGradient>
+                    </defs>
 
-                  <!-- Articulated Natural Lip-Sync Aperture (Opens and closes dynamically in sync with speech) -->
-                  <div 
-                    id="wb-mouth-aperture" 
-                    class="absolute pointer-events-none transition-opacity duration-150 opacity-0"
-                    style="left: 50%; top: 55.2%; width: 13.5%; height: 5.6%; transform: translate(-50%, -50%);"
-                  >
-                    <svg viewBox="0 0 160 80" class="w-full h-full drop-shadow-xs overflow-visible">
-                      <defs>
-                        <linearGradient id="lipShineAdmin" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stop-color="#6e242d" stop-opacity="0.95" />
-                          <stop offset="50%" stop-color="#8c2f3b" stop-opacity="0.8" />
-                          <stop offset="100%" stop-color="#4a151b" stop-opacity="0.95" />
-                        </linearGradient>
-                        <radialGradient id="mouthCavityAdmin" cx="50%" cy="65%" r="50%">
-                          <stop offset="0%" stop-color="#0f0304" />
-                          <stop offset="60%" stop-color="#24070b" />
-                          <stop offset="100%" stop-color="#3b1016" />
-                        </radialGradient>
-                      </defs>
-                      <path d="M 15 38 Q 80 18 145 38 Q 120 68 80 70 Q 40 68 15 38 Z" fill="url(#lipShineAdmin)" />
-                      <path d="M 26 39 Q 80 26 134 39 Q 115 63 80 65 Q 45 63 26 39 Z" fill="url(#mouthCavityAdmin)" />
-                      <path d="M 42 38 Q 80 33 118 38 Q 112 46 80 47 Q 48 46 42 38 Z" fill="#f8fafc" opacity="0.92" />
-                      <ellipse cx="80" cy="58" rx="28" ry="5" fill="#a83f4d" opacity="0.5" />
-                    </svg>
-                  </div>
+                    <!-- Studio Ambience Halo -->
+                    <circle cx="250" cy="180" r="160" fill="none" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.15" stroke-dasharray="8 6" />
+                    <circle cx="250" cy="180" r="130" fill="none" stroke="#38bdf8" stroke-width="1" stroke-opacity="0.1" />
 
-                  <!-- Active Pose Indicator Overlay -->
-                  <div class="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-slate-950/85 backdrop-blur-xs border border-slate-700/80 text-[9px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
-                    <span id="wb-pose-label">Pose: Idle</span>
+                    <!-- TORSO & SUIT -->
+                    <g id="wb-puppet-torso" class="transition-transform duration-300">
+                      <path id="wb-suit-body" d="M 120 440 L 150 310 Q 190 280 250 280 Q 310 280 350 310 L 380 440 Z" fill="url(#wbSuitGrad)" />
+                      <!-- Shirt -->
+                      <path id="wb-shirt" d="M 215 280 L 250 345 L 285 280 Z" fill="#f8fafc" />
+                      <!-- Tie / Scarf Accents -->
+                      <g id="wb-tie-group">
+                        <path id="wb-tie-body" d="M 243 295 L 257 295 L 260 380 L 250 395 L 240 380 Z" fill="#059669" />
+                        <path id="wb-tie-knot" d="M 242 295 L 258 295 L 255 315 L 245 315 Z" fill="#047857" />
+                      </g>
+                      <!-- Hijab Scarf Overlay (Hidden by default, active for Zainab) -->
+                      <g id="wb-hijab-overlay" class="hidden">
+                        <circle cx="250" cy="330" r="8" fill="#f59e0b" stroke="#b45309" stroke-width="1.5" />
+                      </g>
+                      <!-- Lapels -->
+                      <path id="wb-lapel-l" d="M 175 305 L 225 385 L 210 440 L 140 440 Z" fill="#0f172a" />
+                      <path id="wb-lapel-r" d="M 325 305 L 275 385 L 290 440 L 360 440 Z" fill="#0f172a" />
+                    </g>
+
+                    <!-- SWITCHABLE ARMS & GESTURES -->
+                    <!-- Arm A: Resting on Desk Framing Briefing Book -->
+                    <g id="wb-arms-desk" class="transition-opacity duration-200 opacity-100">
+                      <path id="wb-arm-desk-l" d="M 140 360 Q 145 425 210 435 L 220 415 Q 165 405 160 360 Z" fill="#0f172a" />
+                      <ellipse id="wb-hand-desk-l" cx="218" cy="428" rx="14" ry="9" fill="url(#wbSkinGrad)" transform="rotate(-15 218 428)" />
+                      <path id="wb-arm-desk-r" d="M 360 360 Q 355 425 290 435 L 280 415 Q 335 405 340 360 Z" fill="#0f172a" />
+                      <ellipse id="wb-hand-desk-r" cx="282" cy="428" rx="14" ry="9" fill="url(#wbSkinGrad)" transform="rotate(15 282 428)" />
+                    </g>
+
+                    <!-- Arm B: Pointing Directly Towards Side Screen -->
+                    <g id="wb-arms-point" class="transition-opacity duration-200 opacity-0 pointer-events-none">
+                      <path id="wb-arm-point-l" d="M 140 360 Q 145 425 205 435 L 215 415 Q 165 405 160 360 Z" fill="#0f172a" />
+                      <ellipse id="wb-hand-point-l" cx="212" cy="428" rx="14" ry="9" fill="url(#wbSkinGrad)" transform="rotate(-15 212 428)" />
+                      <!-- Right Arm Raised & Pointing to Screen -->
+                      <path id="wb-arm-point-r" d="M 350 330 Q 395 315 440 280 L 450 300 Q 405 340 355 355 Z" fill="#1e293b" />
+                      <path id="wb-hand-point-r" d="M 440 280 L 465 260 L 472 268 L 448 295 Z" fill="url(#wbSkinGrad)" />
+                      <path id="wb-finger-point" d="M 465 260 L 485 245 L 488 252 L 470 266 Z" fill="url(#wbSkinGrad)" />
+                      <circle cx="468" cy="272" r="6" fill="url(#wbSkinGrad)" />
+                    </g>
+
+                    <!-- Arm C: Holding & Consulting Briefing Notes on Desk -->
+                    <g id="wb-arms-hold" class="transition-opacity duration-200 opacity-0 pointer-events-none">
+                      <path id="wb-arm-hold-l" d="M 145 360 Q 160 415 200 425 L 210 405 Q 175 395 165 360 Z" fill="#0f172a" />
+                      <ellipse id="wb-hand-hold-l" cx="204" cy="416" rx="12" ry="8" fill="url(#wbSkinGrad)" transform="rotate(25 204 416)" />
+                      <path d="M 206 410 Q 215 412 216 418" stroke="#3d200d" stroke-width="2" fill="none" />
+                      <path id="wb-arm-hold-r" d="M 355 360 Q 340 415 300 425 L 290 405 Q 325 395 335 360 Z" fill="#0f172a" />
+                      <ellipse id="wb-hand-hold-r" cx="296" cy="416" rx="12" ry="8" fill="url(#wbSkinGrad)" transform="rotate(-25 296 416)" />
+                      <rect x="290" y="405" width="22" height="4" rx="2" fill="#f59e0b" transform="rotate(-35 290 405)" />
+                    </g>
+
+                    <!-- SWITCHABLE HEADS & GAZE DIRECTIONS -->
+                    <!-- HEAD GAZE 1: AUDIENCE (Direct forward address) -->
+                    <g id="wb-head-audience" class="transition-opacity duration-200 opacity-100">
+                      <path id="wb-neck-aud" d="M 225 260 L 225 290 Q 250 300 275 290 L 275 260 Z" fill="url(#wbSkinGrad)" />
+                      <ellipse id="wb-face-aud" cx="250" cy="195" rx="60" ry="72" fill="url(#wbSkinGrad)" />
+                      <!-- Hair & Headwear Layer -->
+                      <g id="wb-hair-aud">
+                        <path id="wb-hair-fade-aud" d="M 190 180 C 190 125 310 125 310 180 L 305 160 C 290 135 210 135 195 160 Z" fill="#09090b" />
+                      </g>
+                      <!-- Hijab Scarf Layer for Zainab (Audience) -->
+                      <g id="wb-hijab-aud" class="hidden">
+                        <path d="M 180 185 C 180 110 320 110 320 185 C 320 250 310 285 285 295 C 270 300 230 300 215 295 C 190 285 180 250 180 185 Z" fill="#134e4a" opacity="0.95" />
+                        <path d="M 205 160 C 215 140 285 140 295 160 C 305 195 300 235 250 250 C 200 235 195 195 205 160 Z" fill="url(#wbSkinGrad)" />
+                        <path d="M 195 155 Q 250 138 305 155" fill="none" stroke="#f59e0b" stroke-width="2.5" />
+                      </g>
+                      <!-- Eyes (Looking forward) -->
+                      <ellipse cx="228" cy="188" rx="9" ry="6" fill="#f8fafc" />
+                      <circle cx="228" cy="188" r="4" fill="#18181b" />
+                      <circle cx="229" cy="186" r="1.5" fill="#ffffff" />
+                      <ellipse cx="272" cy="188" rx="9" ry="6" fill="#f8fafc" />
+                      <circle cx="272" cy="188" r="4" fill="#18181b" />
+                      <circle cx="273" cy="186" r="1.5" fill="#ffffff" />
+                      <!-- Eyebrows -->
+                      <path d="M 218 178 Q 230 173 240 177" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                      <path d="M 260 177 Q 270 173 282 178" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                      <!-- Glasses Layer (Tunde) -->
+                      <g id="wb-glasses-aud" class="hidden">
+                        <rect x="215" y="180" width="28" height="18" rx="3" fill="none" stroke="#0f172a" stroke-width="2.5" />
+                        <rect x="257" y="180" width="28" height="18" rx="3" fill="none" stroke="#0f172a" stroke-width="2.5" />
+                        <path d="M 243 186 L 257 186" stroke="#0f172a" stroke-width="2.5" />
+                      </g>
+                      <!-- Nose -->
+                      <path d="M 248 194 Q 250 208 244 214 Q 250 216 256 214" stroke="#3d200d" stroke-width="2" fill="none" stroke-linecap="round" />
+                      <!-- Articulated Mouth (Directly on face, perfectly locked) -->
+                      <g id="wb-mouth-aud-group">
+                        <path id="wb-mouth-aud-closed" d="M 234 232 Q 250 236 266 232" stroke="#451a03" stroke-width="3" fill="none" stroke-linecap="round" class="transition-opacity duration-150 opacity-100" />
+                        <g id="wb-mouth-aud-open" class="transition-opacity duration-150 opacity-0">
+                          <path d="M 232 230 Q 250 224 268 230 Q 262 248 250 248 Q 238 248 232 230 Z" fill="#7f1d1d" />
+                          <path d="M 235 231 Q 250 227 265 231 Q 260 245 250 245 Q 240 245 235 231 Z" fill="#260609" />
+                          <path d="M 239 231 Q 250 228 261 231 Q 259 236 250 236 Q 241 236 239 231 Z" fill="#ffffff" />
+                          <ellipse cx="250" cy="242" rx="7" ry="3" fill="#f43f5e" opacity="0.8" />
+                        </g>
+                      </g>
+                    </g>
+
+                    <!-- HEAD GAZE 2: BOOK ON TABLE (Head tilted down looking at briefing notes) -->
+                    <g id="wb-head-book" class="transition-opacity duration-200 opacity-0 pointer-events-none">
+                      <path d="M 226 264 L 226 295 Q 250 305 274 295 L 274 264 Z" fill="url(#wbSkinGrad)" />
+                      <ellipse cx="250" cy="204" rx="58" ry="70" fill="url(#wbSkinGrad)" />
+                      <g id="wb-hair-book">
+                        <path id="wb-hair-fade-book" d="M 192 190 C 192 135 308 135 308 190 L 304 170 C 288 145 212 145 196 170 Z" fill="#09090b" />
+                      </g>
+                      <!-- Hijab Scarf Layer for Zainab (Book) -->
+                      <g id="wb-hijab-book" class="hidden">
+                        <path d="M 184 195 C 184 120 316 120 316 195 C 316 260 306 295 284 305 C 270 310 230 310 216 305 C 194 295 184 260 184 195 Z" fill="#134e4a" opacity="0.95" />
+                        <path d="M 207 172 C 217 152 283 152 293 172 C 301 205 295 245 250 258 C 205 245 199 205 207 172 Z" fill="url(#wbSkinGrad)" />
+                        <path d="M 197 165 Q 250 148 303 165" fill="none" stroke="#f59e0b" stroke-width="2.5" />
+                      </g>
+                      <!-- Eyes Cast Downward at Desk Notes -->
+                      <ellipse cx="228" cy="198" rx="8" ry="4" fill="#f8fafc" />
+                      <path d="M 220 196 Q 228 202 236 196" stroke="#18181b" stroke-width="2" fill="none" />
+                      <circle cx="228" cy="199" r="2.5" fill="#18181b" />
+                      <ellipse cx="272" cy="198" rx="8" ry="4" fill="#f8fafc" />
+                      <path d="M 264 196 Q 272 202 280 196" stroke="#18181b" stroke-width="2" fill="none" />
+                      <circle cx="272" cy="199" r="2.5" fill="#18181b" />
+                      <path d="M 218 190 Q 230 188 238 192" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                      <path d="M 262 192 Q 270 188 282 190" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                      <path d="M 248 204 L 246 220 L 254 220" stroke="#3d200d" stroke-width="2" fill="none" stroke-linecap="round" />
+                      <!-- Articulated Mouth for Downward Gaze -->
+                      <g id="wb-mouth-book-group">
+                        <path id="wb-mouth-book-closed" d="M 236 238 Q 250 242 264 238" stroke="#451a03" stroke-width="3" fill="none" stroke-linecap="round" class="transition-opacity duration-150 opacity-100" />
+                        <g id="wb-mouth-book-open" class="transition-opacity duration-150 opacity-0">
+                          <path d="M 235 237 Q 250 233 265 237 Q 260 250 250 250 Q 240 250 235 237 Z" fill="#7f1d1d" />
+                          <path d="M 238 238 Q 250 235 262 238 Q 258 247 250 247 Q 242 247 238 238 Z" fill="#260609" />
+                          <path d="M 241 238 Q 250 236 259 238 Q 257 241 250 241 Q 243 241 241 238 Z" fill="#ffffff" />
+                        </g>
+                      </g>
+                    </g>
+
+                    <!-- HEAD GAZE 3: SIDE SCREEN (Turned looking towards right display screen) -->
+                    <g id="wb-head-screen" class="transition-opacity duration-200 opacity-0 pointer-events-none">
+                      <path d="M 232 260 L 235 290 Q 260 300 280 290 L 278 260 Z" fill="url(#wbSkinGrad)" />
+                      <ellipse cx="262" cy="194" rx="56" ry="72" fill="url(#wbSkinGrad)" />
+                      <g id="wb-hair-screen">
+                        <path id="wb-hair-fade-screen" d="M 205 180 C 205 125 320 125 320 180 L 315 160 C 300 135 225 135 210 160 Z" fill="#09090b" />
+                      </g>
+                      <!-- Hijab Scarf Layer for Zainab (Screen) -->
+                      <g id="wb-hijab-screen" class="hidden">
+                        <path d="M 194 185 C 194 110 330 110 330 185 C 330 250 318 285 292 295 C 275 300 235 300 220 295 C 200 285 194 250 194 185 Z" fill="#134e4a" opacity="0.95" />
+                        <path d="M 220 160 C 230 140 298 140 306 160 C 314 195 308 235 264 250 C 218 235 212 195 220 160 Z" fill="url(#wbSkinGrad)" />
+                      </g>
+                      <!-- Eyes Looking Rightward to Screen -->
+                      <ellipse cx="246" cy="188" rx="8" ry="6" fill="#f8fafc" />
+                      <circle cx="250" cy="188" r="4" fill="#18181b" />
+                      <ellipse cx="286" cy="188" rx="8" ry="6" fill="#f8fafc" />
+                      <circle cx="290" cy="188" r="4" fill="#18181b" />
+                      <path d="M 238 178 Q 248 174 258 178" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                      <path d="M 278 176 Q 288 172 298 177" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                      <path d="M 268 192 L 274 212 L 268 214" stroke="#3d200d" stroke-width="2" fill="none" stroke-linecap="round" />
+                      <!-- Articulated Mouth Turned to Screen -->
+                      <g id="wb-mouth-screen-group">
+                        <path id="wb-mouth-screen-closed" d="M 252 232 Q 266 235 280 230" stroke="#451a03" stroke-width="3" fill="none" stroke-linecap="round" class="transition-opacity duration-150 opacity-100" />
+                        <g id="wb-mouth-screen-open" class="transition-opacity duration-150 opacity-0">
+                          <path d="M 250 231 Q 266 226 280 229 Q 275 244 265 245 Q 256 245 250 231 Z" fill="#7f1d1d" />
+                          <path d="M 253 232 Q 266 228 277 231 Q 273 241 265 242 Q 258 242 253 232 Z" fill="#260609" />
+                          <path d="M 256 232 Q 266 229 274 231 Q 272 235 265 235 Q 260 235 256 232 Z" fill="#ffffff" />
+                        </g>
+                      </g>
+                    </g>
+
+                    <!-- DESK & BRIEFING PROPS FOREGROUND -->
+                    <g id="wb-puppet-desk">
+                      <path d="M 20 420 L 480 420 L 500 500 L 0 500 Z" fill="url(#wbDeskVeneer)" />
+                      <line x1="20" y1="420" x2="480" y2="420" stroke="url(#wbDeskRim)" stroke-width="4" />
+                      <!-- Briefing Book Lying Flat on Table -->
+                      <g id="wb-briefing-book">
+                        <polygon points="175,426 325,426 345,488 155,488" fill="url(#wbBookGrad)" stroke="#334155" stroke-width="1.5" />
+                        <polygon points="185,430 315,430 330,482 170,482" fill="#f8fafc" />
+                        <rect x="195" y="438" width="110" height="4" rx="1" fill="#047857" />
+                        <line x1="195" y1="448" x2="305" y2="448" stroke="#64748b" stroke-width="2" stroke-linecap="round" />
+                        <line x1="195" y1="456" x2="295" y2="456" stroke="#64748b" stroke-width="2" stroke-linecap="round" />
+                        <line x1="195" y1="464" x2="280" y2="464" stroke="#64748b" stroke-width="2" stroke-linecap="round" />
+                        <line x1="195" y1="472" x2="290" y2="472" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 3" />
+                      </g>
+                      <!-- Studio Gooseneck Mic -->
+                      <ellipse cx="90" cy="455" rx="14" ry="6" fill="#09090b" stroke="#334155" stroke-width="1" />
+                      <path d="M 90 455 Q 85 410 115 385" fill="none" stroke="#475569" stroke-width="4" stroke-linecap="round" />
+                      <rect x="110" y="372" width="22" height="14" rx="4" fill="#09090b" stroke="#10b981" stroke-width="1.5" transform="rotate(-25 110 372)" />
+                      <!-- Brass Desk Nameplate -->
+                      <polygon points="190,490 310,490 305,498 195,498" fill="#d97706" />
+                      <text id="wb-desk-nameplate" x="250" y="496" font-size="7" font-weight="900" font-family="monospace" fill="#ffffff" text-anchor="middle" letter-spacing="1">
+                        FEMI ADELEKE
+                      </text>
+                    </g>
+                  </svg>
+
+                  <!-- Active Pose & Gaze Overlay Badges -->
+                  <div class="absolute top-2 right-2 flex flex-col items-end gap-1">
+                    <span id="wb-pose-label" class="px-1.5 py-0.5 rounded-md bg-slate-950/85 backdrop-blur-xs border border-slate-700/80 text-[9px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
+                      Pose: Idle
+                    </span>
+                    <span id="wb-gaze-badge" class="px-1.5 py-0.5 rounded-md bg-slate-900/90 border border-slate-700 text-[8px] font-mono text-slate-300 uppercase">
+                      Gaze: Audience
+                    </span>
                   </div>
                 </div>
 
                 <!-- Virtual Studio Desk Shadow & Reflection -->
-                <div class="w-40 sm:w-48 h-2.5 bg-emerald-950/50 rounded-full blur-xs mt-1"></div>
+                <div class="w-44 sm:w-56 h-2.5 bg-emerald-950/50 rounded-full blur-xs mt-1"></div>
               </div>
 
               <!-- Right: Side Projection Screen (Matching Storyboard Panel 4 & 7) -->
               <div class="col-span-6 sm:col-span-7 flex flex-col justify-center">
-                <div class="p-3 sm:p-4 rounded-xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-2xl space-y-2 relative overflow-hidden group">
+                <div id="wb-projection-container" class="p-3 sm:p-4 rounded-xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-2xl space-y-2 relative overflow-hidden group transition-all duration-300">
                   <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600"></div>
 
                   <!-- Projection Screen Header -->
@@ -2747,7 +2936,7 @@ for (const s of autoSettings) {
                         THE BIG PICTURE
                       </span>
                     </div>
-                    <span class="text-[9px] font-mono text-slate-400 px-1.5 py-0.5 rounded-sm bg-slate-950 border border-slate-800">
+                    <span id="wb-screen-status-tag" class="text-[9px] font-mono text-slate-400 px-1.5 py-0.5 rounded-sm bg-slate-950 border border-slate-800">
                       SIDE PROJECTION
                     </span>
                   </div>
@@ -2773,6 +2962,66 @@ for (const s of autoSettings) {
                     <span class="text-emerald-400">VERIFIED STORY</span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- B-ROLL / INTERSTITIAL CUTAWAY OVERLAY LAYER (In-Between News Pause / Field Video Cut) -->
+            <div 
+              id="wb-broll-layer" 
+              class="absolute inset-0 z-20 transition-all duration-300 pointer-events-none opacity-0 flex flex-col justify-between p-4 bg-slate-950/95 backdrop-blur-md border-2 border-emerald-500/40"
+            >
+              <!-- Top Broadcast Interstitial Header -->
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="px-2.5 py-1 rounded bg-red-600 text-white font-mono font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md">
+                    <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                    <span>LIVE REPORT</span>
+                  </div>
+                  <span id="wb-broll-tag" class="text-xs font-mono font-bold text-emerald-400 tracking-wider">
+                    VERIFIED FOOTAGE // ARCHIVE DISPATCH
+                  </span>
+                </div>
+                <div class="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-[10px] font-mono text-slate-300">
+                  INTERSTITIAL B-ROLL CUT
+                </div>
+              </div>
+
+              <!-- Center Graphic Simulation / Simulated Satellite Field Dispatch -->
+              <div class="my-auto flex flex-col items-center justify-center text-center p-6 space-y-3 relative overflow-hidden rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950/40">
+                <!-- Digital Scanline Grid -->
+                <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                
+                <div class="relative z-10 flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <svg class="w-6 h-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div class="text-left">
+                    <h4 id="wb-broll-headline" class="text-sm sm:text-base font-black text-white">
+                      FIELD TRANSMISSION: ON-SCENE DEVELOPMENT
+                    </h4>
+                    <p class="text-xs font-mono text-emerald-400">
+                      Anchor voiceover narration active • Returning to desk shortly
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Simulated Audio Waveform Bar during B-roll narration -->
+                <div class="flex items-center gap-1 h-6 pt-2">
+                  <span class="w-1 h-3 bg-emerald-400 animate-pulse rounded-full"></span>
+                  <span class="w-1 h-5 bg-emerald-400 animate-pulse rounded-full delay-75"></span>
+                  <span class="w-1 h-6 bg-emerald-400 animate-pulse rounded-full delay-150"></span>
+                  <span class="w-1 h-4 bg-emerald-400 animate-pulse rounded-full delay-100"></span>
+                  <span class="w-1 h-5 bg-emerald-400 animate-pulse rounded-full delay-200"></span>
+                  <span class="w-1 h-2 bg-emerald-400 animate-pulse rounded-full"></span>
+                </div>
+              </div>
+
+              <!-- Lower Ticker Tag -->
+              <div class="flex items-center justify-between text-[10px] font-mono text-slate-400 border-t border-slate-800 pt-2">
+                <span>9JABEACON SPECIAL FIELD COVERAGE</span>
+                <span class="text-emerald-400">CONTINUOUS AUDIO BED</span>
               </div>
             </div>
 
@@ -2865,8 +3114,26 @@ for (const s of autoSettings) {
               <div class="flex justify-between text-[10px] font-mono text-slate-500">
                 <span>00:00.000 (Standby)</span>
                 <span>Scrub to inspect pose, lip-sync & projection</span>
-                <span id="wb-total-time-label">00:00.000</span>
+            <!-- Interactive Broadcast Puppet Gesture & Cutaway Overrides -->
+            <div class="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono">
+              <div class="flex items-center gap-1">
+                <span class="text-slate-400 font-bold uppercase">Gaze:</span>
+                <button type="button" onclick="setWorkbenchGaze('audience')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Audience</button>
+                <button type="button" onclick="setWorkbenchGaze('book')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Book / Desk</button>
+                <button type="button" onclick="setWorkbenchGaze('screen')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Side Screen</button>
               </div>
+
+              <div class="flex items-center gap-1">
+                <span class="text-slate-400 font-bold uppercase">Gestures:</span>
+                <button type="button" onclick="setWorkbenchArm('desk_rest')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Desk Rest</button>
+                <button type="button" onclick="setWorkbenchArm('hold_notes')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Hold Book</button>
+                <button type="button" onclick="setWorkbenchArm('gesture_screen')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Point Screen</button>
+              </div>
+
+              <button type="button" onclick="toggleWorkbenchBroll()" class="px-2.5 py-1 rounded bg-red-600/30 hover:bg-red-600/50 text-red-300 border border-red-500/40 font-bold transition cursor-pointer flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
+                <span>Cut to B-Roll</span>
+              </button>
             </div>
           </div>
         </div>
@@ -3067,7 +3334,7 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
             <div class="flex flex-wrap gap-2">
               <button
                 type="button"
-                onclick="copyGithubWorkflowCommand(event)"
+                onclick="copyGithubWorkflowCommand(this)"
                 class="flex-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold font-mono inline-flex items-center justify-center gap-1.5 transition cursor-pointer"
               >
                 <svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
@@ -3292,6 +3559,57 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
       return `${String(m).padStart(2, '0')}:${String(remS).padStart(2, '0')}.${String(remMs).padStart(3, '0')}`;
     }
 
+    const puppetPresenterConfigs = {
+      presenter_femi: {
+        skin1: '#5c3317',
+        skin2: '#3d200d',
+        suit1: '#1e293b',
+        suit2: '#0f172a',
+        shirt: '#f8fafc',
+        tie: '#059669',
+        knot: '#047857',
+        hasGlasses: false,
+        hasHijab: false,
+        name: 'FEMI ADELEKE'
+      },
+      presenter_amaka: {
+        skin1: '#783c28',
+        skin2: '#542616',
+        suit1: '#9f1239',
+        suit2: '#881337',
+        shirt: '#09090b',
+        tie: '#f59e0b',
+        knot: '#d97706',
+        hasGlasses: false,
+        hasHijab: false,
+        name: 'AMAKA OKAFOR'
+      },
+      presenter_tunde: {
+        skin1: '#66361e',
+        skin2: '#452210',
+        suit1: '#334155',
+        suit2: '#1e293b',
+        shirt: '#e0f2fe',
+        tie: '#831843',
+        knot: '#701a75',
+        hasGlasses: true,
+        hasHijab: false,
+        name: 'BABATUNDE BELLO'
+      },
+      presenter_zainab: {
+        skin1: '#7b4424',
+        skin2: '#572c14',
+        suit1: '#0f766e',
+        suit2: '#115e59',
+        shirt: '#f0fdfa',
+        tie: '#f59e0b',
+        knot: '#d97706',
+        hasGlasses: false,
+        hasHijab: true,
+        name: 'ZAINAB ALIYU'
+      }
+    };
+
     window.selectWorkbenchPresenter = function(presenterId) {
       const p = workbenchPresentersData[presenterId];
       if (!p) return;
@@ -3306,12 +3624,58 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         }
       });
 
-      // Update Stage Presenter Box with stable clean anchor portrait (zero jumping, zero flicker)
-      const spriteCanvas = document.getElementById('wb-sprite-canvas');
-      if (spriteCanvas) {
-        spriteCanvas.style.backgroundImage = `url('${p.sprite}')`;
-        spriteCanvas.style.backgroundPosition = 'center center';
-        spriteCanvas.style.backgroundSize = 'cover';
+      // Update Modular Puppet Visual Features
+      const cfg = puppetPresenterConfigs[presenterId] || puppetPresenterConfigs.presenter_femi;
+      const s1 = document.getElementById('wbSkinStop1');
+      const s2 = document.getElementById('wbSkinStop2');
+      const su1 = document.getElementById('wbSuitStop1');
+      const su2 = document.getElementById('wbSuitStop2');
+      const shirt = document.getElementById('wb-shirt');
+      const tieBody = document.getElementById('wb-tie-body');
+      const tieKnot = document.getElementById('wb-tie-knot');
+      const deskName = document.getElementById('wb-desk-nameplate');
+
+      if (s1) s1.setAttribute('stop-color', cfg.skin1);
+      if (s2) s2.setAttribute('stop-color', cfg.skin2);
+      if (su1) su1.setAttribute('stop-color', cfg.suit1);
+      if (su2) su2.setAttribute('stop-color', cfg.suit2);
+      if (shirt) shirt.setAttribute('fill', cfg.shirt);
+      if (tieBody) tieBody.setAttribute('fill', cfg.tie);
+      if (tieKnot) tieKnot.setAttribute('fill', cfg.knot);
+      if (deskName) deskName.textContent = cfg.name;
+
+      // Toggle glasses
+      const glasses = document.getElementById('wb-glasses-aud');
+      if (glasses) {
+        if (cfg.hasGlasses) glasses.classList.remove('hidden');
+        else glasses.classList.add('hidden');
+      }
+
+      // Toggle Hijab on all head angles
+      const hOverlay = document.getElementById('wb-hijab-overlay');
+      const hAud = document.getElementById('wb-hijab-aud');
+      const hBook = document.getElementById('wb-hijab-book');
+      const hScreen = document.getElementById('wb-hijab-screen');
+      const hairAud = document.getElementById('wb-hair-aud');
+      const hairBook = document.getElementById('wb-hair-book');
+      const hairScreen = document.getElementById('wb-hair-screen');
+
+      if (cfg.hasHijab) {
+        if (hOverlay) hOverlay.classList.remove('hidden');
+        if (hAud) hAud.classList.remove('hidden');
+        if (hBook) hBook.classList.remove('hidden');
+        if (hScreen) hScreen.classList.remove('hidden');
+        if (hairAud) hairAud.classList.add('hidden');
+        if (hairBook) hairBook.classList.add('hidden');
+        if (hairScreen) hairScreen.classList.add('hidden');
+      } else {
+        if (hOverlay) hOverlay.classList.add('hidden');
+        if (hAud) hAud.classList.add('hidden');
+        if (hBook) hBook.classList.add('hidden');
+        if (hScreen) hScreen.classList.add('hidden');
+        if (hairAud) hairAud.classList.remove('hidden');
+        if (hairBook) hairBook.classList.remove('hidden');
+        if (hairScreen) hairScreen.classList.remove('hidden');
       }
 
       const strapTag = document.getElementById('wb-strap-tag');
@@ -3374,60 +3738,176 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
       generateActiveTimeline();
     };
 
+    window.setWorkbenchGaze = function(targetGaze) {
+      const hAud = document.getElementById('wb-head-audience');
+      const hBook = document.getElementById('wb-head-book');
+      const hScreen = document.getElementById('wb-head-screen');
+      const gazeBadge = document.getElementById('wb-gaze-badge');
+
+      if (hAud) { hAud.classList.add('opacity-0', 'pointer-events-none'); hAud.classList.remove('opacity-100'); }
+      if (hBook) { hBook.classList.add('opacity-0', 'pointer-events-none'); hBook.classList.remove('opacity-100'); }
+      if (hScreen) { hScreen.classList.add('opacity-0', 'pointer-events-none'); hScreen.classList.remove('opacity-100'); }
+
+      if (targetGaze === 'book') {
+        if (hBook) { hBook.classList.remove('opacity-0', 'pointer-events-none'); hBook.classList.add('opacity-100'); }
+        if (gazeBadge) gazeBadge.textContent = 'Gaze: Notes / Book';
+      } else if (targetGaze === 'screen') {
+        if (hScreen) { hScreen.classList.remove('opacity-0', 'pointer-events-none'); hScreen.classList.add('opacity-100'); }
+        if (gazeBadge) gazeBadge.textContent = 'Gaze: Side Screen';
+      } else {
+        if (hAud) { hAud.classList.remove('opacity-0', 'pointer-events-none'); hAud.classList.add('opacity-100'); }
+        if (gazeBadge) gazeBadge.textContent = 'Gaze: Audience';
+      }
+    };
+
+    window.setWorkbenchArm = function(targetArm) {
+      const aDesk = document.getElementById('wb-arms-desk');
+      const aPoint = document.getElementById('wb-arms-point');
+      const aHold = document.getElementById('wb-arms-hold');
+      const projContainer = document.getElementById('wb-projection-container');
+
+      if (aDesk) { aDesk.classList.add('opacity-0', 'pointer-events-none'); aDesk.classList.remove('opacity-100'); }
+      if (aPoint) { aPoint.classList.add('opacity-0', 'pointer-events-none'); aPoint.classList.remove('opacity-100'); }
+      if (aHold) { aHold.classList.add('opacity-0', 'pointer-events-none'); aHold.classList.remove('opacity-100'); }
+
+      if (targetArm === 'gesture_screen') {
+        if (aPoint) { aPoint.classList.remove('opacity-0', 'pointer-events-none'); aPoint.classList.add('opacity-100'); }
+        if (projContainer) projContainer.classList.add('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
+      } else if (targetArm === 'hold_notes') {
+        if (aHold) { aHold.classList.remove('opacity-0', 'pointer-events-none'); aHold.classList.add('opacity-100'); }
+        if (projContainer) projContainer.classList.remove('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
+      } else {
+        if (aDesk) { aDesk.classList.remove('opacity-0', 'pointer-events-none'); aDesk.classList.add('opacity-100'); }
+        if (projContainer) projContainer.classList.remove('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
+      }
+    };
+
+    window.toggleWorkbenchBroll = function(forceState) {
+      const brollLayer = document.getElementById('wb-broll-layer');
+      if (!brollLayer) return;
+      const isCurrentlyActive = !brollLayer.classList.contains('opacity-0');
+      const willBeActive = typeof forceState === 'boolean' ? forceState : !isCurrentlyActive;
+
+      if (willBeActive) {
+        brollLayer.classList.remove('opacity-0', 'pointer-events-none');
+        brollLayer.classList.add('opacity-100');
+      } else {
+        brollLayer.classList.remove('opacity-100');
+        brollLayer.classList.add('opacity-0', 'pointer-events-none');
+      }
+    };
+
     window.generateActiveTimeline = function() {
       const scriptInput = document.getElementById('wb-input-script');
       const script = (scriptInput ? scriptInput.value : '').trim();
       const words = script.split(/\s+/).filter(Boolean);
       const wordCount = Math.max(words.length, 1);
       const effectiveWpm = 135 * (workbenchSettings.speechRate || 1.0);
-      const totalDurationMs = Math.round((wordCount / effectiveWpm) * 60 * 1000);
+      const totalDurationMs = Math.max(Math.round((wordCount / effectiveWpm) * 60 * 1000), 12000);
       workbenchSettings.totalDurationMs = totalDurationMs;
 
       const events = [];
-      // 0ms Standby (Anchor calm and focused at desk)
+      const tPrepEnd = Math.min(1400, Math.round(totalDurationMs * 0.08));
+      const tSpeechEnd = Math.max(totalDurationMs - 1200, 4000);
+
+      const tAudienceEnd = Math.round(tPrepEnd + (tSpeechEnd - tPrepEnd) * 0.30);
+      const tScreenEnd = Math.round(tPrepEnd + (tSpeechEnd - tPrepEnd) * 0.55);
+      const tBrollEnd = Math.round(tPrepEnd + (tSpeechEnd - tPrepEnd) * 0.75);
+      const tBookEnd = Math.round(tPrepEnd + (tSpeechEnd - tPrepEnd) * 0.90);
+
+      // Phase 1: Standby / Preparing at desk looking at book
       events.push({
         timeMs: 0,
         pose: 'idle',
         mouth: 'closed',
-        coords: { x: 'center', y: 'center' }
+        gaze: 'book',
+        armState: 'hold_notes',
+        stageMode: 'studio',
+        coords: { x: '50%', y: '50%' }
       });
 
-      // 200ms Pre-speech transition (Mouth opens naturally for first syllable)
+      // Phase 2: Look up to audience for speech start
       events.push({
-        timeMs: 200,
+        timeMs: tPrepEnd,
         pose: 'speaking',
         mouth: 'open',
-        coords: { x: 'center', y: 'center' }
+        gaze: 'audience',
+        armState: 'desk_rest',
+        stageMode: 'studio',
+        coords: { x: '50%', y: '50%' }
       });
 
       const cycleMs = 190;
-      const speechEndMs = Math.max(totalDurationMs - 600, 1000);
-
-      for (let t = 400; t < speechEndMs; t += cycleMs) {
+      for (let t = tPrepEnd + 200; t < tSpeechEnd; t += cycleMs) {
         const isMouthOpen = (Math.floor(t / cycleMs) % 2 === 0);
-        if (workbenchSettings.hasBreakingAlert && t > speechEndMs * 0.35 && t < speechEndMs * 0.7) {
+
+        if (t < tAudienceEnd) {
+          // Direct audience delivery
           events.push({
             timeMs: t,
-            pose: 'breaking',
-            mouth: isMouthOpen ? 'open' : 'alert',
-            coords: { x: 'center', y: 'center' }
+            pose: workbenchSettings.hasBreakingAlert ? 'breaking' : 'speaking',
+            mouth: isMouthOpen ? 'open' : 'closed',
+            gaze: 'audience',
+            armState: 'desk_rest',
+            stageMode: 'studio',
+            coords: { x: '50%', y: '50%' }
           });
-        } else {
+        } else if (t < tScreenEnd) {
+          // Turn to side screen and point arm
           events.push({
             timeMs: t,
             pose: 'speaking',
             mouth: isMouthOpen ? 'open' : 'closed',
-            coords: { x: 'center', y: 'center' }
+            gaze: 'screen',
+            armState: 'gesture_screen',
+            stageMode: 'studio',
+            coords: { x: '50%', y: '50%' }
+          });
+        } else if (t < tBrollEnd) {
+          // B-Roll Interstitial Cutaway!
+          events.push({
+            timeMs: t,
+            pose: 'speaking',
+            mouth: isMouthOpen ? 'open' : 'closed',
+            gaze: 'audience',
+            armState: 'desk_rest',
+            stageMode: 'b_roll',
+            coords: { x: '50%', y: '50%' }
+          });
+        } else if (t < tBookEnd) {
+          // Return to studio desk, looking down at book speaking stats
+          events.push({
+            timeMs: t,
+            pose: 'speaking',
+            mouth: isMouthOpen ? 'open' : 'closed',
+            gaze: 'book',
+            armState: 'hold_notes',
+            stageMode: 'studio',
+            coords: { x: '50%', y: '50%' }
+          });
+        } else {
+          // Final audience address
+          events.push({
+            timeMs: t,
+            pose: 'speaking',
+            mouth: isMouthOpen ? 'open' : 'closed',
+            gaze: 'audience',
+            armState: 'desk_rest',
+            stageMode: 'studio',
+            coords: { x: '50%', y: '50%' }
           });
         }
       }
 
       // Wrap-up pose
       events.push({
-        timeMs: speechEndMs,
+        timeMs: tSpeechEnd,
         pose: 'wrap',
         mouth: 'closed',
-        coords: { x: 'center', y: 'center' }
+        gaze: 'audience',
+        armState: 'desk_rest',
+        stageMode: 'studio',
+        coords: { x: '50%', y: '50%' }
       });
 
       // Concluded
@@ -3435,7 +3915,10 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         timeMs: totalDurationMs,
         pose: 'idle',
         mouth: 'closed',
-        coords: { x: 'center', y: 'center' }
+        gaze: 'book',
+        armState: 'hold_notes',
+        stageMode: 'studio',
+        coords: { x: '50%', y: '50%' }
       });
 
       workbenchSettings.timelineEvents = events;
@@ -3453,66 +3936,6 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         frameTotal.textContent = String(Math.round((totalDurationMs / 1000) * 30));
       }
     };
-
-    function getEventAtTimeMs(timeMs) {
-      const events = workbenchSettings.timelineEvents;
-      if (!events || events.length === 0) return null;
-      let active = events[0];
-      for (let i = 0; i < events.length; i++) {
-        if (events[i].timeMs <= timeMs) {
-          active = events[i];
-        } else {
-          break;
-        }
-      }
-      return active;
-    }
-
-    function applyTimelineEventToMonitor(event, timeMs) {
-      if (!event) return;
-      const presenterBox = document.getElementById('wb-presenter-box');
-      const mouthAperture = document.getElementById('wb-mouth-aperture');
-      const poseLabel = document.getElementById('wb-pose-label');
-      const mouthLabel = document.getElementById('wb-mouth-state');
-      const coordsVal = document.getElementById('wb-coords-val');
-      const frameNum = document.getElementById('wb-frame-num');
-      const timeDisplay = document.getElementById('wb-time-display');
-      const scrubSlider = document.getElementById('wb-scrub-slider');
-
-      // The presenter portrait base is 100% stable: no jumping coordinates, no vanishing book!
-      // Dynamic organic lip-sync articulation toggles dynamically with speech rhythm
-      if (mouthAperture) {
-        if (event.mouth === 'open' || event.pose === 'speaking') {
-          mouthAperture.classList.remove('opacity-0');
-          mouthAperture.classList.add('presenter-mouth-active');
-        } else {
-          mouthAperture.classList.remove('presenter-mouth-active');
-          mouthAperture.classList.add('opacity-0');
-        }
-      }
-
-      // Subtle broadcast speaking nod on the presenter viewport
-      if (presenterBox) {
-        if (event.pose === 'speaking' || event.mouth === 'open') {
-          presenterBox.classList.add('presenter-viewport-speaking');
-        } else {
-          presenterBox.classList.remove('presenter-viewport-speaking');
-        }
-      }
-
-      if (poseLabel) poseLabel.textContent = `Pose: ${event.pose.charAt(0).toUpperCase() + event.pose.slice(1)}`;
-      if (mouthLabel) mouthLabel.textContent = event.mouth;
-      if (coordsVal) coordsVal.textContent = event.mouth === 'open' ? 'Articulating' : 'Closed';
-      if (frameNum) frameNum.textContent = String(Math.round((timeMs / 1000) * 30));
-
-      if (timeDisplay) {
-        timeDisplay.textContent = `${formatTimeMsDisplay(timeMs)} / ${formatTimeMsDisplay(workbenchSettings.totalDurationMs)}`;
-      }
-
-      if (scrubSlider && workbenchSettings.totalDurationMs > 0) {
-        scrubSlider.value = String(Math.round((timeMs / workbenchSettings.totalDurationMs) * 100));
-      }
-    }
 
     window.handleWorkbenchScrub = function(sliderVal) {
       const pct = parseFloat(sliderVal) / 100;
@@ -3773,7 +4196,7 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
       const cmd = `gh workflow run generate-broadcast-video.yml -f presenter_id="${pId}" -f headline="${headline}" -f custom_script="${script}" -f has_breaking_alert="${workbenchSettings.hasBreakingAlert}" -f output_format="landscape"`;
 
       navigator.clipboard.writeText(cmd).then(() => {
-        const btn = (evt && evt.currentTarget) || (typeof event !== 'undefined' ? event?.currentTarget : null);
+        const btn = (evt && (evt.currentTarget || (evt instanceof HTMLElement ? evt : null))) || null;
         if (btn) {
           const original = btn.innerHTML;
           btn.innerHTML = '<span>✅ Copied to Clipboard!</span>';

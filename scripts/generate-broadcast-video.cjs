@@ -1,10 +1,12 @@
 /**
  * 9jaBeacon Option A: Headless Broadcast Video Generator
  * 
- * Deterministic Presenter Animation, Side Projection Screen, Tension Music Bed & Video Synthesizer
+ * Modular Segmented Puppet Presenter, Desk with Briefing Book, Side Projection Screen,
+ * Interstitial B-Roll Cutaway, Tension Music Bed & Broadcast Synthesizer
  * Formatted to match 9jaBeacon Broadcast Storyboard Specifications:
  * - 9JA BEACON LIVE watermark
- * - Presenter seated with natural lip-sync & gestures
+ * - Stylized 2D/3D modular presenter with authentic broadcast gestures
+ * - Looking at table book -> Direct audience delivery -> Pointing to side screen -> B-Roll Cutaway -> Back to book -> Sign-off
  * - Side Projection Screen with Key Takeaway Facts / Figures
  * - Lower-Third: BREAKING NEWS badge + Headline + www.9jabeacon.name.ng domain banner
  * - Intense newsroom background tension music bed
@@ -16,7 +18,7 @@ const { execSync } = require('child_process');
 
 async function main() {
   console.log('========================================================');
-  console.log('🎬 9jaBeacon AI Broadcast Video Generator (Option A)');
+  console.log('🎬 9jaBeacon Modular Puppet Broadcast Video Generator');
   console.log('========================================================');
 
   let presenterId = process.env.PRESENTER_ID || 'presenter_femi';
@@ -92,43 +94,41 @@ async function main() {
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-  // 1. Locate presenter sprite
-  const presenterMap = {
-    presenter_femi: { name: 'Femi Adeleke', file: 'femi.jpg', gender: 'male', title: 'Senior National Affairs Anchor' },
-    presenter_amaka: { name: 'Amaka Okafor', file: 'amaka.jpg', gender: 'female', title: 'Chief Primetime Anchor' },
-    presenter_tunde: { name: 'Babatunde Bello', file: 'tunde.jpg', gender: 'male', title: 'Business & Tech Anchor' },
-    presenter_zainab: { name: 'Zainab Aliyu', file: 'zainab.jpg', gender: 'female', title: 'Culture & Lifestyle Anchor' }
+  // Map presenter to puppet assets
+  const pKey = presenterId.replace('presenter_', '');
+  const puppetDir = path.join(process.cwd(), 'public', 'presenters', 'puppet');
+
+  // Verify puppet assets exist, otherwise generate them
+  if (!fs.existsSync(path.join(puppetDir, `${pKey}_pose_aud_closed.png`))) {
+    console.log('⚡ Generating puppet assets first...');
+    execSync('node scripts/build-puppet-assets.cjs', { stdio: 'inherit' });
+  }
+
+  const pBookClosed = path.join(puppetDir, `${pKey}_pose_book_closed.png`);
+  const pBookSpeaking = path.join(puppetDir, `${pKey}_pose_book_speaking.png`);
+  const pAudClosed = path.join(puppetDir, `${pKey}_pose_aud_closed.png`);
+  const pAudSpeaking = path.join(puppetDir, `${pKey}_pose_aud_speaking.png`);
+  const pScreenClosed = path.join(puppetDir, `${pKey}_pose_screen_closed.png`);
+  const pScreenSpeaking = path.join(puppetDir, `${pKey}_pose_screen_speaking.png`);
+  const pBrollCard = path.join(puppetDir, 'broll_interstitial.png');
+
+  const presenterMetadata = {
+    femi: { name: 'Femi Adeleke', gender: 'male', title: 'Senior National Affairs Anchor' },
+    amaka: { name: 'Amaka Okafor', gender: 'female', title: 'Chief Primetime Anchor' },
+    tunde: { name: 'Babatunde Bello', gender: 'male', title: 'Business & Tech Anchor' },
+    zainab: { name: 'Zainab Aliyu', gender: 'female', title: 'Culture & Lifestyle Anchor' }
   };
+  const presenter = presenterMetadata[pKey] || presenterMetadata.femi;
 
-  const presenter = presenterMap[presenterId] || presenterMap['presenter_femi'];
-  let spritePath = path.join(process.cwd(), 'public', 'presenters', presenter.file);
-
-  if (!fs.existsSync(spritePath)) {
-    const files = fs.readdirSync(path.join(process.cwd(), 'public', 'presenters'));
-    if (files.length > 0) {
-      spritePath = path.join(process.cwd(), 'public', 'presenters', files[0]);
-    } else {
-      throw new Error(`Presenter sprite not found at ${spritePath}`);
-    }
-  }
-
-  console.log(`🖼️ Using Clean Presenter Portrait: ${spritePath}`);
-
-  // 2. Locate feathered mouth overlay
-  const mouthOverlayPath = path.join(process.cwd(), 'public', 'presenters', 'mouth_open.png');
-  if (!fs.existsSync(mouthOverlayPath)) {
-    throw new Error(`Mouth overlay not found at ${mouthOverlayPath}`);
-  }
-
-  // 3. Compute speech timing & duration
+  // Compute speech timing & duration
   const words = script.trim().split(/\s+/).filter(Boolean);
   const wordCount = Math.max(words.length, 1);
   const wpm = 135;
-  const durationSec = Math.max(Math.ceil((wordCount / wpm) * 60) + 1, 6);
-  const speechEndSec = Math.max(durationSec - 1.2, 2.0);
+  const durationSec = Math.max(Math.ceil((wordCount / wpm) * 60) + 1, 14);
+  const speechEndSec = Math.max(durationSec - 1.2, 4.0);
   console.log(`⏱️ Computed broadcast duration: ${durationSec} seconds (speech ends at ~${speechEndSec}s)`);
 
-  // 4. Generate audio voiceover track
+  // Audio voiceover track
   const narrationFile = path.join(tempDir, 'narration.wav');
   let audioGenerated = false;
 
@@ -141,15 +141,15 @@ async function main() {
       audioGenerated = true;
     }
   } catch (e) {
-    console.log('ℹ️ espeak not available or failed, using timed broadcast tone track.');
+    console.log('ℹ️ espeak not available, using timed broadcast tone track.');
   }
 
   if (!audioGenerated) {
-    console.log('🎙️ Creating studio broadcast audio envelope with room tone...');
+    console.log('🎙️ Creating studio broadcast room tone envelope...');
     execSync(`ffmpeg -y -v error -f lavfi -i "anoisesrc=d=${durationSec}:c=pink:r=44100:a=0.005" -c:a pcm_s16le "${narrationFile}"`);
   }
 
-  // 5. Mix with Background Tension Music Bed
+  // Background Tension Music Bed
   const tensionBedFile = path.join(process.cwd(), 'public', 'audio', 'breaking-news-tension-bed.wav');
   const finalAudioFile = path.join(tempDir, 'final_mixed_audio.wav');
 
@@ -165,25 +165,29 @@ async function main() {
     fs.copyFileSync(narrationFile, finalAudioFile);
   }
 
-  // 6. Build Option A Studio Stage with Side Projection Screen & Storyboard Layout
+  // Dimensions & Stage Layout
   const width = outputFormat === 'vertical' ? 1080 : 1920;
   const height = outputFormat === 'vertical' ? 1920 : 1080;
-
-  // In 16:9 Landscape:
-  // Anchor sits on the left/center (X: 100, Y: 170, scale 680x680)
-  // Side Projection Screen sits on the right (X: 920, Y: 180, width 900, height 460)
   const isLandscape = outputFormat !== 'vertical';
+
   const pSize = isLandscape ? 680 : 620;
   const presenterX = isLandscape ? '100' : '(W-w)/2';
   const presenterY = isLandscape ? '170' : '220';
 
-  // Calculate precise relative mouth position on presenter box (centered at x: 50%, y: 55.2%)
-  const mouthW = Math.round(pSize * 0.135);
-  const mouthH = Math.round(pSize * 0.058);
-  const mouthRelX = Math.round(pSize * 0.50 - mouthW / 2);
-  const mouthRelY = Math.round(pSize * 0.552 - mouthH / 2);
+  // Broadcast Storyboard Milestone Timers
+  const tPrep = 1.4;
+  const tAudienceEnd = tPrep + (speechEndSec - tPrep) * 0.32;
+  const tScreenEnd = tPrep + (speechEndSec - tPrep) * 0.54;
+  const tBrollEnd = tPrep + (speechEndSec - tPrep) * 0.74;
+  const tBookEnd = tPrep + (speechEndSec - tPrep) * 0.90;
 
-  console.log(`🎥 Rendering ${outputFormat} (${width}x${height}) broadcast video with stable anchor portrait & organic lip-sync...`);
+  console.log(`🎬 Gesture Timing:`);
+  console.log(`  - 0.0s to ${tPrep}s: Consult Briefing Book on Desk`);
+  console.log(`  - ${tPrep}s to ${tAudienceEnd.toFixed(1)}s: Look at Audience Speaking`);
+  console.log(`  - ${tAudienceEnd.toFixed(1)}s to ${tScreenEnd.toFixed(1)}s: Turn to Side Screen & Point`);
+  console.log(`  - ${tScreenEnd.toFixed(1)}s to ${tBrollEnd.toFixed(1)}s: B-Roll Cutaway (Field Report)`);
+  console.log(`  - ${tBrollEnd.toFixed(1)}s to ${tBookEnd.toFixed(1)}s: Back to Desk Book Speaking`);
+  console.log(`  - ${tBookEnd.toFixed(1)}s to ${speechEndSec.toFixed(1)}s: Look at Audience Wrap-Up`);
 
   // Sanitize text strings for ffmpeg drawtext filter
   const cleanFfmpegText = (str) => str.replace(/[:\\'%]/g, ' ').replace(/"/g, '').trim();
@@ -197,130 +201,142 @@ async function main() {
   const thumbnailFile = path.join(outputDir, 'broadcast-thumbnail.jpg');
   const timelineJsonFile = path.join(outputDir, 'broadcast-timeline.json');
 
-  // Build filter graph
+  // Input Indices:
+  // 0: color background
+  // 1: pBookClosed
+  // 2: pBookSpeaking
+  // 3: pAudClosed
+  // 4: pAudSpeaking
+  // 5: pScreenClosed
+  // 6: pScreenSpeaking
+  // 7: pBrollCard
+  // 8: finalAudioFile
+
   const filterScript = [
-    // Background Studio: Deep slate gradient with subtle grid
-    `color=c=#070b14:s=${width}x${height}:d=${durationSec}[bg]`,
-    `[bg]drawbox=x=0:y=0:w=${width}:h=${height}:color=0x064e3b@0.22:t=fill[bg_glow]`,
+    // 1. Studio Backdrop: Deep slate gradient + grid
+    `[0:v]drawbox=x=0:y=0:w=${width}:h=${height}:color=0x064e3b@0.22:t=fill[bg_glow]`,
     `[bg_glow]drawgrid=width=90:height=90:thickness=1:color=0x1e293b@0.25[grid_bg]`,
 
-    // Presenter Stable Anchor Portrait + Organic Articulated Mouth Overlay
-    // Anchor portrait never glitches or jumps (Zero disappearing books, zero body shifts)
-    `[1:v]scale=${pSize}:${pSize}[presenter_base]`,
-    `[2:v]scale=${mouthW}:${mouthH}[mouth_scaled]`,
-    `[presenter_base][mouth_scaled]overlay=x=${mouthRelX}:y=${mouthRelY}:enable='between(t,0.3,${speechEndSec})*lt(mod(t*4.2,1),0.52)'[presenter_articulated]`,
-    `[grid_bg][presenter_articulated]overlay=x='${presenterX}':y='${presenterY}':shortest=1[studio_stage]`,
+    // 2. Scale each puppet state to pSize and split pads for multi-scene usage
+    `[1:v]scale=${pSize}:${pSize},split=2[p_b_c_1][p_b_c_2]`,
+    `[2:v]scale=${pSize}:${pSize}[p_b_s]`,
+    `[3:v]scale=${pSize}:${pSize},split=3[p_a_c_1][p_a_c_2][p_a_c_3]`,
+    `[4:v]scale=${pSize}:${pSize},split=2[p_a_s_1][p_a_s_2]`,
+    `[5:v]scale=${pSize}:${pSize}[p_s_c]`,
+    `[6:v]scale=${pSize}:${pSize}[p_s_s]`,
 
-    // Side Projection Card on Right (Landscape only, matching Storyboard)
+    // 3. Cadenced Puppet Animation (Switches between Closed and Speaking with phonetic lip rhythm)
+    `[grid_bg][p_b_c_1]overlay=x='${presenterX}':y='${presenterY}':enable='lt(t, ${tPrep})'[st1]`,
+    `[st1][p_a_c_1]overlay=x='${presenterX}':y='${presenterY}':enable='between(t, ${tPrep}, ${tAudienceEnd})*gte(mod(t*4.2, 1), 0.52)'[st2]`,
+    `[st2][p_a_s_1]overlay=x='${presenterX}':y='${presenterY}':enable='between(t, ${tPrep}, ${tAudienceEnd})*lt(mod(t*4.2, 1), 0.52)'[st3]`,
+    `[st3][p_s_c]overlay=x='${presenterX}':y='${presenterY}':enable='between(t, ${tAudienceEnd}, ${tScreenEnd})*gte(mod(t*4.2, 1), 0.52)'[st4]`,
+    `[st4][p_s_s]overlay=x='${presenterX}':y='${presenterY}':enable='between(t, ${tAudienceEnd}, ${tScreenEnd})*lt(mod(t*4.2, 1), 0.52)'[st5]`,
+    `[st5][p_b_s]overlay=x='${presenterX}':y='${presenterY}':enable='between(t, ${tBrollEnd}, ${tBookEnd})*lt(mod(t*4.2, 1), 0.52)'[st6]`,
+    `[st6][p_b_c_2]overlay=x='${presenterX}':y='${presenterY}':enable='between(t, ${tBrollEnd}, ${tBookEnd})*gte(mod(t*4.2, 1), 0.52)'[st7]`,
+    `[st7][p_a_c_2]overlay=x='${presenterX}':y='${presenterY}':enable='between(t, ${tBookEnd}, ${speechEndSec})*gte(mod(t*4.2, 1), 0.52)'[st8]`,
+    `[st8][p_a_s_2]overlay=x='${presenterX}':y='${presenterY}':enable='between(t, ${tBookEnd}, ${speechEndSec})*lt(mod(t*4.2, 1), 0.52)'[st9]`,
+    `[st9][p_a_c_3]overlay=x='${presenterX}':y='${presenterY}':enable='gte(t, ${speechEndSec})'[stage_anchor]`,
+
+    // 4. Side Projection Screen on Right (Landscape only)
     ...(isLandscape ? [
-      // Projection Glass Card Background
-      `[studio_stage]drawbox=x=920:y=180:w=900:h=460:color=0x0f172a@0.90:t=fill[proj_card]`,
+      `[stage_anchor]drawbox=x=920:y=180:w=900:h=460:color=0x0f172a@0.90:t=fill[proj_card]`,
       `[proj_card]drawbox=x=920:y=180:w=900:h=4:color=0x10b981:t=fill[proj_border]`,
-      // Card Header
       `[proj_border]drawbox=x=950:y=210:w=320:h=38:color=0x022c22@0.9:t=fill[proj_tag]`,
       `[proj_tag]drawtext=text='THE BIG PICTURE':fontcolor=0x34d399:fontsize=18:x=965:y=220[proj_title]`,
-      // Bullet 1
       `[proj_title]drawtext=text='• ${safeP1}':fontcolor=white:fontsize=22:x=950:y=280[p1]`,
-      // Bullet 2
       `[p1]drawtext=text='• ${safeP2}':fontcolor=white:fontsize=22:x=950:y=350[p2]`,
-      // Bullet 3
       `[p2]drawtext=text='• ${safeP3}':fontcolor=0x94a3b8:fontsize=20:x=950:y=420[p3]`,
-      // Station verified badge inside card
       `[p3]drawbox=x=950:y=540:w=840:h=40:color=0x020617@0.95:t=fill[foot_bar]`,
       `[foot_bar]drawtext=text='9jaBEACON VERIFIED CITIZEN REPORTING':fontcolor=0x10b981:fontsize=16:x=970:y=552[stage_with_card]`
     ] : [
-      `[studio_stage]null[stage_with_card]`
+      `[stage_anchor]null[stage_with_card]`
     ]),
 
-    // Top-Left Watermark (Matching User Storyboard: Top-left of presenter)
-    `[stage_with_card]drawbox=x=80:y=60:w=160:h=44:color=0x0f172a@0.95:t=fill[wm_bg]`,
+    // 5. B-Roll Interstitial Cutaway Overlay (Appears during tScreenEnd -> tBrollEnd)
+    `[7:v]scale=${width}:${height}[broll_scaled]`,
+    `[stage_with_card][broll_scaled]overlay=x=0:y=0:enable='between(t, ${tScreenEnd}, ${tBrollEnd})'[stage_with_broll]`,
+
+    // 6. Top-Left Watermark (Always above presenter)
+    `[stage_with_broll]drawbox=x=80:y=60:w=160:h=44:color=0x0f172a@0.95:t=fill[wm_bg]`,
     `[wm_bg]drawtext=text='9JA BEACON':fontcolor=white:fontsize=20:x=95:y=72[wm_text]`,
     `[wm_text]drawbox=x=240:y=60:w=80:h=44:color=0xdc2626:t=fill[live_box]`,
     `[live_box]drawtext=text='LIVE':fontcolor=white:fontsize=20:x=258:y=72[live_text]`,
 
-    // Lower-Third News Strap:
-    // 1. Red BREAKING NEWS Badge Box
+    // 7. Lower-Third News Strap:
+    // Red BREAKING NEWS Badge Box
     `[live_text]drawbox=x=60:y=${height - 230}:w=240:h=44:color=0xdc2626:t=fill[break_box]`,
     `[break_box]drawtext=text='BREAKING NEWS':fontcolor=white:fontsize=20:x=85:y=${height - 218}[break_text]`,
 
-    // 2. White Main Headline Bar
+    // Main Headline Bar
     `[break_text]drawbox=x=60:y=${height - 184}:w=${width - 120}:h=74:color=0x0f172a@0.98:t=fill[head_box]`,
     `[head_box]drawbox=x=60:y=${height - 184}:w=6:h=74:color=0x10b981:t=fill[head_accent]`,
     `[head_accent]drawtext=text='${safeHeadline}':fontcolor=white:fontsize=28:x=85:y=${height - 158}[head_text]`,
 
-    // 3. Domain & Slogan Underneath Headline (Matching User Storyboard)
+    // Domain & Slogan Underneath Headline
     `[head_text]drawbox=x=60:y=${height - 108}:w=${width - 120}:h=46:color=0x020617@0.98:t=fill[sub_box]`,
     `[sub_box]drawtext=text='Stay informed | www.9jabeacon.name.ng - Nigeria Independent Newsroom':fontcolor=0x94a3b8:fontsize=18:x=85:y=${height - 94}[sub_text]`,
 
-    // 4. Anchor Tag
+    // Anchor Tag
     `[sub_text]drawtext=text='${safePresenterName}':fontcolor=0x34d399:fontsize=15:x=${width - 500}:y=${height - 94}[final_video]`
   ].join(';');
 
   const ffmpegCmd = [
     'ffmpeg -y',
     `-f lavfi -i "color=c=#070b14:s=${width}x${height}:d=${durationSec}"`,
-    `-loop 1 -i "${spritePath}"`,
-    `-loop 1 -i "${mouthOverlayPath}"`,
+    `-loop 1 -i "${pBookClosed}"`,
+    `-loop 1 -i "${pBookSpeaking}"`,
+    `-loop 1 -i "${pAudClosed}"`,
+    `-loop 1 -i "${pAudSpeaking}"`,
+    `-loop 1 -i "${pScreenClosed}"`,
+    `-loop 1 -i "${pScreenSpeaking}"`,
+    `-loop 1 -i "${pBrollCard}"`,
     `-i "${finalAudioFile}"`,
     `-filter_complex "${filterScript}"`,
     '-map "[final_video]"',
-    '-map 3:a',
+    '-map 8:a',
     `-t ${durationSec}`,
     '-c:v libx264 -pix_fmt yuv420p -preset fast -crf 22',
     '-c:a aac -b:a 192k',
     `"${outputFile}"`
   ].join(' ');
 
-  console.log('⚙️ Executing ffmpeg broadcast video render pipeline...');
+  console.log('⚙️ Executing ffmpeg modular broadcast puppet render pipeline...');
   execSync(ffmpegCmd);
 
-  // 7. Generate thumbnail
+  // Generate thumbnail
   console.log('📸 Generating broadcast thumbnail...');
   execSync(`ffmpeg -y -v error -ss 00:00:03 -i "${outputFile}" -vframes 1 -q:v 2 "${thumbnailFile}"`);
 
-  // 8. Write complete Scene Plan & Timeline metadata
-  const scenePlan = {
-    title: headline,
-    format: `${width}x${height}`,
-    aspectRatio: outputFormat,
-    durationSec,
-    presenter: {
-      id: presenterId,
-      name: presenter.name,
-      role: presenter.title
-    },
-    audio: {
-      voiceover: 'espeak_speech_synthesizer',
-      tensionBed: 'breaking-news-tension-bed.wav',
-      musicDuckingLevel: '-16dB'
-    },
-    sideProjection: {
-      header: 'THE BIG PICTURE',
-      keyPoints
-    },
-    lowerThird: {
-      badge: 'BREAKING NEWS',
-      headline,
-      domainStrap: 'Stay informed | www.9jabeacon.name.ng - Your trusted independent newsroom'
-    },
-    watermark: '9JA BEACON LIVE',
-    generatedAt: new Date().toISOString(),
-    files: {
-      video: 'output/broadcast-video.mp4',
-      thumbnail: 'output/broadcast-thumbnail.jpg'
-    }
+  // Write scene plan json
+  const planData = {
+    presenter_id: presenterId,
+    presenter_name: presenter.name,
+    headline: headline,
+    key_points: keyPoints,
+    gestures: [
+      { time_sec: 0, gaze: 'book', arms: 'hold_notes', action: 'consulting_briefing_book' },
+      { time_sec: tPrep, gaze: 'audience', arms: 'desk_rest', action: 'headline_delivery' },
+      { time_sec: tAudienceEnd, gaze: 'screen', arms: 'gesture_screen', action: 'referencing_side_projection' },
+      { time_sec: tScreenEnd, stage: 'b_roll', action: 'field_footage_interstitial' },
+      { time_sec: tBrollEnd, gaze: 'book', arms: 'hold_notes', action: 'reading_table_book_speaking' },
+      { time_sec: tBookEnd, gaze: 'audience', arms: 'desk_rest', action: 'wrap_signoff' }
+    ],
+    video_path: outputFile,
+    thumbnail_path: thumbnailFile,
+    generated_at: new Date().toISOString()
   };
 
-  fs.writeFileSync(timelineJsonFile, JSON.stringify(scenePlan, null, 2));
+  fs.writeFileSync(timelineJsonFile, JSON.stringify(planData, null, 2));
 
-  console.log('✅ Broadcast generation complete matching storyboard!');
-  console.log(`📁 Video: ${outputFile} (${(fs.statSync(outputFile).size / 1024 / 1024).toFixed(2)} MB)`);
-  console.log(`📁 Thumbnail: ${thumbnailFile}`);
-  console.log(`📁 Scene Plan JSON: ${timelineJsonFile}`);
+  console.log('========================================================');
+  console.log('🎉 Broadcast Video Generation Completed Flawlessly!');
+  console.log(`📹 Video Output: ${outputFile}`);
+  console.log(`🖼️ Thumbnail: ${thumbnailFile}`);
+  console.log(`📄 Timeline Plan: ${timelineJsonFile}`);
   console.log('========================================================');
 }
 
 main().catch((err) => {
-  console.error('❌ Broadcast Video Generation Failed:', err.message);
+  console.error('❌ Broadcast Video Generation Failed:', err);
   process.exit(1);
 });

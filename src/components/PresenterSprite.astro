@@ -1,11 +1,13 @@
 ---
 import { getPresenterById, presenters } from '../lib/presenters-data';
-import type { PresenterPose } from '../lib/types';
+import type { PresenterPose, PresenterGaze, PresenterArmState } from '../lib/types';
 
 interface Props {
   presenterId?: string;
   pose?: PresenterPose;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  gaze?: PresenterGaze;
+  armState?: PresenterArmState;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'stage';
   showBadge?: boolean;
   interactive?: boolean;
   className?: string;
@@ -14,6 +16,8 @@ interface Props {
 const {
   presenterId = 'presenter_femi',
   pose = 'idle',
+  gaze = 'audience',
+  armState = 'desk_rest',
   size = 'md',
   showBadge = false,
   interactive = false,
@@ -22,71 +26,471 @@ const {
 
 const presenter = getPresenterById(presenterId) || presenters[0];
 
-// Fully responsive dimension maps: scales down on mobile screens, scales up on tablets/desktops
-const sizeClasses = {
-  sm: 'w-12 sm:w-16 h-12 sm:h-16 rounded-xl',
-  md: 'w-20 sm:w-28 h-20 sm:h-28 rounded-2xl',
-  lg: 'w-32 sm:w-44 h-32 sm:h-44 rounded-2xl sm:rounded-3xl',
-  xl: 'w-44 sm:w-64 h-44 sm:h-64 rounded-2xl sm:rounded-3xl'
+// Presenter-specific color schemes and character attributes
+const characterConfigs: Record<string, {
+  skinBase: string;
+  skinDark: string;
+  suitColor: string;
+  suitCollar: string;
+  shirtColor: string;
+  tieOrScarfColor: string;
+  tiePattern?: string;
+  hasGlasses?: boolean;
+  hasHijab?: boolean;
+  hairStyle: string;
+  hairColor: string;
+}> = {
+  presenter_femi: {
+    skinBase: '#5c3317',
+    skinDark: '#3d200d',
+    suitColor: '#1e293b', // Deep midnight navy
+    suitCollar: '#0f172a',
+    shirtColor: '#f8fafc',
+    tieOrScarfColor: '#059669', // Emerald green tie
+    tiePattern: '#047857',
+    hairStyle: 'fade',
+    hairColor: '#09090b'
+  },
+  presenter_amaka: {
+    skinBase: '#783c28',
+    skinDark: '#542616',
+    suitColor: '#9f1239', // Ruby crimson blazer
+    suitCollar: '#881337',
+    shirtColor: '#09090b', // Black silk inner
+    tieOrScarfColor: '#f59e0b', // Layered gold choker
+    hairStyle: 'curls',
+    hairColor: '#18181b'
+  },
+  presenter_tunde: {
+    skinBase: '#66361e',
+    skinDark: '#452210',
+    suitColor: '#334155', // Slate charcoal double-breasted
+    suitCollar: '#1e293b',
+    shirtColor: '#e0f2fe', // Sky blue
+    tieOrScarfColor: '#831843', // Deep burgundy slim tie
+    hasGlasses: true,
+    hairStyle: 'short',
+    hairColor: '#0a0a0a'
+  },
+  presenter_zainab: {
+    skinBase: '#7b4424',
+    skinDark: '#572c14',
+    suitColor: '#0f766e', // Royal deep teal blazer
+    suitCollar: '#115e59',
+    shirtColor: '#f0fdfa',
+    tieOrScarfColor: '#f59e0b', // Gold brooch
+    hasHijab: true,
+    hairStyle: 'hijab',
+    hairColor: '#134e4a' // Draped teal hijab
+  }
 };
 
+const charConfig = characterConfigs[presenter.id] || characterConfigs.presenter_femi;
+
+// Responsive sizing classes
+const sizeClasses = {
+  sm: 'w-16 h-16 sm:w-20 sm:h-20 rounded-xl',
+  md: 'w-24 h-24 sm:w-32 sm:h-32 rounded-2xl',
+  lg: 'w-48 h-48 sm:w-60 sm:h-60 rounded-3xl',
+  xl: 'w-64 h-64 sm:w-80 sm:h-80 rounded-3xl',
+  stage: 'w-full h-full rounded-2xl'
+};
 ---
 
 <div 
-  class={`presenter-sprite-container relative inline-block group select-none max-w-full ${className}`}
+  class={`presenter-puppet-container relative inline-block group select-none max-w-full ${className}`}
   data-presenter-id={presenter.id}
   data-presenter-name={presenter.name}
   data-presenter-gender={presenter.gender}
   data-presenter-pitch={presenter.voice_settings.pitch}
   data-presenter-rate={presenter.voice_settings.rate}
   data-current-pose={pose}
+  data-current-gaze={gaze}
+  data-current-arm={armState}
   data-interactive={interactive ? 'true' : 'false'}
 >
-  <!-- Sprite Frame Viewport (with Option A live breathing micro-motion) -->
+  <!-- Main Puppet Stage Viewport -->
   <div 
-    class={`presenter-sprite-viewport presenter-viewport-live relative overflow-hidden shadow-md border-2 border-emerald-500/20 dark:border-emerald-500/30 bg-slate-100 dark:bg-slate-800 transition-all duration-300 ${sizeClasses[size]}`}
+    class={`presenter-puppet-viewport relative overflow-hidden shadow-2xl border border-slate-700/80 bg-gradient-to-b from-slate-900 via-slate-950 to-black transition-all duration-300 ${sizeClasses[size]}`}
   >
-    <!-- Stable Portrait Anchor Base -->
-    <div 
-      class="presenter-sprite-image absolute inset-0 w-full h-full bg-cover bg-center transition-transform duration-300"
-      style={`background-image: url('${presenter.sprite_url}');`}
-      title={`${presenter.name}`}
-      role="img"
-      aria-label={`${presenter.name} news presenter avatar in ${pose} pose`}
-    ></div>
-
-    <!-- Articulated Natural Lip-Sync Aperture Overlay (Opens & closes in rhythm with speech) -->
-    <div 
-      class={`presenter-mouth-aperture absolute pointer-events-none transition-opacity duration-150 ${pose === 'speaking' ? 'presenter-mouth-active' : 'opacity-0'}`}
-      style="left: 50%; top: 55.2%; width: 13.5%; height: 5.8%; transform: translate(-50%, -50%);"
+    <!-- SVG Vector Stylized Puppet (100% Resolution Independent, Zero Misplaced Mouths, Zero Photo Glitches) -->
+    <svg 
+      viewBox="0 0 500 500" 
+      class="w-full h-full overflow-visible drop-shadow-md"
+      xmlns="http://www.w3.org/2000/svg"
     >
-      <svg viewBox="0 0 160 80" class="w-full h-full drop-shadow-xs overflow-visible">
-        <defs>
-          <linearGradient id={`lipShine_${presenter.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#6e242d" stop-opacity="0.95" />
-            <stop offset="50%" stop-color="#8c2f3b" stop-opacity="0.8" />
-            <stop offset="100%" stop-color="#4a151b" stop-opacity="0.95" />
-          </linearGradient>
-          <radialGradient id={`mouthCavity_${presenter.id}`} cx="50%" cy="65%" r="50%">
-            <stop offset="0%" stop-color="#0f0304" />
-            <stop offset="60%" stop-color="#24070b" />
-            <stop offset="100%" stop-color="#3b1016" />
-          </radialGradient>
-        </defs>
-        <!-- Outer Lip Margin -->
-        <path d="M 15 38 Q 80 18 145 38 Q 120 68 80 70 Q 40 68 15 38 Z" fill={`url(#lipShine_${presenter.id})`} />
-        <!-- Open Oral Cavity -->
-        <path d="M 26 39 Q 80 26 134 39 Q 115 63 80 65 Q 45 63 26 39 Z" fill={`url(#mouthCavity_${presenter.id})`} />
-        <!-- Top Teeth Edge -->
-        <path d="M 42 38 Q 80 33 118 38 Q 112 46 80 47 Q 48 46 42 38 Z" fill="#f8fafc" opacity="0.92" />
-        <!-- Lower tongue pink highlight -->
-        <ellipse cx="80" cy="58" rx="28" ry="5" fill="#a83f4d" opacity="0.5" />
-      </svg>
-    </div>
+      <defs>
+        <!-- Gradients for Studio Lighting & Skin -->
+        <linearGradient id={`skinGrad_${presenter.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color={charConfig.skinBase} />
+          <stop offset="100%" stop-color={charConfig.skinDark} />
+        </linearGradient>
+        
+        <linearGradient id={`suitGrad_${presenter.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color={charConfig.suitColor} />
+          <stop offset="100%" stop-color={charConfig.suitCollar} />
+        </linearGradient>
 
-    <!-- Live On-Air Pill (when speaking or breaking) -->
+        <linearGradient id="deskVeneer" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#1e293b" />
+          <stop offset="30%" stop-color="#0f172a" />
+          <stop offset="100%" stop-color="#020617" />
+        </linearGradient>
+
+        <linearGradient id="deskRimGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#10b981" stop-opacity="0.2" />
+          <stop offset="50%" stop-color="#34d399" stop-opacity="0.9" />
+          <stop offset="100%" stop-color="#10b981" stop-opacity="0.2" />
+        </linearGradient>
+
+        <linearGradient id="bookCover" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#0f172a" />
+          <stop offset="50%" stop-color="#1e293b" />
+          <stop offset="100%" stop-color="#0f172a" />
+        </linearGradient>
+      </defs>
+
+      <!-- 1. STUDIO BACKGROUND ACCENTS -->
+      <g class="studio-ambience">
+        <!-- Studio Rim Arc -->
+        <circle cx="250" cy="180" r="160" fill="none" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.15" stroke-dasharray="8 6" />
+        <circle cx="250" cy="180" r="130" fill="none" stroke="#38bdf8" stroke-width="1" stroke-opacity="0.1" />
+      </g>
+
+      <!-- 2. ANCHOR TORSO & SUIT (Subtle idle breathing micro-motion) -->
+      <g class="puppet-torso-group transition-transform duration-300">
+        <!-- Shoulders & Upper Body -->
+        <path 
+          d="M 120 440 L 150 310 Q 190 280 250 280 Q 310 280 350 310 L 380 440 Z" 
+          fill={`url(#suitGrad_${presenter.id})`} 
+        />
+        
+        <!-- Shirt & Collar -->
+        <path d="M 215 280 L 250 345 L 285 280 Z" fill={charConfig.shirtColor} />
+        
+        <!-- Tie / Scarf Accent -->
+        {charConfig.hasHijab ? (
+          <!-- Gold Brooch on Collar -->
+          <circle cx="250" cy="330" r="8" fill="#f59e0b" stroke="#b45309" stroke-width="1.5" />
+        ) : charConfig.shirtColor === '#09090b' ? (
+          <!-- Gold Necklace for Amaka -->
+          <path d="M 225 305 Q 250 335 275 305" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" />
+        ) : (
+          <!-- Silk Tie for Femi & Tunde -->
+          <g>
+            <path d="M 243 295 L 257 295 L 260 380 L 250 395 L 240 380 Z" fill={charConfig.tieOrScarfColor} />
+            <path d="M 242 295 L 258 295 L 255 315 L 245 315 Z" fill={charConfig.tiePattern || charConfig.tieOrScarfColor} />
+          </g>
+        )}
+
+        <!-- Suit Lapels -->
+        <path d="M 175 305 L 225 385 L 210 440 L 140 440 Z" fill={charConfig.suitCollar} />
+        <path d="M 325 305 L 275 385 L 290 440 L 360 440 Z" fill={charConfig.suitCollar} />
+      </g>
+
+      <!-- 3. SWITCHABLE ARMS & HANDS -->
+      <!-- Arm State A: Desk Rest (Default) -->
+      <g class={`puppet-arms-desk transition-all duration-300 ${armState === 'desk_rest' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <!-- Left Arm Rested on Desk -->
+        <path d="M 140 360 Q 145 425 210 435 L 220 415 Q 165 405 160 360 Z" fill={charConfig.suitCollar} />
+        <!-- Left Hand -->
+        <ellipse cx="218" cy="428" rx="14" ry="9" fill={`url(#skinGrad_${presenter.id})`} transform="rotate(-15 218 428)" />
+        
+        <!-- Right Arm Rested on Desk -->
+        <path d="M 360 360 Q 355 425 290 435 L 280 415 Q 335 405 340 360 Z" fill={charConfig.suitCollar} />
+        <!-- Right Hand -->
+        <ellipse cx="282" cy="428" rx="14" ry="9" fill={`url(#skinGrad_${presenter.id})`} transform="rotate(15 282 428)" />
+      </g>
+
+      <!-- Arm State B: Gesture Pointing Towards Side Screen -->
+      <g class={`puppet-arms-point transition-all duration-300 ${armState === 'gesture_screen' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <!-- Left Arm Resting -->
+        <path d="M 140 360 Q 145 425 205 435 L 215 415 Q 165 405 160 360 Z" fill={charConfig.suitCollar} />
+        <ellipse cx="212" cy="428" rx="14" ry="9" fill={`url(#skinGrad_${presenter.id})`} transform="rotate(-15 212 428)" />
+        
+        <!-- Right Arm Raised & Pointing to Side Screen -->
+        <path d="M 350 330 Q 395 315 440 280 L 450 300 Q 405 340 355 355 Z" fill={charConfig.suitColor} />
+        <!-- Forearm & Pointing Hand -->
+        <path d="M 440 280 L 465 260 L 472 268 L 448 295 Z" fill={`url(#skinGrad_${presenter.id})`} />
+        <!-- Extended Index Finger pointing toward screen -->
+        <path d="M 465 260 L 485 245 L 488 252 L 470 266 Z" fill={`url(#skinGrad_${presenter.id})`} />
+        <circle cx="468" cy="272" r="6" fill={`url(#skinGrad_${presenter.id})`} />
+      </g>
+
+      <!-- Arm State C: Holding Briefing Book / Notes on Desk -->
+      <g class={`puppet-arms-hold transition-all duration-300 ${armState === 'hold_notes' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <!-- Left Arm gripping folder edge -->
+        <path d="M 145 360 Q 160 415 200 425 L 210 405 Q 175 395 165 360 Z" fill={charConfig.suitCollar} />
+        <ellipse cx="204" cy="416" rx="12" ry="8" fill={`url(#skinGrad_${presenter.id})`} transform="rotate(25 204 416)" />
+        <!-- Thumb over briefing sheet -->
+        <path d="M 206 410 Q 215 412 216 418" stroke={charConfig.skinDark} stroke-width="2" fill="none" />
+
+        <!-- Right Arm holding pen over folder -->
+        <path d="M 355 360 Q 340 415 300 425 L 290 405 Q 325 395 335 360 Z" fill={charConfig.suitCollar} />
+        <ellipse cx="296" cy="416" rx="12" ry="8" fill={`url(#skinGrad_${presenter.id})`} transform="rotate(-25 296 416)" />
+        <!-- Executive Pen in hand -->
+        <rect x="290" y="405" width="22" height="4" rx="2" fill="#f59e0b" transform="rotate(-35 290 405)" />
+      </g>
+
+      <!-- 4. MODULAR SWITCHABLE HEADS & FACES (Zero floating parts, mouth anchored on face) -->
+      
+      <!-- HEAD GAZE A: AUDIENCE (Looking Forward at Camera) -->
+      <g class={`puppet-head-audience transition-all duration-300 ${gaze === 'audience' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <!-- Neck -->
+        <path d="M 225 260 L 225 290 Q 250 300 275 290 L 275 260 Z" fill={`url(#skinGrad_${presenter.id})`} />
+        
+        <!-- Head Shape -->
+        <ellipse cx="250" cy="195" rx="60" ry="72" fill={`url(#skinGrad_${presenter.id})`} />
+        
+        <!-- Hair / Headwear -->
+        {charConfig.hasHijab ? (
+          <!-- Elegant Draped Silk Hijab (Zainab) -->
+          <g>
+            <path d="M 180 185 C 180 110 320 110 320 185 C 320 250 310 285 285 295 C 270 300 230 300 215 295 C 190 285 180 250 180 185 Z" fill={charConfig.hairColor} opacity="0.95" />
+            <!-- Inner Face Frame -->
+            <path d="M 205 160 C 215 140 285 140 295 160 C 305 195 300 235 250 250 C 200 235 195 195 205 160 Z" fill={`url(#skinGrad_${presenter.id})`} />
+            <!-- Gold Trim on Scarf Edge -->
+            <path d="M 195 155 Q 250 138 305 155" fill="none" stroke="#f59e0b" stroke-width="2.5" />
+          </g>
+        ) : charConfig.hairStyle === 'curls' ? (
+          <!-- Natural Afro Curls Crown (Amaka) -->
+          <g>
+            <circle cx="210" cy="145" r="28" fill={charConfig.hairColor} />
+            <circle cx="250" cy="135" r="32" fill={charConfig.hairColor} />
+            <circle cx="290" cy="145" r="28" fill={charConfig.hairColor} />
+            <circle cx="190" cy="175" r="24" fill={charConfig.hairColor} />
+            <circle cx="310" cy="175" r="24" fill={charConfig.hairColor} />
+            <!-- Face front -->
+            <ellipse cx="250" cy="198" rx="54" ry="65" fill={`url(#skinGrad_${presenter.id})`} />
+          </g>
+        ) : (
+          <!-- Sharp Fade / Short Hair (Femi & Tunde) -->
+          <g>
+            <path d="M 190 180 C 190 125 310 125 310 180 L 305 160 C 290 135 210 135 195 160 Z" fill={charConfig.hairColor} />
+          </g>
+        )}
+
+        <!-- Eyes (Direct Audience Gaze with subtle natural blink) -->
+        <g class="puppet-eyes-audience">
+          <!-- Left Eye -->
+          <ellipse cx="228" cy="188" rx="9" ry="6" fill="#f8fafc" />
+          <circle cx="228" cy="188" r="4" fill="#18181b" />
+          <circle cx="229" cy="186" r="1.5" fill="#ffffff" />
+          <!-- Right Eye -->
+          <ellipse cx="272" cy="188" rx="9" ry="6" fill="#f8fafc" />
+          <circle cx="272" cy="188" r="4" fill="#18181b" />
+          <circle cx="273" cy="186" r="1.5" fill="#ffffff" />
+          <!-- Eyebrows -->
+          <path d="M 218 178 Q 230 173 240 177" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+          <path d="M 260 177 Q 270 173 282 178" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+        </g>
+
+        <!-- Smart Glasses (Tunde only) -->
+        {charConfig.hasGlasses && (
+          <g class="puppet-glasses">
+            <rect x="215" y="180" width="28" height="18" rx="3" fill="none" stroke="#0f172a" stroke-width="2.5" />
+            <rect x="257" y="180" width="28" height="18" rx="3" fill="none" stroke="#0f172a" stroke-width="2.5" />
+            <path d="M 243 186 L 257 186" stroke="#0f172a" stroke-width="2.5" />
+          </g>
+        )}
+
+        <!-- Nose -->
+        <path d="M 248 194 Q 250 208 244 214 Q 250 216 256 214" stroke={charConfig.skinDark} stroke-width="2" fill="none" stroke-linecap="round" />
+
+        <!-- MOUTH (Anchored directly on face, synchronized with speech) -->
+        <g class="puppet-mouth-audience">
+          <!-- Closed Lip (Default / Idle) -->
+          <path 
+            class={`mouth-shape-closed transition-opacity duration-150 ${pose === 'speaking' || pose === 'breaking' ? 'opacity-0' : 'opacity-100'}`}
+            d="M 234 232 Q 250 236 266 232" 
+            stroke="#451a03" 
+            stroke-width="3" 
+            fill="none" 
+            stroke-linecap="round" 
+          />
+
+          <!-- Articulated Open Speaking Mouth -->
+          <g class={`mouth-shape-open transition-opacity duration-150 ${pose === 'speaking' || pose === 'breaking' ? 'opacity-100' : 'opacity-0'}`}>
+            <!-- Outer Lip -->
+            <path d="M 232 230 Q 250 224 268 230 Q 262 248 250 248 Q 238 248 232 230 Z" fill="#7f1d1d" />
+            <!-- Cavity -->
+            <path d="M 235 231 Q 250 227 265 231 Q 260 245 250 245 Q 240 245 235 231 Z" fill="#260609" />
+            <!-- Upper Teeth -->
+            <path d="M 239 231 Q 250 228 261 231 Q 259 236 250 236 Q 241 236 239 231 Z" fill="#ffffff" />
+            <!-- Tongue Accent -->
+            <ellipse cx="250" cy="242" rx="7" ry="3" fill="#f43f5e" opacity="0.8" />
+          </g>
+        </g>
+      </g>
+
+      <!-- HEAD GAZE B: BOOK ON TABLE (Looking Down at Notes) -->
+      <g class={`puppet-head-book transition-all duration-300 ${gaze === 'book' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <!-- Neck tilted forward -->
+        <path d="M 226 264 L 226 295 Q 250 305 274 295 L 274 264 Z" fill={`url(#skinGrad_${presenter.id})`} />
+        
+        <!-- Tilted Head Base -->
+        <ellipse cx="250" cy="204" rx="58" ry="70" fill={`url(#skinGrad_${presenter.id})`} />
+        
+        {charConfig.hasHijab ? (
+          <g>
+            <path d="M 184 195 C 184 120 316 120 316 195 C 316 260 306 295 284 305 C 270 310 230 310 216 305 C 194 295 184 260 184 195 Z" fill={charConfig.hairColor} opacity="0.95" />
+            <path d="M 207 172 C 217 152 283 152 293 172 C 301 205 295 245 250 258 C 205 245 199 205 207 172 Z" fill={`url(#skinGrad_${presenter.id})`} />
+            <path d="M 197 165 Q 250 148 303 165" fill="none" stroke="#f59e0b" stroke-width="2.5" />
+          </g>
+        ) : charConfig.hairStyle === 'curls' ? (
+          <g>
+            <circle cx="212" cy="155" r="28" fill={charConfig.hairColor} />
+            <circle cx="250" cy="145" r="32" fill={charConfig.hairColor} />
+            <circle cx="288" cy="155" r="28" fill={charConfig.hairColor} />
+            <ellipse cx="250" cy="206" rx="54" ry="64" fill={`url(#skinGrad_${presenter.id})`} />
+          </g>
+        ) : (
+          <g>
+            <path d="M 192 190 C 192 135 308 135 308 190 L 304 170 C 288 145 212 145 196 170 Z" fill={charConfig.hairColor} />
+          </g>
+        )}
+
+        <!-- Eyes: Cast Downward at Desk Briefing Book -->
+        <g class="puppet-eyes-book">
+          <!-- Left Eye Down -->
+          <ellipse cx="228" cy="198" rx="8" ry="4" fill="#f8fafc" />
+          <path d="M 220 196 Q 228 202 236 196" stroke="#18181b" stroke-width="2" fill="none" />
+          <circle cx="228" cy="199" r="2.5" fill="#18181b" />
+          
+          <!-- Right Eye Down -->
+          <ellipse cx="272" cy="198" rx="8" ry="4" fill="#f8fafc" />
+          <path d="M 264 196 Q 272 202 280 196" stroke="#18181b" stroke-width="2" fill="none" />
+          <circle cx="272" cy="199" r="2.5" fill="#18181b" />
+
+          <!-- Lowered Focused Eyebrows -->
+          <path d="M 218 190 Q 230 188 238 192" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+          <path d="M 262 192 Q 270 188 282 190" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+        </g>
+
+        <!-- Downward Angled Nose -->
+        <path d="M 248 204 L 246 220 L 254 220" stroke={charConfig.skinDark} stroke-width="2" fill="none" stroke-linecap="round" />
+
+        <!-- Downward Mouth (Synchronized speech while reading notes) -->
+        <g class="puppet-mouth-book">
+          <path 
+            class={`mouth-shape-closed-book transition-opacity duration-150 ${pose === 'speaking' || pose === 'breaking' ? 'opacity-0' : 'opacity-100'}`}
+            d="M 236 238 Q 250 242 264 238" 
+            stroke="#451a03" 
+            stroke-width="3" 
+            fill="none" 
+            stroke-linecap="round" 
+          />
+          <g class={`mouth-shape-open-book transition-opacity duration-150 ${pose === 'speaking' || pose === 'breaking' ? 'opacity-100' : 'opacity-0'}`}>
+            <path d="M 235 237 Q 250 233 265 237 Q 260 250 250 250 Q 240 250 235 237 Z" fill="#7f1d1d" />
+            <path d="M 238 238 Q 250 235 262 238 Q 258 247 250 247 Q 242 247 238 238 Z" fill="#260609" />
+            <path d="M 241 238 Q 250 236 259 238 Q 257 241 250 241 Q 243 241 241 238 Z" fill="#ffffff" />
+          </g>
+        </g>
+      </g>
+
+      <!-- HEAD GAZE C: SIDE PROJECTION SCREEN (Turned Towards Right Display Screen) -->
+      <g class={`puppet-head-screen transition-all duration-300 ${gaze === 'screen' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <!-- Neck angled to side -->
+        <path d="M 232 260 L 235 290 Q 260 300 280 290 L 278 260 Z" fill={`url(#skinGrad_${presenter.id})`} />
+        
+        <!-- Three-Quarter Turned Head -->
+        <ellipse cx="262" cy="194" rx="56" ry="72" fill={`url(#skinGrad_${presenter.id})`} />
+        
+        {charConfig.hasHijab ? (
+          <g>
+            <path d="M 194 185 C 194 110 330 110 330 185 C 330 250 318 285 292 295 C 275 300 235 300 220 295 C 200 285 194 250 194 185 Z" fill={charConfig.hairColor} opacity="0.95" />
+            <path d="M 220 160 C 230 140 298 140 306 160 C 314 195 308 235 264 250 C 218 235 212 195 220 160 Z" fill={`url(#skinGrad_${presenter.id})`} />
+          </g>
+        ) : charConfig.hairStyle === 'curls' ? (
+          <g>
+            <circle cx="225" cy="145" r="28" fill={charConfig.hairColor} />
+            <circle cx="265" cy="135" r="32" fill={charConfig.hairColor} />
+            <circle cx="300" cy="148" r="28" fill={charConfig.hairColor} />
+            <ellipse cx="262" cy="196" rx="52" ry="64" fill={`url(#skinGrad_${presenter.id})`} />
+          </g>
+        ) : (
+          <g>
+            <path d="M 205 180 C 205 125 320 125 320 180 L 315 160 C 300 135 225 135 210 160 Z" fill={charConfig.hairColor} />
+          </g>
+        )}
+
+        <!-- Eyes: Looking Rightward Towards Side Screen -->
+        <g class="puppet-eyes-screen">
+          <ellipse cx="246" cy="188" rx="8" ry="6" fill="#f8fafc" />
+          <circle cx="250" cy="188" r="4" fill="#18181b" />
+          
+          <ellipse cx="286" cy="188" rx="8" ry="6" fill="#f8fafc" />
+          <circle cx="290" cy="188" r="4" fill="#18181b" />
+          
+          <path d="M 238 178 Q 248 174 258 178" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+          <path d="M 278 176 Q 288 172 298 177" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
+        </g>
+
+        <!-- Turned Nose -->
+        <path d="M 268 192 L 274 212 L 268 214" stroke={charConfig.skinDark} stroke-width="2" fill="none" stroke-linecap="round" />
+
+        <!-- Turned Mouth toward Screen -->
+        <g class="puppet-mouth-screen">
+          <path 
+            class={`mouth-shape-closed-screen transition-opacity duration-150 ${pose === 'speaking' || pose === 'breaking' ? 'opacity-0' : 'opacity-100'}`}
+            d="M 252 232 Q 266 235 280 230" 
+            stroke="#451a03" 
+            stroke-width="3" 
+            fill="none" 
+            stroke-linecap="round" 
+          />
+          <g class={`mouth-shape-open-screen transition-opacity duration-150 ${pose === 'speaking' || pose === 'breaking' ? 'opacity-100' : 'opacity-0'}`}>
+            <path d="M 250 231 Q 266 226 280 229 Q 275 244 265 245 Q 256 245 250 231 Z" fill="#7f1d1d" />
+            <path d="M 253 232 Q 266 228 277 231 Q 273 241 265 242 Q 258 242 253 232 Z" fill="#260609" />
+            <path d="M 256 232 Q 266 229 274 231 Q 272 235 265 235 Q 260 235 256 232 Z" fill="#ffffff" />
+          </g>
+        </g>
+      </g>
+
+      <!-- 5. ANCHOR DESK & BRIEFING BOOK FOREGROUND (Physical props firmly in foreground) -->
+      <g class="puppet-desk-props">
+        <!-- Main Desk Surface -->
+        <path d="M 20 420 L 480 420 L 500 500 L 0 500 Z" fill="url(#deskVeneer)" />
+        
+        <!-- Glowing Emerald Desk Rim Light -->
+        <line x1="20" y1="420" x2="480" y2="420" stroke="url(#deskRimGlow)" stroke-width="4" />
+
+        <!-- Executive Briefing Book / Folder Lying on Desk -->
+        <g class="puppet-briefing-book">
+          <!-- Folder Base -->
+          <polygon points="175,426 325,426 345,488 155,488" fill="url(#bookCover)" stroke="#334155" stroke-width="1.5" />
+          <!-- White Paper Sheet Inside Folder -->
+          <polygon points="185,430 315,430 330,482 170,482" fill="#f8fafc" />
+          <!-- Printed Headline & Text Lines on Briefing Sheet -->
+          <rect x="195" y="438" width="110" height="4" rx="1" fill="#047857" />
+          <line x1="195" y1="448" x2="305" y2="448" stroke="#64748b" stroke-width="2" stroke-linecap="round" />
+          <line x1="195" y1="456" x2="295" y2="456" stroke="#64748b" stroke-width="2" stroke-linecap="round" />
+          <line x1="195" y1="464" x2="280" y2="464" stroke="#64748b" stroke-width="2" stroke-linecap="round" />
+          <line x1="195" y1="472" x2="290" y2="472" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 3" />
+        </g>
+
+        <!-- Broadcast Gooseneck Microphone -->
+        <g class="puppet-mic">
+          <ellipse cx="90" cy="455" rx="14" ry="6" fill="#09090b" stroke="#334155" stroke-width="1" />
+          <!-- Gooseneck Stand -->
+          <path d="M 90 455 Q 85 410 115 385" fill="none" stroke="#475569" stroke-width="4" stroke-linecap="round" />
+          <!-- Mic Capsule -->
+          <rect x="110" y="372" width="22" height="14" rx="4" fill="#09090b" stroke="#10b981" stroke-width="1.5" transform="rotate(-25 110 372)" />
+        </g>
+
+        <!-- Brass / Steel Anchor Desk Nameplate -->
+        <g class="puppet-nameplate">
+          <polygon points="190,490 310,490 305,498 195,498" fill="#d97706" />
+          <text x="250" y="496" font-size="7" font-weight="900" font-family="monospace" fill="#ffffff" text-anchor="middle" letter-spacing="1">
+            {presenter.name.toUpperCase()}
+          </text>
+        </g>
+      </g>
+    </svg>
+
+    <!-- Live Status Pill (Top-Left) -->
     <div 
-      class={`presenter-live-indicator absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider backdrop-blur-xs transition-opacity duration-200 ${
+      class={`puppet-live-pill absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-black uppercase tracking-wider backdrop-blur-md transition-opacity duration-200 ${
         pose === 'speaking' 
           ? 'bg-emerald-600/90 text-white' 
           : pose === 'breaking'
@@ -95,136 +499,227 @@ const sizeClasses = {
       }`}
     >
       <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-      <span class="indicator-text">{pose === 'speaking' ? 'LIVE' : 'ALERT'}</span>
+      <span class="puppet-indicator-text">{pose === 'speaking' ? 'ON AIR' : 'ALERT'}</span>
+    </div>
+
+    <!-- Active Gaze & Gesture Badge (Top-Right) -->
+    <div class="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-slate-950/85 backdrop-blur-xs border border-slate-700/80 text-[9px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
+      <span class="puppet-gaze-label">{gaze === 'audience' ? 'Audience' : gaze === 'book' ? 'Notes/Book' : 'Side Screen'}</span>
     </div>
 
     <!-- Department Mini Badge -->
     {showBadge && (
-      <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-1.5 pt-3 text-center">
-        <p class="text-[11px] font-bold text-white leading-tight truncate">
+      <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-2 pt-4 text-center">
+        <p class="text-xs font-bold text-white leading-tight truncate">
           {presenter.name}
         </p>
-        <p class="text-[9px] text-emerald-400 font-medium truncate">
+        <p class="text-[10px] text-emerald-400 font-medium truncate">
           {presenter.role.split('&')[0]}
         </p>
       </div>
     )}
   </div>
 
-  <!-- Interactive Pose & Option A Speech Animation Trigger (when interactive=true) -->
+  <!-- Interactive Controls (when interactive=true) -->
   {interactive && (
-    <div class="presenter-pose-switcher mt-2 flex flex-wrap items-center justify-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-[10px] font-medium shadow-xs max-w-full">
-      <button 
-        type="button" 
-        data-pose="idle" 
-        class={`pose-btn px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer ${pose === 'idle' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-        title="Neutral listening pose"
-      >
-        Idle
-      </button>
-      <button 
-        type="button" 
-        data-pose="speaking" 
-        class={`pose-btn px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer ${pose === 'speaking' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-        title="Reporting / speaking pose"
-      >
-        Report
-      </button>
-      <button 
-        type="button" 
-        data-pose="breaking" 
-        class={`pose-btn px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer ${pose === 'breaking' ? 'bg-rose-600 text-white font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-        title="Breaking news alert pose"
-      >
-        Alert
-      </button>
-      <button 
-        type="button" 
-        data-pose="wrap" 
-        class={`pose-btn px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer ${pose === 'wrap' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-        title="Wrap-up sign-off pose"
-      >
-        Wrap
-      </button>
-      <!-- Option A Live Presentation Motion Test Button -->
-      <button 
-        type="button" 
-        class="presenter-motion-test-btn px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold transition-all border border-emerald-500/30 cursor-pointer flex items-center gap-1"
-        title="Option A: Test dynamic speech, lip-sync, and head motion"
-      >
-        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        <span>Motion</span>
-      </button>
+    <div class="puppet-controls mt-2 bg-slate-900 border border-slate-800 p-2 rounded-xl text-[10px] font-medium shadow-md space-y-1.5 max-w-full">
+      <!-- Pose Row -->
+      <div class="flex items-center justify-between gap-1">
+        <span class="text-slate-400 font-mono text-[9px] uppercase">Pose:</span>
+        <div class="flex items-center gap-1">
+          <button type="button" data-pose="idle" class="ctrl-pose-btn px-1.5 py-0.5 rounded bg-emerald-600 text-white font-bold cursor-pointer">Idle</button>
+          <button type="button" data-pose="speaking" class="ctrl-pose-btn px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">Speak</button>
+          <button type="button" data-pose="breaking" class="ctrl-pose-btn px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">Alert</button>
+          <button type="button" data-pose="wrap" class="ctrl-pose-btn px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">Wrap</button>
+        </div>
+      </div>
+      
+      <!-- Gaze & Gesture Row -->
+      <div class="flex items-center justify-between gap-1 border-t border-slate-800/80 pt-1">
+        <span class="text-slate-400 font-mono text-[9px] uppercase">Gaze:</span>
+        <div class="flex items-center gap-1">
+          <button type="button" data-gaze="audience" class="ctrl-gaze-btn px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer">Audience</button>
+          <button type="button" data-gaze="book" class="ctrl-gaze-btn px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">Book/Desk</button>
+          <button type="button" data-gaze="screen" class="ctrl-gaze-btn px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">Side Screen</button>
+        </div>
+      </div>
+
+      <!-- Arm Gesture Row -->
+      <div class="flex items-center justify-between gap-1 border-t border-slate-800/80 pt-1">
+        <span class="text-slate-400 font-mono text-[9px] uppercase">Arms:</span>
+        <div class="flex items-center gap-1">
+          <button type="button" data-arm="desk_rest" class="ctrl-arm-btn px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer">Desk</button>
+          <button type="button" data-arm="hold_notes" class="ctrl-arm-btn px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">Hold Book</button>
+          <button type="button" data-arm="gesture_screen" class="ctrl-arm-btn px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">Point Screen</button>
+        </div>
+      </div>
+
+      <!-- Audition Speech Button -->
+      <div class="pt-1 border-t border-slate-800/80 flex items-center justify-between">
+        <span class="text-[9px] text-slate-400 font-mono">Speech Audition:</span>
+        <button 
+          type="button" 
+          class="puppet-audition-btn px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer flex items-center gap-1"
+        >
+          <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          <span>Audition Live</span>
+        </button>
+      </div>
     </div>
   )}
 </div>
 
 <script>
-  // Client-side presenter pose switching and Option A motion controller
-  function initPresenterSprites() {
-    const containers = document.querySelectorAll('.presenter-sprite-container[data-interactive="true"]');
+  function initPresenterPuppets() {
+    const containers = document.querySelectorAll('.presenter-puppet-container[data-interactive="true"]');
     
     containers.forEach((container) => {
       if (container.getAttribute('data-wired') === 'true') return;
       container.setAttribute('data-wired', 'true');
 
-      const viewportEl = container.querySelector('.presenter-sprite-viewport') as HTMLElement | null;
-      const imageEl = container.querySelector('.presenter-sprite-image') as HTMLElement | null;
-      const indicatorEl = container.querySelector('.presenter-live-indicator') as HTMLElement | null;
-      const indicatorText = indicatorEl?.querySelector('.indicator-text');
-      const poseButtons = container.querySelectorAll('.pose-btn');
-      const motionTestBtn = container.querySelector('.presenter-motion-test-btn');
+      const livePill = container.querySelector('.puppet-live-pill');
+      const indicatorText = container.querySelector('.puppet-indicator-text');
+      const gazeLabel = container.querySelector('.puppet-gaze-label');
 
-      const mouthAperture = container.querySelector('.presenter-mouth-aperture') as HTMLElement | null;
+      // Head SVGs
+      const headAudience = container.querySelector('.puppet-head-audience');
+      const headBook = container.querySelector('.puppet-head-book');
+      const headScreen = container.querySelector('.puppet-head-screen');
 
-      const setPose = (targetPose: string) => {
-        if (!imageEl) return;
-        // Stop speech animation
-        mouthAperture?.classList.remove('presenter-mouth-active');
-        viewportEl?.classList.remove('presenter-viewport-speaking');
+      // Arms SVGs
+      const armsDesk = container.querySelector('.puppet-arms-desk');
+      const armsPoint = container.querySelector('.puppet-arms-point');
+      const armsHold = container.querySelector('.puppet-arms-hold');
 
-        container.setAttribute('data-current-pose', targetPose);
+      // Mouth Shapes
+      const closedAudience = container.querySelector('.mouth-shape-closed');
+      const openAudience = container.querySelector('.mouth-shape-open');
+      const closedBook = container.querySelector('.mouth-shape-closed-book');
+      const openBook = container.querySelector('.mouth-shape-open-book');
+      const closedScreen = container.querySelector('.mouth-shape-closed-screen');
+      const openScreen = container.querySelector('.mouth-shape-open-screen');
 
-        if (targetPose === 'speaking') {
-          mouthAperture?.classList.add('presenter-mouth-active');
-          viewportEl?.classList.add('presenter-viewport-speaking');
+      const setGaze = (targetGaze: string) => {
+        container.setAttribute('data-current-gaze', targetGaze);
+        
+        // Hide all heads
+        headAudience?.classList.remove('opacity-100');
+        headAudience?.classList.add('opacity-0', 'pointer-events-none');
+        headBook?.classList.remove('opacity-100');
+        headBook?.classList.add('opacity-0', 'pointer-events-none');
+        headScreen?.classList.remove('opacity-100');
+        headScreen?.classList.add('opacity-0', 'pointer-events-none');
+
+        if (targetGaze === 'book') {
+          headBook?.classList.remove('opacity-0', 'pointer-events-none');
+          headBook?.classList.add('opacity-100');
+          if (gazeLabel) gazeLabel.textContent = 'Notes/Book';
+        } else if (targetGaze === 'screen') {
+          headScreen?.classList.remove('opacity-0', 'pointer-events-none');
+          headScreen?.classList.add('opacity-100');
+          if (gazeLabel) gazeLabel.textContent = 'Side Screen';
+        } else {
+          headAudience?.classList.remove('opacity-0', 'pointer-events-none');
+          headAudience?.classList.add('opacity-100');
+          if (gazeLabel) gazeLabel.textContent = 'Audience';
         }
 
-        poseButtons.forEach((b) => {
-          b.className = 'pose-btn px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800';
+        // Update button states
+        container.querySelectorAll('.ctrl-gaze-btn').forEach((b) => {
+          if (b.getAttribute('data-gaze') === targetGaze) {
+            b.className = 'ctrl-gaze-btn px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer font-bold';
+          } else {
+            b.className = 'ctrl-gaze-btn px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer';
+          }
         });
-
-        const activeBtn = container.querySelector(`.pose-btn[data-pose="${targetPose}"]`);
-        if (activeBtn) {
-          if (targetPose === 'breaking') {
-            activeBtn.className = 'pose-btn px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer bg-rose-600 text-white font-bold';
-          } else {
-            activeBtn.className = 'pose-btn px-1.5 py-0.5 rounded-lg transition-colors cursor-pointer bg-emerald-600 text-white font-bold';
-          }
-        }
-
-        if (indicatorEl && indicatorText) {
-          if (targetPose === 'speaking') {
-            indicatorEl.className = 'presenter-live-indicator absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider backdrop-blur-xs bg-emerald-600/90 text-white';
-            indicatorText.textContent = 'LIVE';
-          } else if (targetPose === 'breaking') {
-            indicatorEl.className = 'presenter-live-indicator absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider backdrop-blur-xs bg-rose-600/90 text-white';
-            indicatorText.textContent = 'ALERT';
-          } else {
-            indicatorEl.className = 'presenter-live-indicator absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider backdrop-blur-xs opacity-0 pointer-events-none';
-          }
-        }
       };
 
-      poseButtons.forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const targetPose = btn.getAttribute('data-pose') || 'idle';
-          setPose(targetPose);
+      const setArmState = (targetArm: string) => {
+        container.setAttribute('data-current-arm', targetArm);
+
+        armsDesk?.classList.remove('opacity-100');
+        armsDesk?.classList.add('opacity-0', 'pointer-events-none');
+        armsPoint?.classList.remove('opacity-100');
+        armsPoint?.classList.add('opacity-0', 'pointer-events-none');
+        armsHold?.classList.remove('opacity-100');
+        armsHold?.classList.add('opacity-0', 'pointer-events-none');
+
+        if (targetArm === 'gesture_screen') {
+          armsPoint?.classList.remove('opacity-0', 'pointer-events-none');
+          armsPoint?.classList.add('opacity-100');
+        } else if (targetArm === 'hold_notes') {
+          armsHold?.classList.remove('opacity-0', 'pointer-events-none');
+          armsHold?.classList.add('opacity-100');
+        } else {
+          armsDesk?.classList.remove('opacity-0', 'pointer-events-none');
+          armsDesk?.classList.add('opacity-100');
+        }
+
+        container.querySelectorAll('.ctrl-arm-btn').forEach((b) => {
+          if (b.getAttribute('data-arm') === targetArm) {
+            b.className = 'ctrl-arm-btn px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer font-bold';
+          } else {
+            b.className = 'ctrl-arm-btn px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer';
+          }
         });
+      };
+
+      const setPose = (targetPose: string) => {
+        container.setAttribute('data-current-pose', targetPose);
+
+        const isSpeaking = targetPose === 'speaking' || targetPose === 'breaking';
+
+        // Toggle mouths in all 3 heads
+        if (isSpeaking) {
+          closedAudience?.classList.add('opacity-0');
+          openAudience?.classList.remove('opacity-0');
+          closedBook?.classList.add('opacity-0');
+          openBook?.classList.remove('opacity-0');
+          closedScreen?.classList.add('opacity-0');
+          openScreen?.classList.remove('opacity-0');
+
+          if (livePill) {
+            livePill.className = `puppet-live-pill absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-black uppercase tracking-wider backdrop-blur-md transition-opacity duration-200 ${targetPose === 'breaking' ? 'bg-rose-600/90 text-white' : 'bg-emerald-600/90 text-white'}`;
+            if (indicatorText) indicatorText.textContent = targetPose === 'breaking' ? 'ALERT' : 'ON AIR';
+          }
+        } else {
+          closedAudience?.classList.remove('opacity-0');
+          openAudience?.classList.add('opacity-0');
+          closedBook?.classList.remove('opacity-0');
+          openBook?.classList.add('opacity-0');
+          closedScreen?.classList.remove('opacity-0');
+          openScreen?.classList.add('opacity-0');
+
+          if (livePill) {
+            livePill.className = 'puppet-live-pill absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-mono font-black uppercase tracking-wider backdrop-blur-md opacity-0 pointer-events-none';
+          }
+        }
+
+        container.querySelectorAll('.ctrl-pose-btn').forEach((b) => {
+          if (b.getAttribute('data-pose') === targetPose) {
+            b.className = `ctrl-pose-btn px-1.5 py-0.5 rounded text-white font-bold cursor-pointer ${targetPose === 'breaking' ? 'bg-rose-600' : 'bg-emerald-600'}`;
+          } else {
+            b.className = 'ctrl-pose-btn px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer';
+          }
+        });
+      };
+
+      // Wire Buttons
+      container.querySelectorAll('.ctrl-pose-btn').forEach((b) => {
+        b.addEventListener('click', () => setPose(b.getAttribute('data-pose') || 'idle'));
       });
 
-      // Option A: Live Motion and Lip-Sync Test
-      motionTestBtn?.addEventListener('click', () => {
+      container.querySelectorAll('.ctrl-gaze-btn').forEach((b) => {
+        b.addEventListener('click', () => setGaze(b.getAttribute('data-gaze') || 'audience'));
+      });
+
+      container.querySelectorAll('.ctrl-arm-btn').forEach((b) => {
+        b.addEventListener('click', () => setArmState(b.getAttribute('data-arm') || 'desk_rest'));
+      });
+
+      // Audition Button
+      const auditionBtn = container.querySelector('.puppet-audition-btn');
+      auditionBtn?.addEventListener('click', () => {
         if (!('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
 
@@ -233,16 +728,32 @@ const sizeClasses = {
         const pitch = parseFloat(container.getAttribute('data-presenter-pitch') || '1.0');
         const rate = parseFloat(container.getAttribute('data-presenter-rate') || '1.0');
 
-        // Activate Natural Lip-Sync & Speaking Head Nod (Zero Body Jump)
-        viewportEl?.classList.add('presenter-viewport-speaking');
-        mouthAperture?.classList.add('presenter-mouth-active');
-        if (indicatorEl && indicatorText) {
-          indicatorEl.className = 'presenter-live-indicator absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider backdrop-blur-xs bg-emerald-600/90 text-white';
-          indicatorText.textContent = 'LIVE';
-        }
+        // Sequence gestures during speech:
+        // 1. Look at notes / book
+        setGaze('book');
+        setArmState('hold_notes');
+        setPose('speaking');
 
-        const sampleText = `Hello, I am ${name}. Testing natural broadcast lip-sync. The character remains stable while speech cadence articulates seamlessly.`;
-        const utterance = new SpeechSynthesisUtterance(sampleText);
+        setTimeout(() => {
+          // 2. Look up to audience
+          setGaze('audience');
+          setArmState('desk_rest');
+        }, 1200);
+
+        setTimeout(() => {
+          // 3. Look at screen and point
+          setGaze('screen');
+          setArmState('gesture_screen');
+        }, 3200);
+
+        setTimeout(() => {
+          // 4. Return to audience
+          setGaze('audience');
+          setArmState('desk_rest');
+        }, 5500);
+
+        const text = `Hello, I am ${name}. You are watching 9jaBeacon National News. Testing modular puppet articulation, gazing at briefing notes, and pointing at the side screen.`;
+        const utterance = new SpeechSynthesisUtterance(text);
         utterance.pitch = pitch;
         utterance.rate = rate;
 
@@ -255,16 +766,12 @@ const sizeClasses = {
         if (preferred) utterance.voice = preferred;
 
         utterance.onend = () => {
-          mouthAperture?.classList.remove('presenter-mouth-active');
-          viewportEl?.classList.remove('presenter-viewport-speaking');
           setPose('wrap');
-          setTimeout(() => setPose('idle'), 2500);
-        };
-
-        utterance.onerror = () => {
-          mouthAperture?.classList.remove('presenter-mouth-active');
-          viewportEl?.classList.remove('presenter-viewport-speaking');
-          setPose('idle');
+          setTimeout(() => {
+            setPose('idle');
+            setGaze('audience');
+            setArmState('desk_rest');
+          }, 2000);
         };
 
         setTimeout(() => window.speechSynthesis.speak(utterance), 50);
@@ -273,9 +780,9 @@ const sizeClasses = {
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPresenterSprites);
+    document.addEventListener('DOMContentLoaded', initPresenterPuppets);
   } else {
-    initPresenterSprites();
+    initPresenterPuppets();
   }
-  document.addEventListener('astro:page-load', initPresenterSprites);
+  document.addEventListener('astro:page-load', initPresenterPuppets);
 </script>

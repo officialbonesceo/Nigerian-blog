@@ -7,15 +7,20 @@
  * 2. GitHub Actions Workflows (Automated Headless Video Generation via Puppeteer/ffmpeg)
  */
 
-import type { PresenterPose } from './types';
+import type { PresenterPose, PresenterGaze, PresenterArmState, BroadcastStageMode } from './types';
 
 export interface PresenterTimelineEvent {
   timeMs: number;
   pose: PresenterPose;
   mouth: 'closed' | 'open' | 'smile' | 'alert';
+  gaze: PresenterGaze;
+  armState: PresenterArmState;
+  stageMode: BroadcastStageMode;
   gesture: string;
   coords: { x: string; y: string };
   action: string;
+  brollTag?: string;
+  brollHeadline?: string;
 }
 
 export interface PresenterAnimationTrack {
@@ -41,75 +46,143 @@ export function generatePresenterTimeline(
 
   const words = (scriptText || '').trim().split(/\s+/).filter(Boolean);
   const wordCount = Math.max(words.length, 1);
-  const totalDurationMs = Math.round((wordCount / effectiveWpm) * 60 * 1000);
+  const totalDurationMs = Math.max(Math.round((wordCount / effectiveWpm) * 60 * 1000), 12000);
 
   const events: PresenterTimelineEvent[] = [];
 
-  // Initial standby frame
+  // Stage timeline key milestones (deterministic authentic news broadcast pacing)
+  const tPrepEnd = Math.min(1400, Math.round(totalDurationMs * 0.08));
+  const tSpeechEnd = Math.max(totalDurationMs - 1200, 4000);
+  
+  // Phase thresholds
+  const tAudienceEnd = Math.round(tPrepEnd + (tSpeechEnd - tPrepEnd) * 0.30); // 8% - 35%: Audience headline
+  const tScreenEnd = Math.round(tPrepEnd + (tSpeechEnd - tPrepEnd) * 0.55);   // 35% - 55%: Look & gesture at side screen
+  const tBrollEnd = Math.round(tPrepEnd + (tSpeechEnd - tPrepEnd) * 0.75);    // 55% - 75%: B-Roll Interstitial Cut
+  const tBookEnd = Math.round(tPrepEnd + (tSpeechEnd - tPrepEnd) * 0.90);     // 75% - 90%: Look down at book on desk speaking
+
+  // 1. Initial Standby / Prep: Anchor glancing down at briefing book on desk
   events.push({
     timeMs: 0,
     pose: 'idle',
     mouth: 'closed',
-    gesture: 'desk_rest',
+    gaze: 'book',
+    armState: 'hold_notes',
+    stageMode: 'studio',
+    gesture: 'reviewing_table_book',
     coords: { x: '50%', y: '50%' },
-    action: 'broadcast_standby'
+    action: 'consult_briefing_book'
   });
 
-  // Pre-speech transition (200ms)
+  // 2. Look up from book to audience (Preparation finished)
   events.push({
-    timeMs: 200,
+    timeMs: tPrepEnd,
     pose: 'speaking',
     mouth: 'open',
-    gesture: 'hand_raised',
+    gaze: 'audience',
+    armState: 'desk_rest',
+    stageMode: 'studio',
+    gesture: 'look_up_audience',
     coords: { x: '50%', y: '50%' },
-    action: 'speech_commence'
+    action: 'headline_direct_address'
   });
 
-  // Rhythmic lip-flap & speaking cadence (~180ms - 220ms per cycle)
+  // 3. Cadenced speech loops with dynamic gaze, gestures, and B-roll cutaway
   const cycleMs = 190;
-  const speechEndMs = Math.max(totalDurationMs - 600, 1000);
-
-  for (let t = 400; t < speechEndMs; t += cycleMs) {
+  for (let t = tPrepEnd + 200; t < tSpeechEnd; t += cycleMs) {
     const isMouthOpen = (Math.floor(t / cycleMs) % 2 === 0);
 
-    // If breaking alert segment is specified in the middle of script
-    if (options.hasBreakingAlert && t > speechEndMs * 0.4 && t < speechEndMs * 0.7) {
+    if (t < tAudienceEnd) {
+      // Direct Audience delivery
       events.push({
         timeMs: t,
-        pose: 'breaking',
-        mouth: isMouthOpen ? 'open' : 'alert',
-        gesture: 'earpiece_focus',
+        pose: options.hasBreakingAlert ? 'breaking' : 'speaking',
+        mouth: isMouthOpen ? 'open' : (options.hasBreakingAlert ? 'alert' : 'closed'),
+        gaze: 'audience',
+        armState: 'desk_rest',
+        stageMode: 'studio',
+        gesture: 'direct_reporting',
         coords: { x: '50%', y: '50%' },
-        action: 'breaking_news_bulletin'
+        action: 'anchor_addressing_audience'
       });
-    } else {
+    } else if (t < tScreenEnd) {
+      // Turn to big side projection screen and gesture towards it
       events.push({
         timeMs: t,
         pose: 'speaking',
         mouth: isMouthOpen ? 'open' : 'closed',
-        gesture: 'articulate_gesture',
+        gaze: 'screen',
+        armState: 'gesture_screen',
+        stageMode: 'studio',
+        gesture: 'point_to_big_screen',
         coords: { x: '50%', y: '50%' },
-        action: 'active_narration'
+        action: 'referencing_side_screen'
+      });
+    } else if (t < tBrollEnd) {
+      // B-Roll / Interstitial Cutaway: Pause anchor or cut to field footage/image
+      events.push({
+        timeMs: t,
+        pose: 'speaking',
+        mouth: isMouthOpen ? 'open' : 'closed', // Voiceover narration over footage
+        gaze: 'audience',
+        armState: 'desk_rest',
+        stageMode: 'b_roll',
+        brollTag: 'VERIFIED ARCHIVE // ON-SCENE REPORT',
+        brollHeadline: 'FIELD DISPATCH: LIVE MONITORED UPDATE',
+        gesture: 'b_roll_footage_active',
+        coords: { x: '50%', y: '50%' },
+        action: 'b_roll_interstitial_cut'
+      });
+    } else if (t < tBookEnd) {
+      // Back to Studio Desk: Look down at briefing book on table while speaking statistics
+      events.push({
+        timeMs: t,
+        pose: 'speaking',
+        mouth: isMouthOpen ? 'open' : 'closed',
+        gaze: 'book',
+        armState: 'hold_notes',
+        stageMode: 'studio',
+        gesture: 'reading_table_book_speaking',
+        coords: { x: '50%', y: '50%' },
+        action: 'consulting_table_book_speaking'
+      });
+    } else {
+      // Look back up to audience for final wrap
+      events.push({
+        timeMs: t,
+        pose: 'speaking',
+        mouth: isMouthOpen ? 'open' : 'closed',
+        gaze: 'audience',
+        armState: 'desk_rest',
+        stageMode: 'studio',
+        gesture: 'final_audience_address',
+        coords: { x: '50%', y: '50%' },
+        action: 'final_audience_wrap'
       });
     }
   }
 
-  // Wrap-up / Sign-off frame
+  // 4. Wrap-up / Sign-off frame: warm professional close looking at audience
   events.push({
-    timeMs: speechEndMs,
+    timeMs: tSpeechEnd,
     pose: 'wrap',
-    mouth: 'closed',
-    gesture: 'wrap_closing',
+    mouth: 'smile',
+    gaze: 'audience',
+    armState: 'desk_rest',
+    stageMode: 'studio',
+    gesture: 'closing_wrap',
     coords: { x: '50%', y: '50%' },
     action: 'segment_wrap'
   });
 
-  // Post-wrap idle
+  // 5. Concluded idle at desk
   events.push({
     timeMs: totalDurationMs,
     pose: 'idle',
     mouth: 'closed',
-    gesture: 'desk_rest',
+    gaze: 'book',
+    armState: 'hold_notes',
+    stageMode: 'studio',
+    gesture: 'reviewing_table_book',
     coords: { x: '50%', y: '50%' },
     action: 'broadcast_concluded'
   });
@@ -132,8 +205,11 @@ export function getEventAtTime(track: PresenterAnimationTrack, timeMs: number): 
       timeMs: 0,
       pose: 'idle',
       mouth: 'closed',
+      gaze: 'audience',
+      armState: 'desk_rest',
+      stageMode: 'studio',
       gesture: 'desk_rest',
-      coords: { x: '0%', y: '0%' },
+      coords: { x: '50%', y: '50%' },
       action: 'broadcast_standby'
     };
   }
