@@ -3937,6 +3937,163 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
       }
     };
 
+    function getEventAtTimeMs(timeMs) {
+      const events = workbenchSettings.timelineEvents || [];
+      if (!events || events.length === 0) {
+        return {
+          timeMs: 0,
+          pose: 'idle',
+          mouth: 'closed',
+          gaze: 'audience',
+          armState: 'desk_rest',
+          stageMode: 'studio',
+          coords: { x: '50%', y: '50%' }
+        };
+      }
+      let current = events[0];
+      for (let i = 0; i < events.length; i++) {
+        if (events[i].timeMs <= timeMs) {
+          current = events[i];
+        } else {
+          break;
+        }
+      }
+      return current;
+    }
+
+    function applyTimelineEventToMonitor(event, currentTimeMs) {
+      if (!event) return;
+
+      // 1. Time display and scrubber
+      const timeDisplay = document.getElementById('wb-time-display');
+      const scrubber = document.getElementById('wb-scrubber-slider');
+      const scrubberProgress = document.getElementById('wb-scrubber-progress');
+      const frameCurrent = document.getElementById('wb-frame-current');
+
+      if (timeDisplay) {
+        timeDisplay.textContent = `${formatTimeMsDisplay(currentTimeMs)} / ${formatTimeMsDisplay(workbenchSettings.totalDurationMs)}`;
+      }
+      const pct = workbenchSettings.totalDurationMs > 0 ? (currentTimeMs / workbenchSettings.totalDurationMs) * 100 : 0;
+      if (scrubber) scrubber.value = String(pct);
+      if (scrubberProgress) scrubberProgress.style.width = `${pct}%`;
+      if (frameCurrent) frameCurrent.textContent = String(Math.round((currentTimeMs / 1000) * 30));
+
+      // 2. Pose badge
+      const poseLabel = document.getElementById('wb-pose-label');
+      if (poseLabel) {
+        const poseName = event.pose ? (event.pose.charAt(0).toUpperCase() + event.pose.slice(1)) : 'Speaking';
+        poseLabel.textContent = `Pose: ${poseName}`;
+      }
+
+      // 3. Gaze & Switchable Heads
+      const hAud = document.getElementById('wb-head-audience');
+      const hBook = document.getElementById('wb-head-book');
+      const hScreen = document.getElementById('wb-head-screen');
+      const gazeBadge = document.getElementById('wb-gaze-badge');
+
+      if (hAud) { hAud.classList.add('opacity-0', 'pointer-events-none'); hAud.classList.remove('opacity-100'); }
+      if (hBook) { hBook.classList.add('opacity-0', 'pointer-events-none'); hBook.classList.remove('opacity-100'); }
+      if (hScreen) { hScreen.classList.add('opacity-0', 'pointer-events-none'); hScreen.classList.remove('opacity-100'); }
+
+      if (event.gaze === 'book') {
+        if (hBook) { hBook.classList.remove('opacity-0', 'pointer-events-none'); hBook.classList.add('opacity-100'); }
+        if (gazeBadge) gazeBadge.textContent = 'Gaze: Notes / Book';
+      } else if (event.gaze === 'screen') {
+        if (hScreen) { hScreen.classList.remove('opacity-0', 'pointer-events-none'); hScreen.classList.add('opacity-100'); }
+        if (gazeBadge) gazeBadge.textContent = 'Gaze: Side Screen';
+      } else {
+        if (hAud) { hAud.classList.remove('opacity-0', 'pointer-events-none'); hAud.classList.add('opacity-100'); }
+        if (gazeBadge) gazeBadge.textContent = 'Gaze: Audience';
+      }
+
+      // 4. Arms & Gestures
+      const aDesk = document.getElementById('wb-arms-desk');
+      const aPoint = document.getElementById('wb-arms-point');
+      const aHold = document.getElementById('wb-arms-hold');
+      const projContainer = document.getElementById('wb-projection-container');
+
+      if (aDesk) { aDesk.classList.add('opacity-0', 'pointer-events-none'); aDesk.classList.remove('opacity-100'); }
+      if (aPoint) { aPoint.classList.add('opacity-0', 'pointer-events-none'); aPoint.classList.remove('opacity-100'); }
+      if (aHold) { aHold.classList.add('opacity-0', 'pointer-events-none'); aHold.classList.remove('opacity-100'); }
+
+      if (event.armState === 'gesture_screen') {
+        if (aPoint) { aPoint.classList.remove('opacity-0', 'pointer-events-none'); aPoint.classList.add('opacity-100'); }
+        if (projContainer) projContainer.classList.add('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
+      } else if (event.armState === 'hold_notes') {
+        if (aHold) { aHold.classList.remove('opacity-0', 'pointer-events-none'); aHold.classList.add('opacity-100'); }
+        if (projContainer) projContainer.classList.remove('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
+      } else {
+        if (aDesk) { aDesk.classList.remove('opacity-0', 'pointer-events-none'); aDesk.classList.add('opacity-100'); }
+        if (projContainer) projContainer.classList.remove('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
+      }
+
+      // 5. Stage Mode & B-Roll Interstitial Layer
+      const brollLayer = document.getElementById('wb-broll-layer');
+      if (brollLayer) {
+        if (event.stageMode === 'b_roll') {
+          brollLayer.classList.remove('opacity-0', 'pointer-events-none');
+          brollLayer.classList.add('opacity-100');
+        } else {
+          brollLayer.classList.remove('opacity-100');
+          brollLayer.classList.add('opacity-0', 'pointer-events-none');
+        }
+      }
+
+      // 6. Articulated Mouth (Targeting the active head's mouth layer)
+      const isSpeakingMouth = event.mouth === 'open' || event.mouth === 'alert' || event.mouth === 'smile';
+
+      // Audience head mouth
+      const mAudClosed = document.getElementById('wb-mouth-aud-closed');
+      const mAudOpen = document.getElementById('wb-mouth-aud-open');
+      if (mAudClosed && mAudOpen) {
+        if (isSpeakingMouth) {
+          mAudClosed.classList.add('opacity-0');
+          mAudClosed.classList.remove('opacity-100');
+          mAudOpen.classList.remove('opacity-0');
+          mAudOpen.classList.add('opacity-100');
+        } else {
+          mAudOpen.classList.add('opacity-0');
+          mAudOpen.classList.remove('opacity-100');
+          mAudClosed.classList.remove('opacity-0');
+          mAudClosed.classList.add('opacity-100');
+        }
+      }
+
+      // Book head mouth
+      const mBookClosed = document.getElementById('wb-mouth-book-closed');
+      const mBookOpen = document.getElementById('wb-mouth-book-open');
+      if (mBookClosed && mBookOpen) {
+        if (isSpeakingMouth) {
+          mBookClosed.classList.add('opacity-0');
+          mBookClosed.classList.remove('opacity-100');
+          mBookOpen.classList.remove('opacity-0');
+          mBookOpen.classList.add('opacity-100');
+        } else {
+          mBookOpen.classList.add('opacity-0');
+          mBookOpen.classList.remove('opacity-100');
+          mBookClosed.classList.remove('opacity-0');
+          mBookClosed.classList.add('opacity-100');
+        }
+      }
+
+      // Screen head mouth
+      const mScreenClosed = document.getElementById('wb-mouth-screen-closed');
+      const mScreenOpen = document.getElementById('wb-mouth-screen-open');
+      if (mScreenClosed && mScreenOpen) {
+        if (isSpeakingMouth) {
+          mScreenClosed.classList.add('opacity-0');
+          mScreenClosed.classList.remove('opacity-100');
+          mScreenOpen.classList.remove('opacity-0');
+          mScreenOpen.classList.add('opacity-100');
+        } else {
+          mScreenOpen.classList.add('opacity-0');
+          mScreenOpen.classList.remove('opacity-100');
+          mScreenClosed.classList.remove('opacity-0');
+          mScreenClosed.classList.add('opacity-100');
+        }
+      }
+    }
+
     window.handleWorkbenchScrub = function(sliderVal) {
       const pct = parseFloat(sliderVal) / 100;
       const targetTimeMs = Math.round(pct * workbenchSettings.totalDurationMs);

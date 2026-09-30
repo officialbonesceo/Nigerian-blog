@@ -171,6 +171,67 @@ export type PresenterGaze = 'audience' | 'book' | 'screen';
 export type PresenterArmState = 'desk_rest' | 'gesture_screen' | 'hold_notes';
 export type BroadcastStageMode = 'studio' | 'b_roll';
 
+// 9JA BEACON 16-Pose Core Library
+export type CorePoseId = 
+  | 'idle'
+  | 'speaking_desk'
+  | 'speaking_open_hands'
+  | 'serious'
+  | 'breaking_alert'
+  | 'point_left'
+  | 'point_right'
+  | 'present_screen'
+  | 'two_hand_explain'
+  | 'emphasis'
+  | 'reading_bulletin'
+  | 'teleprompter'
+  | 'listening'
+  | 'reacting'
+  | 'transition'
+  | 'closing';
+
+export type ArmGesture =
+  | 'hands_resting'
+  | 'hands_together'
+  | 'hand_open_left'
+  | 'hand_open_right'
+  | 'both_hands_open'
+  | 'point_left'
+  | 'point_right'
+  | 'explain_left'
+  | 'explain_right'
+  | 'emphasize_one'
+  | 'hold_paper'
+  | 'hold_tablet'
+  | 'wave_goodbye';
+
+export type GazeDirection =
+  | 'gaze_camera'
+  | 'gaze_left'
+  | 'gaze_right'
+  | 'gaze_down'
+  | 'gaze_desk'
+  | 'gaze_screen'
+  | 'gaze_audience';
+
+export type FacialExpression =
+  | 'neutral'
+  | 'friendly'
+  | 'serious'
+  | 'concerned'
+  | 'surprised'
+  | 'urgent'
+  | 'happy'
+  | 'solemn'
+  | 'confident';
+
+export type MouthFrame =
+  | 'closed'
+  | 'open_small'
+  | 'open_medium'
+  | 'open_wide'
+  | 'smile';
+
 export interface PresenterPoseCoordinates {
   x: string;
   y: string;
@@ -178,6 +239,11 @@ export interface PresenterPoseCoordinates {
   description: string;
   gaze?: PresenterGaze;
   armState?: PresenterArmState;
+  corePose?: CorePoseId;
+  armGesture?: ArmGesture;
+  gazeDirection?: GazeDirection;
+  expression?: FacialExpression;
+  mouthFrame?: MouthFrame;
 }
 
 export interface NewsPresenter {
