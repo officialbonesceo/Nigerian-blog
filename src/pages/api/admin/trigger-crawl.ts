@@ -4,6 +4,7 @@ import { runIngestionPipeline } from '../../../lib/automated-ingest';
 
 interface TriggerCrawlBody {
   source_id?: string;
+  category_id?: string;
   limit_per_source?: number;
 }
 
@@ -20,20 +21,30 @@ export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const db = getD1(locals);
     const body = (await request.json().catch(() => ({}))) as TriggerCrawlBody;
-    const sourceId = body.source_id;
+    
+    // Check if source_id is actually a category ID (e.g. cat_money_hustle)
+    let sourceId = body.source_id;
+    let categoryId = body.category_id;
+    if (sourceId && sourceId.startsWith('cat_')) {
+      categoryId = sourceId;
+      sourceId = undefined;
+    }
+
     const limitPerSource = Math.min(Math.max(Number(body.limit_per_source || 3), 1), 10);
+    const targetLabel = sourceId ? `Source ${sourceId}` : (categoryId ? `Category ${categoryId}` : 'Balanced Multi-Category');
 
     await recordLog(
       db,
       'WORKFLOW_START',
-      sourceId || null,
+      sourceId || categoryId || null,
       'System',
-      `Starting automated ingestion workflow via Gemini Flash cascade. Limit: ${limitPerSource} per source.`,
+      `Starting automated ingestion workflow (${targetLabel}). Limit: ${limitPerSource} per feed.`,
       'info'
     );
 
     const pipelineResult = await runIngestionPipeline(db, {
       sourceId,
+      categoryId,
       limitPerSource,
     });
 

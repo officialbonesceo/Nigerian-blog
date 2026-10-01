@@ -307,10 +307,18 @@ for (const s of autoSettings) {
             <div>
               <label class="block text-xs font-medium text-slate-300 mb-1">Target Source:</label>
               <select id="crawlSourceSelect" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
-                <option value="">⚡ All Enabled Sources ({sources.filter(s => s.is_enabled).length})</option>
-                {sources.map(s => (
-                  <option value={s.id}>{s.name} ({s.category_name || 'General'})</option>
-                ))}
+                <option value="" selected>🔄 All Categories (Balanced Round-Robin Ingestion)</option>
+                <optgroup label="Target by Category Desks">
+                  <option value="cat_money_hustle">💼 Business & Financial News Feeds (TechCabal, BusinessDay, CNBC, Nairametrics)</option>
+                  <option value="cat_sports">⚽ Sports News Feeds (BBC Sport, Sky Sports)</option>
+                  <option value="cat_world">🌍 World News Wire Feeds (Reuters, BBC World, Al Jazeera)</option>
+                  <option value="cat_naija_news">🇳🇬 Naija National News Feeds (Punch, Vanguard, Channels TV, etc.)</option>
+                </optgroup>
+                <optgroup label="Individual Wire Feeds">
+                  {sources.map(s => (
+                    <option value={s.id}>{s.name} ({s.category_name || 'General'})</option>
+                  ))}
+                </optgroup>
               </select>
             </div>
 

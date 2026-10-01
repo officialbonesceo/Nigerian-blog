@@ -445,12 +445,37 @@ async function main() {
     }
   }
 
-  // Sort candidates by highest journalistic quality score
+  // Sort candidates by highest journalistic quality score within each category
   candidatePool.sort((a, b) => b.score - a.score);
-  console.log(`\n🎯 Evaluated ${candidatePool.length} fresh unique leads across all feeds. Selecting top ${MAX_ARTICLES_PER_RUN} priority story.`);
 
-  // Phase 2: Synthesize and publish the curated top story
-  for (const candidate of candidatePool) {
+  // Group candidate pool by category to guarantee diverse category coverage (prevents Naija News monopolizing all slots)
+  const poolByCat: Record<string, RankedCandidate[]> = {
+    cat_money_hustle: [],
+    cat_sports: [],
+    cat_world: [],
+    cat_naija_news: [],
+  };
+  for (const c of candidatePool) {
+    const k = c.source.category_default_id || 'cat_naija_news';
+    if (poolByCat[k]) poolByCat[k].push(c);
+    else poolByCat.cat_naija_news.push(c);
+  }
+
+  // Interleave candidates so Business, Sports, World, and Naija News each get an equal turn
+  const balancedCandidates: RankedCandidate[] = [];
+  const catKeys = ['cat_money_hustle', 'cat_sports', 'cat_world', 'cat_naija_news'];
+  const maxPoolDepth = Math.max(...catKeys.map((k) => poolByCat[k].length), 0);
+  for (let d = 0; d < maxPoolDepth; d++) {
+    for (const k of catKeys) {
+      if (poolByCat[k][d]) balancedCandidates.push(poolByCat[k][d]);
+    }
+  }
+
+  const activeCandidates = balancedCandidates.length ? balancedCandidates : candidatePool;
+  console.log(`\n🎯 Evaluated ${candidatePool.length} fresh leads across all feeds (${poolByCat.cat_money_hustle.length} Business, ${poolByCat.cat_sports.length} Sports, ${poolByCat.cat_world.length} World, ${poolByCat.cat_naija_news.length} Naija News). Balanced selection active.`);
+
+  // Phase 2: Synthesize and publish the curated stories
+  for (const candidate of activeCandidates) {
     if (totalPublished >= MAX_ARTICLES_PER_RUN) break;
 
     const { source, item, score } = candidate;

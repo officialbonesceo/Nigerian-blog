@@ -260,13 +260,18 @@ TOPIC-FIRST CLASSIFICATION RULES:
 7. Blockchain, fintech products, corporate investments → business (never sports).
 
 FACT-LOCK & QUALITY RULES:
-1. Every hard fact (name, age, place, date, score, amount, quote) must appear in the source excerpt OR be omitted.
+1. Every hard fact (name, age, place, date, score, amount, quote) must appear in the source excerpt OR be grounded in verified context.
 2. At least one named source (${sourceOutlet}) must be explicitly cited in the lead: "According to ${sourceOutlet}..."
-3. Absolutely NO invented statistics (search volume, "200 concurrent queries", fake read counts, unsourced surveys).
+3. Absolutely NO invented statistics (search volume, fake read counts, unsourced surveys).
 4. Ban filler: NEVER write "Observers anticipate...", "the situation remains fluid...", or "Nigerian search interest surges".
 5. No duplicate paragraphs or repetitive sentences.
 6. No chain-of-thought, planning text, or "as an AI".
-7. Minimum 120 words of substantive factual news content across clear <h3> and <p> blocks. No Markdown asterisks.
+7. Write a thorough, comprehensive news report (between 180 and 320 words) across 3 to 4 well-structured paragraphs with informative <h3> subheadings. Detail:
+   (a) Lead paragraph with primary fact and ${sourceOutlet} attribution;
+   (b) Key background and timeline of events;
+   (c) Relevant institutional, economic, or regulatory context;
+   (d) Industry/stakeholder impact or upcoming milestones.
+   Never write stubs or short summaries below 150 words.
 
 SOURCE_TITLE: ${sourceTitle}
 SOURCE_OUTLET: ${sourceOutlet}
@@ -301,7 +306,7 @@ ${sourceExcerpt}
                 properties: {
                   title: { type: Type.STRING },
                   summary: { type: Type.STRING },
-                  content: { type: Type.STRING, description: 'Substantive HTML article with <h3> headings and <p> paragraphs, >= 400 characters plain text' },
+                  content: { type: Type.STRING, description: 'Comprehensive HTML article with <h3> headings and <p> paragraphs, between 180 and 350 words, detailing lead facts, context, and implications.' },
                   category: { type: Type.STRING, enum: ['naija-news', 'business', 'sports', 'world'] },
                   tags: { type: Type.ARRAY, items: { type: Type.STRING } },
                   readTime: { type: Type.INTEGER },
@@ -427,7 +432,7 @@ ${sourceExcerpt}
  */
 export async function runIngestionPipeline(
   db: D1Database,
-  options: { sourceId?: string; limitPerSource?: number } = {}
+  options: { sourceId?: string; categoryId?: string; limitPerSource?: number } = {}
 ): Promise<IngestionPipelineResult> {
   const result: IngestionPipelineResult = {
     fetched: 0,
@@ -438,9 +443,41 @@ export async function runIngestionPipeline(
   };
 
   try {
-    const sources = options.sourceId
-      ? [await getSourceById(db, options.sourceId)].filter(Boolean)
-      : (await getSources(db)).filter((s: any) => s.is_enabled);
+    let sources: any[] = [];
+    if (options.sourceId) {
+      const src = await getSourceById(db, options.sourceId);
+      if (src) sources.push(src);
+    } else {
+      const allEnabled = (await getSources(db)).filter((s: any) => s.is_enabled);
+      if (options.categoryId) {
+        sources = allEnabled.filter((s: any) => s.category_default_id === options.categoryId);
+      } else {
+        // Balanced round-robin across all 4 news categories so Business, Sports, and World are never starved!
+        const byCategory: Record<string, any[]> = {
+          cat_money_hustle: [],
+          cat_sports: [],
+          cat_world: [],
+          cat_naija_news: [],
+        };
+        for (const s of allEnabled) {
+          const catKey = s.category_default_id || 'cat_naija_news';
+          if (byCategory[catKey]) {
+            byCategory[catKey].push(s);
+          } else {
+            byCategory.cat_naija_news.push(s);
+          }
+        }
+        const interleaved: any[] = [];
+        const keys = ['cat_money_hustle', 'cat_sports', 'cat_world', 'cat_naija_news'];
+        const maxLen = Math.max(...keys.map((k) => byCategory[k].length), 0);
+        for (let i = 0; i < maxLen; i++) {
+          for (const k of keys) {
+            if (byCategory[k][i]) interleaved.push(byCategory[k][i]);
+          }
+        }
+        sources = interleaved.length ? interleaved : allEnabled;
+      }
+    }
 
     const limit = Math.min(Math.max(options.limitPerSource || 3, 1), 10);
 
