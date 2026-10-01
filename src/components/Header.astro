@@ -4,9 +4,11 @@ import type { Category } from '../lib/types';
 interface Props {
   siteName: string;
   categories?: Category[];
+  settings?: Record<string, string>;
 }
 
-const { siteName = '9jaBeacon' } = Astro.props;
+const { siteName = '9jaBeacon', settings } = Astro.props;
+const videosEnabled = settings?.videos_enabled !== '0';
 ---
 
 <header class="sticky top-0 z-40 w-full bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800/80 transition-colors overflow-hidden">
@@ -132,10 +134,12 @@ const { siteName = '9jaBeacon' } = Astro.props;
     <a href="/category/business" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors whitespace-nowrap">Business</a>
     <a href="/category/sports" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors whitespace-nowrap">Sports</a>
     <a href="/category/world" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors whitespace-nowrap">World</a>
-    <a href="/videos" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors whitespace-nowrap flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
-      <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-      Videos
-    </a>
+    {videosEnabled && (
+      <a href="/videos" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors whitespace-nowrap flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
+        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+        Videos
+      </a>
+    )}
     <a href="/saved" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors whitespace-nowrap text-slate-700 dark:text-slate-300 ml-auto flex items-center gap-1">
       <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />

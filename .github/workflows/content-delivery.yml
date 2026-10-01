@@ -1,5 +1,16 @@
 name: Content Delivery & Sync Pipeline
 
+# ==============================================================================
+# 9jaBeacon Content Delivery & Ingestion Pipeline
+#
+# TRIGGER POLICY:
+# - Scheduled Cron: Runs 4 times daily (00:00, 06:00, 12:00, 18:00 UTC)
+# - Workflow Dispatch: Manual on-demand execution via GitHub Actions UI
+# - PUSH EVENTS: STRICTLY DISABLED. Pushing code or merging commits will NEVER
+#   trigger this workflow. This conserves GitHub Actions build minutes and
+#   prevents automated sync tasks from executing during code development.
+# ==============================================================================
+
 on:
   schedule:
     # 4 runs daily spaced evenly across 24 hours (00:00, 06:00, 12:00, 18:00 UTC)
@@ -15,6 +26,8 @@ jobs:
   content-sync:
     name: 🔄 Content Delivery & Upstream Sync
     runs-on: ubuntu-latest
+    # STRICT GUARD: Guarantee that git push events NEVER run this workflow
+    if: github.event_name != 'push'
     permissions:
       contents: read
 

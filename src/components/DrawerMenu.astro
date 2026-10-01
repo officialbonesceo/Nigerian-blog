@@ -12,6 +12,7 @@ const { siteName = '9jaBeacon', categories = [], settings = {} } = Astro.props;
 const fbUrl = settings.social_facebook_url || 'https://facebook.com/9jabeacon';
 const tiktokUrl = settings.social_tiktok_url || 'https://tiktok.com/@9jabeacon';
 const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
+const videosEnabled = settings.videos_enabled !== '0';
 ---
 
 <!-- Drawer Backdrop -->
@@ -78,18 +79,20 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
     </div>
 
     <!-- Video Hub Primary Action -->
-    <a
-      href="/videos"
-      class="flex items-center justify-between p-3 rounded-xl bg-red-500/10 dark:bg-red-500/20 border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-all font-bold group"
-    >
-      <span class="text-sm flex items-center gap-2.5">
-        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
-        Video Broadcast Hub
-      </span>
-      <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-red-600 text-white font-black">
-        Watch Live
-      </span>
-    </a>
+    {videosEnabled && (
+      <a
+        href="/videos"
+        class="flex items-center justify-between p-3 rounded-xl bg-red-500/10 dark:bg-red-500/20 border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-all font-bold group"
+      >
+        <span class="text-sm flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+          Video Broadcast Hub
+        </span>
+        <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-red-600 text-white font-black">
+          Watch Live
+        </span>
+      </a>
+    )}
 
     <!-- Categories List -->
     <div>

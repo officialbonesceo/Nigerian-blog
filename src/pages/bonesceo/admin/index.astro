@@ -37,6 +37,7 @@ if (match) {
 }
 
 const siteSettings = await getSiteSettings(db);
+const videosEnabled = siteSettings.videos_enabled !== '0';
 const secretKey =
   getEnvSecret(Astro.locals, 'ADMIN_SECRET_KEY', 'admin_secret_key', 'SECRET_KEY') ||
   siteSettings.admin_secret_key ||
@@ -227,6 +228,16 @@ for (const s of autoSettings) {
       >
         <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M10 8l6 4-6 4V8zm11-5H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/></svg>
         <span>Video News ({videos.length})</span>
+        <span
+          id="nav-videos-status-badge"
+          class={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+            videosEnabled
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+          }`}
+        >
+          {videosEnabled ? 'LIVE' : 'PAUSED'}
+        </span>
       </button>
       <button
         onclick="switchAdminTab('rejected')"
@@ -361,6 +372,25 @@ for (const s of autoSettings) {
                   <div class="text-[10px] text-slate-400">In-depth contextual background, stakeholder impact & category verification</div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- GitHub Actions Push Guard Policy Card -->
+          <div class="pt-3 border-t border-slate-800/80 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">GitHub Actions Policy:</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Push Triggers Disabled
+              </span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-400 space-y-1">
+              <div class="flex items-center gap-1.5 text-slate-300 font-semibold">
+                <svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <span>Zero CI/CD Runs on Git Push</span>
+              </div>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                Workflows will never trigger on <code class="text-slate-200 font-mono">git push</code>. Pipeline executes only via 4x daily scheduled cron or manual <code class="text-slate-200 font-mono">workflow_dispatch</code> in GitHub Actions.
+              </p>
             </div>
           </div>
         </div>
@@ -1513,6 +1543,63 @@ for (const s of autoSettings) {
     <!-- TAB: VIDEO BROADCASTS DESK -->
     <div id="tab-content-videos" class="admin-tab-content hidden space-y-4">
       <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <!-- MASTER VIDEO TAB PAUSE / TOGGLE CARD -->
+        <div id="video-tab-controller-card" class="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-3">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1.5">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M10 8l6 4-6 4V8zm11-5H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/></svg>
+                  <span>Public Video Tab Status</span>
+                </h3>
+                <span id="video-tab-status-pill" class={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 ${videosEnabled ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                  <span id="video-tab-status-dot" class={`w-2 h-2 rounded-full ${videosEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                  <span id="video-tab-status-text">{videosEnabled ? 'Live & Visible' : 'Paused / Hidden'}</span>
+                </span>
+              </div>
+              <p id="video-tab-status-desc" class="text-xs text-slate-400 max-w-2xl leading-relaxed">
+                {videosEnabled
+                  ? 'The "Videos" navigation tab is currently live in the top header and mobile drawer. Direct visits to /videos are accessible to all visitors.'
+                  : 'The "Videos" tab is paused. It is hidden from public visitors in the header and mobile drawer, and direct visits to /videos redirect to Home (302). Admin accounts retain full preview access.'}
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2.5 shrink-0">
+              <a
+                href="/videos"
+                target="_blank"
+                class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 transition flex items-center gap-1.5 cursor-pointer"
+                title="Preview video hub in a new tab (authenticated admin preview works even when paused)"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                <span>Preview /videos</span>
+              </a>
+
+              <button
+                type="button"
+                id="btn-toggle-video-tab"
+                onclick={`toggleAdminVideoTab(${videosEnabled ? 'false' : 'true'})`}
+                class={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md ${
+                  videosEnabled
+                    ? 'bg-amber-600/90 hover:bg-amber-500 text-white shadow-amber-950/40'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40'
+                }`}
+              >
+                <svg id="toggle-video-tab-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {videosEnabled ? (
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  ) : (
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  )}
+                </svg>
+                <span id="btn-toggle-video-tab-label">
+                  {videosEnabled ? 'Pause Video Tab' : 'Enable / Publish Video Tab'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 class="text-base font-bold text-white flex items-center gap-2">
@@ -2689,223 +2776,251 @@ for (const s of autoSettings) {
               <div class="col-span-6 sm:col-span-5 flex flex-col items-center justify-center">
                 <div 
                   id="wb-presenter-box" 
-                  class="relative w-40 h-40 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl transition-all duration-200 bg-gradient-to-b from-slate-900 via-slate-950 to-black select-none"
+                  class="relative w-40 h-40 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl transition-all duration-200 bg-[#152a4d] select-none"
                 >
-                  <!-- SVG Modular Broadcast Puppet (Switchable Heads, Arms, Desk Props, and Locked Mouth) -->
-                  <svg id="wb-puppet-svg" viewBox="0 0 500 500" class="w-full h-full overflow-visible drop-shadow-md">
+                  <!-- SVG Modular Broadcast Presenter (User's Exact Character & Art Style) -->
+                  <svg id="wb-scene-svg" viewBox="0 0 400 480" class="w-full h-full drop-shadow-md select-none transition-all duration-300">
                     <defs>
-                      <linearGradient id="wbSkinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop id="wbSkinStop1" offset="0%" stop-color="#5c3317" />
-                        <stop id="wbSkinStop2" offset="100%" stop-color="#3d200d" />
-                      </linearGradient>
-                      <linearGradient id="wbSuitGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop id="wbSuitStop1" offset="0%" stop-color="#1e293b" />
-                        <stop id="wbSuitStop2" offset="100%" stop-color="#0f172a" />
-                      </linearGradient>
-                      <linearGradient id="wbDeskVeneer" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#1e293b" />
-                        <stop offset="30%" stop-color="#0f172a" />
-                        <stop offset="100%" stop-color="#020617" />
-                      </linearGradient>
-                      <linearGradient id="wbDeskRim" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stop-color="#10b981" stop-opacity="0.2" />
-                        <stop offset="50%" stop-color="#34d399" stop-opacity="0.9" />
-                        <stop offset="100%" stop-color="#10b981" stop-opacity="0.2" />
-                      </linearGradient>
-                      <linearGradient id="wbBookGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stop-color="#0f172a" />
-                        <stop offset="50%" stop-color="#1e293b" />
-                        <stop offset="100%" stop-color="#0f172a" />
+                      <!-- User's Shaded Cylindrical Neck Gradient -->
+                      <linearGradient id="wbNeckGrad" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stop-color="#b8734c"/>
+                        <stop offset="35%" stop-color="#f0b687"/>
+                        <stop offset="65%" stop-color="#f0b687"/>
+                        <stop offset="100%" stop-color="#b8734c"/>
                       </linearGradient>
                     </defs>
 
-                    <!-- Studio Ambience Halo -->
-                    <circle cx="250" cy="180" r="160" fill="none" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.15" stroke-dasharray="8 6" />
-                    <circle cx="250" cy="180" r="130" fill="none" stroke="#38bdf8" stroke-width="1" stroke-opacity="0.1" />
+                    <!-- Studio Background Wall & Monitors -->
+                    <rect x="0" y="0" width="400" height="480" fill="#152a4d"/>
+                    <circle cx="340" cy="70" r="120" fill="#1c3560"/>
 
-                    <!-- TORSO & SUIT -->
-                    <g id="wb-puppet-torso" class="transition-transform duration-300">
-                      <path id="wb-suit-body" d="M 120 440 L 150 310 Q 190 280 250 280 Q 310 280 350 310 L 380 440 Z" fill="url(#wbSuitGrad)" />
-                      <!-- Shirt -->
-                      <path id="wb-shirt" d="M 215 280 L 250 345 L 285 280 Z" fill="#f8fafc" />
-                      <!-- Tie / Scarf Accents -->
-                      <g id="wb-tie-group">
-                        <path id="wb-tie-body" d="M 243 295 L 257 295 L 260 380 L 250 395 L 240 380 Z" fill="#059669" />
-                        <path id="wb-tie-knot" d="M 242 295 L 258 295 L 255 315 L 245 315 Z" fill="#047857" />
-                      </g>
-                      <!-- Hijab Scarf Overlay (Hidden by default, active for Zainab) -->
-                      <g id="wb-hijab-overlay" class="hidden">
-                        <circle cx="250" cy="330" r="8" fill="#f59e0b" stroke="#b45309" stroke-width="1.5" />
-                      </g>
-                      <!-- Lapels -->
-                      <path id="wb-lapel-l" d="M 175 305 L 225 385 L 210 440 L 140 440 Z" fill="#0f172a" />
-                      <path id="wb-lapel-r" d="M 325 305 L 275 385 L 290 440 L 360 440 Z" fill="#0f172a" />
+                    <!-- Left Monitor Graphic (Chart) -->
+                    <g id="wb-monitor-chart">
+                      <rect x="18" y="92" width="92" height="60" rx="4" fill="#1c3560"/>
+                      <rect x="28" y="100" width="72" height="44" rx="2" fill="#2a4d85"/>
+                      <path d="M40 130 L54 112 L66 124 L84 106" stroke="#7fa8e0" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
                     </g>
 
-                    <!-- SWITCHABLE ARMS & GESTURES -->
-                    <!-- Arm A: Resting on Desk Framing Briefing Book -->
-                    <g id="wb-arms-desk" class="transition-opacity duration-200 opacity-100">
-                      <path id="wb-arm-desk-l" d="M 140 360 Q 145 425 210 435 L 220 415 Q 165 405 160 360 Z" fill="#0f172a" />
-                      <ellipse id="wb-hand-desk-l" cx="218" cy="428" rx="14" ry="9" fill="url(#wbSkinGrad)" transform="rotate(-15 218 428)" />
-                      <path id="wb-arm-desk-r" d="M 360 360 Q 355 425 290 435 L 280 415 Q 335 405 340 360 Z" fill="#0f172a" />
-                      <ellipse id="wb-hand-desk-r" cx="282" cy="428" rx="14" ry="9" fill="url(#wbSkinGrad)" transform="rotate(15 282 428)" />
+                    <!-- Right Monitor Graphic (Clock / Dial) -->
+                    <g id="wb-monitor-dial">
+                      <rect x="290" y="92" width="92" height="60" rx="4" fill="#1c3560"/>
+                      <rect x="300" y="100" width="72" height="44" rx="2" fill="#2a4d85"/>
+                      <circle cx="336" cy="122" r="14" fill="none" stroke="#7fa8e0" stroke-width="3"/>
+                      <path d="M336 122 L336 112 M336 122 L344 126" stroke="#7fa8e0" stroke-width="3" stroke-linecap="round"/>
                     </g>
 
-                    <!-- Arm B: Pointing Directly Towards Side Screen -->
-                    <g id="wb-arms-point" class="transition-opacity duration-200 opacity-0 pointer-events-none">
-                      <path id="wb-arm-point-l" d="M 140 360 Q 145 425 205 435 L 215 415 Q 165 405 160 360 Z" fill="#0f172a" />
-                      <ellipse id="wb-hand-point-l" cx="212" cy="428" rx="14" ry="9" fill="url(#wbSkinGrad)" transform="rotate(-15 212 428)" />
-                      <!-- Right Arm Raised & Pointing to Screen -->
-                      <path id="wb-arm-point-r" d="M 350 330 Q 395 315 440 280 L 450 300 Q 405 340 355 355 Z" fill="#1e293b" />
-                      <path id="wb-hand-point-r" d="M 440 280 L 465 260 L 472 268 L 448 295 Z" fill="url(#wbSkinGrad)" />
-                      <path id="wb-finger-point" d="M 465 260 L 485 245 L 488 252 L 470 266 Z" fill="url(#wbSkinGrad)" />
-                      <circle cx="468" cy="272" r="6" fill="url(#wbSkinGrad)" />
-                    </g>
+                    <!-- Studio Horizon Red Line -->
+                    <rect x="0" y="250" width="400" height="4" fill="#c4372a"/>
 
-                    <!-- Arm C: Holding & Consulting Briefing Notes on Desk -->
-                    <g id="wb-arms-hold" class="transition-opacity duration-200 opacity-0 pointer-events-none">
-                      <path id="wb-arm-hold-l" d="M 145 360 Q 160 415 200 425 L 210 405 Q 175 395 165 360 Z" fill="#0f172a" />
-                      <ellipse id="wb-hand-hold-l" cx="204" cy="416" rx="12" ry="8" fill="url(#wbSkinGrad)" transform="rotate(25 204 416)" />
-                      <path d="M 206 410 Q 215 412 216 418" stroke="#3d200d" stroke-width="2" fill="none" />
-                      <path id="wb-arm-hold-r" d="M 355 360 Q 340 415 300 425 L 290 405 Q 325 395 335 360 Z" fill="#0f172a" />
-                      <ellipse id="wb-hand-hold-r" cx="296" cy="416" rx="12" ry="8" fill="url(#wbSkinGrad)" transform="rotate(-25 296 416)" />
-                      <rect x="290" y="405" width="22" height="4" rx="2" fill="#f59e0b" transform="rotate(-35 290 405)" />
-                    </g>
+                    <!-- CHARACTER BOB GROUP -->
+                    <g id="wb-bob-group" class="bob" transform="translate(200,219) scale(0.72) translate(-200,-270)">
 
-                    <!-- SWITCHABLE HEADS & GAZE DIRECTIONS -->
-                    <!-- HEAD GAZE 1: AUDIENCE (Direct forward address) -->
-                    <g id="wb-head-audience" class="transition-opacity duration-200 opacity-100">
-                      <path id="wb-neck-aud" d="M 225 260 L 225 290 Q 250 300 275 290 L 275 260 Z" fill="url(#wbSkinGrad)" />
-                      <ellipse id="wb-face-aud" cx="250" cy="195" rx="60" ry="72" fill="url(#wbSkinGrad)" />
-                      <!-- Hair & Headwear Layer -->
-                      <g id="wb-hair-aud">
-                        <path id="wb-hair-fade-aud" d="M 190 180 C 190 125 310 125 310 180 L 305 160 C 290 135 210 135 195 160 Z" fill="#09090b" />
+                      <!-- ===== GESTURE LIBRARY (8 Switchable Arm/Hand States) ===== -->
+
+                      <!-- 1. g-idle -->
+                      <g id="wb-g-idle" class="wb-gesture-group opacity-100 transition-opacity duration-200">
+                        <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
+                        <path d="M248 344 Q260 392 242 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
+                        <ellipse cx="234" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
+                        <path d="M152 450 Q166 444 180 450" stroke="#c8875c" stroke-width="2" fill="none" stroke-linecap="round"/>
+                        <path d="M220 450 Q234 444 248 450" stroke="#c8875c" stroke-width="2" fill="none" stroke-linecap="round"/>
                       </g>
-                      <!-- Hijab Scarf Layer for Zainab (Audience) -->
-                      <g id="wb-hijab-aud" class="hidden">
-                        <path d="M 180 185 C 180 110 320 110 320 185 C 320 250 310 285 285 295 C 270 300 230 300 215 295 C 190 285 180 250 180 185 Z" fill="#134e4a" opacity="0.95" />
-                        <path d="M 205 160 C 215 140 285 140 295 160 C 305 195 300 235 250 250 C 200 235 195 195 205 160 Z" fill="url(#wbSkinGrad)" />
-                        <path d="M 195 155 Q 250 138 305 155" fill="none" stroke="#f59e0b" stroke-width="2.5" />
+
+                      <!-- 2. g-point-left -->
+                      <g id="wb-g-point-left" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
+                        <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
+                        <path d="M248 344 Q190 318 120 298 Q92 290 70 286" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="68" cy="284" rx="15" ry="9" transform="rotate(-14 68 284)" fill="#dc9b6c"/>
+                        <path d="M56 281 L36 277" stroke="#dc9b6c" stroke-width="7" stroke-linecap="round"/>
                       </g>
-                      <!-- Eyes (Looking forward) -->
-                      <ellipse cx="228" cy="188" rx="9" ry="6" fill="#f8fafc" />
-                      <circle cx="228" cy="188" r="4" fill="#18181b" />
-                      <circle cx="229" cy="186" r="1.5" fill="#ffffff" />
-                      <ellipse cx="272" cy="188" rx="9" ry="6" fill="#f8fafc" />
-                      <circle cx="272" cy="188" r="4" fill="#18181b" />
-                      <circle cx="273" cy="186" r="1.5" fill="#ffffff" />
-                      <!-- Eyebrows -->
-                      <path d="M 218 178 Q 230 173 240 177" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
-                      <path d="M 260 177 Q 270 173 282 178" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
-                      <!-- Glasses Layer (Tunde) -->
-                      <g id="wb-glasses-aud" class="hidden">
-                        <rect x="215" y="180" width="28" height="18" rx="3" fill="none" stroke="#0f172a" stroke-width="2.5" />
-                        <rect x="257" y="180" width="28" height="18" rx="3" fill="none" stroke="#0f172a" stroke-width="2.5" />
-                        <path d="M 243 186 L 257 186" stroke="#0f172a" stroke-width="2.5" />
+
+                      <!-- 3. g-point-right (Pointing to Big Side Projection Screen) -->
+                      <g id="wb-g-point-right" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
+                        <path d="M248 344 Q260 392 242 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="234" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
+                        <path d="M152 344 Q210 318 280 298 Q308 290 330 286" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="332" cy="284" rx="15" ry="9" transform="rotate(14 332 284)" fill="#dc9b6c"/>
+                        <path d="M344 281 L364 277" stroke="#dc9b6c" stroke-width="7" stroke-linecap="round"/>
                       </g>
-                      <!-- Nose -->
-                      <path d="M 248 194 Q 250 208 244 214 Q 250 216 256 214" stroke="#3d200d" stroke-width="2" fill="none" stroke-linecap="round" />
-                      <!-- Articulated Mouth (Directly on face, perfectly locked) -->
-                      <g id="wb-mouth-aud-group">
-                        <path id="wb-mouth-aud-closed" d="M 234 232 Q 250 236 266 232" stroke="#451a03" stroke-width="3" fill="none" stroke-linecap="round" class="transition-opacity duration-150 opacity-100" />
-                        <g id="wb-mouth-aud-open" class="transition-opacity duration-150 opacity-0">
-                          <path d="M 232 230 Q 250 224 268 230 Q 262 248 250 248 Q 238 248 232 230 Z" fill="#7f1d1d" />
-                          <path d="M 235 231 Q 250 227 265 231 Q 260 245 250 245 Q 240 245 235 231 Z" fill="#260609" />
-                          <path d="M 239 231 Q 250 228 261 231 Q 259 236 250 236 Q 241 236 239 231 Z" fill="#ffffff" />
-                          <ellipse cx="250" cy="242" rx="7" ry="3" fill="#f43f5e" opacity="0.8" />
+
+                      <!-- 4. g-point-up -->
+                      <g id="wb-g-point-up" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
+                        <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
+                        <path d="M248 344 Q244 280 224 230" stroke="#1c2c4a" stroke-width="28" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="220" cy="220" rx="12" ry="10" fill="#dc9b6c"/>
+                        <path d="M220 210 L220 178" stroke="#dc9b6c" stroke-width="8" stroke-linecap="round"/>
+                      </g>
+
+                      <!-- 5. g-explain -->
+                      <g id="wb-g-explain" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
+                        <path d="M152 344 Q128 316 138 294" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
+                        <path d="M248 344 Q272 316 262 294" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="128" cy="288" rx="20" ry="15" fill="#dc9b6c"/>
+                        <ellipse cx="272" cy="288" rx="20" ry="15" fill="#dc9b6c"/>
+                        <path d="M118 278 L118 296 M128 276 L128 298 M138 278 L138 296" stroke="#c8875c" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M262 278 L262 296 M272 276 L272 298 M282 278 L282 296" stroke="#c8875c" stroke-width="2.5" stroke-linecap="round"/>
+                      </g>
+
+                      <!-- 6. g-emphasize -->
+                      <g id="wb-g-emphasize" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
+                        <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
+                        <path d="M248 344 Q232 300 216 266" stroke="#1c2c4a" stroke-width="28" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="213" cy="258" rx="13" ry="11" fill="#dc9b6c"/>
+                        <path d="M213 248 L213 222" stroke="#dc9b6c" stroke-width="8" stroke-linecap="round"/>
+                      </g>
+
+                      <!-- 7. g-wave -->
+                      <g id="wb-g-wave" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
+                        <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
+                        <path d="M248 344 Q256 294 230 252" stroke="#1c2c4a" stroke-width="28" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="226" cy="244" rx="16" ry="14" fill="#dc9b6c"/>
+                        <path d="M214 230 L208 218" stroke="#dc9b6c" stroke-width="5" stroke-linecap="round"/>
+                        <path d="M224 226 L222 212" stroke="#dc9b6c" stroke-width="5" stroke-linecap="round"/>
+                        <path d="M234 228 L238 214" stroke="#dc9b6c" stroke-width="5" stroke-linecap="round"/>
+                      </g>
+
+                      <!-- 8. g-reading (Consulting Briefing Book / Tablet) -->
+                      <g id="wb-g-reading" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
+                        <path d="M152 344 Q130 390 165 428" stroke="#1c2c4a" stroke-width="32" fill="none" stroke-linecap="round"/>
+                        <rect x="150" y="400" width="54" height="38" rx="3" fill="#e9edf2" stroke="#b9c2cc" stroke-width="1.5" transform="rotate(-8 177 419)"/>
+                        <line x1="156" y1="409" x2="198" y2="403" stroke="#047857" stroke-width="1.5" transform="rotate(-8 177 419)"/>
+                        <line x1="156" y1="416" x2="194" y2="410" stroke="#64748b" stroke-width="1" transform="rotate(-8 177 419)"/>
+                        <line x1="156" y1="422" x2="190" y2="416" stroke="#64748b" stroke-width="1" transform="rotate(-8 177 419)"/>
+                        <ellipse cx="176" cy="434" rx="16" ry="11" fill="#dc9b6c"/>
+                        <path d="M248 344 Q260 392 242 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="234" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
+                      </g>
+
+                      <!-- WARDROBE: Broad Navy Blazer, Collar & Crimson Silk Tie -->
+                      <path d="M70 480 Q75 360 140 332 Q170 322 200 322 Q230 322 260 332 Q325 360 330 480 Z" fill="#1c2c4a"/>
+                      <path d="M170 335 L200 358 L185 337 Z" fill="#0e1830"/>
+                      <path d="M230 335 L200 358 L215 337 Z" fill="#0e1830"/>
+                      <ellipse cx="200" cy="345" rx="20" ry="11" fill="#f4f6f9"/>
+                      <path d="M192 343 Q200 339 208 343 L205 393 Q200 399 195 393 Z" fill="#c4372a"/>
+
+                      <!-- NECK: Shaded Cylindrical Gradient -->
+                      <path d="M186 300 Q182 314 180 330 Q200 340 220 330 Q218 314 214 300 Q200 308 186 300 Z" fill="url(#wbNeckGrad)"/>
+
+                      <!-- ===== HEAD GROUP: Rotates/Tips with transform-origin ===== -->
+                      <g id="wb-head-group" class="head-group-el transition-transform duration-300" style="transform-origin: 200px 300px;">
+
+                        <!-- Ears -->
+                        <path d="M130 238 Q140 234 142 246 Q144 258 134 264 Q124 260 124 248 Q124 240 130 238 Z" fill="#c8875c"/>
+                        <path d="M270 238 Q260 234 258 246 Q256 258 266 264 Q276 260 276 248 Q276 240 270 238 Z" fill="#c8875c"/>
+
+                        <!-- Head Shape -->
+                        <path d="M200 130
+                                 C 246 130 268 168 266 210
+                                 C 265 248 254 280 238 302
+                                 C 224 320 212 328 200 328
+                                 C 188 328 176 320 162 302
+                                 C 146 280 135 248 134 210
+                                 C 132 168 154 130 200 130 Z" fill="#dc9b6c"/>
+                        <path d="M238 200 C 244 240 232 280 210 306 C 232 300 250 268 252 226 C 253 216 246 206 238 200 Z" fill="#c8875c"/>
+
+                        <!-- Hair & Side Tapers -->
+                        <path d="M130 210
+                                 C 122 150 158 100 200 100
+                                 C 242 100 278 150 270 210
+                                 C 264 190 248 175 228 172
+                                 C 220 165 210 162 200 162
+                                 C 190 162 180 165 172 172
+                                 C 152 175 136 190 130 210 Z" fill="#1c1410"/>
+                        <path d="M190 165 Q196 150 206 160 Q198 172 190 165 Z" fill="#140d09"/>
+                        <path d="M214 168 Q222 152 232 164 Q222 176 214 168 Z" fill="#140d09"/>
+                        <path d="M166 172 Q172 158 182 168 Q174 180 166 172 Z" fill="#140d09"/>
+                        <path d="M175 155 Q195 140 215 150" stroke="#4a372a" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+                        <!-- EXPRESSION LIBRARY (Eyebrows) -->
+                        <g id="wb-expr-neutral" class="wb-expr-group opacity-100 transition-opacity duration-200">
+                          <path d="M156 202 Q170 192 186 198" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                          <path d="M214 198 Q230 192 244 202" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                        </g>
+                        <g id="wb-expr-happy" class="wb-expr-group opacity-0 pointer-events-none transition-opacity duration-200">
+                          <path d="M154 200 Q170 184 188 196" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                          <path d="M212 196 Q230 184 246 200" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                        </g>
+                        <g id="wb-expr-serious" class="wb-expr-group opacity-0 pointer-events-none transition-opacity duration-200">
+                          <path d="M156 206 Q170 202 186 206" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                          <path d="M214 206 Q230 202 244 206" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                        </g>
+                        <g id="wb-expr-surprised" class="wb-expr-group opacity-0 pointer-events-none transition-opacity duration-200">
+                          <path d="M152 190 Q170 172 190 188" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                          <path d="M210 188 Q230 172 248 190" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                        </g>
+                        <g id="wb-expr-concerned" class="wb-expr-group opacity-0 pointer-events-none transition-opacity duration-200">
+                          <path d="M156 206 Q170 196 188 192" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                          <path d="M212 192 Q230 196 244 206" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                        </g>
+
+                        <!-- EYES: Outer (scale) > Eyelid (blink) > Sclera + Iris Group (gaze) -->
+                        <g id="wb-eye-outer-l" class="eye-outer transition-transform duration-200" style="transform-origin: 171px 220px;">
+                          <g class="eye-lid" style="transform-origin: 171px 220px;">
+                            <ellipse cx="171" cy="220" rx="14" ry="10" fill="#f4f6f9"/>
+                            <g class="iris-group transition-transform duration-200">
+                              <circle cx="173" cy="221" r="6.5" fill="#5c3a22"/>
+                              <circle cx="173" cy="221" r="3" fill="#1c1410"/>
+                              <circle cx="175.5" cy="218.5" r="1.6" fill="#fff"/>
+                            </g>
+                            <path d="M157 220 Q171 210 185 220" stroke="#1c1410" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+                          </g>
+                        </g>
+
+                        <g id="wb-eye-outer-r" class="eye-outer transition-transform duration-200" style="transform-origin: 229px 220px;">
+                          <g class="eye-lid" style="transform-origin: 229px 220px;">
+                            <ellipse cx="229" cy="220" rx="14" ry="10" fill="#f4f6f9"/>
+                            <g class="iris-group transition-transform duration-200">
+                              <circle cx="227" cy="221" r="6.5" fill="#5c3a22"/>
+                              <circle cx="227" cy="221" r="3" fill="#1c1410"/>
+                              <circle cx="229.5" cy="218.5" r="1.6" fill="#fff"/>
+                            </g>
+                            <path d="M215 220 Q229 210 243 220" stroke="#1c1410" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+                          </g>
+                        </g>
+
+                        <!-- Nose -->
+                        <path d="M198 226 Q191 252 186 262 Q193 267 200 266" stroke="#c8875c" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+                        <!-- MOUTH FRAMES (Firmly locked inside head group, never on neck) -->
+                        <g id="wb-mouth-container">
+                          <!-- Closed -->
+                          <g id="wb-mouth-closed" class="transition-opacity duration-150 opacity-100">
+                            <path d="M174 292 Q200 300 226 292 Q212 298 200 298 Q188 298 174 292 Z" fill="#8f3f30"/>
+                          </g>
+                          <!-- Open (Teeth row) -->
+                          <g id="wb-mouth-open" class="transition-opacity duration-150 opacity-0 pointer-events-none">
+                            <path d="M178 290 Q200 286 222 290 Q220 304 200 306 Q180 304 178 290 Z" fill="#5c2018"/>
+                            <path d="M183 291 Q200 288 217 291 Q216 297 200 298 Q184 297 183 291 Z" fill="#fff"/>
+                          </g>
+                          <!-- Wide (Upper teeth row and pink tongue) -->
+                          <g id="wb-mouth-wide" class="transition-opacity duration-150 opacity-0 pointer-events-none">
+                            <path d="M168 288 Q200 282 230 288 Q228 310 200 314 Q172 310 168 288 Z" fill="#5c2018"/>
+                            <path d="M174 290 Q200 285 226 290 Q224 298 200 300 Q176 298 174 290 Z" fill="#fff"/>
+                            <ellipse cx="200" cy="306" rx="13" ry="6" fill="#c0504d"/>
+                          </g>
                         </g>
                       </g>
                     </g>
 
-                    <!-- HEAD GAZE 2: BOOK ON TABLE (Head tilted down looking at briefing notes) -->
-                    <g id="wb-head-book" class="transition-opacity duration-200 opacity-0 pointer-events-none">
-                      <path d="M 226 264 L 226 295 Q 250 305 274 295 L 274 264 Z" fill="url(#wbSkinGrad)" />
-                      <ellipse cx="250" cy="204" rx="58" ry="70" fill="url(#wbSkinGrad)" />
-                      <g id="wb-hair-book">
-                        <path id="wb-hair-fade-book" d="M 192 190 C 192 135 308 135 308 190 L 304 170 C 288 145 212 145 196 170 Z" fill="#09090b" />
-                      </g>
-                      <!-- Hijab Scarf Layer for Zainab (Book) -->
-                      <g id="wb-hijab-book" class="hidden">
-                        <path d="M 184 195 C 184 120 316 120 316 195 C 316 260 306 295 284 305 C 270 310 230 310 216 305 C 194 295 184 260 184 195 Z" fill="#134e4a" opacity="0.95" />
-                        <path d="M 207 172 C 217 152 283 152 293 172 C 301 205 295 245 250 258 C 205 245 199 205 207 172 Z" fill="url(#wbSkinGrad)" />
-                        <path d="M 197 165 Q 250 148 303 165" fill="none" stroke="#f59e0b" stroke-width="2.5" />
-                      </g>
-                      <!-- Eyes Cast Downward at Desk Notes -->
-                      <ellipse cx="228" cy="198" rx="8" ry="4" fill="#f8fafc" />
-                      <path d="M 220 196 Q 228 202 236 196" stroke="#18181b" stroke-width="2" fill="none" />
-                      <circle cx="228" cy="199" r="2.5" fill="#18181b" />
-                      <ellipse cx="272" cy="198" rx="8" ry="4" fill="#f8fafc" />
-                      <path d="M 264 196 Q 272 202 280 196" stroke="#18181b" stroke-width="2" fill="none" />
-                      <circle cx="272" cy="199" r="2.5" fill="#18181b" />
-                      <path d="M 218 190 Q 230 188 238 192" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
-                      <path d="M 262 192 Q 270 188 282 190" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
-                      <path d="M 248 204 L 246 220 L 254 220" stroke="#3d200d" stroke-width="2" fill="none" stroke-linecap="round" />
-                      <!-- Articulated Mouth for Downward Gaze -->
-                      <g id="wb-mouth-book-group">
-                        <path id="wb-mouth-book-closed" d="M 236 238 Q 250 242 264 238" stroke="#451a03" stroke-width="3" fill="none" stroke-linecap="round" class="transition-opacity duration-150 opacity-100" />
-                        <g id="wb-mouth-book-open" class="transition-opacity duration-150 opacity-0">
-                          <path d="M 235 237 Q 250 233 265 237 Q 260 250 250 250 Q 240 250 235 237 Z" fill="#7f1d1d" />
-                          <path d="M 238 238 Q 250 235 262 238 Q 258 247 250 247 Q 242 247 238 238 Z" fill="#260609" />
-                          <path d="M 241 238 Q 250 236 259 238 Q 257 241 250 241 Q 243 241 241 238 Z" fill="#ffffff" />
-                        </g>
-                      </g>
-                    </g>
+                    <!-- DESK & FOREGROUND -->
+                    <rect x="0" y="342" width="400" height="14" fill="#1c3560"/>
+                    <path d="M0 356 L400 356 L400 480 L0 480 Z" fill="#0e1626"/>
 
-                    <!-- HEAD GAZE 3: SIDE SCREEN (Turned looking towards right display screen) -->
-                    <g id="wb-head-screen" class="transition-opacity duration-200 opacity-0 pointer-events-none">
-                      <path d="M 232 260 L 235 290 Q 260 300 280 290 L 278 260 Z" fill="url(#wbSkinGrad)" />
-                      <ellipse cx="262" cy="194" rx="56" ry="72" fill="url(#wbSkinGrad)" />
-                      <g id="wb-hair-screen">
-                        <path id="wb-hair-fade-screen" d="M 205 180 C 205 125 320 125 320 180 L 315 160 C 300 135 225 135 210 160 Z" fill="#09090b" />
-                      </g>
-                      <!-- Hijab Scarf Layer for Zainab (Screen) -->
-                      <g id="wb-hijab-screen" class="hidden">
-                        <path d="M 194 185 C 194 110 330 110 330 185 C 330 250 318 285 292 295 C 275 300 235 300 220 295 C 200 285 194 250 194 185 Z" fill="#134e4a" opacity="0.95" />
-                        <path d="M 220 160 C 230 140 298 140 306 160 C 314 195 308 235 264 250 C 218 235 212 195 220 160 Z" fill="url(#wbSkinGrad)" />
-                      </g>
-                      <!-- Eyes Looking Rightward to Screen -->
-                      <ellipse cx="246" cy="188" rx="8" ry="6" fill="#f8fafc" />
-                      <circle cx="250" cy="188" r="4" fill="#18181b" />
-                      <ellipse cx="286" cy="188" rx="8" ry="6" fill="#f8fafc" />
-                      <circle cx="290" cy="188" r="4" fill="#18181b" />
-                      <path d="M 238 178 Q 248 174 258 178" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
-                      <path d="M 278 176 Q 288 172 298 177" stroke="#18181b" stroke-width="2.5" fill="none" stroke-linecap="round" />
-                      <path d="M 268 192 L 274 212 L 268 214" stroke="#3d200d" stroke-width="2" fill="none" stroke-linecap="round" />
-                      <!-- Articulated Mouth Turned to Screen -->
-                      <g id="wb-mouth-screen-group">
-                        <path id="wb-mouth-screen-closed" d="M 252 232 Q 266 235 280 230" stroke="#451a03" stroke-width="3" fill="none" stroke-linecap="round" class="transition-opacity duration-150 opacity-100" />
-                        <g id="wb-mouth-screen-open" class="transition-opacity duration-150 opacity-0">
-                          <path d="M 250 231 Q 266 226 280 229 Q 275 244 265 245 Q 256 245 250 231 Z" fill="#7f1d1d" />
-                          <path d="M 253 232 Q 266 228 277 231 Q 273 241 265 242 Q 258 242 253 232 Z" fill="#260609" />
-                          <path d="M 256 232 Q 266 229 274 231 Q 272 235 265 235 Q 260 235 256 232 Z" fill="#ffffff" />
-                        </g>
-                      </g>
-                    </g>
+                    <!-- 9JA BEACON Studio Badge -->
+                    <rect x="304" y="16" width="80" height="34" rx="4" fill="#c4372a"/>
+                    <text x="344" y="31" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="11" font-weight="700" fill="#fff">9JA</text>
+                    <text x="344" y="44" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="10" font-weight="700" fill="#fff">BEACON</text>
 
-                    <!-- DESK & BRIEFING PROPS FOREGROUND -->
-                    <g id="wb-puppet-desk">
-                      <path d="M 20 420 L 480 420 L 500 500 L 0 500 Z" fill="url(#wbDeskVeneer)" />
-                      <line x1="20" y1="420" x2="480" y2="420" stroke="url(#wbDeskRim)" stroke-width="4" />
-                      <!-- Briefing Book Lying Flat on Table -->
-                      <g id="wb-briefing-book">
-                        <polygon points="175,426 325,426 345,488 155,488" fill="url(#wbBookGrad)" stroke="#334155" stroke-width="1.5" />
-                        <polygon points="185,430 315,430 330,482 170,482" fill="#f8fafc" />
-                        <rect x="195" y="438" width="110" height="4" rx="1" fill="#047857" />
-                        <line x1="195" y1="448" x2="305" y2="448" stroke="#64748b" stroke-width="2" stroke-linecap="round" />
-                        <line x1="195" y1="456" x2="295" y2="456" stroke="#64748b" stroke-width="2" stroke-linecap="round" />
-                        <line x1="195" y1="464" x2="280" y2="464" stroke="#64748b" stroke-width="2" stroke-linecap="round" />
-                        <line x1="195" y1="472" x2="290" y2="472" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3 3" />
-                      </g>
-                      <!-- Studio Gooseneck Mic -->
-                      <ellipse cx="90" cy="455" rx="14" ry="6" fill="#09090b" stroke="#334155" stroke-width="1" />
-                      <path d="M 90 455 Q 85 410 115 385" fill="none" stroke="#475569" stroke-width="4" stroke-linecap="round" />
-                      <rect x="110" y="372" width="22" height="14" rx="4" fill="#09090b" stroke="#10b981" stroke-width="1.5" transform="rotate(-25 110 372)" />
-                      <!-- Brass Desk Nameplate -->
-                      <polygon points="190,490 310,490 305,498 195,498" fill="#d97706" />
-                      <text id="wb-desk-nameplate" x="250" y="496" font-size="7" font-weight="900" font-family="monospace" fill="#ffffff" text-anchor="middle" letter-spacing="1">
-                        FEMI ADELEKE
-                      </text>
-                    </g>
+                    <!-- Lower Third News Straps -->
+                    <rect x="0" y="442" width="400" height="24" fill="#c4372a"/>
+                    <text id="wb-lower-headline" x="16" y="459" font-family="-apple-system, sans-serif" font-size="13" font-weight="700" fill="#fff">BREAKING NEWS</text>
+                    <rect x="0" y="466" width="400" height="14" fill="#f4f6f9"/>
+                    <text id="wb-lower-ticker" x="16" y="477" font-family="-apple-system, sans-serif" font-size="10" font-weight="600" fill="#233a5c">Live from the studio</text>
                   </svg>
 
                   <!-- Active Pose & Gaze Overlay Badges -->
@@ -2914,7 +3029,7 @@ for (const s of autoSettings) {
                       Pose: Idle
                     </span>
                     <span id="wb-gaze-badge" class="px-1.5 py-0.5 rounded-md bg-slate-900/90 border border-slate-700 text-[8px] font-mono text-slate-300 uppercase">
-                      Gaze: Audience
+                      Gaze: Camera
                     </span>
                   </div>
                 </div>
@@ -3114,26 +3229,49 @@ for (const s of autoSettings) {
               <div class="flex justify-between text-[10px] font-mono text-slate-500">
                 <span>00:00.000 (Standby)</span>
                 <span>Scrub to inspect pose, lip-sync & projection</span>
-            <!-- Interactive Broadcast Puppet Gesture & Cutaway Overrides -->
-            <div class="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono">
-              <div class="flex items-center gap-1">
-                <span class="text-slate-400 font-bold uppercase">Gaze:</span>
-                <button type="button" onclick="setWorkbenchGaze('audience')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Audience</button>
-                <button type="button" onclick="setWorkbenchGaze('book')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Book / Desk</button>
-                <button type="button" onclick="setWorkbenchGaze('screen')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Side Screen</button>
+              </div>
+            </div>
+
+            <!-- Interactive Broadcast Presenter Rig Controls (User's Exact Character Controller) -->
+            <div class="pt-3 border-t border-slate-800 space-y-2 text-[10px] font-mono">
+              <!-- Gestures Row -->
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="text-slate-400 font-bold uppercase text-[9px] w-14 shrink-0">Gestures:</span>
+                <button type="button" onclick="setWorkbenchGesture('idle')" id="btn-wb-g-idle" class="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold transition cursor-pointer">Idle</button>
+                <button type="button" onclick="setWorkbenchGesture('point-left')" id="btn-wb-g-point-left" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Point L</button>
+                <button type="button" onclick="setWorkbenchGesture('point-right')" id="btn-wb-g-point-right" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Point R (Screen)</button>
+                <button type="button" onclick="setWorkbenchGesture('point-up')" id="btn-wb-g-point-up" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Point Up</button>
+                <button type="button" onclick="setWorkbenchGesture('explain')" id="btn-wb-g-explain" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Explain</button>
+                <button type="button" onclick="setWorkbenchGesture('emphasize')" id="btn-wb-g-emphasize" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Emphasize</button>
+                <button type="button" onclick="setWorkbenchGesture('wave')" id="btn-wb-g-wave" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Wave</button>
+                <button type="button" onclick="setWorkbenchGesture('reading')" id="btn-wb-g-reading" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Reading (Desk)</button>
               </div>
 
-              <div class="flex items-center gap-1">
-                <span class="text-slate-400 font-bold uppercase">Gestures:</span>
-                <button type="button" onclick="setWorkbenchArm('desk_rest')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Desk Rest</button>
-                <button type="button" onclick="setWorkbenchArm('hold_notes')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Hold Book</button>
-                <button type="button" onclick="setWorkbenchArm('gesture_screen')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Point Screen</button>
+              <!-- Expressions Row -->
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="text-slate-400 font-bold uppercase text-[9px] w-14 shrink-0">Expr:</span>
+                <button type="button" onclick="setWorkbenchExpression('neutral')" id="btn-wb-expr-neutral" class="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold transition cursor-pointer">Neutral</button>
+                <button type="button" onclick="setWorkbenchExpression('happy')" id="btn-wb-expr-happy" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Happy</button>
+                <button type="button" onclick="setWorkbenchExpression('serious')" id="btn-wb-expr-serious" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Serious</button>
+                <button type="button" onclick="setWorkbenchExpression('surprised')" id="btn-wb-expr-surprised" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Surprised</button>
+                <button type="button" onclick="setWorkbenchExpression('concerned')" id="btn-wb-expr-concerned" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Concerned</button>
               </div>
 
-              <button type="button" onclick="toggleWorkbenchBroll()" class="px-2.5 py-1 rounded bg-red-600/30 hover:bg-red-600/50 text-red-300 border border-red-500/40 font-bold transition cursor-pointer flex items-center gap-1">
-                <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
-                <span>Cut to B-Roll</span>
-              </button>
+              <!-- Gaze & B-Roll Row -->
+              <div class="flex flex-wrap items-center justify-between gap-1.5 pt-1 border-t border-slate-800/80">
+                <div class="flex items-center gap-1">
+                  <span class="text-slate-400 font-bold uppercase text-[9px] w-14 shrink-0">Gaze:</span>
+                  <button type="button" onclick="setWorkbenchGaze('camera')" id="btn-wb-gaze-camera" class="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold transition cursor-pointer">Camera</button>
+                  <button type="button" onclick="setWorkbenchGaze('left')" id="btn-wb-gaze-left" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Left</button>
+                  <button type="button" onclick="setWorkbenchGaze('right')" id="btn-wb-gaze-right" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Right (Screen)</button>
+                  <button type="button" onclick="setWorkbenchGaze('down')" id="btn-wb-gaze-down" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer">Down (Book)</button>
+                </div>
+
+                <button type="button" onclick="toggleWorkbenchBroll()" class="px-2.5 py-1 rounded bg-red-600/30 hover:bg-red-600/50 text-red-300 border border-red-500/40 font-bold transition cursor-pointer flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
+                  <span>Cut to B-Roll</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -3739,46 +3877,144 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
     };
 
     window.setWorkbenchGaze = function(targetGaze) {
-      const hAud = document.getElementById('wb-head-audience');
-      const hBook = document.getElementById('wb-head-book');
-      const hScreen = document.getElementById('wb-head-screen');
+      const scene = document.getElementById('wb-scene-svg');
       const gazeBadge = document.getElementById('wb-gaze-badge');
-
-      if (hAud) { hAud.classList.add('opacity-0', 'pointer-events-none'); hAud.classList.remove('opacity-100'); }
-      if (hBook) { hBook.classList.add('opacity-0', 'pointer-events-none'); hBook.classList.remove('opacity-100'); }
-      if (hScreen) { hScreen.classList.add('opacity-0', 'pointer-events-none'); hScreen.classList.remove('opacity-100'); }
-
-      if (targetGaze === 'book') {
-        if (hBook) { hBook.classList.remove('opacity-0', 'pointer-events-none'); hBook.classList.add('opacity-100'); }
-        if (gazeBadge) gazeBadge.textContent = 'Gaze: Notes / Book';
-      } else if (targetGaze === 'screen') {
-        if (hScreen) { hScreen.classList.remove('opacity-0', 'pointer-events-none'); hScreen.classList.add('opacity-100'); }
-        if (gazeBadge) gazeBadge.textContent = 'Gaze: Side Screen';
-      } else {
-        if (hAud) { hAud.classList.remove('opacity-0', 'pointer-events-none'); hAud.classList.add('opacity-100'); }
-        if (gazeBadge) gazeBadge.textContent = 'Gaze: Audience';
+      if (scene) {
+        scene.classList.remove('gaze-left', 'gaze-right', 'gaze-down');
+        if (targetGaze === 'left') {
+          scene.classList.add('gaze-left');
+        } else if (targetGaze === 'right' || targetGaze === 'screen') {
+          scene.classList.add('gaze-right');
+        } else if (targetGaze === 'down' || targetGaze === 'book') {
+          scene.classList.add('gaze-down');
+        }
       }
+      if (gazeBadge) {
+        gazeBadge.textContent = (targetGaze === 'book' || targetGaze === 'down') ? 'Gaze: Notes / Book' :
+          (targetGaze === 'screen' || targetGaze === 'right') ? 'Gaze: Side Screen' :
+          targetGaze === 'left' ? 'Gaze: Left' : 'Gaze: Camera';
+      }
+      // Update gaze button styles
+      ['camera', 'left', 'right', 'down'].forEach(g => {
+        const btn = document.getElementById('btn-wb-gaze-' + g);
+        if (btn) {
+          if ((targetGaze === 'screen' && g === 'right') || (targetGaze === 'book' && g === 'down') || targetGaze === g || (!targetGaze && g === 'camera')) {
+            btn.className = 'px-2 py-0.5 rounded bg-emerald-600 text-white font-bold transition cursor-pointer';
+          } else {
+            btn.className = 'px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer';
+          }
+        }
+      });
+    };
+
+    window.setWorkbenchGesture = function(targetGesture) {
+      const scene = document.getElementById('wb-scene-svg');
+      const poseLabel = document.getElementById('wb-pose-label');
+      const projContainer = document.getElementById('wb-projection-container');
+
+      // Hide all gestures
+      document.querySelectorAll('.wb-gesture-group').forEach(el => {
+        el.classList.add('opacity-0', 'pointer-events-none');
+        el.classList.remove('opacity-100');
+      });
+
+      // Normalize ID
+      const normId = targetGesture.startsWith('g-') ? targetGesture : 'g-' + targetGesture;
+      const targetEl = document.getElementById('wb-' + normId);
+      if (targetEl) {
+        targetEl.classList.remove('opacity-0', 'pointer-events-none');
+        targetEl.classList.add('opacity-100');
+      }
+
+      // If reading, trigger reading mode (head tips down and eyelids lower)
+      if (normId === 'g-reading') {
+        if (scene) {
+          scene.classList.remove('gaze-left', 'gaze-right');
+          scene.classList.add('gaze-down', 'reading');
+        }
+        setWorkbenchGaze('down');
+      } else {
+        if (scene) scene.classList.remove('reading');
+      }
+
+      // If pointing right or explaining, highlight side projection screen
+      if (normId === 'g-point-right' || normId === 'g-explain') {
+        if (projContainer) projContainer.classList.add('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
+      } else {
+        if (projContainer) projContainer.classList.remove('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
+      }
+
+      if (poseLabel) {
+        const cleanName = normId.replace('g-', '').replace('-', ' ').toUpperCase();
+        poseLabel.textContent = `Pose: ${cleanName}`;
+      }
+
+      // Update button highlights
+      ['idle', 'point-left', 'point-right', 'point-up', 'explain', 'emphasize', 'wave', 'reading'].forEach(g => {
+        const btn = document.getElementById('btn-wb-g-' + g);
+        if (btn) {
+          if (normId === 'g-' + g) {
+            btn.className = 'px-2 py-0.5 rounded bg-emerald-600 text-white font-bold transition cursor-pointer';
+          } else {
+            btn.className = 'px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer';
+          }
+        }
+      });
     };
 
     window.setWorkbenchArm = function(targetArm) {
-      const aDesk = document.getElementById('wb-arms-desk');
-      const aPoint = document.getElementById('wb-arms-point');
-      const aHold = document.getElementById('wb-arms-hold');
-      const projContainer = document.getElementById('wb-projection-container');
+      if (targetArm === 'gesture_screen') setWorkbenchGesture('point-right');
+      else if (targetArm === 'hold_notes') setWorkbenchGesture('reading');
+      else setWorkbenchGesture('idle');
+    };
 
-      if (aDesk) { aDesk.classList.add('opacity-0', 'pointer-events-none'); aDesk.classList.remove('opacity-100'); }
-      if (aPoint) { aPoint.classList.add('opacity-0', 'pointer-events-none'); aPoint.classList.remove('opacity-100'); }
-      if (aHold) { aHold.classList.add('opacity-0', 'pointer-events-none'); aHold.classList.remove('opacity-100'); }
+    window.setWorkbenchExpression = function(targetExpr) {
+      const scene = document.getElementById('wb-scene-svg');
+      document.querySelectorAll('.wb-expr-group').forEach(el => {
+        el.classList.add('opacity-0', 'pointer-events-none');
+        el.classList.remove('opacity-100');
+      });
 
-      if (targetArm === 'gesture_screen') {
-        if (aPoint) { aPoint.classList.remove('opacity-0', 'pointer-events-none'); aPoint.classList.add('opacity-100'); }
-        if (projContainer) projContainer.classList.add('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
-      } else if (targetArm === 'hold_notes') {
-        if (aHold) { aHold.classList.remove('opacity-0', 'pointer-events-none'); aHold.classList.add('opacity-100'); }
-        if (projContainer) projContainer.classList.remove('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
+      const norm = targetExpr.startsWith('expr-') ? targetExpr : 'expr-' + targetExpr;
+      const targetEl = document.getElementById('wb-' + norm);
+      if (targetEl) {
+        targetEl.classList.remove('opacity-0', 'pointer-events-none');
+        targetEl.classList.add('opacity-100');
+      }
+
+      if (scene) {
+        scene.classList.remove('expr-surprised');
+        if (norm === 'expr-surprised') scene.classList.add('expr-surprised');
+      }
+
+      // Update expression button styles
+      ['neutral', 'happy', 'serious', 'surprised', 'concerned'].forEach(e => {
+        const btn = document.getElementById('btn-wb-expr-' + e);
+        if (btn) {
+          if (norm === 'expr-' + e) {
+            btn.className = 'px-2 py-0.5 rounded bg-emerald-600 text-white font-bold transition cursor-pointer';
+          } else {
+            btn.className = 'px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer';
+          }
+        }
+      });
+    };
+
+    window.setWorkbenchMouth = function(frame) {
+      const mClosed = document.getElementById('wb-mouth-closed');
+      const mOpen = document.getElementById('wb-mouth-open');
+      const mWide = document.getElementById('wb-mouth-wide');
+
+      if (mClosed) { mClosed.classList.add('opacity-0', 'pointer-events-none'); mClosed.classList.remove('opacity-100'); }
+      if (mOpen) { mOpen.classList.add('opacity-0', 'pointer-events-none'); mOpen.classList.remove('opacity-100'); }
+      if (mWide) { mWide.classList.add('opacity-0', 'pointer-events-none'); mWide.classList.remove('opacity-100'); }
+
+      if (frame === 'wide' || frame === 'alert') {
+        if (mWide) { mWide.classList.remove('opacity-0', 'pointer-events-none'); mWide.classList.add('opacity-100'); }
+      } else if (frame === 'open') {
+        if (mOpen) { mOpen.classList.remove('opacity-0', 'pointer-events-none'); mOpen.classList.add('opacity-100'); }
       } else {
-        if (aDesk) { aDesk.classList.remove('opacity-0', 'pointer-events-none'); aDesk.classList.add('opacity-100'); }
-        if (projContainer) projContainer.classList.remove('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
+        if (mClosed) { mClosed.classList.remove('opacity-0', 'pointer-events-none'); mClosed.classList.add('opacity-100'); }
       }
     };
 
@@ -3985,49 +4221,34 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         poseLabel.textContent = `Pose: ${poseName}`;
       }
 
-      // 3. Gaze & Switchable Heads
-      const hAud = document.getElementById('wb-head-audience');
-      const hBook = document.getElementById('wb-head-book');
-      const hScreen = document.getElementById('wb-head-screen');
-      const gazeBadge = document.getElementById('wb-gaze-badge');
+      // 3. Apply Gesture
+      const activeGesture = event.gesture || 
+        (event.armState === 'gesture_screen' ? 'point-right' : 
+         event.armState === 'hold_notes' ? 'reading' : 'idle');
+      setWorkbenchGesture(activeGesture);
 
-      if (hAud) { hAud.classList.add('opacity-0', 'pointer-events-none'); hAud.classList.remove('opacity-100'); }
-      if (hBook) { hBook.classList.add('opacity-0', 'pointer-events-none'); hBook.classList.remove('opacity-100'); }
-      if (hScreen) { hScreen.classList.add('opacity-0', 'pointer-events-none'); hScreen.classList.remove('opacity-100'); }
+      // 4. Apply Gaze & Head Tilt
+      const activeGaze = event.gaze === 'book' ? 'down' :
+        event.gaze === 'screen' ? 'right' :
+        event.gaze || (activeGesture === 'reading' ? 'down' : 'camera');
+      setWorkbenchGaze(activeGaze);
 
-      if (event.gaze === 'book') {
-        if (hBook) { hBook.classList.remove('opacity-0', 'pointer-events-none'); hBook.classList.add('opacity-100'); }
-        if (gazeBadge) gazeBadge.textContent = 'Gaze: Notes / Book';
-      } else if (event.gaze === 'screen') {
-        if (hScreen) { hScreen.classList.remove('opacity-0', 'pointer-events-none'); hScreen.classList.add('opacity-100'); }
-        if (gazeBadge) gazeBadge.textContent = 'Gaze: Side Screen';
+      // 5. Apply Expression
+      const activeExpr = event.expression || 
+        (event.pose === 'breaking' ? 'serious' : 
+         event.pose === 'wrap' ? 'happy' : 'neutral');
+      setWorkbenchExpression(activeExpr);
+
+      // 6. Apply Articulated Mouth (Directly on user's SVG face)
+      if (event.mouth === 'open') {
+        setWorkbenchMouth('open');
+      } else if (event.mouth === 'alert' || event.mouth === 'wide') {
+        setWorkbenchMouth('wide');
       } else {
-        if (hAud) { hAud.classList.remove('opacity-0', 'pointer-events-none'); hAud.classList.add('opacity-100'); }
-        if (gazeBadge) gazeBadge.textContent = 'Gaze: Audience';
+        setWorkbenchMouth('closed');
       }
 
-      // 4. Arms & Gestures
-      const aDesk = document.getElementById('wb-arms-desk');
-      const aPoint = document.getElementById('wb-arms-point');
-      const aHold = document.getElementById('wb-arms-hold');
-      const projContainer = document.getElementById('wb-projection-container');
-
-      if (aDesk) { aDesk.classList.add('opacity-0', 'pointer-events-none'); aDesk.classList.remove('opacity-100'); }
-      if (aPoint) { aPoint.classList.add('opacity-0', 'pointer-events-none'); aPoint.classList.remove('opacity-100'); }
-      if (aHold) { aHold.classList.add('opacity-0', 'pointer-events-none'); aHold.classList.remove('opacity-100'); }
-
-      if (event.armState === 'gesture_screen') {
-        if (aPoint) { aPoint.classList.remove('opacity-0', 'pointer-events-none'); aPoint.classList.add('opacity-100'); }
-        if (projContainer) projContainer.classList.add('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
-      } else if (event.armState === 'hold_notes') {
-        if (aHold) { aHold.classList.remove('opacity-0', 'pointer-events-none'); aHold.classList.add('opacity-100'); }
-        if (projContainer) projContainer.classList.remove('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
-      } else {
-        if (aDesk) { aDesk.classList.remove('opacity-0', 'pointer-events-none'); aDesk.classList.add('opacity-100'); }
-        if (projContainer) projContainer.classList.remove('ring-2', 'ring-emerald-500/80', 'scale-[1.02]');
-      }
-
-      // 5. Stage Mode & B-Roll Interstitial Layer
+      // 7. Stage Mode & B-Roll Interstitial Layer
       const brollLayer = document.getElementById('wb-broll-layer');
       if (brollLayer) {
         if (event.stageMode === 'b_roll') {
@@ -4036,60 +4257,6 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         } else {
           brollLayer.classList.remove('opacity-100');
           brollLayer.classList.add('opacity-0', 'pointer-events-none');
-        }
-      }
-
-      // 6. Articulated Mouth (Targeting the active head's mouth layer)
-      const isSpeakingMouth = event.mouth === 'open' || event.mouth === 'alert' || event.mouth === 'smile';
-
-      // Audience head mouth
-      const mAudClosed = document.getElementById('wb-mouth-aud-closed');
-      const mAudOpen = document.getElementById('wb-mouth-aud-open');
-      if (mAudClosed && mAudOpen) {
-        if (isSpeakingMouth) {
-          mAudClosed.classList.add('opacity-0');
-          mAudClosed.classList.remove('opacity-100');
-          mAudOpen.classList.remove('opacity-0');
-          mAudOpen.classList.add('opacity-100');
-        } else {
-          mAudOpen.classList.add('opacity-0');
-          mAudOpen.classList.remove('opacity-100');
-          mAudClosed.classList.remove('opacity-0');
-          mAudClosed.classList.add('opacity-100');
-        }
-      }
-
-      // Book head mouth
-      const mBookClosed = document.getElementById('wb-mouth-book-closed');
-      const mBookOpen = document.getElementById('wb-mouth-book-open');
-      if (mBookClosed && mBookOpen) {
-        if (isSpeakingMouth) {
-          mBookClosed.classList.add('opacity-0');
-          mBookClosed.classList.remove('opacity-100');
-          mBookOpen.classList.remove('opacity-0');
-          mBookOpen.classList.add('opacity-100');
-        } else {
-          mBookOpen.classList.add('opacity-0');
-          mBookOpen.classList.remove('opacity-100');
-          mBookClosed.classList.remove('opacity-0');
-          mBookClosed.classList.add('opacity-100');
-        }
-      }
-
-      // Screen head mouth
-      const mScreenClosed = document.getElementById('wb-mouth-screen-closed');
-      const mScreenOpen = document.getElementById('wb-mouth-screen-open');
-      if (mScreenClosed && mScreenOpen) {
-        if (isSpeakingMouth) {
-          mScreenClosed.classList.add('opacity-0');
-          mScreenClosed.classList.remove('opacity-100');
-          mScreenOpen.classList.remove('opacity-0');
-          mScreenOpen.classList.add('opacity-100');
-        } else {
-          mScreenOpen.classList.add('opacity-0');
-          mScreenOpen.classList.remove('opacity-100');
-          mScreenClosed.classList.remove('opacity-0');
-          mScreenClosed.classList.add('opacity-100');
         }
       }
     }
@@ -4580,6 +4747,85 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         }
       });
     }
+
+    window.toggleAdminVideoTab = async function(enable) {
+      const confirmMsg = enable
+        ? 'Enable and publish the Videos tab to public visitors?\n\nThe /videos link will be restored to the header and mobile drawer, and direct visits will be permitted.'
+        : 'Pause and hide the Videos tab from public visitors?\n\nThe /videos link will be hidden from header and mobile drawer, and direct visits to /videos will safely redirect to Home (302). Admin accounts will retain full access.';
+      if (!confirm(confirmMsg)) return;
+
+      const btn = document.getElementById('btn-toggle-video-tab');
+      const btnLabel = document.getElementById('btn-toggle-video-tab-label');
+      const oldText = btnLabel ? btnLabel.textContent : '';
+      if (btn) btn.disabled = true;
+      if (btnLabel) btnLabel.textContent = enable ? 'Enabling...' : 'Pausing...';
+
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'site',
+            settings: {
+              videos_enabled: enable ? '1' : '0'
+            }
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const pill = document.getElementById('video-tab-status-pill');
+          const dot = document.getElementById('video-tab-status-dot');
+          const text = document.getElementById('video-tab-status-text');
+          const desc = document.getElementById('video-tab-status-desc');
+          const navBadge = document.getElementById('nav-videos-status-badge');
+          const icon = document.getElementById('toggle-video-tab-icon');
+
+          if (enable) {
+            if (pill) pill.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+            if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+            if (text) text.textContent = 'Live & Visible';
+            if (desc) desc.textContent = 'The "Videos" navigation tab is currently live in the top header and mobile drawer. Direct visits to /videos are accessible to all visitors.';
+            if (navBadge) {
+              navBadge.className = 'text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+              navBadge.textContent = 'LIVE';
+            }
+            if (btn) {
+              btn.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md bg-amber-600/90 hover:bg-amber-500 text-white shadow-amber-950/40';
+              btn.setAttribute('onclick', 'toggleAdminVideoTab(false)');
+            }
+            if (btnLabel) btnLabel.textContent = 'Pause Video Tab';
+            if (icon) {
+              icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />';
+            }
+          } else {
+            if (pill) pill.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/30';
+            if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+            if (text) text.textContent = 'Paused / Hidden';
+            if (desc) desc.textContent = 'The "Videos" tab is paused. It is hidden from public visitors in the header and mobile drawer, and direct visits to /videos redirect to Home (302). Admin accounts retain full preview access.';
+            if (navBadge) {
+              navBadge.className = 'text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40';
+              navBadge.textContent = 'PAUSED';
+            }
+            if (btn) {
+              btn.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/40';
+              btn.setAttribute('onclick', 'toggleAdminVideoTab(true)');
+            }
+            if (btnLabel) btnLabel.textContent = 'Enable / Publish Video Tab';
+            if (icon) {
+              icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />';
+            }
+          }
+        } else {
+          alert('Failed to update status: ' + (data.error || 'Unknown error'));
+          if (btnLabel) btnLabel.textContent = oldText;
+        }
+      } catch (err) {
+        alert('Network error while updating video tab status.');
+        if (btnLabel) btnLabel.textContent = oldText;
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    };
 
     if (typeof window !== 'undefined') {
       window.editVideoItem = editVideoItem;

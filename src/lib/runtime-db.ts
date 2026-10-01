@@ -1147,6 +1147,7 @@ export async function getSiteSettings(db: D1Database): Promise<Record<string, st
     adsterra_enabled: '1',
     adsterra_script_url: 'https://www.highrevenueformat.com/68c3e01457bdbc56eeaf6737cd933b72/invoke.js',
     adsterra_container_id: 'container-68c3e01457bdbc56eeaf6737cd933b72',
+    videos_enabled: '1',
   };
   try {
     const res = await db.prepare('SELECT key, value FROM site_settings').all<{ key: string; value: string }>();

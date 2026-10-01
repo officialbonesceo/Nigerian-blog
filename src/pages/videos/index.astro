@@ -1,12 +1,36 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import VideoPlayer from '../../components/VideoPlayer.astro';
-import { getD1, getVideoArticles, getCategories } from '../../lib/runtime-db';
+import { getD1, getVideoArticles, getCategories, getSiteSettings } from '../../lib/runtime-db';
+import { verifyAdminToken, getEnvSecret } from '../../lib/auth';
 import type { VideoArticle } from '../../lib/types';
 
 const db = getD1(Astro.locals);
+const siteSettings = await getSiteSettings(db);
+const videosEnabled = siteSettings.videos_enabled !== '0';
 
+// Check admin authentication
+const cookie = Astro.request.headers.get('cookie') || '';
+const authHeader = Astro.request.headers.get('authorization') || '';
 const url = new URL(Astro.request.url);
+const queryToken = url.searchParams.get('token') || '';
+let token = '';
+const match = cookie.match(/bonesceo_session=([^;]+)/);
+if (match) token = match[1];
+else if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7).trim();
+else if (queryToken) token = queryToken;
+
+const secretKey =
+  getEnvSecret(Astro.locals, 'ADMIN_SECRET_KEY', 'admin_secret_key', 'SECRET_KEY') ||
+  siteSettings.admin_secret_key ||
+  '9jaBeacon_bonesceo_secret_key_2026_super_secure';
+const isAdmin = token ? verifyAdminToken(token, secretKey).valid : false;
+
+// If video tab is paused by admin and visitor is not admin, redirect to home
+if (!videosEnabled && !isAdmin) {
+  return Astro.redirect('/', 302);
+}
+
 const selectedCategory = url.searchParams.get('category') || undefined;
 const searchQuery = url.searchParams.get('q') || undefined;
 
@@ -80,6 +104,24 @@ const jsonLd = {
 
 
   <div class="max-w-4xl mx-auto px-3 sm:px-6 py-4 space-y-6">
+    {!videosEnabled && isAdmin && (
+      <div class="p-4 rounded-xl bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/30 text-amber-800 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+        <div class="flex items-center gap-2.5">
+          <span class="w-3 h-3 rounded-full bg-amber-500 shrink-0 animate-ping"></span>
+          <div class="text-xs font-medium">
+            <span class="font-bold uppercase tracking-wider font-mono">[Admin Preview Mode]</span>
+            <span> Public Video Tab is currently <strong>PAUSED / HIDDEN</strong>. Visitors are redirected to home.</span>
+          </div>
+        </div>
+        <a 
+          href="/bonesceo/admin?tab=videos" 
+          class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shrink-0 text-center transition"
+        >
+          Manage in Admin Panel &rarr;
+        </a>
+      </div>
+    )}
+
     <!-- Header Banner -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
       <div>

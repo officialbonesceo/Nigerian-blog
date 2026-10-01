@@ -20,7 +20,8 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
     getSiteSettings(db),
     getVideoArticles(db, { limit: 300, status: 'published' }),
   ]);
-  const videos = videoResult.videos || [];
+  const videosEnabled = settings.videos_enabled !== '0';
+  const videos = videosEnabled ? (videoResult.videos || []) : [];
 
 
   let siteBase = (settings.site_url || '').trim();
@@ -126,12 +127,12 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
     <loc>${siteBase}/</loc>
     <changefreq>always</changefreq>
     <priority>1.0</priority>
-  </url>
+  </url>${videosEnabled ? `
   <url>
     <loc>${siteBase}/videos</loc>
     <changefreq>hourly</changefreq>
     <priority>0.95</priority>
-  </url>
+  </url>` : ''}
   <url>
     <loc>${siteBase}/about</loc>
     <changefreq>weekly</changefreq>

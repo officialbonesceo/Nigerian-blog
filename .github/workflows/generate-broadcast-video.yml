@@ -1,5 +1,13 @@
 name: Generate AI Broadcast Video (Option A)
 
+# ==============================================================================
+# 9jaBeacon Headless AI Broadcast Video Renderer
+#
+# TRIGGER POLICY:
+# - Workflow Dispatch: Manual on-demand execution only
+# - PUSH EVENTS: STRICTLY DISABLED. Git push triggers are omitted and blocked.
+# ==============================================================================
+
 on:
   workflow_dispatch:
     inputs:
@@ -50,6 +58,8 @@ jobs:
   render-video:
     name: 🎬 Render Broadcast Video (Option A Headless Engine)
     runs-on: ubuntu-latest
+    # STRICT GUARD: Guarantee that git push events NEVER run this workflow
+    if: github.event_name != 'push'
     permissions:
       contents: write
 

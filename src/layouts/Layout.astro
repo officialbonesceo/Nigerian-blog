@@ -216,7 +216,7 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
   })} />
 </head>
 <body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden max-w-full relative transition-colors duration-150">
-  <Header siteName={siteName} categories={categories} />
+  <Header siteName={siteName} categories={categories} settings={settings} />
   <DrawerMenu siteName={siteName} categories={categories} settings={settings} />
   <main class="w-full max-w-4xl mx-auto px-2.5 sm:px-4 md:px-6 pb-12 pt-2 sm:pt-3 min-w-0 overflow-x-hidden">
     <slot />
