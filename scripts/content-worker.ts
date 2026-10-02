@@ -26,6 +26,7 @@ import {
   compileTrendingBriefingBundle,
   checkTodayPublishedCount,
 } from '../src/lib/trending-search-engine';
+import { postToBluesky } from '../src/lib/bluesky';
 
 interface SourceRow {
   id: string;
@@ -353,6 +354,37 @@ async function main() {
         });
         totalPublished++;
         console.log(`     ✅ [STORED TRENDING LEAD] ${articleId} | /news/${slug}`);
+
+        const bskyId = process.env.BLUESKY_IDENTIFIER;
+        const bskyPass = process.env.BLUESKY_APP_PASSWORD;
+        const bskyAuto = process.env.BLUESKY_AUTO_POST_ENABLED !== 'false';
+        if (bskyAuto && bskyId && bskyPass) {
+          try {
+            console.log(`     🦋 Syndicating trending lead to Bluesky (@${bskyId})...`);
+            const bskyRes = await postToBluesky({
+              title: aiResult.title,
+              summary: aiResult.summary,
+              category: categoryId,
+              imageUrl: finalImageUrl,
+              slug,
+              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+            }, {
+              identifier: bskyId,
+              appPassword: bskyPass,
+            }, 'https://www.9jabeacon.name.ng');
+
+            if (bskyRes.success) {
+              console.log(`     ✅ [BLUESKY SYNDICATED] -> ${bskyRes.postUrl}`);
+              try {
+                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'BLUESKY_PUBLISH_SUCCESS', 'src_trending_engine', `Dispatched to Bluesky: ${bskyRes.postUrl}`, 'info');
+              } catch {}
+            } else {
+              console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyRes.error}`);
+            }
+          } catch (bskyErr: any) {
+            console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyErr.message}`);
+          }
+        }
       } catch (err: any) {
         console.error(`     ❌ Insert error: ${err.message}`);
       }
@@ -569,8 +601,38 @@ async function main() {
           updated_at: new Date().toISOString(), created_at: new Date().toISOString(), status: 'published',
         });
         totalPublished++;
-        console.log(`     ✅ [STORED] ${articleId} | /news/${slug}`);
         insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'ARTICLE_PUBLISHED', source.id, `Synthesized & published "${aiResult.title.slice(0, 50)}..." via ${aiResult.provider} (${aiResult.modelUsed}).`, 'info');
+
+        const bskyId = process.env.BLUESKY_IDENTIFIER;
+        const bskyPass = process.env.BLUESKY_APP_PASSWORD;
+        const bskyAuto = process.env.BLUESKY_AUTO_POST_ENABLED !== 'false';
+        if (bskyAuto && bskyId && bskyPass) {
+          try {
+            console.log(`     🦋 Syndicating to Bluesky (@${bskyId})...`);
+            const bskyRes = await postToBluesky({
+              title: aiResult.title,
+              summary: aiResult.summary,
+              category: categoryId,
+              imageUrl: finalImageUrl,
+              slug,
+              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+            }, {
+              identifier: bskyId,
+              appPassword: bskyPass,
+            }, 'https://www.9jabeacon.name.ng');
+
+            if (bskyRes.success) {
+              console.log(`     ✅ [BLUESKY SYNDICATED] -> ${bskyRes.postUrl}`);
+              try {
+                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'BLUESKY_PUBLISH_SUCCESS', source.id, `Dispatched to Bluesky: ${bskyRes.postUrl}`, 'info');
+              } catch {}
+            } else {
+              console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyRes.error}`);
+            }
+          } catch (bskyErr: any) {
+            console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyErr.message}`);
+          }
+        }
       } catch (insertErr: any) {
         console.error(`     ❌ Database insertion error: ${insertErr.message}`);
       }

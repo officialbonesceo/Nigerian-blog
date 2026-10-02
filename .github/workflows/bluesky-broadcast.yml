@@ -1,0 +1,61 @@
+name: Bluesky Social Syndication
+
+# ==============================================================================
+# 9jaBeacon - Autonomous Bluesky Social Syndication
+#
+# TRIGGER POLICY:
+# - Schedule: Thrice daily at 06:00, 12:00, 18:00 UTC (07:00, 13:00, 19:00 WAT)
+# - Workflow Dispatch: Manual 1-click broadcast from GitHub Actions UI
+# - Push events: Strictly disabled to conserve Actions minutes
+# ==============================================================================
+
+on:
+  schedule:
+    - cron: '0 6,12,18 * * *' # Thrice daily (Morning briefing, Afternoon peak, Evening roundup)
+  workflow_dispatch:
+    inputs:
+      article_slug:
+        description: 'Article Slug to broadcast (leave empty to broadcast latest story)'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  bluesky-broadcast:
+    name: 🦋 Broadcast to Bluesky
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push'
+    permissions:
+      contents: read
+
+    steps:
+      - name: 📦 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 🟢 Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          check-latest: false
+
+      - name: 📦 Install Runtime Packages
+        run: npm install --no-audit --no-fund
+
+      - name: 📥 Sync Latest Articles from Upstream (D1)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          ALLOW_SEED_ARTICLES: 'false'
+          ALLOW_SEED_DATA: 'false'
+        run: npx tsx scripts/sync-cache.ts || true
+
+      - name: 🦋 Publish to Bluesky AT Protocol
+        env:
+          BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_IDENTIFIER }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          TARGET_SLUG: ${{ github.event.inputs.article_slug }}
+        run: npx tsx scripts/broadcast-latest-bluesky.ts

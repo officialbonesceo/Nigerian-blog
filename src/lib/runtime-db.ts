@@ -1125,7 +1125,7 @@ export async function getSiteSettings(db: D1Database): Promise<Record<string, st
     site_url: 'https://www.9jabeacon.name.ng',
     site_description: "Nigeria's independent digital newsroom. Delivering fast, verified breaking news, politics, economy, tech, and cultural updates.",
     social_facebook_url: 'https://facebook.com/9jabeacon',
-    social_tiktok_url: 'https://tiktok.com/@9jabeacon',
+    social_bluesky_url: 'https://bsky.app/profile/9jabeacon.bsky.social',
     social_youtube_url: 'https://youtube.com/@9jabeacon',
     google_site_verification: 'googlecacc6ec6e0fdcf79',
     bing_site_verification: '',
