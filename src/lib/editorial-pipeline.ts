@@ -64,55 +64,56 @@ export function normalizeCategory(raw: string, title = '', body = ''): ArticleCa
     .replace('cat_world', 'world');
 
   if (!ALLOWED_CATEGORIES.has(c)) {
-    // keyword fallback ONLY if model failed — still better than default sports
+    // keyword fallback ONLY if model failed
     const t = `${title} ${body}`.toLowerCase();
-    if (/\b(match|league|player|coach|tournament|afcon|npfl|fifa|liga|goal|transfer|cruz azul|toluca)\b/.test(t)
-        && !/\b(olori|olu of|royal|polygamy|icpc|minister|blockchain|investment pledge)\b/.test(t)) {
+    if (/\b(match|league|player|coach|tournament|afcon|npfl|fifa|uefa|epl|premier league|champions league|la liga|serie a|bundesliga|goal|transfer|cruz azul|toluca|super eagles|osimhen|boniface|lookman|boxing|bout|striker|midfielder|winger|goalkeeper|defender|stadium|championship|football|soccer|tennis|basketball|nba|athletics|olympics|f1|formula 1|racing|cricket|golf|rugby|referee|var|penalty|fixture|derby|squad|club|team|trophy|cup|manager|wimbledon)\b/.test(t)
+        && !/\b(olori|olu of|royal|polygamy|icpc|traditional ruler|cabinet)\b/.test(t)) {
       c = 'sports';
-    } else if (/\b(cbn|naira|investment|company|fintech|trade surplus|coca-cola|stock|ipo)\b/.test(t)) {
+    } else if (/\b(cbn|naira|investment|company|fintech|trade surplus|coca-cola|stock|ipo|inflation|banking|bank|gdp|forex|fx|crude|oil|refinery|dangote|nnpc|revenue|tax|fiscal|interest rate|mpr|debt|equities|shares|market|bonds|billion|trillion|crypto|bitcoin|startup|valuation|merger|acquisition|economy|economic|treasury)\b/.test(t)) {
       c = 'business';
-    } else if (/\b(ukraine|gaza|washington|london|global|united nations)\b/.test(t)
-        && !/\bnigeria|lagos|abuja|rivers state\b/.test(t)) {
+    } else if (/\b(ukraine|gaza|israel|palestine|washington|london|global|united nations|un|white house|kremlin|pentagon|biden|trump|harris|putin|zelensky|starmer|macron|scholz|netanyahu|beirut|lebanon|sudan|kenya|china|taiwan|russia|nato|middle east|europe|asia|foreign affairs)\b/.test(t)
+        && !/\bnigeria|lagos|abuja|rivers state|kano|kaduna|ibadan|port harcourt\b/.test(t)) {
       c = 'world';
     } else {
       c = 'naija-news';
     }
   }
 
-  // Hard overrides — enforce spec rules (File 1 Section 3 & File 2 Section 5)
+  // Hard overrides — enforce spec rules
   const t = `${title} ${body}`.toLowerCase();
   
   // 1. Olori / traditional rulers / polygamy / culture / local incident / confinement -> strictly naija-news (never sports)
   if (/\b(olori|olu of warri|polygamy|traditional ruler)\b/.test(t)) c = 'naija-news';
-  if (/\b(confinement|toilet confinement|rescued from toilet|police command|kidnap|icpc|efcc|arraign)\b/.test(t) && !/\b(match|player|stadium)\b/.test(t)) {
+  if (/\b(confinement|toilet confinement|rescued from toilet|police command|kidnap|icpc|efcc|arraign)\b/.test(t) && !/\b(match|player|stadium|football|club)\b/.test(t)) {
     c = 'naija-news';
   }
 
-  // 2. Blockchain / Lisk / Coca-Cola / investment pledge -> strictly business
-  if (/\b(blockchain|lisk|web3 network)\b/.test(t) && !/\b(match|player)\b/.test(t)) c = 'business';
+  // 2. Blockchain / Lisk / Coca-Cola / investment pledge / monetary policy -> strictly business
+  if (/\b(blockchain|lisk|web3 network)\b/.test(t) && !/\b(match|player|stadium)\b/.test(t)) c = 'business';
   if (/\b(coca-cola|investment pledge|cbn rates|monetary policy committee)\b/.test(t)) c = 'business';
 
   // 3. Celebrity / entertainment / Nollywood -> strictly naija-news (never sports)
-  if (/\b(celebrity|entertainment|nollywood|reconcile|reconciliation)\b/.test(t) && !/\b(match|player|league)\b/.test(t)) {
+  if (/\b(celebrity|entertainment|nollywood|reconcile|reconciliation)\b/.test(t) && !/\b(match|player|league|football|game)\b/.test(t)) {
     c = 'naija-news';
   }
 
   // 4. Liga MX / Cruz Azul / Toluca / foreign football matches -> sports (not naija-news)
   if (/\b(cruz azul|toluca|liga mx|premier league|champions league|la liga|serie a|bundesliga)\b/.test(t)
-      && /\b(draw|snatches draw|match|score|fixture|vs|table|goal)\b/.test(t)) {
+      && /\b(draw|snatches draw|match|score|fixture|vs|table|goal|win|points|cup)\b/.test(t)) {
     c = 'sports';
   }
 
   // 5. Global stories with no Nigeria angle -> world
-  if (/\b(global clean energy|surpasses \$2 trillion|united nations|gaza|ukraine)\b/.test(t)
-      && !/\bnigeria|lagos|abuja|rivers state|port harcourt\b/.test(t)) {
+  if (/\b(global clean energy|surpasses \$2 trillion|united nations|gaza|ukraine|white house|pentagon|kremlin|nato)\b/.test(t)
+      && !/\bnigeria|lagos|abuja|rivers state|port harcourt|kano|kaduna\b/.test(t)) {
     c = 'world';
   }
 
-  // 6. Demote sports if there is no sports signal
+  // 6. Demote sports ONLY if it has strictly zero sports signals AND was falsely attributed
   if (c === 'sports') {
-    const hasSportsSignal = /\b(match|league|player|coach|tournament|afcon|npfl|fifa|liga|goal|transfer|boxing|bout|striker|midfielder|winger|goalkeeper|defender|stadium|championship)\b/.test(t);
-    if (!hasSportsSignal) {
+    const hasSportsSignal = /\b(match|league|player|coach|tournament|afcon|npfl|fifa|uefa|epl|premier league|champions league|la liga|serie a|bundesliga|goal|transfer|boxing|bout|striker|midfielder|winger|goalkeeper|defender|stadium|championship|football|soccer|tennis|basketball|nba|athletics|olympics|f1|formula 1|racing|cricket|golf|rugby|referee|var|penalty|fixture|derby|squad|club|team|trophy|cup|manager|super eagles|osimhen|boniface|lookman|messi|ronaldo|chelsea|arsenal|liverpool|manchester|real madrid|barcelona|injury|wimbledon|game|score|points|win|loss|defeat|victory)\b/.test(t);
+    const hasNonSportsOverride = /\b(olori|polygamy|traditional ruler|toilet confinement|efcc arraign|bribe|money laundering)\b/.test(t);
+    if (!hasSportsSignal || hasNonSportsOverride) {
       c = 'naija-news';
     }
   }

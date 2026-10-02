@@ -22,10 +22,13 @@ import {
   recordRejectedArticle,
   getSources,
   getSourceById,
+  getAutomationSettings,
+  getSiteSettings,
 } from './runtime-db';
 import type { Article } from './types';
 import { cleanAndFormatArticleHtml } from './content-formatter';
 import { isPublisherLogoOrBanner, resolveEditorialImage } from './editorial-image';
+import { postToBluesky } from './bluesky';
 
 export interface FeedItemValidated {
   title: string;
@@ -574,6 +577,28 @@ export async function runIngestionPipeline(
         const inserted = await createArticle(db, newArticle as unknown as Record<string, unknown>);
         if (inserted) {
           result.inserted++;
+
+          // Autonomous Bluesky syndication if enabled in settings
+          try {
+            const autoSettings = await getAutomationSettings(db).catch(() => []);
+            const sMap: Record<string, string> = {};
+            for (const s of autoSettings) sMap[s.key] = s.value;
+            if (sMap.bluesky_auto_post_enabled === 'true' && sMap.bluesky_identifier && sMap.bluesky_app_password) {
+              const siteSettings = await getSiteSettings(db).catch(() => ({}));
+              const siteBase = (siteSettings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+              postToBluesky({
+                title: newArticle.title,
+                summary: newArticle.summary,
+                category: categorySlug,
+                imageUrl: newArticle.image_url,
+                slug: newArticle.slug,
+                canonicalUrl: `${siteBase}/news/${newArticle.slug}`,
+              }, {
+                identifier: sMap.bluesky_identifier,
+                appPassword: sMap.bluesky_app_password,
+              }, siteBase).catch(bErr => console.warn('[Bluesky Auto-Post Notice]:', bErr.message));
+            }
+          } catch {}
         } else {
           result.rejected++;
           result.errors.push(`Failed to insert article into D1: ${rewrite.title}`);

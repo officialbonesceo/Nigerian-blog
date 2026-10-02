@@ -104,22 +104,42 @@ const settingsMap: Record<string, string> = {};
 for (const s of autoSettings) {
   settingsMap[s.key] = s.value;
 }
+
+const categoryFreshness = (categories || []).map((cat: any) => {
+  const catArticles = (articles || []).filter((a: any) => a.category_id === cat.id || a.category_id === cat.slug);
+  const latest = catArticles[0];
+  const latestDate = latest?.published_at ? new Date(latest.published_at) : null;
+  const hoursAgo = latestDate ? (Date.now() - latestDate.getTime()) / (1000 * 60 * 60) : null;
+  const isFresh = hoursAgo !== null && hoursAgo <= 48;
+  return {
+    id: cat.id,
+    slug: cat.slug,
+    name: cat.name,
+    icon: cat.icon || 'newspaper',
+    color: cat.color || '#008751',
+    count: catArticles.length,
+    latestTitle: latest?.title || 'No recent articles',
+    latestTimeStr: latestDate ? latestDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Never',
+    hoursAgo,
+    isFresh,
+  };
+});
 ---
 
-<Layout title="9jaBeacon Editorial Command Hub" activeNav="menu">
+<Layout title="9jaBeacon Editorial Command Hub" activeNav="menu" isWideLayout={true}>
   <div class="space-y-6 pb-20">
     <!-- Header -->
-    <header class="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <header class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-colors">
       <div>
         <div class="flex items-center gap-2">
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/60">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span> LIVE D1 DATABASE
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span> LIVE REPOSITORY & D1
           </span>
-          <span class="text-xs text-slate-400 font-medium">9jaBeacon Editorial Engine</span>
+          <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">9jaBeacon Editorial Newsroom</span>
         </div>
-        <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white mt-1">Autonomous News & Editorial Command Hub</h1>
-        <p class="text-xs md:text-sm text-slate-400 mt-1 max-w-2xl">
-          Multi-tier automated synthesis (Cloudflare Fast Engine &rarr; OpenRouter &rarr; Local Offline Models &rarr; Editorial NLP) with real-time telemetry logs.
+        <h1 class="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-1">Autonomous News & Editorial Command Hub</h1>
+        <p class="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+          Full-stack editorial operations, automated multi-LLM news synthesis, real-time wire ingestion monitors, and category broadcast telemetry.
         </p>
       </div>
 
@@ -127,7 +147,7 @@ for (const s of autoSettings) {
         <a
           href="/"
           target="_blank"
-          class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition border border-slate-700 inline-flex items-center gap-1.5"
+          class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-950 dark:hover:text-white transition border border-slate-300 dark:border-slate-700 inline-flex items-center gap-1.5"
         >
           <span>View Live Site</span>
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
@@ -143,7 +163,7 @@ for (const s of autoSettings) {
         <button
           onclick="logoutAdmin()"
           title="Sign Out of Admin Portal"
-          class="px-3 py-2 text-xs font-semibold rounded-xl bg-red-950/50 hover:bg-red-900/80 text-red-300 border border-red-900/60 transition inline-flex items-center gap-1.5 cursor-pointer"
+          class="px-3 py-2 text-xs font-semibold rounded-xl bg-red-50 dark:bg-red-950/50 hover:bg-red-100 dark:hover:bg-red-900/80 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/60 transition inline-flex items-center gap-1.5 cursor-pointer"
         >
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           <span>Sign Out</span>
@@ -153,34 +173,108 @@ for (const s of autoSettings) {
 
     <!-- High Level Metrics Bar -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-        <div class="text-2xl font-black text-white">{stats.publishedArticles}</div>
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Published News</div>
+      <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div class="text-2xl font-black text-slate-900 dark:text-white">{stats.publishedArticles}</div>
+        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5">Published News</div>
       </div>
-      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-        <div class="text-2xl font-black text-emerald-400">{stats.enabledSources} <span class="text-xs text-slate-500 font-normal">/ {sources.length}</span></div>
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Active Wire Feeds</div>
+      <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.enabledSources} <span class="text-xs text-slate-400 font-normal">/ {sources.length}</span></div>
+        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5">Active Wire Feeds</div>
       </div>
-      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-        <div class="text-2xl font-black text-cyan-400">{logs.length}</div>
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Workflow Logs</div>
+      <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div class="text-2xl font-black text-cyan-600 dark:text-cyan-400">{logs.length}</div>
+        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5">Workflow Logs</div>
       </div>
-      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-        <div class="text-2xl font-black text-amber-400">{stats.rejectedArticles}</div>
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Rejected Queue</div>
+      <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div class="text-2xl font-black text-amber-600 dark:text-amber-400">{stats.rejectedArticles}</div>
+        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5">Rejected Queue</div>
       </div>
-      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-        <div class="text-2xl font-black text-purple-400">{stats.articleViews}</div>
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Total Page Views</div>
+      <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div class="text-2xl font-black text-purple-600 dark:text-purple-400">{stats.articleViews}</div>
+        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5">Total Page Views</div>
       </div>
-      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-        <div class="text-2xl font-black text-blue-400">{analytics.todayVisits}</div>
-        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Today Visits</div>
+      <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div class="text-2xl font-black text-blue-600 dark:text-blue-400">{analytics.todayVisits}</div>
+        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5">Today Visits</div>
+      </div>
+    </div>
+
+    <!-- CATEGORY FRESHNESS & LIVE WIRE DESKS MONITOR -->
+    <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <h2 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white">Live News Desks & Category Wire Monitor</h2>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Real-time status of all public news categories. Trigger targeted wire ingestion per desk or execute balanced multi-desk sync.
+          </p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            onclick="triggerCrawlForCategory('', 'Balanced Multi-Category')"
+            class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <span>Balanced Multi-Category Sync</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {categoryFreshness.map((c) => (
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between space-y-3 transition-colors">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full" style={`background-color: ${c.color};`}></span>
+                  {c.name}
+                </span>
+                <span class={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                  c.isFresh
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                    : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                }`}>
+                  {c.isFresh ? 'Fresh • Live' : 'Needs Update'}
+                </span>
+              </div>
+              <div class="mt-2 text-2xl font-black text-slate-900 dark:text-white">
+                {c.count} <span class="text-xs font-normal text-slate-400">articles</span>
+              </div>
+              <p class="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-1 mt-1 font-medium" title={c.latestTitle}>
+                Latest: {c.latestTitle}
+              </p>
+              <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Updated: <span class="font-mono text-slate-700 dark:text-slate-300">{c.latestTimeStr}</span>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center gap-2">
+              <button
+                onclick={`triggerCrawlForCategory('${c.id}', '${c.name}')`}
+                class="flex-1 py-1.5 px-2.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold text-[11px] border border-emerald-500/20 transition flex items-center justify-center gap-1 cursor-pointer"
+                title={`Fetch latest news for ${c.name}`}
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span>Crawl Desk</span>
+              </button>
+              <a
+                href={`/category/${c.slug}`}
+                target="_blank"
+                class="p-1.5 rounded-lg bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white transition"
+                title="View Category Page"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
 
     <!-- Navigation Tabs -->
-    <div class="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto no-scrollbar">
+    <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto no-scrollbar">
       <button
         onclick="switchAdminTab('crawler')"
         id="tab-btn-crawler"
@@ -192,7 +286,7 @@ for (const s of autoSettings) {
       <button
         onclick="switchAdminTab('logs')"
         id="tab-btn-logs"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         <span>Workflow Logs ({logs.length})</span>
@@ -200,7 +294,7 @@ for (const s of autoSettings) {
       <button
         onclick="switchAdminTab('ai-config')"
         id="tab-btn-ai-config"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         <span>Editorial Engine & Social Channels</span>
@@ -208,7 +302,7 @@ for (const s of autoSettings) {
       <button
         onclick="switchAdminTab('sources')"
         id="tab-btn-sources"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
         <span>RSS Sources ({sources.length})</span>
@@ -216,7 +310,7 @@ for (const s of autoSettings) {
       <button
         onclick="switchAdminTab('articles')"
         id="tab-btn-articles"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
         <span>Published Articles ({articles.length})</span>
@@ -224,7 +318,7 @@ for (const s of autoSettings) {
       <button
         onclick="switchAdminTab('videos')"
         id="tab-btn-videos"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
         <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M10 8l6 4-6 4V8zm11-5H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/></svg>
         <span>Video News ({videos.length})</span>
@@ -242,16 +336,15 @@ for (const s of autoSettings) {
       <button
         onclick="switchAdminTab('rejected')"
         id="tab-btn-rejected"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
-
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
         <span>Rejected Leads ({rejectedList.length})</span>
       </button>
       <button
         onclick="switchAdminTab('security')"
         id="tab-btn-security"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
         <span>Admin & Security Credentials</span>
@@ -259,31 +352,31 @@ for (const s of autoSettings) {
       <button
         onclick="switchAdminTab('advertisers')"
         id="tab-btn-advertisers"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
-        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
         <span>Advertisers & Inquiries ({advertInquiries.length})</span>
       </button>
       <button
         onclick="switchAdminTab('adsterra')"
         id="tab-btn-adsterra"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
-        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <svg class="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <span>Ad Networks & Monetization</span>
       </button>
       <button
         onclick="switchAdminTab('bing')"
         id="tab-btn-bing"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
-        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <svg class="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         <span>Bing & IndexNow SEO API</span>
       </button>
       <button
         onclick="switchAdminTab('presenters')"
         id="tab-btn-presenters"
-        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-900 text-slate-300 hover:text-white border border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
+        class="admin-tab-btn px-4 py-2 rounded-xl text-xs font-semibold transition bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5"
       >
         <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
         <span>AI Broadcast Anchors (4)</span>
@@ -720,6 +813,121 @@ for (const s of autoSettings) {
               >
                 Save Social Channels
               </button>
+            </form>
+          </div>
+
+          <!-- Bluesky AT Protocol Autonomous Broadcaster -->
+          <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <svg class="w-5 h-5 text-[#0085FF]" viewBox="0 0 568 501" fill="currentColor">
+                    <path d="M123.121 33.664C188.241 82.553 258.281 181.68 284 234.873c25.719-53.192 95.759-152.32 160.879-198.21C491.56 3.12 568-19.46 568 59.957c0 15.897-9.08 133.567-14.407 152.597-18.528 66.196-85.922 83.18-146.593 72.846 105.992 18.069 132.85 88.04 74.654 147.78-109.972 112.92-167.348-28.327-197.654-88.89-30.306 60.563-87.682 201.81-197.654 88.89-58.196-59.74-31.338-129.711 74.654-147.78C99.329 295.734 31.935 278.75 13.407 212.554 8.08 193.524 0 75.854 0 59.957 0-19.46 76.44 3.12 123.121 33.664z"/>
+                  </svg>
+                  <span>Bluesky Autonomous Broadcaster (AT Protocol)</span>
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Publish breaking news directly to Bluesky. Automatically generates high-CTR hooks, clickable URL link cards, and custom discovery hashtags (#Nigeria, #NaijaNews).
+                </p>
+              </div>
+              <span id="bluesky-status-pill" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 whitespace-nowrap">
+                AT Protocol Ready
+              </span>
+            </div>
+
+            <!-- Profile Info preview banner (when verified) -->
+            <div id="bluesky-profile-badge" class="hidden p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <img id="bsky-avatar" src="" alt="Avatar" class="w-8 h-8 rounded-full border border-blue-400 object-cover hidden" />
+                <div>
+                  <div id="bsky-display-name" class="font-bold text-xs text-slate-900 dark:text-white"></div>
+                  <div id="bsky-handle" class="text-[11px] font-mono text-blue-600 dark:text-blue-400"></div>
+                </div>
+              </div>
+              <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Connected
+              </span>
+            </div>
+
+            <form id="blueskySettingsForm" onsubmit="saveBlueskyConfig(event)" class="space-y-3.5 pt-1">
+              <div>
+                <label class="block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span>Bluesky Handle / Identifier:</span>
+                  <span class="text-[10px] text-slate-400 font-normal">e.g. yourname.bsky.social</span>
+                </label>
+                <input
+                  type="text"
+                  id="bluesky_identifier"
+                  name="bluesky_identifier"
+                  value={settingsMap.bluesky_identifier || ''}
+                  placeholder="e.g. 9jabeacon.bsky.social or your-email@domain.com"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span>Bluesky App Password:</span>
+                  <span class="text-[10px] text-slate-400 font-normal">Format: xxxx-xxxx-xxxx-xxxx</span>
+                </label>
+                <input
+                  type="password"
+                  id="bluesky_app_password"
+                  name="bluesky_app_password"
+                  value={settingsMap.bluesky_app_password || ''}
+                  placeholder="Paste App Password created in Bluesky Settings"
+                  class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-xs font-mono text-slate-900 dark:text-slate-200 focus:outline-none focus:border-blue-500"
+                />
+                <p class="text-[10px] text-slate-500 mt-1">
+                  Generated in Bluesky: <strong>Settings &rarr; Privacy & Security &rarr; App Passwords</strong>. Never use your main account password.
+                </p>
+              </div>
+
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div class="text-xs font-bold text-slate-800 dark:text-slate-200">Auto-Post When New Stories Ingested</div>
+                  <div class="text-[10px] text-slate-500">Automatically broadcast newly synthesized articles with rich link cards</div>
+                </div>
+                <input
+                  type="checkbox"
+                  id="bluesky_auto_post_enabled"
+                  name="bluesky_auto_post_enabled"
+                  value="true"
+                  checked={settingsMap.bluesky_auto_post_enabled !== 'false'}
+                  class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 bg-slate-900 border-slate-700 cursor-pointer"
+                />
+              </div>
+
+              <div class="flex items-center gap-2 pt-1 flex-wrap">
+                <button
+                  type="submit"
+                  id="saveBlueskyBtn"
+                  class="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition cursor-pointer shadow-sm"
+                >
+                  Save Bluesky Config
+                </button>
+                <button
+                  type="button"
+                  id="testBlueskyBtn"
+                  onclick="testBlueskyAuth()"
+                  class="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs transition cursor-pointer border border-slate-300 dark:border-slate-700 inline-flex items-center gap-1.5"
+                >
+                  <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Verify Connection</span>
+                </button>
+                <button
+                  type="button"
+                  id="sendTestBlueskyBtn"
+                  onclick="sendBlueskyTestPost()"
+                  class="py-2 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-semibold text-xs transition cursor-pointer border border-emerald-300 dark:border-emerald-800 inline-flex items-center gap-1.5"
+                >
+                  <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                  <span>Send Test Post</span>
+                </button>
+              </div>
+
+              <!-- Live Verification & Test Output Box -->
+              <div id="bluesky-result-box" class="hidden p-3 rounded-xl text-xs font-mono border"></div>
             </form>
           </div>
 
@@ -1242,6 +1450,18 @@ for (const s of autoSettings) {
 
                       <button
                         type="button"
+                        onclick={`openBlueskyStudioModal('${a.id}')`}
+                        title="Craft algorithmic hook & post to Bluesky"
+                        class="px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 text-[11px] font-bold transition inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <svg class="w-3 h-3 text-[#0085FF]" viewBox="0 0 568 501" fill="currentColor">
+                          <path d="M123.121 33.664C188.241 82.553 258.281 181.68 284 234.873c25.719-53.192 95.759-152.32 160.879-198.21C491.56 3.12 568-19.46 568 59.957c0 15.897-9.08 133.567-14.407 152.597-18.528 66.196-85.922 83.18-146.593 72.846 105.992 18.069 132.85 88.04 74.654 147.78-109.972 112.92-167.348-28.327-197.654-88.89-30.306 60.563-87.682 201.81-197.654 88.89-58.196-59.74-31.338-129.711 74.654-147.78C99.329 295.734 31.935 278.75 13.407 212.554 8.08 193.524 0 75.854 0 59.957 0-19.46 76.44 3.12 123.121 33.664z"/>
+                        </svg>
+                        <span>Bluesky</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onclick={`deleteAdminArticle('${a.id}', this)`}
                         title="Delete Article"
                         class="p-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/50 transition cursor-pointer"
@@ -1367,6 +1587,147 @@ for (const s of autoSettings) {
                 <svg id="modalRewriteSpinner" class="w-3.5 h-3.5 hidden animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 <span id="modalSubmitText">Execute AI Rewrite</span>
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bluesky Algorithmic Growth & Publishing Studio Modal -->
+        <div
+          id="blueskyStudioModal"
+          class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 overflow-y-auto"
+        >
+          <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden p-6 space-y-4 my-8 max-h-[92vh] flex flex-col text-slate-200">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+              <div class="flex items-center gap-2.5">
+                <span class="p-2 rounded-xl bg-blue-500/10 text-[#0085FF]">
+                  <svg class="w-5 h-5" viewBox="0 0 568 501" fill="currentColor">
+                    <path d="M123.121 33.664C188.241 82.553 258.281 181.68 284 234.873c25.719-53.192 95.759-152.32 160.879-198.21C491.56 3.12 568-19.46 568 59.957c0 15.897-9.08 133.567-14.407 152.597-18.528 66.196-85.922 83.18-146.593 72.846 105.992 18.069 132.85 88.04 74.654 147.78-109.972 112.92-167.348-28.327-197.654-88.89-30.306 60.563-87.682 201.81-197.654 88.89-58.196-59.74-31.338-129.711 74.654-147.78C99.329 295.734 31.935 278.75 13.407 212.554 8.08 193.524 0 75.854 0 59.957 0-19.46 76.44 3.12 123.121 33.664z"/>
+                  </svg>
+                </span>
+                <div>
+                  <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <span>Bluesky Algorithmic Growth Studio</span>
+                    <span class="text-[10px] font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">AT Protocol</span>
+                  </h3>
+                  <p class="text-xs text-slate-400">Craft high-CTR hooks, discoverability hashtags & rich cards</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onclick="closeBlueskyStudioModal()"
+                class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            <!-- Scrollable Body Content -->
+            <div class="overflow-y-auto space-y-4 pr-1">
+              <input type="hidden" id="bskyStudioArticleId" value="" />
+              <input type="hidden" id="bskyStudioArticleUrl" value="" />
+
+              <!-- Article Target Header -->
+              <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start gap-3">
+                <img id="bskyStudioThumb" src="" alt="Thumbnail" class="w-14 h-14 rounded-lg object-cover bg-slate-800 shrink-0 hidden" />
+                <div class="min-w-0 flex-1">
+                  <span id="bskyStudioCategoryBadge" class="inline-block text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 mb-1 uppercase tracking-wider">News</span>
+                  <h4 id="bskyStudioArticleTitle" class="text-xs font-bold text-white line-clamp-2 leading-snug"></h4>
+                </div>
+              </div>
+
+              <!-- Loading spinner for hooks -->
+              <div id="bskyStudioLoading" class="py-6 flex flex-col items-center justify-center gap-2 text-slate-400">
+                <svg class="w-6 h-6 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <span class="text-xs font-mono">Generating algorithmic hooks & image ideas...</span>
+              </div>
+
+              <div id="bskyStudioContent" class="space-y-4 hidden">
+                <!-- 1. Algorithmic Hook Selectors -->
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                      <span>1. Select Algorithmic Hook Angle</span>
+                      <span class="text-[10px] text-slate-500 font-normal">(Click any angle to populate editor)</span>
+                    </label>
+                  </div>
+                  <div id="bskyHookCards" class="grid grid-cols-1 gap-2"></div>
+                </div>
+
+                <!-- 2. Interactive Live Editor -->
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold text-slate-200">2. Live Post Composer (Strict 300 Grapheme Budget)</label>
+                    <span id="bskyCharCounter" class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">0 / 300</span>
+                  </div>
+                  <textarea
+                    id="bskyPostText"
+                    rows="4"
+                    oninput="updateBlueskyCharCounter()"
+                    class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-sans leading-relaxed"
+                    placeholder="Compose or refine your Bluesky post..."
+                  ></textarea>
+
+                  <!-- Discovery Hashtags quick chips -->
+                  <div class="space-y-1">
+                    <div class="text-[10px] text-slate-400 font-medium">Click to inject algorithmic discovery hashtags:</div>
+                    <div id="bskyHashtagsContainer" class="flex flex-wrap gap-1.5"></div>
+                  </div>
+                </div>
+
+                <!-- 3. Bluesky Native Link Embed Card Preview -->
+                <div class="space-y-1.5">
+                  <div class="text-xs font-bold text-slate-200 flex items-center justify-between">
+                    <span>3. Bluesky Link Card Preview</span>
+                    <span class="text-[10px] text-slate-400">app.bsky.embed.external</span>
+                  </div>
+                  <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-start gap-3">
+                    <img id="bskyCardPreviewThumb" src="" alt="Card thumbnail" class="w-16 h-16 rounded-lg object-cover bg-slate-800 shrink-0 hidden" />
+                    <div class="min-w-0 flex-1">
+                      <div class="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                        <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                        <span>9jabeacon.name.ng</span>
+                      </div>
+                      <div id="bskyCardPreviewTitle" class="text-xs font-bold text-white line-clamp-1 mt-0.5"></div>
+                      <div id="bskyCardPreviewDesc" class="text-[11px] text-slate-400 line-clamp-2 mt-0.5"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 4. Visual Retention & Image Idea -->
+                <div class="p-3 rounded-xl bg-blue-950/20 border border-blue-800/40 space-y-1.5">
+                  <div class="flex items-center gap-1.5 text-xs font-bold text-blue-400">
+                    <svg class="w-4 h-4 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span>High-Retention Image Idea (Social Stopping Power)</span>
+                  </div>
+                  <div id="bskyImageIdeaText" class="text-[11px] text-slate-300 leading-relaxed font-sans"></div>
+                </div>
+
+                <!-- Result & Error Box -->
+                <div id="bskyModalStatusBox" class="hidden p-3 rounded-xl text-xs font-mono border"></div>
+              </div>
+            </div>
+
+            <!-- Modal Footer Controls -->
+            <div class="flex items-center justify-between pt-3 border-t border-slate-800 shrink-0">
+              <button
+                type="button"
+                onclick="closeBlueskyStudioModal()"
+                class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="bskyPublishBtn"
+                  onclick="executeBlueskyPublish()"
+                  class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-500/20"
+                >
+                  <svg id="bskyPublishSpinner" class="w-3.5 h-3.5 hidden animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                  <span id="bskyPublishBtnText">Publish to Bluesky Now</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -3595,7 +3956,7 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
       document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.admin-tab-btn').forEach(btn => {
         btn.classList.remove('bg-emerald-500', 'text-slate-950', 'shadow-md', 'shadow-emerald-500/20');
-        btn.classList.add('bg-slate-900', 'text-slate-300', 'border', 'border-slate-800');
+        btn.classList.add('bg-white', 'dark:bg-slate-900', 'text-slate-700', 'dark:text-slate-300', 'border', 'border-slate-200', 'dark:border-slate-800');
       });
 
       const targetContent = document.getElementById('tab-content-' + tabName);
@@ -3603,7 +3964,7 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
 
       if (targetContent) targetContent.classList.remove('hidden');
       if (targetBtn) {
-        targetBtn.classList.remove('bg-slate-900', 'text-slate-300', 'border', 'border-slate-800');
+        targetBtn.classList.remove('bg-white', 'dark:bg-slate-900', 'text-slate-700', 'dark:text-slate-300', 'border-slate-200', 'dark:border-slate-800');
         targetBtn.classList.add('bg-emerald-500', 'text-slate-950', 'shadow-md', 'shadow-emerald-500/20');
       }
     }
@@ -4935,6 +5296,15 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
       triggerCrawlWorkflow();
     }
     window.triggerCrawlForSingleSource = triggerCrawlForSingleSource;
+
+    async function triggerCrawlForCategory(catId, catName) {
+      const sel = document.getElementById('crawlSourceSelect');
+      if (sel) sel.value = catId || '';
+      if (catName) appendTerminal(`Targeting category: ${catName}`, 'info');
+      switchAdminTab('crawler');
+      triggerCrawlWorkflow();
+    }
+    window.triggerCrawlForCategory = triggerCrawlForCategory;
 
     async function saveAiConfig(e) {
       e.preventDefault();
@@ -6272,5 +6642,462 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
 
       box.textContent = msg;
     }
+
+    // -------------------------------------------------------------
+    // BLUESKY / AT PROTOCOL CLIENT MANAGEMENT & ALGORITHMIC STUDIO
+    // -------------------------------------------------------------
+    async function saveBlueskyConfig(event) {
+      if (event) event.preventDefault();
+      const saveBtn = document.getElementById('saveBlueskyBtn');
+      const identifier = document.getElementById('bluesky_identifier')?.value?.trim() || '';
+      const appPassword = document.getElementById('bluesky_app_password')?.value?.trim() || '';
+      const autoPost = document.getElementById('bluesky_auto_post_enabled')?.checked ? 'true' : 'false';
+
+      if (!identifier || !appPassword) {
+        showBlueskyResult('⚠ Please provide both your Bluesky Handle/Identifier and App Password.', 'warning');
+        return;
+      }
+
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'Saving...';
+      }
+
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'automation',
+            settings: {
+              bluesky_identifier: identifier,
+              bluesky_app_password: appPassword,
+              bluesky_auto_post_enabled: autoPost,
+            },
+          }),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showBlueskyResult('✔ Bluesky configuration saved successfully! Verifying connection...', 'success');
+          await testBlueskyAuth();
+        } else {
+          showBlueskyResult(`✖ Failed to save Bluesky settings: ${data.error || 'Unknown error'}`, 'error');
+        }
+      } catch (err) {
+        showBlueskyResult('✖ Error saving Bluesky configuration: ' + err.message, 'error');
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = 'Save Bluesky Config';
+        }
+      }
+    }
+    window.saveBlueskyConfig = saveBlueskyConfig;
+
+    async function testBlueskyAuth() {
+      const testBtn = document.getElementById('testBlueskyBtn');
+      const identifier = document.getElementById('bluesky_identifier')?.value?.trim() || '';
+      const appPassword = document.getElementById('bluesky_app_password')?.value?.trim() || '';
+
+      if (!identifier || !appPassword) {
+        showBlueskyResult('⚠ Please enter your Bluesky Handle and App Password first.', 'warning');
+        return;
+      }
+
+      if (testBtn) {
+        testBtn.disabled = true;
+        testBtn.innerText = 'Verifying...';
+      }
+
+      try {
+        const res = await fetch('/api/admin/bluesky/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, appPassword }),
+        });
+
+        const data = await res.json();
+        const profileBadge = document.getElementById('bluesky-profile-badge');
+        const statusPill = document.getElementById('bluesky-status-pill');
+
+        if (res.ok && data.success && data.profile) {
+          showBlueskyResult(`✔ AT Protocol Session Verified! Connected as @${data.profile.handle}`, 'success');
+
+          if (profileBadge) {
+            profileBadge.classList.remove('hidden');
+            const handleEl = document.getElementById('bsky-handle');
+            const nameEl = document.getElementById('bsky-display-name');
+            const avatarEl = document.getElementById('bsky-avatar');
+
+            if (handleEl) handleEl.textContent = `@${data.profile.handle}`;
+            if (nameEl) nameEl.textContent = data.profile.displayName || data.profile.handle;
+            if (avatarEl && data.profile.avatar) {
+              avatarEl.src = data.profile.avatar;
+              avatarEl.classList.remove('hidden');
+            }
+          }
+
+          if (statusPill) {
+            statusPill.textContent = 'Active & Connected';
+            statusPill.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap';
+          }
+        } else {
+          showBlueskyResult(`✖ Bluesky Authentication Failed: ${data.error || 'Please check your handle and app password.'}`, 'error');
+          if (profileBadge) profileBadge.classList.add('hidden');
+          if (statusPill) {
+            statusPill.textContent = 'Connection Error';
+            statusPill.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-500 border border-red-500/30 whitespace-nowrap';
+          }
+        }
+      } catch (err) {
+        showBlueskyResult('✖ Network error verifying Bluesky connection: ' + err.message, 'error');
+      } finally {
+        if (testBtn) {
+          testBtn.disabled = false;
+          testBtn.innerText = 'Verify Connection';
+        }
+      }
+    }
+    window.testBlueskyAuth = testBlueskyAuth;
+
+    async function sendBlueskyTestPost() {
+      const sendBtn = document.getElementById('sendTestBlueskyBtn');
+      const identifier = document.getElementById('bluesky_identifier')?.value?.trim() || '';
+      const appPassword = document.getElementById('bluesky_app_password')?.value?.trim() || '';
+
+      if (!identifier || !appPassword) {
+        showBlueskyResult('⚠ Please save your Bluesky credentials before broadcasting.', 'warning');
+        return;
+      }
+
+      if (!confirm('Broadcast a live test ping to your Bluesky account now?')) return;
+
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerText = 'Posting...';
+      }
+
+      try {
+        const res = await fetch('/api/admin/bluesky/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, appPassword }),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showBlueskyResult(`✔ Broadcast Successful! Live AT Protocol post created: ${data.postUrl}`, 'success');
+          const box = document.getElementById('bluesky-result-box');
+          if (box && data.postUrl) {
+            const link = document.createElement('a');
+            link.href = data.postUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.className = 'block mt-1 underline font-bold text-blue-400 hover:text-blue-300';
+            link.textContent = '↗ View Live Post on Bluesky';
+            box.appendChild(link);
+          }
+        } else {
+          showBlueskyResult(`✖ Post dispatch failed: ${data.error || 'Server error'}`, 'error');
+        }
+      } catch (err) {
+        showBlueskyResult('✖ Network error while posting to Bluesky: ' + err.message, 'error');
+      } finally {
+        if (sendBtn) {
+          sendBtn.disabled = false;
+          sendBtn.innerText = 'Send Test Post';
+        }
+      }
+    }
+    window.sendBlueskyTestPost = sendBlueskyTestPost;
+
+    function showBlueskyResult(msg, type = 'info') {
+      const box = document.getElementById('bluesky-result-box');
+      if (!box) return;
+      box.classList.remove('hidden', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-red-950/80', 'border-red-800', 'text-red-300', 'bg-amber-950/80', 'border-amber-800', 'text-amber-300', 'bg-slate-900', 'border-slate-800', 'text-slate-300');
+
+      if (type === 'success') {
+        box.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+      } else if (type === 'error') {
+        box.classList.add('bg-red-950/80', 'border-red-800', 'text-red-300');
+      } else if (type === 'warning') {
+        box.classList.add('bg-amber-950/80', 'border-amber-800', 'text-amber-300');
+      } else {
+        box.classList.add('bg-slate-900', 'border-slate-800', 'text-slate-300');
+      }
+
+      box.textContent = msg;
+    }
+
+    // -------------------------------------------------------------
+    // BLUESKY ALGORITHMIC STUDIO MODAL INTERACTION
+    // -------------------------------------------------------------
+    let currentBlueskyDraft = null;
+
+    async function openBlueskyStudioModal(articleId) {
+      const modal = document.getElementById('blueskyStudioModal');
+      const loading = document.getElementById('bskyStudioLoading');
+      const content = document.getElementById('bskyStudioContent');
+      const statusBox = document.getElementById('bskyModalStatusBox');
+      const idInput = document.getElementById('bskyStudioArticleId');
+
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      if (loading) loading.classList.remove('hidden');
+      if (content) content.classList.add('hidden');
+      if (statusBox) statusBox.classList.add('hidden');
+      if (idInput) idInput.value = articleId;
+
+      try {
+        const res = await fetch('/api/admin/bluesky/generate-hook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ article_id: articleId }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success || !data.data) {
+          throw new Error(data.error || 'Failed to craft algorithmic hooks');
+        }
+
+        currentBlueskyDraft = data.data;
+
+        // Populate article meta header
+        const cardPrev = currentBlueskyDraft.cardPreview || {};
+        const titleEl = document.getElementById('bskyStudioArticleTitle');
+        const thumbEl = document.getElementById('bskyStudioThumb');
+        const cardThumb = document.getElementById('bskyCardPreviewThumb');
+        const cardTitle = document.getElementById('bskyCardPreviewTitle');
+        const cardDesc = document.getElementById('bskyCardPreviewDesc');
+        const urlInput = document.getElementById('bskyStudioArticleUrl');
+
+        if (titleEl) titleEl.textContent = cardPrev.title || 'Untitled Article';
+        if (cardTitle) cardTitle.textContent = cardPrev.title || '';
+        if (cardDesc) cardDesc.textContent = cardPrev.description || '';
+        if (urlInput) urlInput.value = cardPrev.url || '';
+
+        if (cardPrev.imageUrl && !cardPrev.imageUrl.includes('placeholder')) {
+          if (thumbEl) { thumbEl.src = cardPrev.imageUrl; thumbEl.classList.remove('hidden'); }
+          if (cardThumb) { cardThumb.src = cardPrev.imageUrl; cardThumb.classList.remove('hidden'); }
+        } else {
+          if (thumbEl) thumbEl.classList.add('hidden');
+          if (cardThumb) cardThumb.classList.add('hidden');
+        }
+
+        // Render Hook Cards
+        const hookCardsContainer = document.getElementById('bskyHookCards');
+        if (hookCardsContainer && Array.isArray(currentBlueskyDraft.hooks)) {
+          hookCardsContainer.innerHTML = currentBlueskyDraft.hooks.map((h, i) => `
+            <div
+              onclick="selectBlueskyHook('${encodeURIComponent(h.text)}', this)"
+              class="p-2.5 rounded-xl border border-slate-800 bg-slate-950/70 hover:bg-slate-800/80 hover:border-blue-500/50 cursor-pointer transition flex flex-col gap-1 ${i === 0 ? 'ring-1 ring-blue-500 border-blue-500 bg-blue-950/20' : ''}"
+            >
+              <div class="flex items-center justify-between text-[10px]">
+                <span class="font-bold text-white flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full ${i === 0 ? 'bg-blue-400' : 'bg-slate-500'}"></span>
+                  ${h.style}
+                </span>
+                <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">${h.badge}</span>
+              </div>
+              <p class="text-xs text-slate-300 font-sans line-clamp-2 leading-relaxed whitespace-pre-line">${h.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+            </div>
+          `).join('');
+        }
+
+        // Set default text in textarea to first hook
+        const textArea = document.getElementById('bskyPostText');
+        if (textArea && currentBlueskyDraft.hooks[0]) {
+          textArea.value = currentBlueskyDraft.hooks[0].text;
+          updateBlueskyCharCounter();
+        }
+
+        // Render hashtag chips
+        const tagsContainer = document.getElementById('bskyHashtagsContainer');
+        if (tagsContainer && Array.isArray(currentBlueskyDraft.hashtags)) {
+          tagsContainer.innerHTML = currentBlueskyDraft.hashtags.map(t => `
+            <button
+              type="button"
+              onclick="addBlueskyHashtag('#${t}')"
+              class="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-blue-600 hover:text-white text-[11px] font-mono text-blue-400 transition cursor-pointer border border-slate-700 hover:border-blue-500"
+            >
+              #${t}
+            </button>
+          `).join('');
+        }
+
+        // Render Image Idea
+        const imageIdeaEl = document.getElementById('bskyImageIdeaText');
+        if (imageIdeaEl && currentBlueskyDraft.imageIdea) {
+          imageIdeaEl.innerHTML = `
+            <div><strong>Visual Concept:</strong> ${currentBlueskyDraft.imageIdea.concept}</div>
+            <div class="mt-1"><strong>Overlay Headline:</strong> <span class="text-amber-300 font-medium">"${currentBlueskyDraft.imageIdea.suggestedOverlayText}"</span></div>
+            <div class="mt-0.5 text-slate-400 text-[10px]"><strong>Layout Guidance:</strong> ${currentBlueskyDraft.imageIdea.styleDirection}</div>
+          `;
+        }
+
+        if (loading) loading.classList.add('hidden');
+        if (content) content.classList.remove('hidden');
+      } catch (err) {
+        if (loading) loading.classList.add('hidden');
+        if (content) content.classList.remove('hidden');
+        showBlueskyModalStatus('✖ Error crafting algorithmic hooks: ' + err.message, 'error');
+      }
+    }
+    window.openBlueskyStudioModal = openBlueskyStudioModal;
+
+    function closeBlueskyStudioModal() {
+      const modal = document.getElementById('blueskyStudioModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+    window.closeBlueskyStudioModal = closeBlueskyStudioModal;
+
+    function selectBlueskyHook(encodedText, cardEl) {
+      const text = decodeURIComponent(encodedText);
+      const textArea = document.getElementById('bskyPostText');
+      if (textArea) {
+        textArea.value = text;
+        updateBlueskyCharCounter();
+      }
+
+      const hookCards = document.querySelectorAll('#bskyHookCards > div');
+      hookCards.forEach(c => {
+        c.classList.remove('ring-1', 'ring-blue-500', 'border-blue-500', 'bg-blue-950/20');
+      });
+      if (cardEl) {
+        cardEl.classList.add('ring-1', 'ring-blue-500', 'border-blue-500', 'bg-blue-950/20');
+      }
+    }
+    window.selectBlueskyHook = selectBlueskyHook;
+
+    function addBlueskyHashtag(tag) {
+      const textArea = document.getElementById('bskyPostText');
+      if (!textArea) return;
+      const current = textArea.value.trim();
+      if (current.includes(tag)) return;
+
+      if (current.length + tag.length + 1 > 300) {
+        showBlueskyModalStatus(`⚠ Adding ${tag} would exceed Bluesky's 300 character limit!`, 'warning');
+        return;
+      }
+
+      textArea.value = `${current} ${tag}`;
+      updateBlueskyCharCounter();
+    }
+    window.addBlueskyHashtag = addBlueskyHashtag;
+
+    function updateBlueskyCharCounter() {
+      const textArea = document.getElementById('bskyPostText');
+      const counter = document.getElementById('bskyCharCounter');
+      if (!textArea || !counter) return;
+
+      const len = textArea.value.length;
+      counter.textContent = `${len} / 300`;
+
+      if (len > 300) {
+        counter.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800 font-bold';
+      } else if (len > 280) {
+        counter.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800';
+      } else {
+        counter.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-emerald-400';
+      }
+    }
+    window.updateBlueskyCharCounter = updateBlueskyCharCounter;
+
+    async function executeBlueskyPublish() {
+      const publishBtn = document.getElementById('bskyPublishBtn');
+      const spinner = document.getElementById('bskyPublishSpinner');
+      const btnText = document.getElementById('bskyPublishBtnText');
+      const articleId = document.getElementById('bskyStudioArticleId')?.value;
+      const text = document.getElementById('bskyPostText')?.value?.trim();
+
+      if (!text) {
+        showBlueskyModalStatus('⚠ Post text cannot be empty.', 'warning');
+        return;
+      }
+
+      if (text.length > 300) {
+        showBlueskyModalStatus('✖ Post exceeds Bluesky 300-grapheme ceiling. Please shorten before publishing.', 'error');
+        return;
+      }
+
+      if (publishBtn) publishBtn.disabled = true;
+      if (spinner) spinner.classList.remove('hidden');
+      if (btnText) btnText.textContent = 'Broadcasting to AT Protocol...';
+
+      try {
+        const res = await fetch('/api/admin/bluesky/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            article_id: articleId,
+            customText: text,
+          }),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showBlueskyModalStatus(`✔ Dispatched to Bluesky! Post is live: ${data.postUrl || ''}`, 'success');
+          if (data.postUrl) {
+            const statusBox = document.getElementById('bskyModalStatusBox');
+            if (statusBox) {
+              const link = document.createElement('a');
+              link.href = data.postUrl;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              link.className = 'block mt-2 underline font-bold text-blue-400 hover:text-blue-300 text-xs';
+              link.textContent = '↗ Open Post on Bluesky (bsky.app)';
+              statusBox.appendChild(link);
+            }
+          }
+        } else {
+          showBlueskyModalStatus(`✖ Publishing issue: ${data.error || 'Check Bluesky credentials or rate limits.'}`, 'error');
+        }
+      } catch (err) {
+        showBlueskyModalStatus('✖ Network error: ' + err.message, 'error');
+      } finally {
+        if (publishBtn) publishBtn.disabled = false;
+        if (spinner) spinner.classList.add('hidden');
+        if (btnText) btnText.textContent = 'Publish to Bluesky Now';
+      }
+    }
+    window.executeBlueskyPublish = executeBlueskyPublish;
+
+    async function publishArticleToBluesky(articleId, btnEl) {
+      openBlueskyStudioModal(articleId);
+    }
+    window.publishArticleToBluesky = publishArticleToBluesky;
+
+    function showBlueskyModalStatus(msg, type = 'info') {
+      const box = document.getElementById('bskyModalStatusBox');
+      if (!box) return;
+      box.classList.remove('hidden', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-red-950/80', 'border-red-800', 'text-red-300', 'bg-amber-950/80', 'border-amber-800', 'text-amber-300', 'bg-slate-900', 'border-slate-800', 'text-slate-300');
+
+      if (type === 'success') {
+        box.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+      } else if (type === 'error') {
+        box.classList.add('bg-red-950/80', 'border-red-800', 'text-red-300');
+      } else if (type === 'warning') {
+        box.classList.add('bg-amber-950/80', 'border-amber-800', 'text-amber-300');
+      } else {
+        box.classList.add('bg-slate-900', 'border-slate-800', 'text-slate-300');
+      }
+
+      box.textContent = msg;
+    }
+
+    // Auto-check connection on page load if credentials already configured
+    window.addEventListener('DOMContentLoaded', () => {
+      const id = document.getElementById('bluesky_identifier')?.value?.trim();
+      const pass = document.getElementById('bluesky_app_password')?.value?.trim();
+      if (id && pass) {
+        testBlueskyAuth();
+      }
+    });
   </script>
 </Layout>

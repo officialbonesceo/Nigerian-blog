@@ -338,6 +338,9 @@ function initDatabase() {
     insertSettingOrIgnore.run('buffer_profile_ids_instagram', '', 'Buffer Profile ID for Instagram Business Profile');
     insertSettingOrIgnore.run('buffer_auto_post_enabled', 'true', 'Enable autonomous posting of rewritten articles to Buffer');
     insertSettingOrIgnore.run('buffer_max_posts_per_workflow', '5', 'Maximum stories posted to Facebook/Instagram per workflow run (default: 5)');
+    insertSettingOrIgnore.run('bluesky_identifier', '', 'Bluesky Handle or Username (e.g. 9jabeacon.bsky.social)');
+    insertSettingOrIgnore.run('bluesky_app_password', '', 'Bluesky App Password generated in Settings (xxxx-xxxx-xxxx-xxxx)');
+    insertSettingOrIgnore.run('bluesky_auto_post_enabled', 'true', 'Enable automatic publishing of synthesized articles to Bluesky');
   }
 
   // Seed default site settings
