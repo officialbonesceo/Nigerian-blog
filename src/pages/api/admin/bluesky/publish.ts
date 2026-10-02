@@ -7,18 +7,32 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const db = getD1(locals);
     const body = await request.json().catch(() => ({}));
     
-    // Retrieve Bluesky credentials from DB
+    // Retrieve Bluesky credentials from Server Environment (.env) or DB
+    const envIdentifier = (
+      (typeof process !== 'undefined' ? process.env?.BLUESKY_IDENTIFIER : '') ||
+      (locals as any)?.runtime?.env?.BLUESKY_IDENTIFIER ||
+      (import.meta as any).env?.BLUESKY_IDENTIFIER ||
+      ''
+    ).trim();
+
+    const envAppPassword = (
+      (typeof process !== 'undefined' ? process.env?.BLUESKY_APP_PASSWORD : '') ||
+      (locals as any)?.runtime?.env?.BLUESKY_APP_PASSWORD ||
+      (import.meta as any).env?.BLUESKY_APP_PASSWORD ||
+      ''
+    ).trim();
+
     const autoSettings = await getAutomationSettings(db);
     const settingsMap: Record<string, string> = {};
     for (const s of autoSettings) settingsMap[s.key] = s.value;
 
-    const identifier = body.identifier || settingsMap.bluesky_identifier || '';
-    const appPassword = body.appPassword || settingsMap.bluesky_app_password || '';
+    const identifier = (body.identifier || envIdentifier || settingsMap.bluesky_identifier || '').trim();
+    const appPassword = (body.appPassword || envAppPassword || settingsMap.bluesky_app_password || '').trim();
 
     if (!identifier || !appPassword) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Bluesky credentials not configured. Please save your Handle and App Password first.',
+        error: 'Bluesky credentials not configured. Please set BLUESKY_IDENTIFIER and BLUESKY_APP_PASSWORD in your server environment (.env).',
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
