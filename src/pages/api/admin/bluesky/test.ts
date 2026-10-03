@@ -46,7 +46,7 @@ export const GET: APIRoute = async ({ locals }) => {
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const db = getD1(locals);
-    const body = await request.json().catch(() => ({}));
+    const body: any = await request.json().catch(() => ({}));
 
     const envIdentifier = (
       (typeof process !== 'undefined' ? process.env?.BLUESKY_IDENTIFIER : '') ||

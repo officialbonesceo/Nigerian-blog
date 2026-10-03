@@ -5,7 +5,7 @@ import { generateAlgorithmicHooksAndImageIdeas } from '../../../../lib/bluesky';
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const db = getD1(locals);
-    const body = await request.json().catch(() => ({}));
+    const body: any = await request.json().catch(() => ({}));
     const siteSettings = await getSiteSettings(db);
     const siteUrl = (siteSettings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
 

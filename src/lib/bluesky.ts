@@ -82,6 +82,44 @@ export interface AlgorithmicPostDraft {
   };
 }
 
+export interface BlueskyPostMetric {
+  uri: string;
+  rkey: string;
+  url: string;
+  text: string;
+  createdAt: string;
+  likeCount: number;
+  repostCount: number;
+  replyCount: number;
+  quoteCount: number;
+  totalEngagements: number;
+  externalTitle?: string;
+  externalThumb?: string;
+}
+
+export interface BlueskyChannelAnalytics {
+  success: boolean;
+  actor: string;
+  displayName: string;
+  avatar: string;
+  banner: string;
+  description: string;
+  did: string;
+  followersCount: number;
+  followsCount: number;
+  postsCount: number;
+  createdAt: string;
+  totalLikes: number;
+  totalReposts: number;
+  totalReplies: number;
+  totalQuotes: number;
+  totalEngagements: number;
+  avgEngagementPerPost: number;
+  recentPosts: BlueskyPostMetric[];
+  fetchedAt: string;
+  error?: string;
+}
+
 const BSKY_SERVICE = 'https://bsky.social';
 
 // In-memory session cache to avoid hitting the 30 logins / 5 minutes rate limit
@@ -130,7 +168,7 @@ export async function createBlueskySession(
       signal: AbortSignal.timeout(10000),
     });
 
-    const data = await res.json();
+    const data: any = await res.json();
     if (!res.ok) {
       return {
         success: false,
@@ -217,11 +255,11 @@ export async function uploadBlueskyBlob(
         'Authorization': `Bearer ${accessJwt}`,
         'Content-Type': mimeType,
       },
-      body: binaryData,
+      body: binaryData as any,
       signal: AbortSignal.timeout(15000),
     });
 
-    const data = await res.json();
+    const data: any = await res.json();
     if (!res.ok) {
       return { success: false, error: data.message || `Blob upload failed (HTTP ${res.status})` };
     }
@@ -579,7 +617,7 @@ export async function postToBluesky(
       signal: AbortSignal.timeout(15000),
     });
 
-    const data = await res.json();
+    const data: any = await res.json();
     if (!res.ok) {
       // If token expired, invalidate cache
       if (res.status === 401) {
@@ -601,3 +639,193 @@ export async function postToBluesky(
     return { success: false, error: err.message || String(err) };
   }
 }
+
+/**
+ * Fetches realtime channel analytics for Bluesky profile and author feed.
+ * Utilizes AT Protocol's public XRPC gateway (zero-latency, no rate limit blocking).
+ */
+export async function getBlueskyChannelAnalytics(rawIdentifier?: string): Promise<BlueskyChannelAnalytics> {
+  const defaultActor = '9jabeacon.bsky.social';
+  let actor = (rawIdentifier || '').trim();
+  if (!actor) {
+    actor = defaultActor;
+  }
+  // Sanitize handle if user provided full URL or @ prefix
+  actor = actor.replace(/^https?:\/\/bsky\.app\/profile\//i, '').replace(/^@/, '').replace(/\/$/, '').trim();
+  if (!actor) actor = defaultActor;
+
+  try {
+    // 1. Fetch public profile
+    const profileRes = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(actor)}`, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!profileRes.ok) {
+      const errJson: any = await profileRes.json().catch(() => ({}));
+      return {
+        success: false,
+        actor,
+        displayName: '',
+        avatar: '',
+        banner: '',
+        description: '',
+        did: '',
+        followersCount: 0,
+        followsCount: 0,
+        postsCount: 0,
+        createdAt: '',
+        totalLikes: 0,
+        totalReposts: 0,
+        totalReplies: 0,
+        totalQuotes: 0,
+        totalEngagements: 0,
+        avgEngagementPerPost: 0,
+        recentPosts: [],
+        fetchedAt: new Date().toISOString(),
+        error: errJson.message || `Failed to fetch profile (HTTP ${profileRes.status})`,
+      };
+    }
+
+    const profile: any = await profileRes.json();
+
+    // 2. Fetch author feed to aggregate real-time engagement
+    let recentPosts: BlueskyPostMetric[] = [];
+    let totalLikes = 0;
+    let totalReposts = 0;
+    let totalReplies = 0;
+    let totalQuotes = 0;
+
+    try {
+      const feedRes = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(actor)}&limit=15`, {
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (feedRes.ok) {
+        const feedData: any = await feedRes.json();
+        const feedItems = Array.isArray(feedData.feed) ? feedData.feed : [];
+
+        recentPosts = feedItems.map((item: any) => {
+          const post = item.post || {};
+          const record = post.record || {};
+          const rkey = post.uri ? post.uri.split('/').pop() : '';
+          const url = `https://bsky.app/profile/${post.author?.handle || actor}/post/${rkey}`;
+
+          const likeCount = Number(post.likeCount || 0);
+          const repostCount = Number(post.repostCount || 0);
+          const replyCount = Number(post.replyCount || 0);
+          const quoteCount = Number(post.quoteCount || 0);
+          const totalEngagements = likeCount + repostCount + replyCount + quoteCount;
+
+          totalLikes += likeCount;
+          totalReposts += repostCount;
+          totalReplies += replyCount;
+          totalQuotes += quoteCount;
+
+          let externalTitle: string | undefined = undefined;
+          let externalThumb: string | undefined = undefined;
+          if (post.embed?.$type === 'app.bsky.embed.external#view' && post.embed.external) {
+            externalTitle = post.embed.external.title;
+            externalThumb = post.embed.external.thumb;
+          }
+
+          return {
+            uri: post.uri || '',
+            rkey: rkey || '',
+            url,
+            text: record.text || '',
+            createdAt: record.createdAt || post.indexedAt || '',
+            likeCount,
+            repostCount,
+            replyCount,
+            quoteCount,
+            totalEngagements,
+            externalTitle,
+            externalThumb,
+          };
+        });
+      }
+    } catch {
+      // feed fetch failure is non-fatal for profile
+    }
+
+    const totalEngagements = totalLikes + totalReposts + totalReplies + totalQuotes;
+    const avgEngagementPerPost = recentPosts.length > 0
+      ? Number((totalEngagements / recentPosts.length).toFixed(1))
+      : 0;
+
+    return {
+      success: true,
+      actor: profile.handle || actor,
+      displayName: profile.displayName || profile.handle || actor,
+      avatar: profile.avatar || '',
+      banner: profile.banner || '',
+      description: profile.description || '',
+      did: profile.did || '',
+      followersCount: Number(profile.followersCount || 0),
+      followsCount: Number(profile.followsCount || 0),
+      postsCount: Number(profile.postsCount || 0),
+      createdAt: profile.createdAt || '',
+      totalLikes,
+      totalReposts,
+      totalReplies,
+      totalQuotes,
+      totalEngagements,
+      avgEngagementPerPost,
+      recentPosts,
+      fetchedAt: new Date().toISOString(),
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      actor,
+      displayName: '',
+      avatar: '',
+      banner: '',
+      description: '',
+      did: '',
+      followersCount: 0,
+      followsCount: 0,
+      postsCount: 0,
+      createdAt: '',
+      totalLikes: 0,
+      totalReposts: 0,
+      totalReplies: 0,
+      totalQuotes: 0,
+      totalEngagements: 0,
+      avgEngagementPerPost: 0,
+      recentPosts: [],
+      fetchedAt: new Date().toISOString(),
+      error: err.message || String(err),
+    };
+  }
+}
+
+/**
+ * Live deduplication check against the AT Protocol author feed.
+ * Prevents double-broadcasting the same story across automated runs or CI schedules.
+ */
+export async function checkIfUrlAlreadyOnBlueskyTimeline(actor: string, targetSlugOrUrl: string): Promise<{ exists: boolean; postUrl?: string }> {
+  try {
+    const analytics = await getBlueskyChannelAnalytics(actor);
+    if (!analytics || !analytics.success || !Array.isArray(analytics.recentPosts)) {
+      return { exists: false };
+    }
+
+    const cleanTarget = targetSlugOrUrl.toLowerCase().trim().replace(/^https?:\/\/[^/]+/i, '');
+    for (const post of analytics.recentPosts) {
+      const textMatch = post.text.toLowerCase().includes(cleanTarget);
+      const titleMatch = post.externalTitle && post.externalTitle.toLowerCase().includes(cleanTarget);
+      if (textMatch || titleMatch) {
+        return { exists: true, postUrl: post.url };
+      }
+    }
+
+    return { exists: false };
+  } catch {
+    return { exists: false };
+  }
+}
+
+

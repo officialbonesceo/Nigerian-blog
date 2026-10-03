@@ -4,7 +4,7 @@
  */
 
 import { db } from '../src/lib/db';
-import { postToBluesky } from '../src/lib/bluesky';
+import { postToBluesky, checkIfUrlAlreadyOnBlueskyTimeline } from '../src/lib/bluesky';
 
 async function main() {
   console.log('=====================================================');
@@ -15,6 +15,7 @@ async function main() {
   const identifier = (process.env.BLUESKY_IDENTIFIER || '').trim();
   const appPassword = (process.env.BLUESKY_APP_PASSWORD || '').trim();
   const targetSlug = process.argv[2] || process.env.TARGET_SLUG || '';
+  const force = process.env.FORCE_BROADCAST === 'true' || process.argv.includes('--force');
 
   if (!identifier || !appPassword) {
     console.error('❌ Missing BLUESKY_IDENTIFIER or BLUESKY_APP_PASSWORD.');
@@ -30,8 +31,24 @@ async function main() {
       console.error(`❌ Article with slug "${targetSlug}" not found in database.`);
       process.exit(1);
     }
+
+    // Check if target article has already been broadcasted
+    if (!force) {
+      const alreadyBroadcasted = db.prepare(`
+        SELECT * FROM automation_logs 
+        WHERE event_type = 'BLUESKY_PUBLISH_SUCCESS' 
+          AND (source_id = ? OR message LIKE ?)
+      `).get(article.id, `%${article.slug}%`);
+
+      if (alreadyBroadcasted) {
+        console.log(`ℹ️ Deduplication: Article "${article.title}" (/news/${article.slug}) was already broadcasted.`);
+        console.log(`   Previous log: ${(alreadyBroadcasted as any)?.message}`);
+        console.log(`   Pass --force or FORCE_BROADCAST=true to override.`);
+        process.exit(0);
+      }
+    }
   } else {
-    // Prioritize latest published article that hasn't been broadcasted to Bluesky yet
+    // Automatically select the latest published article that has NEVER been syndicated to Bluesky
     try {
       article = db.prepare(`
         SELECT * FROM articles 
@@ -48,12 +65,35 @@ async function main() {
     }
 
     if (!article) {
-      // Fallback: Pick the most recently published article
-      article = db.prepare('SELECT * FROM articles WHERE status = "published" ORDER BY published_at DESC LIMIT 1').get();
+      console.log('✅ Deduplication check passed: All published stories in database have already been syndicated to Bluesky.');
+      console.log('   No new unsyndicated stories found. Skipping redundant post to prevent timeline spam.');
+      process.exit(0);
     }
+  }
 
-    if (!article) {
-      console.log('ℹ️ No published articles found in database to broadcast.');
+  // Live timeline check against Bluesky author feed to avoid any duplicate posts across different runs
+  if (!force) {
+    console.log(`🔍 Verifying against live Bluesky timeline for duplicate prevention...`);
+    const liveCheck = await checkIfUrlAlreadyOnBlueskyTimeline(identifier, article.slug);
+    if (liveCheck.exists) {
+      console.log(`ℹ️ Live timeline check: Story "/news/${article.slug}" already exists on Bluesky timeline.`);
+      console.log(`   Live URL: ${liveCheck.postUrl || 'Active on profile'}`);
+      console.log(`   Skipping duplicate broadcast. Pass --force to override.`);
+
+      // Sync local log so subsequent queries avoid checking it again
+      try {
+        db.prepare(`
+          INSERT INTO automation_logs (id, event_type, source_id, message, level)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(
+          'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          'BLUESKY_PUBLISH_SUCCESS',
+          article.id,
+          `Deduplicated via live timeline: ${liveCheck.postUrl || article.slug}`,
+          'info'
+        );
+      } catch {}
+
       process.exit(0);
     }
   }

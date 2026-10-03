@@ -363,7 +363,7 @@ async function main() {
             console.log(`     🦋 Syndicating trending lead to Bluesky (@${bskyId})...`);
             const bskyRes = await postToBluesky({
               title: aiResult.title,
-              summary: aiResult.summary,
+              summary: aiResult.summary || '',
               category: categoryId,
               imageUrl: finalImageUrl,
               slug,
@@ -611,7 +611,7 @@ async function main() {
             console.log(`     🦋 Syndicating to Bluesky (@${bskyId})...`);
             const bskyRes = await postToBluesky({
               title: aiResult.title,
-              summary: aiResult.summary,
+              summary: aiResult.summary || '',
               category: categoryId,
               imageUrl: finalImageUrl,
               slug,

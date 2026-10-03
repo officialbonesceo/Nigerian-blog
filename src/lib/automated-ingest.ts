@@ -584,8 +584,8 @@ export async function runIngestionPipeline(
             const sMap: Record<string, string> = {};
             for (const s of autoSettings) sMap[s.key] = s.value;
             if (sMap.bluesky_auto_post_enabled === 'true' && sMap.bluesky_identifier && sMap.bluesky_app_password) {
-              const siteSettings = await getSiteSettings(db).catch(() => ({}));
-              const siteBase = (siteSettings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+              const siteSettings = await getSiteSettings(db).catch(() => ({} as Record<string, string>));
+              const siteBase = ((siteSettings as any).site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
               postToBluesky({
                 title: newArticle.title,
                 summary: newArticle.summary,
