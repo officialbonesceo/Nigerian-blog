@@ -281,20 +281,9 @@ export function isPersonRelatedStory(title: string, content?: string): boolean {
   }
 
   // 3. Known public figures and prominent names
-  const knownFigures = /\b(tinubu|shettima|sanwo-olu|fubara|wike|peter obi|atiku|buhari|emefiele|cardoso|dangote|adeleke|soludo|lookman|osimhen|boniface|iwobi|chukwueze|ndidi|pochettino|arteta|guardiola|ancelotti|trump|biden|harris|putin|zelensky|starmer|macron|netanyahu|lookman|alonso|russell|antonelli)\b/i;
+  const knownFigures = /\b(tinubu|shettima|sanwo-?olu|fubara|wike|peter\s+obi|atiku|buhari|emefiele|cardoso|dangote|adeleke|soludo|lookman|osimhen|boniface|iwobi|chukwueze|ndidi|pochettino|arteta|guardiola|ancelotti|trump|biden|harris|putin|zelensky|starmer|macron|netanyahu|alonso|russell|antonelli|joshua|fury|palmer|rice|rodri|dembele|enrique|otu|mutfwang|keyamo)\b/i;
   if (knownFigures.test(combined)) {
     return true;
-  }
-
-  // 4. Two capitalized names in title indicative of an individual
-  const twoNames = title.match(/\b[A-Z][a-z]+\s+[A-Z][a-z]+\b/g);
-  if (twoNames && twoNames.length > 0) {
-    const commonNonPersons = ['Central Bank', 'Supreme Court', 'National Assembly', 'House of', 'State Government', 'Federal Government', 'European Union', 'United States', 'United Kingdom', 'Super Eagles', 'Wall Street', 'Stock Exchange', 'Clean Energy'];
-    for (const name of twoNames) {
-      if (!commonNonPersons.some(np => name.toLowerCase().includes(np.toLowerCase()))) {
-        return true;
-      }
-    }
   }
 
   return false;
@@ -321,6 +310,11 @@ const NON_HUMAN_STOCK_ASSETS: Record<string, { url: string; caption: string; cre
     caption: 'Financial market operations, banking liquidity, and currency exchange indicators.',
     credit: 'Financial Markets Analytics Archive',
   },
+  equities: {
+    url: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Trading terminal monitoring equities movements and capital market volume.',
+    credit: 'Capital Markets Data / Unsplash',
+  },
   trade: {
     url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80',
     caption: 'Maritime commercial freight terminal and container cargo logistics.',
@@ -331,15 +325,70 @@ const NON_HUMAN_STOCK_ASSETS: Record<string, { url: string; caption: string; cre
     caption: 'Enterprise cloud infrastructure, secure data networking, and telecommunications.',
     credit: 'Digital Systems Network Archive',
   },
+  mobile: {
+    url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02560?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Mobile telecommunications devices and consumer electronics innovation.',
+    credit: 'Tech Innovations Archive / Unsplash',
+  },
   stadium: {
     url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
     caption: 'Continental football arena and professional pitch grounds.',
     credit: 'Sports Federation Media',
   },
+  boxing: {
+    url: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Professional championship combat arena and boxing ring.',
+    credit: 'Sports Arena Media Archive',
+  },
   summit: {
     url: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=1200&q=80',
     caption: 'Intergovernmental diplomatic assembly and international policy summit.',
     credit: 'Global Summit Press Service',
+  },
+  education: {
+    url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80',
+    caption: 'University academic lecture halls and higher education institution facilities.',
+    credit: 'Higher Education Archive / Unsplash',
+  },
+  justice: {
+    url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Courthouse legal chambers, constitutional jurisprudence, and justice administration.',
+    credit: 'Legal & Judicial Media Archive',
+  },
+  defense: {
+    url: 'https://images.unsplash.com/photo-1579208575657-c595a05383b7?auto=format&fit=crop&w=1200&q=80',
+    caption: 'National defense reconnaissance, security command operations, and tactical deterrence.',
+    credit: 'Defense Information Archive',
+  },
+  transit: {
+    url: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Urban public transport fleet, municipal transit bus corridors, and passenger mobility.',
+    credit: 'Urban Mobility Authority / Unsplash',
+  },
+  health: {
+    url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Public health laboratory diagnostics, epidemiological surveillance, and clinical care.',
+    credit: 'Health Sciences Archive / Unsplash',
+  },
+  agriculture: {
+    url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Wholesale agricultural commodities, municipal produce distribution, and food supply chains.',
+    credit: 'Agricultural Trade Bureau / Unsplash',
+  },
+  aviation: {
+    url: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Commercial aviation operations, terminal fleet maintenance, and airspace infrastructure.',
+    credit: 'Aviation Authority / Unsplash',
+  },
+  flood: {
+    url: 'https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Severe seasonal precipitation, flash flood emergency response, and ecological impact.',
+    credit: 'Meteorological Dispatch / Unsplash',
+  },
+  construction: {
+    url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Urban structural engineering, civil construction works, and infrastructure development.',
+    credit: 'Civil Engineering Archive / Unsplash',
   },
 };
 
@@ -373,24 +422,23 @@ export async function resolveEditorialImage(options: {
 
   const isPerson = isPersonRelatedStory(title, content);
 
-  // Tier 2: Wikipedia Commons verified historical/biographical photo
-  try {
-    const wikiPhoto = await fetchVerifiedWikipediaImage(title, category);
-    if (wikiPhoto && wikiPhoto.imageUrl) {
-      return {
-        imageUrl: wikiPhoto.imageUrl,
-        imageCaption: wikiPhoto.caption || `${wikiPhoto.wikiTitle} — Archival editorial dispatch.`,
-        imageCredit: wikiPhoto.credit || 'Wikimedia Commons',
-        imageLicense: 'Creative Commons / Editorial',
-      };
-    }
-  } catch {
-    // Graceful continuation
-  }
-
-  // Tier 3: If it's a human-related story, STRICT RULE: SKIP generic stock photos!
-  // Showing a random stock model for a Nigerian politician, athlete, or minister is strictly forbidden.
+  // Tier 2: If human-related (person/public figure): try Wikipedia Commons for that exact figure.
+  // If Wikipedia has NO authentic photo of that person, SKIPS stock photos completely and uses custom SVG!
   if (isPerson) {
+    try {
+      const wikiPhoto = await fetchVerifiedWikipediaImage(title, category);
+      if (wikiPhoto && wikiPhoto.imageUrl) {
+        return {
+          imageUrl: wikiPhoto.imageUrl,
+          imageCaption: wikiPhoto.caption || `${wikiPhoto.wikiTitle} — Archival editorial dispatch.`,
+          imageCredit: wikiPhoto.credit || 'Wikimedia Commons',
+          imageLicense: 'Creative Commons / Editorial',
+        };
+      }
+    } catch {
+      // Graceful continuation
+    }
+
     const svgUrl = generateEditorialSvgDataUrl({
       title,
       category: category || 'naija-news',
@@ -404,21 +452,45 @@ export async function resolveEditorialImage(options: {
     };
   }
 
-  // Tier 4: For NON-HUMAN stories, we can safely use relevant conceptual photos (Unsplash)
+  // Tier 4: For NON-HUMAN stories, match the most accurate thematic photo
   const lowerTitle = title.toLowerCase();
   let matchedStock: { url: string; caption: string; credit: string } | null = null;
 
   if (lowerTitle.includes('solar') || lowerTitle.includes('clean energy') || lowerTitle.includes('renewable') || lowerTitle.includes('climate')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.solar;
+  } else if (lowerTitle.includes('equities') || lowerTitle.includes('ngx') || lowerTitle.includes('stock exchange') || lowerTitle.includes('shares')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.equities;
   } else if (lowerTitle.includes('inflation') || lowerTitle.includes('bank') || lowerTitle.includes('cbn') || lowerTitle.includes('naira') || lowerTitle.includes('interest rate') || lowerTitle.includes('fx')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.finance;
-  } else if (lowerTitle.includes('export') || lowerTitle.includes('port') || lowerTitle.includes('customs') || lowerTitle.includes('cargo') || lowerTitle.includes('trade surplus')) {
+  } else if (lowerTitle.includes('asuu') || lowerTitle.includes('university') || lowerTitle.includes('student') || lowerTitle.includes('academic') || lowerTitle.includes('lecturer') || lowerTitle.includes('higher institution')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.education;
+  } else if (lowerTitle.includes('court') || lowerTitle.includes('judge') || lowerTitle.includes('justice') || lowerTitle.includes('tribunal') || lowerTitle.includes('police') || lowerTitle.includes('lawyer') || lowerTitle.includes('arraigned') || lowerTitle.includes('alleged murder')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.justice;
+  } else if (lowerTitle.includes('military') || lowerTitle.includes('army') || lowerTitle.includes('troops') || lowerTitle.includes('cadet') || lowerTitle.includes('defence academy') || lowerTitle.includes('weapons depot') || lowerTitle.includes('blast') || lowerTitle.includes('security')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.defense;
+  } else if (lowerTitle.includes('bus') || lowerTitle.includes('transit') || lowerTitle.includes('rail') || lowerTitle.includes('highway') || lowerTitle.includes('commuter') || lowerTitle.includes('transport')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.transit;
+  } else if (lowerTitle.includes('building') || lowerTitle.includes('collapse') || lowerTitle.includes('demolition') || lowerTitle.includes('construction') || lowerTitle.includes('estate')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.construction;
+  } else if (lowerTitle.includes('flood') || lowerTitle.includes('rain') || lowerTitle.includes('storm') || lowerTitle.includes('disaster')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.flood;
+  } else if (lowerTitle.includes('hospital') || lowerTitle.includes('poison') || lowerTitle.includes('health') || lowerTitle.includes('medical') || lowerTitle.includes('disease') || lowerTitle.includes('dead') || lowerTitle.includes('died') || lowerTitle.includes('injured')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.health;
+  } else if (lowerTitle.includes('food') || lowerTitle.includes('palm oil') || lowerTitle.includes('palm wine') || lowerTitle.includes('farm') || lowerTitle.includes('market') || lowerTitle.includes('crop')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.agriculture;
+  } else if (lowerTitle.includes('aviation') || lowerTitle.includes('flight') || lowerTitle.includes('airline') || lowerTitle.includes('airport') || lowerTitle.includes('plane')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.aviation;
+  } else if (lowerTitle.includes('phone') || lowerTitle.includes('smartphone') || lowerTitle.includes('apple') || lowerTitle.includes('samsung') || lowerTitle.includes('gadget')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.mobile;
+  } else if (lowerTitle.includes('export') || /\bports?\b/i.test(lowerTitle) || lowerTitle.includes('customs') || lowerTitle.includes('cargo') || lowerTitle.includes('trade surplus')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.trade;
-  } else if (lowerTitle.includes('telecom') || lowerTitle.includes('broadband') || lowerTitle.includes('fintech') || lowerTitle.includes('data') || lowerTitle.includes('software')) {
+  } else if (lowerTitle.includes('telecom') || lowerTitle.includes('broadband') || lowerTitle.includes('fintech') || /\bdata\b/i.test(lowerTitle) || lowerTitle.includes('software') || lowerTitle.includes('mtn')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.tech;
-  } else if (category === 'cat_sports' || lowerTitle.includes('league') || lowerTitle.includes('tournament') || lowerTitle.includes('stadium')) {
+  } else if (lowerTitle.includes('boxing') || lowerTitle.includes('heavyweight') || lowerTitle.includes('joshua') || lowerTitle.includes('fury') || lowerTitle.includes('bout')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.boxing;
+  } else if (category === 'cat_sports' || lowerTitle.includes('league') || lowerTitle.includes('tournament') || lowerTitle.includes('stadium') || lowerTitle.includes('match') || /\bcup\b/i.test(lowerTitle) || lowerTitle.includes('coach')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.stadium;
-  } else if (category === 'cat_world' || lowerTitle.includes('summit') || lowerTitle.includes('un ') || lowerTitle.includes('treaty')) {
+  } else if (category === 'cat_world' || lowerTitle.includes('summit') || lowerTitle.includes('un ') || lowerTitle.includes('treaty') || lowerTitle.includes('unga') || lowerTitle.includes('north korea') || lowerTitle.includes('diplomacy') || lowerTitle.includes('intelligence')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.summit;
   }
 

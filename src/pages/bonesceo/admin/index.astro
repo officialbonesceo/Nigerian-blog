@@ -1120,6 +1120,187 @@ const categoryFreshness = (categories || []).map((cat: any) => {
                 </div>
               </div>
             </div>
+            </div>
+          </div>
+
+          <!-- META (FACEBOOK & THREADS) PAGE ID & TOKEN ASSISTANT -->
+          <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-[#1877F2] flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                    f
+                  </div>
+                  <span>Meta (Facebook & Threads) Page ID & Token Assistant</span>
+                </h2>
+                <p class="text-xs text-slate-400 mt-0.5">
+                  Easily retrieve your Facebook Page ID, extract permanent Page Access Tokens, and configure Tester Pages for automated posting in Development Mode.
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <a
+                  href="https://developers.facebook.com/tools/explorer/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="px-2.5 py-1 rounded-lg bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] text-xs font-semibold border border-[#1877F2]/30 flex items-center gap-1 transition-colors"
+                >
+                  <span>Graph API Explorer ↗</span>
+                </a>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#1877F2]/10 text-[#1877F2] border border-[#1877F2]/20">
+                  Meta v21.0
+                </span>
+              </div>
+            </div>
+
+            <!-- Interactive Token Inspector & Page Extractor Form -->
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-[#1877F2] animate-pulse"></span>
+                  <span>Interactive Facebook Page & Token Resolver:</span>
+                </div>
+                <span class="text-[11px] text-slate-400">Extracts Page IDs & Permanent Tokens</span>
+              </div>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-300 mb-1">
+                    User Access Token or Page Token (from Graph API Explorer):
+                  </label>
+                  <input
+                    type="password"
+                    id="fb_user_token_input"
+                    class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-[#1877F2]"
+                    placeholder="EAA..."
+                  />
+                  <p class="text-[10px] text-slate-500 mt-1">
+                    Get this from <a href="https://developers.facebook.com/tools/explorer/" target="_blank" class="text-[#1877F2] underline">Graph API Explorer</a> with permissions: <code>pages_show_list</code>, <code>pages_manage_posts</code>, <code>pages_read_engagement</code>.
+                  </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-[11px] font-medium text-slate-300 mb-1">
+                      Meta App ID (Optional, enables 60-day & permanent token upgrade):
+                    </label>
+                    <input
+                      type="text"
+                      id="fb_app_id_input"
+                      class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-[#1877F2]"
+                      placeholder="e.g. 159827394829104"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-medium text-slate-300 mb-1">
+                      Meta App Secret (Optional, processed server-side in-memory only):
+                    </label>
+                    <input
+                      type="password"
+                      id="fb_app_secret_input"
+                      class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 font-mono focus:outline-none focus:border-[#1877F2]"
+                      placeholder="e.g. 8d39f4a10e7b4..."
+                    />
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    id="inspectFbBtn"
+                    onclick="inspectMetaTokens()"
+                    class="px-4 py-2 rounded-lg bg-[#1877F2] hover:bg-[#1877F2]/90 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span>Inspect & Extract My Pages & Tokens</span>
+                  </button>
+                  <button
+                    type="button"
+                    onclick="clearFbInspectForm()"
+                    class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                  >
+                    Clear
+                  </button>
+                </div>
+
+                <!-- Live Results Display Box -->
+                <div id="fb-inspect-results" class="hidden p-3 rounded-lg border text-xs space-y-2"></div>
+              </div>
+            </div>
+
+            <!-- Foolproof Step-by-Step Guide for Page ID, Tokens, and Tester Setup -->
+            <div class="space-y-3 pt-2">
+              <div class="text-xs font-bold text-slate-300 flex items-center gap-2">
+                <span>📘 Step-by-Step Meta Setup Guide:</span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <!-- Method 1: Page ID in 30 Seconds -->
+                <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                  <div class="font-bold text-[#1877F2] flex items-center gap-1.5">
+                    <span>1. Find Facebook Page ID (30-Sec Method)</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] leading-relaxed">
+                    You don't even need code to get your Page ID!
+                  </p>
+                  <ol class="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
+                    <li>Open your Facebook Page on desktop or mobile.</li>
+                    <li>Click the <strong class="text-white">About</strong> tab on the page profile.</li>
+                    <li>Click <strong class="text-white">Page Transparency</strong>.</li>
+                    <li>Your numerical <strong class="text-emerald-400">Page ID</strong> (e.g. <code class="font-mono text-emerald-400">1098472918471</code>) is listed right there!</li>
+                  </ol>
+                </div>
+
+                <!-- Method 2: Permanent Page Token -->
+                <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                  <div class="font-bold text-[#1877F2] flex items-center gap-1.5">
+                    <span>2. Get Never-Expiring Page Token</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] leading-relaxed">
+                    Standard tokens expire in 1-2 hours. To get a permanent token:
+                  </p>
+                  <ol class="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
+                    <li>Go to <a href="https://developers.facebook.com/tools/explorer/" target="_blank" class="text-[#1877F2] underline">Graph API Explorer</a>.</li>
+                    <li>Select your App, add permissions: <code class="font-mono text-white">pages_manage_posts</code>, <code class="font-mono text-white">pages_read_engagement</code>, <code class="font-mono text-white">pages_show_list</code>.</li>
+                    <li>Click <strong>Generate Access Token</strong> and approve in popup.</li>
+                    <li>Paste that token above with your App ID & Secret to upgrade it to permanent!</li>
+                  </ol>
+                </div>
+
+                <!-- Method 3: Tester Pages & Dev Mode -->
+                <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                  <div class="font-bold text-amber-400 flex items-center gap-1.5">
+                    <span>3. Tester Pages & Development Mode</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] leading-relaxed">
+                    In Development Mode, only registered roles can test:
+                  </p>
+                  <ol class="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
+                    <li>In Meta Developers, go to <strong>App Roles &gt; Roles</strong>.</li>
+                    <li>Add your test Facebook account as <strong>Tester</strong> or <strong>Developer</strong>.</li>
+                    <li>The tester must accept at <a href="https://developers.facebook.com/requests/" target="_blank" class="text-amber-400 underline">developers.facebook.com/requests</a>.</li>
+                    <li>Create or manage a Page from that tester account — it can now post without needing App Review!</li>
+                  </ol>
+                </div>
+
+                <!-- Method 4: Threads App & Token -->
+                <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
+                  <div class="font-bold text-purple-400 flex items-center gap-1.5">
+                    <span>4. Threads Automation Setup</span>
+                  </div>
+                  <p class="text-slate-300 text-[11px] leading-relaxed">
+                    Threads does not use Facebook Pages; it uses your Threads Profile:
+                  </p>
+                  <ol class="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
+                    <li>In Meta Developers, create an app with the <strong>Threads</strong> use case.</li>
+                    <li>Under App Roles, add your Threads/Instagram username as a Tester.</li>
+                    <li>Scopes needed: <code class="font-mono text-white">threads_basic</code>, <code class="font-mono text-white">threads_content_publish</code>.</li>
+                    <li>Threads tokens last 60 days and can be refreshed automatically via API.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- SEO, Direct <head> Meta Tags & Multi-Platform Webmaster Verification -->
@@ -7169,6 +7350,199 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
     }
 
     // -------------------------------------------------------------
+    // META (FACEBOOK & THREADS) PAGE ID & TOKEN INSPECTION
+    // -------------------------------------------------------------
+    async function inspectMetaTokens() {
+      const userTokenInput = document.getElementById('fb_user_token_input');
+      const appIdInput = document.getElementById('fb_app_id_input');
+      const appSecretInput = document.getElementById('fb_app_secret_input');
+      const inspectBtn = document.getElementById('inspectFbBtn');
+      const resultsBox = document.getElementById('fb-inspect-results');
+
+      const userToken = userTokenInput?.value?.trim();
+      const appId = appIdInput?.value?.trim();
+      const appSecret = appSecretInput?.value?.trim();
+
+      if (!resultsBox) return;
+
+      if (!userToken) {
+        resultsBox.classList.remove('hidden', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-slate-900', 'border-slate-800');
+        resultsBox.classList.add('bg-red-950/80', 'border-red-800', 'text-red-300');
+        resultsBox.innerHTML = '<strong>✖ Missing Token:</strong> Please paste a User Access Token or Page Token from Graph API Explorer.';
+        return;
+      }
+
+      if (inspectBtn) {
+        inspectBtn.disabled = true;
+        inspectBtn.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Connecting to Meta Graph API...
+        `;
+      }
+
+      resultsBox.classList.remove('hidden');
+      resultsBox.className = 'p-3 rounded-lg border bg-slate-900 border-slate-700 text-slate-300 text-xs space-y-2';
+      resultsBox.innerHTML = '<div class="flex items-center gap-2"><span>Querying Meta v21.0 accounts endpoint...</span></div>';
+
+      try {
+        const res = await fetch('/api/admin/facebook/inspect-pages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_access_token: userToken,
+            app_id: appId,
+            app_secret: appSecret,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          resultsBox.className = 'p-3.5 rounded-lg border bg-red-950/80 border-red-800 text-red-200 text-xs space-y-2';
+          let errHtml = `<div><strong class="text-white">✖ Meta Error:</strong> ${escapeHtml(data.error || 'Request failed')}</div>`;
+          if (data.tip) {
+            errHtml += `<div class="p-2 rounded bg-red-900/40 text-amber-200 text-[11px]">${escapeHtml(data.tip)}</div>`;
+          }
+          if (data.instructions) {
+            errHtml += '<div class="space-y-1 text-[11px] text-slate-300 pt-1">';
+            for (const step of data.instructions) {
+              errHtml += `<div>${escapeHtml(step)}</div>`;
+            }
+            errHtml += '</div>';
+          }
+          resultsBox.innerHTML = errHtml;
+          return;
+        }
+
+        resultsBox.className = 'p-4 rounded-xl border bg-slate-900/90 border-slate-700 text-xs space-y-3';
+        let html = '';
+
+        if (data.longLivedNotice) {
+          html += `<div class="p-2 rounded-lg bg-emerald-950/60 border border-emerald-800/80 text-emerald-300 text-[11px] flex items-center gap-1.5">
+            <span>✔ ${escapeHtml(data.longLivedNotice)}</span>
+          </div>`;
+        }
+
+        html += `<div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <div>
+            <span class="text-slate-400">Authenticated Meta User:</span>
+            <strong class="text-white ml-1 font-semibold">${escapeHtml(data.user?.name || 'Authorized')}</strong>
+            <span class="text-slate-500 font-mono text-[10px] ml-1">(ID: ${escapeHtml(data.user?.id || '')})</span>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold text-[10px]">
+            ${data.pageCount} ${data.pageCount === 1 ? 'Page' : 'Pages'} Discovered
+          </span>
+        </div>`;
+
+        if (!data.pages || data.pages.length === 0) {
+          html += `<div class="p-3 rounded-lg bg-amber-950/50 border border-amber-800/60 text-amber-200 text-[11px] space-y-1.5">
+            <div class="font-bold">⚠️ No Facebook Pages associated with this account</div>
+            <p>${escapeHtml(data.help || 'Make sure your Facebook account is an Admin/Editor of at least one Facebook Page.')}</p>
+          </div>`;
+        } else {
+          html += '<div class="space-y-3 pt-1">';
+          for (const page of data.pages) {
+            html += `<div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="font-bold text-white text-sm flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span>${escapeHtml(page.name)}</span>
+                  <span class="text-slate-500 font-normal text-xs">(${escapeHtml(page.category)})</span>
+                </div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${page.is_published ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}">
+                  ${page.is_published ? 'Published' : 'Unpublished / Draft'}
+                </span>
+              </div>
+
+              <!-- Numerical Page ID -->
+              <div class="flex items-center justify-between gap-2 p-2 rounded bg-slate-900 border border-slate-800">
+                <div class="min-w-0">
+                  <span class="text-[10px] uppercase font-bold text-slate-400 block">Facebook Page ID:</span>
+                  <code class="text-emerald-400 font-mono text-xs select-all font-bold">${escapeHtml(page.id)}</code>
+                </div>
+                <button
+                  type="button"
+                  onclick="copyTextToClipboard('${escapeHtml(page.id)}', this)"
+                  class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-medium transition-colors whitespace-nowrap"
+                >
+                  Copy Page ID
+                </button>
+              </div>
+
+              <!-- Permanent Page Access Token -->
+              <div class="flex items-center justify-between gap-2 p-2 rounded bg-slate-900 border border-slate-800">
+                <div class="min-w-0 flex-1">
+                  <span class="text-[10px] uppercase font-bold text-slate-400 block">Permanent Page Access Token:</span>
+                  <code class="text-blue-300 font-mono text-[10px] truncate block select-all">${escapeHtml(page.masked_token)}</code>
+                </div>
+                <button
+                  type="button"
+                  onclick="copyTextToClipboard('${escapeHtml(page.page_access_token)}', this)"
+                  class="px-2.5 py-1 rounded bg-[#1877F2] hover:bg-[#1877F2]/90 text-white text-[10px] font-bold transition-colors whitespace-nowrap"
+                >
+                  Copy Permanent Token
+                </button>
+              </div>
+            </div>`;
+          }
+          html += '</div>';
+        }
+
+        resultsBox.innerHTML = html;
+      } catch (netErr) {
+        resultsBox.className = 'p-3.5 rounded-lg border bg-red-950/80 border-red-800 text-red-200 text-xs';
+        resultsBox.innerHTML = `<strong>✖ Network Error:</strong> ${escapeHtml(netErr.message || String(netErr))}`;
+      } finally {
+        if (inspectBtn) {
+          inspectBtn.disabled = false;
+          inspectBtn.innerHTML = `
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span>Inspect & Extract My Pages & Tokens</span>
+          `;
+        }
+      }
+    }
+    window.inspectMetaTokens = inspectMetaTokens;
+
+    function clearFbInspectForm() {
+      const u = document.getElementById('fb_user_token_input');
+      const a = document.getElementById('fb_app_id_input');
+      const s = document.getElementById('fb_app_secret_input');
+      const r = document.getElementById('fb-inspect-results');
+      if (u) u.value = '';
+      if (a) a.value = '';
+      if (s) s.value = '';
+      if (r) {
+        r.classList.add('hidden');
+        r.innerHTML = '';
+      }
+    }
+    window.clearFbInspectForm = clearFbInspectForm;
+
+    function copyTextToClipboard(text, btnEl) {
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        const origText = btnEl ? btnEl.textContent : '';
+        if (btnEl) {
+          btnEl.textContent = '✔ Copied!';
+          btnEl.classList.add('bg-emerald-600', 'text-white');
+          setTimeout(() => {
+            btnEl.textContent = origText;
+            btnEl.classList.remove('bg-emerald-600', 'text-white');
+          }, 2000);
+        }
+      }).catch(() => {
+        alert('Please copy manually: ' + text);
+      });
+    }
+    window.copyTextToClipboard = copyTextToClipboard;
+
+    // -------------------------------------------------------------
     // BLUESKY ALGORITHMIC STUDIO MODAL INTERACTION
     // -------------------------------------------------------------
     let currentBlueskyDraft = null;
@@ -7413,7 +7787,7 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
     }
     window.executeBlueskyPublish = executeBlueskyPublish;
 
-    async function publishArticleToBluesky(articleId, btnEl) {
+    async function publishArticleToBluesky(articleId, _btnEl) {
       openBlueskyStudioModal(articleId);
     }
     window.publishArticleToBluesky = publishArticleToBluesky;

@@ -350,13 +350,15 @@ export function composeAlgorithmicPost(article: {
 }): { text: string; facets: BlueskyFacet[] } {
   const cat = (article.category || '').toLowerCase();
   
-  let hook = '⚡ BREAKING:';
-  if (cat.includes('business') || cat.includes('money')) {
-    hook = '📈 MARKET ALERT:';
+  let hookBadge = '⚡ BREAKING';
+  if (cat.includes('business') || cat.includes('money') || cat.includes('economy')) {
+    hookBadge = '📈 MARKET WATCH';
   } else if (cat.includes('sport')) {
-    hook = '🦅 SPORTS DESK:';
-  } else if (cat.includes('world')) {
-    hook = '🌍 GLOBAL WIRE:';
+    hookBadge = '🦅 SPORTS DESK';
+  } else if (cat.includes('world') || cat.includes('global')) {
+    hookBadge = '🌍 GLOBAL WIRE';
+  } else if (cat.includes('tech')) {
+    hookBadge = '💡 TECH PULSE';
   }
 
   const tags = getCategoryHashtags(article.category);
@@ -364,22 +366,29 @@ export function composeAlgorithmicPost(article: {
 
   const cleanTitle = (article.title || '').replace(/<[^>]+>/g, '').trim();
   const cleanSummary = (article.summary || '').replace(/<[^>]+>/g, '').trim();
-  const cta = 'Read full report on 9jaBeacon:';
   const url = article.canonicalUrl;
 
-  let bodyDraft = `${hook} ${cleanTitle}\n\n`;
-  const footerDraft = `\n\n${cta} ${url}\n\n${tagString}`;
+  // Standard high-CTR Bluesky news layout
+  const footerLines = `\n\n🔗 Full report: ${url}\n\n${tagString}`;
+  const maxAvailable = 295 - footerLines.length;
 
-  const remainingSpace = 295 - (bodyDraft.length + footerDraft.length);
-  if (remainingSpace > 35 && cleanSummary) {
-    const truncatedSummary = cleanSummary.slice(0, remainingSpace - 3).trim() + '...';
-    bodyDraft += `${truncatedSummary}`;
+  let headerLine = `${hookBadge} | ${cleanTitle}`;
+  if (headerLine.length > maxAvailable) {
+    headerLine = headerLine.slice(0, maxAvailable - 3).trim() + '...';
   }
 
-  const fullText = (bodyDraft + footerDraft).trim();
-  const facets = extractFacetsFromText(fullText);
+  let contentBody = headerLine;
+  const remainingForSummary = maxAvailable - headerLine.length - 2; // account for \n\n
 
-  return { text: fullText, facets };
+  if (remainingForSummary > 45 && cleanSummary) {
+    const summarySnippet = cleanSummary.slice(0, remainingForSummary - 3).trim() + '...';
+    contentBody = `${headerLine}\n\n${summarySnippet}`;
+  }
+
+  const completeText = `${contentBody}\n\n🔗 Full report: ${url}\n\n${tagString}`;
+  const facets = extractFacetsFromText(completeText);
+
+  return { text: completeText, facets };
 }
 
 /**

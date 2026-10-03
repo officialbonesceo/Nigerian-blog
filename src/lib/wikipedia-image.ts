@@ -47,6 +47,49 @@ const REJECTED_IMAGE_KEYWORDS = [
   'blank_template',
   'stub_icon',
   'padlock',
+  'logo',
+  '_logo',
+  '-logo',
+  'banner',
+  'chart',
+  'graph',
+  'diagram',
+  'poster',
+  'icon',
+  'screenshot',
+];
+
+const PROMINENT_ENTITIES: Array<{ pattern: RegExp; query: string }> = [
+  { pattern: /\b(?:kashim\s+)?shettima\b/i, query: 'Kashim Shettima' },
+  { pattern: /\b(?:bola\s+)?tinubu\b/i, query: 'Bola Tinubu' },
+  { pattern: /\b(?:babajide\s+)?sanwo-?olu\b/i, query: 'Babajide Sanwo-Olu' },
+  { pattern: /\b(?:siminalayi\s+)?fubara\b/i, query: 'Siminalayi Fubara' },
+  { pattern: /\b(?:nyesom\s+)?wike\b/i, query: 'Nyesom Wike' },
+  { pattern: /\b(?:festus\s+)?keyamo\b/i, query: 'Festus Keyamo' },
+  { pattern: /\b(?:governor\s+)?otu\b/i, query: 'Bassey Otu' },
+  { pattern: /\b(?:caleb\s+)?mutfwang\b/i, query: 'Caleb Mutfwang' },
+  { pattern: /\b(?:peter\s+)?obi\b/i, query: 'Peter Obi' },
+  { pattern: /\b(?:atiku\s+)?abubakar\b/i, query: 'Atiku Abubakar' },
+  { pattern: /\b(?:muhammadu\s+)?buhari\b/i, query: 'Muhammadu Buhari' },
+  { pattern: /\b(?:olayemi\s+)?cardoso\b/i, query: 'Olayemi Cardoso' },
+  { pattern: /\b(?:godwin\s+)?emefiele\b/i, query: 'Godwin Emefiele' },
+  { pattern: /\b(?:aliko\s+)?dangote\b/i, query: 'Aliko Dangote' },
+  { pattern: /\bcole palmer\b/i, query: 'Cole Palmer' },
+  { pattern: /\bdeclan rice\b/i, query: 'Declan Rice' },
+  { pattern: /\banthony joshua\b/i, query: 'Anthony Joshua' },
+  { pattern: /\btyson fury\b/i, query: 'Tyson Fury' },
+  { pattern: /\bprincipality stadium\b/i, query: 'Millennium Stadium' },
+  { pattern: /\brodri\b/i, query: 'Rodri (footballer)' },
+  { pattern: /\bdembele\b/i, query: 'Ousmane Dembélé' },
+  { pattern: /\benrique\b/i, query: 'Luis Enrique' },
+  { pattern: /\blookman\b/i, query: 'Ademola Lookman' },
+  { pattern: /\bosimhen\b/i, query: 'Victor Osimhen' },
+  { pattern: /\bboniface\b/i, query: 'Victor Boniface' },
+  { pattern: /\b(?:donald\s+)?trump\b/i, query: 'Donald Trump' },
+  { pattern: /\bnigerian defence academy\b/i, query: 'Nigerian Defence Academy' },
+  { pattern: /\b(?:unga|81st unga|united nations general assembly)\b/i, query: 'United Nations General Assembly' },
+  { pattern: /\bmtn group\b/i, query: 'MTN Group' },
+  { pattern: /\bnepal floods?\b/i, query: 'Nepal' },
 ];
 
 /**
@@ -56,7 +99,14 @@ export function extractWikipediaQueries(title: string, category?: string): strin
   const queries: string[] = [];
   const clean = title.replace(/[‘“"”’'']/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // 1. Quoted names/terms
+  // 1. Check known prominent figures / entities first
+  for (const entity of PROMINENT_ENTITIES) {
+    if (entity.pattern.test(clean)) {
+      queries.push(entity.query);
+    }
+  }
+
+  // 2. Quoted names/terms
   const quoted = title.match(/[‘"“]([^’”"]+)[’”"]/g);
   if (quoted) {
     for (const q of quoted) {
@@ -67,7 +117,7 @@ export function extractWikipediaQueries(title: string, category?: string): strin
     }
   }
 
-  // 2. Colons or dash prefixes (e.g. "Osun: Police Arrest...", "TechCabal Daily: MTN...")
+  // 3. Colons or dash prefixes (e.g. "Osun: Police Arrest...", "TechCabal Daily: MTN...")
   const parts = clean.split(/[:–—\-]/);
   if (parts.length > 1) {
     const left = parts[0].trim();
@@ -80,7 +130,7 @@ export function extractWikipediaQueries(title: string, category?: string): strin
     }
   }
 
-  // 3. Prominent capitalized 2-word names/entities (e.g. "Ademola Lookman", "Festus Keyamo", "Donald Trump", "Plateau State")
+  // 4. Prominent capitalized 2-word names/entities (e.g. "Ademola Lookman", "Festus Keyamo", "Donald Trump", "Plateau State")
   const twoWordNames = clean.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)\b/g);
   if (twoWordNames) {
     for (const tw of twoWordNames) {
@@ -101,7 +151,7 @@ export function extractWikipediaQueries(title: string, category?: string): strin
     }
   }
 
-  // 4. Prominent capitalized multi-word phrases (e.g. "Central Bank of Nigeria", "Tottenham Hotspur")
+  // 5. Prominent capitalized multi-word phrases (e.g. "Central Bank of Nigeria", "Tottenham Hotspur")
   const properNouns = clean.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){2,3}\b/g);
   if (properNouns) {
     for (const pn of properNouns) {
@@ -119,7 +169,7 @@ export function extractWikipediaQueries(title: string, category?: string): strin
     }
   }
 
-  // 4. Category-specific context query
+  // 6. Category-specific context query
   if (category === 'cat_sports') {
     const sportsMatch = clean.match(/(Dembele|Lookman|Rodri|Enrique|Odegaard|Havertz|Tottenham|Arsenal|Man City|Chelsea|Real Madrid|Super Eagles|Osimhen|Boniface)/i);
     if (sportsMatch) {
@@ -127,7 +177,7 @@ export function extractWikipediaQueries(title: string, category?: string): strin
     }
   }
 
-  // 5. First 5-6 words of clean headline
+  // 7. First 5-6 words of clean headline
   const headlineSlice = clean.split(/\s+/).slice(0, 6).join(' ');
   queries.push(headlineSlice);
 

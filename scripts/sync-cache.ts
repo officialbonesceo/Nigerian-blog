@@ -6,7 +6,7 @@ const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
 const apiToken = (process.env.CLOUDFLARE_D1_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '').trim();
 const databaseId = (process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_D1_DATABASE || process.env.CLOUDFLARE_DATABASE_ID || '').trim();
 
-const TABLES = ['categories', 'sources', 'automation_settings', 'articles'] as const;
+const TABLES = ['categories', 'sources', 'automation_settings', 'articles', 'automation_logs'] as const;
 
 type Row = Record<string, unknown>;
 

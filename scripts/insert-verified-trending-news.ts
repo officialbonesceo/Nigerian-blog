@@ -30,10 +30,10 @@ interface NewArticle {
 const NEW_TRENDING_NEWS: NewArticle[] = [
   {
     slug: 'nigeria-pushes-global-financial-reforms-shettima-unga-new-york',
-    title: 'Nigeria Pushes for Global Financial Reforms as Shettima Leads Delegation at 81st UNGA in New York',
+    title: 'Nigeria Pushes for Global Financial Reforms as Shettima Leads Delegation at UNGA in New York',
     summary: 'Vice President Kashim Shettima has arrived at the United Nations Headquarters in New York to deliver Nigeria’s national statement, demanding systemic reform of multilateral lending institutions and permanent African seats on the UN Security Council.',
     content: `<h3>High-Level Delegation Arrives at United Nations Headquarters in New York</h3>
-<p>Vice President Kashim Shettima has arrived in New York leading Nigeria's official diplomatic delegation to the 81st Session of the United Nations General Assembly. Upon arrival, the Vice President was received by senior cabinet officials including Foreign Affairs Minister Bianca Odumegwu-Ojukwu, Lagos State Governor Babajide Sanwo-Olu, Rivers State Governor Siminalayi Fubara, and Solid Minerals Development Minister Dele Alake. The Nigerian delegation is participating in bilateral consultations ahead of the high-level General Debate, where Nigeria will formally deliver its national address outlining priorities on African development, transnational security, and international cooperation.</p>
+<p>Vice President Kashim Shettima has arrived in New York leading Nigeria's official diplomatic delegation to the United Nations General Assembly High-Level General Debate. Upon arrival, the Vice President was received by senior cabinet officials including Minister of State for Foreign Affairs Bianca Odumegwu-Ojukwu, Lagos State Governor Babajide Sanwo-Olu, Rivers State Governor Siminalayi Fubara, and Solid Minerals Development Minister Dele Alake. The Nigerian delegation is participating in bilateral consultations ahead of the high-level General Debate, where Nigeria will formally deliver its national address outlining priorities on African development, transnational security, and international cooperation.</p>
 
 <h3>Advocacy for Africa's Representation and Multilateral Lending Overhaul</h3>
 <p>During the General Debate, Vice President Shettima will present Nigeria's comprehensive agenda urging multilateral institutions to dismantle predatory sovereign debt mechanisms that constrain developing economies. Abuja’s diplomatic mission will push for accessible climate financing, equitable concessionary capital access, and structural reforms to the Bretton Woods institutions. Furthermore, Nigeria is reiterating the urgent imperative for permanent African representation on the UN Security Council, emphasizing that equitable global governance is unattainable while over 1.4 billion people on the African continent lack permanent voting seats.</p>
@@ -44,9 +44,9 @@ const NEW_TRENDING_NEWS: NewArticle[] = [
 <h3>Strategic Diplomatic Significance for Nigeria's Foreign Policy Goals</h3>
 <p>Foreign policy analysts observe that Nigeria’s robust representation in New York signals a rejuvenated commitment to asserting continental leadership across global forums. By coordinating diplomatic positions with other African Union member states, the Nigerian mission intends to establish a united front during upcoming negotiations on international tax cooperation and supply chain resilience. As deliberations progress, the federal government aims to translate diplomatic consensus into tangible economic pacts that reinforce domestic fiscal stability.</p>`,
     category_id: 'cat_naija_news',
-    image_url: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?q=80&w=1200&auto=format&fit=crop',
-    image_caption: 'United Nations Headquarters in New York where Vice President Kashim Shettima is presenting Nigeria’s national statement.',
-    image_credit: 'United Nations Photo Archive / Editorial Wire',
+    image_url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/Kashim_Shettima_office_portrait.jpg/1280px-Kashim_Shettima_office_portrait.jpg',
+    image_caption: 'Vice President Kashim Shettima leading Nigeria’s delegation at the United Nations General Assembly in New York.',
+    image_credit: 'Wikimedia Commons / CC Attribution',
     source_id: 'src_channels_tv',
     source_name: 'Channels Television',
     source_original_url: 'https://www.channelstv.com/2026/09/21/nigeria-to-push-for-global-institutional-reforms-as-shettima-leads-delegation-at-81st-unga/',
