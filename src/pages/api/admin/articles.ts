@@ -136,11 +136,18 @@ export const PUT: APIRoute = async ({ request, locals }) => {
 
 export const DELETE: APIRoute = async ({ request, locals }) => {
   try {
-    const body = (await request.json().catch(() => ({}))) as { id?: string };
-    if (!body.id) {
+    const url = new URL(request.url);
+    let id = url.searchParams.get('id');
+
+    if (!id) {
+      const body = (await request.json().catch(() => ({}))) as { id?: string };
+      id = body?.id || null;
+    }
+
+    if (!id) {
       return new Response(JSON.stringify({ error: 'Article ID is required' }), { status: 400 });
     }
-    const success = await deleteArticle(getD1(locals), body.id);
+    const success = await deleteArticle(getD1(locals), id);
     return new Response(JSON.stringify({ success }), {
       headers: { 'Content-Type': 'application/json' },
     });

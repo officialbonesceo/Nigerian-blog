@@ -579,13 +579,20 @@ export async function postToBluesky(
     facets = composed.facets;
   }
 
-  // 2. Upload thumbnail blob if image is available
+  // 2. Upload thumbnail blob if image is available (ensure raster image, never raw SVG)
   let thumbBlobRef: any = null;
-  if (article.imageUrl && !article.imageUrl.includes('placeholder')) {
-    const blobRes = await uploadBlueskyBlob(accessJwt, article.imageUrl);
+  let targetImageUrl = article.imageUrl;
+  if (!targetImageUrl || targetImageUrl.startsWith('data:image/svg') || targetImageUrl.includes('placeholder')) {
+    targetImageUrl = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80';
+  }
+
+  try {
+    const blobRes = await uploadBlueskyBlob(accessJwt, targetImageUrl);
     if (blobRes.success) {
       thumbBlobRef = blobRes.blobRef;
     }
+  } catch (blobErr) {
+    console.warn('[Bluesky Dispatch]: Thumbnail blob upload notice:', blobErr);
   }
 
   // 3. Build rich embed card (app.bsky.embed.external)
@@ -602,11 +609,23 @@ export async function postToBluesky(
     embed.external.thumb = thumbBlobRef;
   }
 
+  // Extract clean hashtag tags for top-level AT Protocol indexing
+  const cleanTags = facets
+    .flatMap(f => f.features)
+    .filter((feat: any) => feat.$type === 'app.bsky.richtext.facet#tag' && feat.tag)
+    .map((feat: any) => feat.tag)
+    .slice(0, 8);
+
   // 4. Create the post record in Bluesky repository
+  // CRITICAL FOR ALGORITHMIC REACH:
+  // - langs: ['en'] enables Bluesky's feed generators (Discover, What's Hot, News) to surface the post
+  // - tags: top-level array for AT Protocol search and topic-cluster feeds
   const postRecord: any = {
     $type: 'app.bsky.feed.post',
     text,
     createdAt: new Date().toISOString(),
+    langs: ['en'],
+    tags: cleanTags.length ? cleanTags : ['Nigeria', 'NaijaNews'],
     facets: facets.length ? facets : undefined,
     embed,
   };

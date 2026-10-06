@@ -1,0 +1,155 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import BotVerifiedBadge from '../../components/BotVerifiedBadge.astro';
+import { getD1, getPublisherBySlug } from '../../lib/runtime-db';
+import { INITIAL_PUBLISHERS } from '../../lib/publishers-data';
+
+const { slug } = Astro.params;
+const db = getD1(Astro.locals);
+
+let publisher = null;
+if (slug) {
+  publisher = await getPublisherBySlug(db, slug);
+  if (!publisher) {
+    publisher = INITIAL_PUBLISHERS.find((p) => p.slug === slug) || null;
+  }
+}
+
+if (!publisher) {
+  return Astro.redirect('/publishers');
+}
+
+// Fetch articles by this publisher
+const authorArticlesRes = await db
+  .prepare(
+    'SELECT a.*, c.name as category_name, c.slug as category_slug FROM articles a LEFT JOIN categories c ON a.category_id = c.id WHERE a.author_name = ? OR a.author_name LIKE ? ORDER BY a.published_at DESC LIMIT 24'
+  )
+  .bind(publisher.name, `%${publisher.name}%`)
+  .all();
+
+const articles = authorArticlesRes.results || [];
+---
+
+<Layout
+  title={`${publisher.name} - Verified Journalist Profile | 9jaBeacon`}
+  description={`${publisher.name} is a verified senior news correspondent for 9jaBeacon specializing in ${publisher.role}.`}
+>
+  <main class="min-h-screen bg-slate-50 dark:bg-slate-950 py-8 lg:py-12 transition-colors">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <!-- Breadcrumb -->
+      <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6">
+        <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400">Home</a>
+        <span>/</span>
+        <a href="/publishers" class="hover:text-emerald-600 dark:hover:text-emerald-400">Editorial Desk</a>
+        <span>/</span>
+        <span class="text-slate-900 dark:text-white font-medium">{publisher.name}</span>
+      </nav>
+
+      <!-- Profile Header Card -->
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden mb-10">
+        <!-- Accent Glow -->
+        <div class="absolute -top-24 -right-24 w-72 h-72 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10 text-center sm:text-left">
+          <!-- Studio Photo with Verified Badge Overlay -->
+          <div class="relative shrink-0">
+            <div class="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-md">
+              <img
+                src={publisher.avatar_url}
+                alt={publisher.name}
+                class="w-full h-full object-cover"
+                loading="eager"
+              />
+            </div>
+            <!-- Facebook-style Verified Badge pinned on avatar -->
+            <div class="absolute -bottom-2 -right-2 bg-white dark:bg-slate-900 rounded-full p-1 shadow-md border border-slate-200 dark:border-slate-700">
+              <BotVerifiedBadge size="md" />
+            </div>
+          </div>
+
+          <!-- Bio & Details -->
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1.5">
+              <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {publisher.name}
+              </h1>
+              <BotVerifiedBadge size="sm" showLabel={true} />
+            </div>
+
+            <div class="text-emerald-600 dark:text-emerald-400 font-semibold text-sm mb-3">
+              {publisher.role}
+            </div>
+
+            <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-4 max-w-2xl">
+              {publisher.bio}
+            </p>
+
+            <!-- Metadata Badges -->
+            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs">
+              <!-- Verification Pill -->
+              <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#1877F2]"></span>
+                Verified Press Correspondent
+              </span>
+
+              <!-- Articles Count -->
+              <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 font-medium">
+                <span>📰</span> {articles.length} dispatches published
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Published Dispatches Header -->
+      <div class="flex items-center justify-between mb-6 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <span>Reporting by {publisher.name}</span>
+          <span class="text-xs font-normal text-slate-500 dark:text-slate-400">({articles.length})</span>
+        </h2>
+      </div>
+
+      <!-- Articles Grid -->
+      {articles.length > 0 ? (
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {articles.map((item: any) => (
+            <article class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md transition group flex flex-col">
+              <a href={`/news/${item.slug}`} class="relative block aspect-[16/9] overflow-hidden bg-slate-100 dark:bg-slate-800">
+                <img
+                  src={item.image_url || '/fallback-image.svg'}
+                  alt={item.title}
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+                {item.category_name && (
+                  <span class="absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-950/80 backdrop-blur-xs text-white uppercase tracking-wider">
+                    {item.category_name}
+                  </span>
+                )}
+              </a>
+              <div class="p-4 flex-1 flex flex-col justify-between">
+                <div>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition mb-2">
+                    <a href={`/news/${item.slug}`}>{item.title}</a>
+                  </h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3">
+                    {item.summary}
+                  </p>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <span>{new Date(item.published_at).toLocaleDateString()}</span>
+                  <span>{item.reading_time_minutes || 4} min read</span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-500 dark:text-slate-400">
+          <p class="text-sm">New dispatches from this correspondent are currently being fact-checked and queued for publication.</p>
+        </div>
+      )}
+    </div>
+  </main>
+</Layout>

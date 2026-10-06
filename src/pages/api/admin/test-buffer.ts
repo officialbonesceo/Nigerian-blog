@@ -9,6 +9,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       access_token?: string;
       facebook_profile_id?: string;
       instagram_profile_id?: string;
+      pinterest_profile_id?: string;
     };
 
     const db = getD1(locals);
@@ -33,12 +34,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (body.action === 'test_post') {
       const fbId = body.facebook_profile_id || settingsMap.buffer_profile_ids_facebook || '';
       const igId = body.instagram_profile_id || settingsMap.buffer_profile_ids_instagram || '';
+      const pinId = body.pinterest_profile_id || settingsMap.buffer_profile_ids_pinterest || '';
 
       const testResult = await postToBuffer(
         {
           accessToken: token,
           facebookProfileId: fbId,
           instagramProfileId: igId,
+          pinterestProfileId: pinId,
           autoPostEnabled: true,
           maxPostsPerWorkflow: 1,
         },

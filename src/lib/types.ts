@@ -268,3 +268,19 @@ export interface NewsPresenter {
   display_order: number;
 }
 
+export interface Publisher {
+  id: string;
+  name: string;
+  slug: string;
+  role: string;
+  school: string; // "MUA"
+  bio: string;
+  avatar_url: string;
+  category_specialty: string;
+  articles_count: number;
+  is_verified_bot: number | boolean;
+  is_active: number | boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+

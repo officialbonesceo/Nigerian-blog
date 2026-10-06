@@ -150,8 +150,11 @@ const nextUrl = hasNextPage ? `${siteBase}/category/${slug}?page=${page + 1}` : 
         {listArticles.map((art, idx) => (
           <>
             <ArticleCard article={art} showCategory={false} />
-            {(idx === 2 || (idx === 6 && listArticles.length >= 7)) && (
-              <AdSlot format="feed" />
+            {idx === 2 && (
+              <AdSlot format="feed" index={1} />
+            )}
+            {idx === 6 && listArticles.length >= 7 && (
+              <AdSlot format="breaking-teaser" index={2} />
             )}
           </>
         ))}
@@ -163,7 +166,7 @@ const nextUrl = hasNextPage ? `${siteBase}/category/${slug}?page=${page + 1}` : 
     )}
 
     <!-- Trending Opportunities Around The Web (Smartlink Grid) -->
-    <AdSlot format="opportunities-grid" />
+    <AdSlot format="opportunities-grid" index={3} />
 
     <!-- Category Pagination Bar -->
     <div class="pt-4 pb-2 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">

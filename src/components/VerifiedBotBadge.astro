@@ -1,0 +1,25 @@
+---
+interface Props {
+  size?: 'sm' | 'md' | 'lg';
+  showTooltip?: boolean;
+  className?: string;
+}
+
+const { size = 'sm', showTooltip = true, className = '' } = Astro.props;
+
+const sizeClasses = {
+  sm: 'w-4 h-4',
+  md: 'w-5 h-5',
+  lg: 'w-6 h-6',
+}[size];
+---
+
+<span class={`inline-flex items-center justify-center shrink-0 relative group ${className}`} title={showTooltip ? "Verified Press Correspondent • 9jaBeacon" : undefined}>
+  <!-- Official Verification Rosette with Clean Checkmark -->
+  <svg class={`${sizeClasses} text-[#1877F2] drop-shadow-xs inline-block`} viewBox="0 0 24 24" fill="currentColor" aria-label="Verified Press Correspondent">
+    <!-- Iconic Scalloped Rosette Seal -->
+    <path d="M10.52 2.37a2.25 2.25 0 0 1 2.96 0l1.28 1.15c.42.38.96.6 1.52.63l1.72.07a2.25 2.25 0 0 1 2.16 2.02l.14 1.72c.05.56.32 1.08.75 1.43l1.36 1.07a2.25 2.25 0 0 1 0 3.1l-1.36 1.07c-.43.35-.7.87-.75 1.43l-.14 1.72a2.25 2.25 0 0 1-2.16 2.02l-1.72.07c-.56.03-1.1.25-1.52.63l-1.28 1.15a2.25 2.25 0 0 1-2.96 0l-1.28-1.15a2.25 2.25 0 0 0-1.52-.63l-1.72-.07a2.25 2.25 0 0 1-2.16-2.02l-.14-1.72a2.25 2.25 0 0 0-.75-1.43l-1.36-1.07a2.25 2.25 0 0 1 0-3.1l1.36-1.07c.43-.35.7-.87.75-1.43l.14-1.72a2.25 2.25 0 0 1 2.16-2.02l1.72-.07c.56-.03 1.1-.25 1.52-.63l1.28-1.15z" />
+    <!-- White Checkmark -->
+    <path d="M9.5 12.5l2 2 4.5-4.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </svg>
+</span>

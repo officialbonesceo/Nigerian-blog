@@ -261,12 +261,11 @@ import { fetchVerifiedWikipediaImage } from './wikipedia-image';
 export function isPersonRelatedStory(title: string, content?: string): boolean {
   const combined = `${title || ''} ${(content || '').slice(0, 1000)}`.toLowerCase();
 
-  // 1. Roles and titles of specific individuals
+  // 1. Roles and titles of specific individuals (excluding anonymous suspects or victims)
   const personRoleKeywords = [
-    /\b(president|governor|minister|senator|lawmaker|judge|justice|commissioner|inspector general|police chief|attorney general|spokesperson|ambassador)\b/i,
+    /\b(president|governor|minister|senator|lawmaker|commissioner|inspector general|police chief|attorney general|spokesperson|ambassador)\b/i,
     /\b(footballer|striker|midfielder|defender|goalkeeper|coach|manager|winger|boxer|fighter|athlete|captain)\b/i,
     /\b(director general|chief executive|founder|chairman|billionaire|actor|actress|musician|singer|artist)\b/i,
-    /\b(suspect|convict|defendant|gunman|kidnapper|bandit leader|activist|cleric|pastor|imam|bishop)\b/i,
     /\b(dr\.|prof\.|mr\.|mrs\.|ms\.|sen\.|gov\.|hon\.|chief|alhaaji|pastor|rev\.)\s+[a-z]+/i,
   ];
 
@@ -274,13 +273,7 @@ export function isPersonRelatedStory(title: string, content?: string): boolean {
     if (regex.test(combined)) return true;
   }
 
-  // 2. Personal attribution verbs ("he said", "she stated", "accused of", "sacked", "appointed")
-  const personActions = /\b(he said|she said|his reaction|her statement|he explained|she noted|he urged|she declared|he lamented|he warned|he added|she added|he denied|she denied|he appeared in court|she was arraigned|he was arrested|she was appointed|he was nominated)\b/i;
-  if (personActions.test(combined)) {
-    return true;
-  }
-
-  // 3. Known public figures and prominent names
+  // 2. Known named public figures and prominent personalities
   const knownFigures = /\b(tinubu|shettima|sanwo-?olu|fubara|wike|peter\s+obi|atiku|buhari|emefiele|cardoso|dangote|adeleke|soludo|lookman|osimhen|boniface|iwobi|chukwueze|ndidi|pochettino|arteta|guardiola|ancelotti|trump|biden|harris|putin|zelensky|starmer|macron|netanyahu|alonso|russell|antonelli|joshua|fury|palmer|rice|rodri|dembele|enrique|otu|mutfwang|keyamo)\b/i;
   if (knownFigures.test(combined)) {
     return true;
@@ -390,6 +383,26 @@ const NON_HUMAN_STOCK_ASSETS: Record<string, { url: string; caption: string; cre
     caption: 'Urban structural engineering, civil construction works, and infrastructure development.',
     credit: 'Civil Engineering Archive / Unsplash',
   },
+  police: {
+    url: 'https://images.unsplash.com/photo-1508847154043-be5407fcaa5a?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Law enforcement tactical operations, rapid emergency response, and public security patrols.',
+    credit: 'Law Enforcement Command Archive / Unsplash',
+  },
+  refinery: {
+    url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Petroleum energy refining operations, oil terminal pipelines, and crude processing.',
+    credit: 'Energy Infrastructure Archive / Unsplash',
+  },
+  governance: {
+    url: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Intergovernmental executive assembly, national policy chambers, and civic administration.',
+    credit: 'State Affairs Press Archive',
+  },
+  crypto: {
+    url: 'https://images.unsplash.com/photo-1621416894569-0f39ed31d247?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Decentralized digital currency trading, blockchain ledgers, and digital asset markets.',
+    credit: 'Digital Asset Markets Archive / Unsplash',
+  },
 };
 
 /**
@@ -456,17 +469,23 @@ export async function resolveEditorialImage(options: {
   const lowerTitle = title.toLowerCase();
   let matchedStock: { url: string; caption: string; credit: string } | null = null;
 
-  if (lowerTitle.includes('solar') || lowerTitle.includes('clean energy') || lowerTitle.includes('renewable') || lowerTitle.includes('climate')) {
+  if (lowerTitle.includes('police') || lowerTitle.includes('arrest') || lowerTitle.includes('murder') || lowerTitle.includes('gunmen') || lowerTitle.includes('suspect') || lowerTitle.includes('pre-2027') || lowerTitle.includes('warning to political')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.police;
+  } else if (lowerTitle.includes('court') || lowerTitle.includes('judge') || lowerTitle.includes('justice') || lowerTitle.includes('tribunal') || lowerTitle.includes('lawyer') || lowerTitle.includes('arraigned') || lowerTitle.includes('remanded')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.justice;
+  } else if (lowerTitle.includes('refinery') || lowerTitle.includes('petrol') || lowerTitle.includes('fuel') || lowerTitle.includes('crude oil') || lowerTitle.includes('nnpc') || lowerTitle.includes('dangote refinery')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.refinery;
+  } else if (lowerTitle.includes('crypto') || lowerTitle.includes('bitcoin') || lowerTitle.includes('blockchain') || lowerTitle.includes('binance')) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.crypto;
+  } else if (lowerTitle.includes('solar') || lowerTitle.includes('clean energy') || lowerTitle.includes('renewable') || lowerTitle.includes('climate')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.solar;
   } else if (lowerTitle.includes('equities') || lowerTitle.includes('ngx') || lowerTitle.includes('stock exchange') || lowerTitle.includes('shares')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.equities;
   } else if (lowerTitle.includes('inflation') || lowerTitle.includes('bank') || lowerTitle.includes('cbn') || lowerTitle.includes('naira') || lowerTitle.includes('interest rate') || lowerTitle.includes('fx')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.finance;
-  } else if (lowerTitle.includes('asuu') || lowerTitle.includes('university') || lowerTitle.includes('student') || lowerTitle.includes('academic') || lowerTitle.includes('lecturer') || lowerTitle.includes('higher institution')) {
+  } else if (lowerTitle.includes('asuu') || lowerTitle.includes('university') || lowerTitle.includes('student') || lowerTitle.includes('academic') || lowerTitle.includes('lecturer') || lowerTitle.includes('higher institution') || lowerTitle.includes('cadet') || lowerTitle.includes('graduate')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.education;
-  } else if (lowerTitle.includes('court') || lowerTitle.includes('judge') || lowerTitle.includes('justice') || lowerTitle.includes('tribunal') || lowerTitle.includes('police') || lowerTitle.includes('lawyer') || lowerTitle.includes('arraigned') || lowerTitle.includes('alleged murder')) {
-    matchedStock = NON_HUMAN_STOCK_ASSETS.justice;
-  } else if (lowerTitle.includes('military') || lowerTitle.includes('army') || lowerTitle.includes('troops') || lowerTitle.includes('cadet') || lowerTitle.includes('defence academy') || lowerTitle.includes('weapons depot') || lowerTitle.includes('blast') || lowerTitle.includes('security')) {
+  } else if (lowerTitle.includes('military') || lowerTitle.includes('army') || lowerTitle.includes('troops') || lowerTitle.includes('defence academy') || lowerTitle.includes('weapons depot') || lowerTitle.includes('blast') || lowerTitle.includes('security')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.defense;
   } else if (lowerTitle.includes('bus') || lowerTitle.includes('transit') || lowerTitle.includes('rail') || lowerTitle.includes('highway') || lowerTitle.includes('commuter') || lowerTitle.includes('transport')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.transit;
@@ -492,6 +511,8 @@ export async function resolveEditorialImage(options: {
     matchedStock = NON_HUMAN_STOCK_ASSETS.stadium;
   } else if (category === 'cat_world' || lowerTitle.includes('summit') || lowerTitle.includes('un ') || lowerTitle.includes('treaty') || lowerTitle.includes('unga') || lowerTitle.includes('north korea') || lowerTitle.includes('diplomacy') || lowerTitle.includes('intelligence')) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.summit;
+  } else {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.governance;
   }
 
   if (matchedStock) {

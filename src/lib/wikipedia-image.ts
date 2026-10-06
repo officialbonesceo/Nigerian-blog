@@ -57,7 +57,27 @@ const REJECTED_IMAGE_KEYWORDS = [
   'poster',
   'icon',
   'screenshot',
+  'waterfall',
+  'falls',
+  'rock_formation',
+  'landscape',
+  'cave',
+  'scenery',
+  'panorama',
+  'tourist_attraction',
+  'beach_resort',
 ];
+
+const NIGERIAN_STATES_AND_CITIES = new Set([
+  'osun', 'lagos', 'kano', 'kaduna', 'ondo', 'rivers', 'edo', 'delta', 'abuja',
+  'imo', 'enugu', 'borno', 'plateau', 'sokoto', 'benue', 'ogun', 'oyo', 'kwara',
+  'kogi', 'nasarawa', 'taraba', 'bauchi', 'gombe', 'yobe', 'adamawa', 'jigawa',
+  'katsina', 'kebbi', 'zamfara', 'niger', 'ekiti', 'abia', 'anambra', 'ebonyi',
+  'bayelsa', 'akwa ibom', 'cross river', 'ibadan', 'portharcourt', 'port harcourt',
+  'benin city', 'warri', 'calabar', 'maiduguri', 'jos', 'ilorin', 'abeokuta'
+]);
+
+const CRIME_OR_INCIDENT_WORDS = /\b(police|arrest|arrested|court|judge|justice|murder|kill|killed|death|dead|hospital|blast|explosion|collapse|warning|warns|arraigned|fraud|strike|suspect|theft|remanded|gunmen|bandits)\b/i;
 
 const PROMINENT_ENTITIES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /\b(?:kashim\s+)?shettima\b/i, query: 'Kashim Shettima' },
@@ -74,6 +94,8 @@ const PROMINENT_ENTITIES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /\b(?:olayemi\s+)?cardoso\b/i, query: 'Olayemi Cardoso' },
   { pattern: /\b(?:godwin\s+)?emefiele\b/i, query: 'Godwin Emefiele' },
   { pattern: /\b(?:aliko\s+)?dangote\b/i, query: 'Aliko Dangote' },
+  { pattern: /\b(?:asuu|academic staff union of universities)\b/i, query: 'Academic Staff Union of Universities' },
+  { pattern: /\bnigerian defence academy\b/i, query: 'Nigerian Defence Academy' },
   { pattern: /\bcole palmer\b/i, query: 'Cole Palmer' },
   { pattern: /\bdeclan rice\b/i, query: 'Declan Rice' },
   { pattern: /\banthony joshua\b/i, query: 'Anthony Joshua' },
@@ -86,7 +108,6 @@ const PROMINENT_ENTITIES: Array<{ pattern: RegExp; query: string }> = [
   { pattern: /\bosimhen\b/i, query: 'Victor Osimhen' },
   { pattern: /\bboniface\b/i, query: 'Victor Boniface' },
   { pattern: /\b(?:donald\s+)?trump\b/i, query: 'Donald Trump' },
-  { pattern: /\bnigerian defence academy\b/i, query: 'Nigerian Defence Academy' },
   { pattern: /\b(?:unga|81st unga|united nations general assembly)\b/i, query: 'United Nations General Assembly' },
   { pattern: /\bmtn group\b/i, query: 'MTN Group' },
   { pattern: /\bnepal floods?\b/i, query: 'Nepal' },
@@ -98,6 +119,7 @@ const PROMINENT_ENTITIES: Array<{ pattern: RegExp; query: string }> = [
 export function extractWikipediaQueries(title: string, category?: string): string[] {
   const queries: string[] = [];
   const clean = title.replace(/[‘“"”’'']/g, ' ').replace(/\s+/g, ' ').trim();
+  const isCrimeOrIncident = CRIME_OR_INCIDENT_WORDS.test(clean);
 
   // 1. Check known prominent figures / entities first
   for (const entity of PROMINENT_ENTITIES) {
@@ -118,11 +140,17 @@ export function extractWikipediaQueries(title: string, category?: string): strin
   }
 
   // 3. Colons or dash prefixes (e.g. "Osun: Police Arrest...", "TechCabal Daily: MTN...")
+  // CRITICAL: Never query bare Nigerian state/city on crime/police stories (avoids waterfalls/tourism on murder/arrests)
   const parts = clean.split(/[:–—\-]/);
   if (parts.length > 1) {
     const left = parts[0].trim();
-    if (left.length >= 3 && left.length <= 35 && !left.toLowerCase().includes('daily')) {
-      queries.push(left);
+    const leftLower = left.toLowerCase();
+    const isStateOrCity = NIGERIAN_STATES_AND_CITIES.has(leftLower);
+    
+    if (left.length >= 3 && left.length <= 35 && !leftLower.includes('daily')) {
+      if (!isCrimeOrIncident || !isStateOrCity) {
+        queries.push(left);
+      }
     }
     const right = parts[1].trim();
     if (right.length >= 4) {
@@ -130,7 +158,7 @@ export function extractWikipediaQueries(title: string, category?: string): strin
     }
   }
 
-  // 4. Prominent capitalized 2-word names/entities (e.g. "Ademola Lookman", "Festus Keyamo", "Donald Trump", "Plateau State")
+  // 4. Prominent capitalized 2-word names/entities (e.g. "Ademola Lookman", "Festus Keyamo", "Donald Trump")
   const twoWordNames = clean.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)\b/g);
   if (twoWordNames) {
     for (const tw of twoWordNames) {

@@ -1,0 +1,99 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import BotVerifiedBadge from '../../components/BotVerifiedBadge.astro';
+import { getD1, getPublishers } from '../../lib/runtime-db';
+import { INITIAL_PUBLISHERS } from '../../lib/publishers-data';
+
+const db = getD1(Astro.locals);
+let publishers = await getPublishers(db, { onlyActive: false });
+if (!publishers || publishers.length === 0) {
+  publishers = INITIAL_PUBLISHERS;
+}
+---
+
+<Layout
+  title="Editorial Newsroom & Verified Correspondents | 9jaBeacon"
+  description="Meet the 9jaBeacon editorial correspondents covering Nigerian governance, business, sports, technology, and world diplomacy."
+>
+  <main class="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 lg:py-16 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <!-- Page Header -->
+      <div class="text-center max-w-3xl mx-auto mb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-xs font-semibold mb-4">
+          <BotVerifiedBadge size="xs" />
+          <span>Verified Editorial Correspondents</span>
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4">
+          The 9jaBeacon Editorial Bureau
+        </h1>
+        <p class="text-slate-600 dark:text-slate-300 text-base leading-relaxed">
+          Our verified newsroom correspondents combine editorial fact-checking with specialized beat reporting across Nigeria and continental Africa. Each correspondent specializes in key public interest portfolios.
+        </p>
+      </div>
+
+      <!-- Publishers Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {publishers.map((pub) => (
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs hover:shadow-md transition flex flex-col justify-between group relative overflow-hidden">
+            <div>
+              <!-- Avatar & Header Row -->
+              <div class="flex items-start gap-4 mb-4">
+                <div class="relative shrink-0">
+                  <div class="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-sm">
+                    <img
+                      src={pub.avatar_url}
+                      alt={pub.name}
+                      class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                  </div>
+                  <!-- Bot Verified Icon overlay -->
+                  <div class="absolute -bottom-1 -right-1 bg-white dark:bg-slate-900 rounded-full p-0.5 shadow-sm border border-slate-200 dark:border-slate-700">
+                    <BotVerifiedBadge size="xs" />
+                  </div>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <a href={`/publishers/${pub.slug}`} class="font-bold text-slate-900 dark:text-white text-base hover:text-emerald-600 dark:hover:text-emerald-400 transition truncate">
+                      {pub.name}
+                    </a>
+                    <BotVerifiedBadge size="xs" />
+                  </div>
+                  <div class="text-xs text-emerald-600 dark:text-emerald-400 font-medium truncate mt-0.5">
+                    {pub.role}
+                  </div>
+                  <div class="text-[11px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                    MUA • {pub.school || 'MUA'}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bio -->
+              <p class="text-slate-600 dark:text-slate-300 text-xs leading-relaxed line-clamp-3 mb-4">
+                {pub.bio}
+              </p>
+            </div>
+
+            <!-- Footer Action -->
+            <div class="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+              <span class="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                <span class={`w-2 h-2 rounded-full ${pub.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                {pub.is_active ? 'Active Correspondent' : 'Contributor Desk'}
+              </span>
+
+              <a
+                href={`/publishers/${pub.slug}`}
+                class="font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
+              >
+                View Dispatches →
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+
+    </div>
+  </main>
+</Layout>

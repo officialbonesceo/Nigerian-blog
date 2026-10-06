@@ -318,8 +318,9 @@ function initDatabase() {
     insertSetting.run('buffer_access_token', '', 'Buffer Access Token for social multi-channel auto-posting');
     insertSetting.run('buffer_profile_ids_facebook', '', 'Buffer Profile ID for Facebook Page');
     insertSetting.run('buffer_profile_ids_instagram', '', 'Buffer Profile ID for Instagram Business Profile');
+    insertSetting.run('buffer_profile_ids_pinterest', '', 'Buffer Profile ID for Pinterest Board');
     insertSetting.run('buffer_auto_post_enabled', 'true', 'Enable autonomous posting of rewritten articles to Buffer');
-    insertSetting.run('buffer_max_posts_per_workflow', '5', 'Maximum stories posted to Facebook/Instagram per workflow run (default: 5)');
+    insertSetting.run('buffer_max_posts_per_workflow', '5', 'Maximum stories posted to Facebook/Instagram/Pinterest per workflow run (default: 5)');
     insertSetting.run('auto_publish', 'true', 'Automatically publish rewritten articles or hold in draft state for review');
     insertSetting.run('cron_interval_minutes', '30', 'Scheduled automation ingestion trigger interval in minutes');
     insertSetting.run('ai_prompt_template', `You are an expert Nigerian news editor and fact-checker at 9jaBeacon. Rewrite and synthesize this RSS news lead into an original, factual, mobile-optimized news report for Nigerian readers. Maintain journalistic integrity, clear paragraphs, key takeaways, and proper source reference.`, 'System prompt for news synthesis');
@@ -336,8 +337,9 @@ function initDatabase() {
     insertSettingOrIgnore.run('buffer_access_token', '', 'Buffer Access Token for social multi-channel auto-posting');
     insertSettingOrIgnore.run('buffer_profile_ids_facebook', '', 'Buffer Profile ID for Facebook Page');
     insertSettingOrIgnore.run('buffer_profile_ids_instagram', '', 'Buffer Profile ID for Instagram Business Profile');
+    insertSettingOrIgnore.run('buffer_profile_ids_pinterest', '', 'Buffer Profile ID for Pinterest Board');
     insertSettingOrIgnore.run('buffer_auto_post_enabled', 'true', 'Enable autonomous posting of rewritten articles to Buffer');
-    insertSettingOrIgnore.run('buffer_max_posts_per_workflow', '5', 'Maximum stories posted to Facebook/Instagram per workflow run (default: 5)');
+    insertSettingOrIgnore.run('buffer_max_posts_per_workflow', '5', 'Maximum stories posted to Facebook/Instagram/Pinterest per workflow run (default: 5)');
     insertSettingOrIgnore.run('bluesky_identifier', '', 'Bluesky Handle or Username (e.g. 9jabeacon.bsky.social)');
     insertSettingOrIgnore.run('bluesky_app_password', '', 'Bluesky App Password generated in Settings (xxxx-xxxx-xxxx-xxxx)');
     insertSettingOrIgnore.run('bluesky_auto_post_enabled', 'true', 'Enable automatic publishing of synthesized articles to Bluesky');

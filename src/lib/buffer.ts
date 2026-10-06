@@ -9,6 +9,7 @@ export interface BufferConfig {
   accessToken: string;
   facebookProfileId?: string;
   instagramProfileId?: string;
+  pinterestProfileId?: string;
   autoPostEnabled: boolean;
   maxPostsPerWorkflow: number;
 }
@@ -84,7 +85,7 @@ ${categoryTag} #9jaBeacon #NigeriaToday`;
 }
 
 /**
- * Posts an article to connected Buffer channels (Facebook Page and/or Instagram)
+ * Posts an article to connected Buffer channels (Facebook Page, Instagram, and Pinterest Boards)
  */
 export async function postToBuffer(
   config: BufferConfig,
@@ -106,13 +107,16 @@ export async function postToBuffer(
   if (config.instagramProfileId && config.instagramProfileId.trim()) {
     targetProfileIds.push(config.instagramProfileId.trim());
   }
+  if (config.pinterestProfileId && config.pinterestProfileId.trim()) {
+    targetProfileIds.push(config.pinterestProfileId.trim());
+  }
 
   if (targetProfileIds.length === 0) {
     return {
       success: false,
       postedCount: 0,
       profileIds: [],
-      error: 'No target profile IDs configured (Facebook or Instagram).',
+      error: 'No target profile IDs configured (Facebook, Instagram, or Pinterest).',
     };
   }
 
@@ -127,6 +131,10 @@ export async function postToBuffer(
   let successfulPosts = 0;
   let lastError = '';
 
+  const effectiveImage = article.imageUrl && article.imageUrl.startsWith('http')
+    ? article.imageUrl
+    : 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80';
+
   for (const profileId of targetProfileIds) {
     try {
       const formParams = new URLSearchParams();
@@ -134,13 +142,10 @@ export async function postToBuffer(
       formParams.append('text', text);
       formParams.append('now', 'true'); // Post immediately to page/feed
 
-      if (article.imageUrl && article.imageUrl.startsWith('http')) {
-        formParams.append('media[photo]', article.imageUrl);
-        formParams.append('media[thumbnail]', article.imageUrl);
-      }
-
+      formParams.append('media[photo]', effectiveImage);
+      formParams.append('media[thumbnail]', effectiveImage);
       formParams.append('media[link]', article.canonicalUrl);
-      formParams.append('media[description]', article.title);
+      formParams.append('media[description]', `${article.title} — 9jaBeacon Verified Wire`);
 
       const endpoint = `https://api.bufferapp.com/1/updates/create.json?access_token=${encodeURIComponent(config.accessToken)}`;
 

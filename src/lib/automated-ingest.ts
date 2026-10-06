@@ -29,6 +29,7 @@ import type { Article } from './types';
 import { cleanAndFormatArticleHtml } from './content-formatter';
 import { isPublisherLogoOrBanner, resolveEditorialImage } from './editorial-image';
 import { postToBluesky } from './bluesky';
+import { postToBuffer } from './buffer';
 
 export interface FeedItemValidated {
   title: string;
@@ -597,6 +598,26 @@ export async function runIngestionPipeline(
                 identifier: sMap.bluesky_identifier,
                 appPassword: sMap.bluesky_app_password,
               }, siteBase).catch(bErr => console.warn('[Bluesky Auto-Post Notice]:', bErr.message));
+            }
+
+            // Autonomous Buffer syndication (Facebook, Instagram, Pinterest) if enabled
+            if (sMap.buffer_auto_post_enabled === 'true' && sMap.buffer_access_token) {
+              const siteSettings = await getSiteSettings(db).catch(() => ({} as Record<string, string>));
+              const siteBase = ((siteSettings as any).site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+              postToBuffer({
+                accessToken: sMap.buffer_access_token,
+                facebookProfileId: sMap.buffer_profile_ids_facebook,
+                instagramProfileId: sMap.buffer_profile_ids_instagram,
+                pinterestProfileId: sMap.buffer_profile_ids_pinterest,
+                autoPostEnabled: true,
+                maxPostsPerWorkflow: 1,
+              }, {
+                title: newArticle.title,
+                summary: newArticle.summary,
+                categoryName: categorySlug,
+                imageUrl: newArticle.image_url,
+                canonicalUrl: `${siteBase}/news/${newArticle.slug}`,
+              }).catch(bufErr => console.warn('[Buffer/Pinterest Auto-Post Notice]:', bufErr.message));
             }
           } catch {}
         } else {

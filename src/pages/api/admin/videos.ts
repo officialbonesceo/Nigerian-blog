@@ -147,7 +147,12 @@ export const DELETE: APIRoute = async ({ request, locals }) => {
   try {
     const db = getD1(locals);
     const url = new URL(request.url);
-    const id = url.searchParams.get('id');
+    let id = url.searchParams.get('id');
+
+    if (!id) {
+      const body = (await request.json().catch(() => ({}))) as { id?: string };
+      id = body?.id || null;
+    }
 
     if (!id) {
       return new Response(JSON.stringify({ error: 'Video ID is required' }), {
@@ -157,7 +162,7 @@ export const DELETE: APIRoute = async ({ request, locals }) => {
     }
 
     const success = await deleteVideoArticle(db, id);
-    return new Response(JSON.stringify({ success }), {
+    return new Response(JSON.stringify({ success, id }), {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {

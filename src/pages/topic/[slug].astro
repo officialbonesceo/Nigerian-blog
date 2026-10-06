@@ -236,7 +236,7 @@ const structuredData = [
               <ArticleCard article={article} />
               {idx === 1 && (
                 <div class="col-span-1 md:col-span-2">
-                  <AdSlot format="feed" />
+                  <AdSlot format="feed" index={1} />
                 </div>
               )}
             </>
@@ -245,7 +245,7 @@ const structuredData = [
       )}
 
       <!-- Trending Opportunities Around The Web (Smartlink Grid) -->
-      <AdSlot format="opportunities-grid" />
+      <AdSlot format="opportunities-grid" index={2} />
 
       <!-- Pagination -->
       {totalPages > 1 && (

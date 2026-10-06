@@ -1,0 +1,88 @@
+---
+import Layout from '../layouts/Layout.astro';
+import MarketRatesTicker from '../components/MarketRatesTicker.astro';
+import AdSlot from '../components/AdSlot.astro';
+import FAQSection from '../components/FAQSection.astro';
+import { getSiteSettings, getD1 } from '../lib/runtime-db';
+
+export const prerender = false;
+
+const db = getD1(Astro.locals);
+const siteSettings = await getSiteSettings(db);
+
+const pageTitle = "Nigeria Daily Currency & Market Rates Today (USD, GBP, EUR to NGN) | 9jaBeacon";
+const pageDesc = "Real-time verified daily exchange rates for US Dollar (USD), British Pound (GBP), Euro (EUR), Canadian Dollar (CAD), and USDT to Nigerian Naira. Verified against CBN NAFEM and parallel street benchmarks.";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FinancialProduct",
+  "name": "Nigerian Naira Daily Currency Wire",
+  "description": pageDesc,
+  "provider": {
+    "@type": "NewsMediaOrganization",
+    "name": "9jaBeacon",
+    "url": "https://www.9jabeacon.name.ng"
+  },
+  "url": "https://www.9jabeacon.name.ng/market-rates"
+};
+---
+
+<Layout
+  title={pageTitle}
+  description={pageDesc}
+  activeNav="business"
+>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <div class="space-y-6">
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-mono">
+      <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400">Home</a>
+      <span>/</span>
+      <a href="/category/business" class="hover:text-emerald-600 dark:hover:text-emerald-400">Business</a>
+      <span>/</span>
+      <span class="text-slate-900 dark:text-white font-bold">Currency & Market Rates</span>
+    </nav>
+
+    <!-- Page Title & Authority Header -->
+    <header class="p-5 sm:p-6 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-sm relative overflow-hidden">
+      <div class="relative z-10 max-w-2xl space-y-2">
+        <span class="px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-black uppercase tracking-wider">
+          LIVE MACROECONOMIC INTELLIGENCE
+        </span>
+        <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">
+          Nigeria Daily Currency & Exchange Rate Wire
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          Daily verified benchmarks tracking the Central Bank of Nigeria (CBN) autonomous NAFEM window, street parallel market rates, fuel pump benchmarks, and precious metals.
+        </p>
+      </div>
+    </header>
+
+    <!-- Top Strategic Sponsor Banner -->
+    <AdSlot format="banner-320x50" index={0} />
+
+    <!-- Live Market Rates Ticker & Converter -->
+    <MarketRatesTicker />
+
+    <!-- Explanatory Analysis & SEO Context -->
+    <section class="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 space-y-3 leading-relaxed shadow-xs">
+      <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>Understanding Nigeria's Foreign Exchange Mechanisms (NAFEM vs Parallel)</span>
+      </h2>
+      <p>
+        The Nigerian Autonomous Foreign Exchange Market (NAFEM) serves as the official price discovery corridor supervised by the Central Bank of Nigeria (CBN). Authorized dealer banks and corporate institutional buyers execute trade settlements based on market-driven order books.
+      </p>
+      <p>
+        Concurrently, the Bureau De Change (BDC) and retail OTC street windows cater to small-scale individual cash needs, travel allowances, and educational remittances. 9jaBeacon updates these benchmarks 4 times daily to empower freelancers, importers, and diaspora families with verified pricing transparency.
+      </p>
+    </section>
+
+    <!-- Mid Opportunities Sponsored Grid -->
+    <AdSlot format="opportunities-grid" index={1} />
+
+    <!-- FAQ Section -->
+    <FAQSection />
+  </div>
+</Layout>

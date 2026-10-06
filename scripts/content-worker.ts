@@ -27,6 +27,8 @@ import {
   checkTodayPublishedCount,
 } from '../src/lib/trending-search-engine';
 import { postToBluesky } from '../src/lib/bluesky';
+import { postToTumblr } from '../src/lib/tumblr';
+import { postToThreads } from '../src/lib/threads';
 
 interface SourceRow {
   id: string;
@@ -385,6 +387,50 @@ async function main() {
             console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyErr.message}`);
           }
         }
+
+        // Optional Tumblr Syndication
+        if (process.env.TUMBLR_BLOG_IDENTIFIER && (process.env.TUMBLR_TOKEN || process.env.TUMBLR_CONSUMER_KEY)) {
+          try {
+            console.log(`     📟 Syndicating to Tumblr...`);
+            const tRes = await postToTumblr({
+              title: aiResult.title,
+              summary: aiResult.summary || '',
+              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+              category: categoryId,
+              imageUrl: finalImageUrl,
+            });
+            if (tRes.success) {
+              console.log(`     ✅ [TUMBLR SYNDICATED] -> ${tRes.postUrl}`);
+              try {
+                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'TUMBLR_PUBLISH_SUCCESS', 'src_trending_engine', `Dispatched to Tumblr: ${tRes.postUrl}`, 'info');
+              } catch {}
+            }
+          } catch (tErr: any) {
+            console.warn(`     ⚠️ [TUMBLR NOTICE] ${tErr.message}`);
+          }
+        }
+
+        // Optional Meta Threads Syndication
+        if (process.env.THREADS_USER_ID && process.env.THREADS_ACCESS_TOKEN) {
+          try {
+            console.log(`     🧵 Syndicating to Threads...`);
+            const thRes = await postToThreads({
+              title: aiResult.title,
+              summary: aiResult.summary || '',
+              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+              category: categoryId,
+              imageUrl: finalImageUrl,
+            });
+            if (thRes.success) {
+              console.log(`     ✅ [THREADS SYNDICATED] -> ${thRes.postUrl}`);
+              try {
+                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'THREADS_PUBLISH_SUCCESS', 'src_trending_engine', `Dispatched to Threads: ${thRes.postUrl}`, 'info');
+              } catch {}
+            }
+          } catch (thErr: any) {
+            console.warn(`     ⚠️ [THREADS NOTICE] ${thErr.message}`);
+          }
+        }
       } catch (err: any) {
         console.error(`     ❌ Insert error: ${err.message}`);
       }
@@ -631,6 +677,50 @@ async function main() {
             }
           } catch (bskyErr: any) {
             console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyErr.message}`);
+          }
+        }
+
+        // Optional Tumblr Syndication
+        if (process.env.TUMBLR_BLOG_IDENTIFIER && (process.env.TUMBLR_TOKEN || process.env.TUMBLR_CONSUMER_KEY)) {
+          try {
+            console.log(`     📟 Syndicating to Tumblr...`);
+            const tRes = await postToTumblr({
+              title: aiResult.title,
+              summary: aiResult.summary || '',
+              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+              category: categoryId,
+              imageUrl: finalImageUrl,
+            });
+            if (tRes.success) {
+              console.log(`     ✅ [TUMBLR SYNDICATED] -> ${tRes.postUrl}`);
+              try {
+                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'TUMBLR_PUBLISH_SUCCESS', source.id, `Dispatched to Tumblr: ${tRes.postUrl}`, 'info');
+              } catch {}
+            }
+          } catch (tErr: any) {
+            console.warn(`     ⚠️ [TUMBLR NOTICE] ${tErr.message}`);
+          }
+        }
+
+        // Optional Meta Threads Syndication
+        if (process.env.THREADS_USER_ID && process.env.THREADS_ACCESS_TOKEN) {
+          try {
+            console.log(`     🧵 Syndicating to Threads...`);
+            const thRes = await postToThreads({
+              title: aiResult.title,
+              summary: aiResult.summary || '',
+              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+              category: categoryId,
+              imageUrl: finalImageUrl,
+            });
+            if (thRes.success) {
+              console.log(`     ✅ [THREADS SYNDICATED] -> ${thRes.postUrl}`);
+              try {
+                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'THREADS_PUBLISH_SUCCESS', source.id, `Dispatched to Threads: ${thRes.postUrl}`, 'info');
+              } catch {}
+            }
+          } catch (thErr: any) {
+            console.warn(`     ⚠️ [THREADS NOTICE] ${thErr.message}`);
           }
         }
       } catch (insertErr: any) {

@@ -1,6 +1,7 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle, ArticleComment, VideoArticle, VideoQueryOptions } from './types';
+import type { Article, Category, Source, AutomationSetting, AutomationLog, ArticleReport, RejectedArticle, ArticleComment, VideoArticle, VideoQueryOptions, Publisher } from './types';
 import { initialCategories, initialArticles, initialSources, initialVideos } from './seed-data';
+import { INITIAL_PUBLISHERS } from './publishers-data';
 import { executeD1Query } from './d1-sync';
 
 let localSqliteDb: any = null;
@@ -455,6 +456,21 @@ export async function ensureTablesExist(db: D1Database, force = false) {
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS publishers (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT UNIQUE NOT NULL,
+        role TEXT NOT NULL,
+        school TEXT DEFAULT 'MUA',
+        bio TEXT NOT NULL,
+        avatar_url TEXT NOT NULL,
+        category_specialty TEXT DEFAULT 'naija-news',
+        articles_count INTEGER DEFAULT 0,
+        is_verified_bot INTEGER DEFAULT 1,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`,
       `CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)`,
       `CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_id, published_at DESC)`,
       `CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`,
@@ -465,7 +481,9 @@ export async function ensureTablesExist(db: D1Database, force = false) {
       `CREATE INDEX IF NOT EXISTS idx_videos_slug ON video_articles(slug)`,
       `CREATE INDEX IF NOT EXISTS idx_videos_published ON video_articles(published_at DESC)`,
       `CREATE INDEX IF NOT EXISTS idx_videos_category ON video_articles(category_id)`,
-      `CREATE INDEX IF NOT EXISTS idx_videos_featured ON video_articles(is_featured)`
+      `CREATE INDEX IF NOT EXISTS idx_videos_featured ON video_articles(is_featured)`,
+      `CREATE INDEX IF NOT EXISTS idx_publishers_slug ON publishers(slug)`,
+      `CREATE INDEX IF NOT EXISTS idx_publishers_active ON publishers(is_active)`
     ];
 
 
@@ -508,6 +526,28 @@ export async function ensureTablesExist(db: D1Database, force = false) {
             art.image_credit, art.image_license, art.author_name, art.author_role, art.author_avatar,
             art.is_top_story || 0, art.is_trending || 0, art.is_breaking || 0, art.views_count || 0, art.reading_time_minutes || 4,
             art.source_id, art.source_name, art.source_original_url, art.published_at || new Date().toISOString(), art.updated_at || new Date().toISOString(), art.status || 'published'
+          ).run().catch(() => {});
+        }
+
+        // Seed default publishers
+        for (const pub of INITIAL_PUBLISHERS) {
+          await db.prepare(`INSERT OR IGNORE INTO publishers (id, name, slug, role, school, bio, avatar_url, category_specialty, articles_count, is_verified_bot, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+            pub.id, pub.name, pub.slug, pub.role, pub.school || 'MUA', pub.bio, pub.avatar_url, pub.category_specialty || 'cat_naija_news', pub.articles_count || 0, pub.is_verified_bot ?? 1, pub.is_active ?? 1, pub.created_at || new Date().toISOString(), pub.updated_at || new Date().toISOString()
+          ).run().catch(() => {});
+        }
+
+        // Seed initial videos if table just created
+        for (const vid of initialVideos) {
+          await db.prepare(`INSERT OR IGNORE INTO video_articles (
+            id, slug, title, summary, video_url, video_type, thumbnail_url,
+            duration_seconds, category_id, views_count, is_featured, status,
+            source_name, source_channel_url, published_at, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+            vid.id, vid.slug, vid.title, vid.summary, vid.video_url, vid.video_type || 'youtube',
+            vid.thumbnail_url, vid.duration_seconds || 0, vid.category_id || 'cat_naija_news',
+            vid.views_count || 0, vid.is_featured ? 1 : 0, vid.status || 'published',
+            vid.source_name || '9jaBeacon Video Desk', vid.source_channel_url || null,
+            vid.published_at || new Date().toISOString(), vid.created_at || new Date().toISOString(), vid.updated_at || new Date().toISOString()
           ).run().catch(() => {});
         }
 
@@ -1147,7 +1187,7 @@ export async function getSiteSettings(db: D1Database): Promise<Record<string, st
     adsterra_enabled: '1',
     adsterra_script_url: 'https://www.highrevenueformat.com/68c3e01457bdbc56eeaf6737cd933b72/invoke.js',
     adsterra_container_id: 'container-68c3e01457bdbc56eeaf6737cd933b72',
-    videos_enabled: '1',
+    videos_enabled: '0',
   };
   try {
     const res = await db.prepare('SELECT key, value FROM site_settings').all<{ key: string; value: string }>();
@@ -1930,14 +1970,8 @@ export async function getVideoArticles(
     const countRow = await db.prepare(countQuery).bind(...params).first<{ count: number }>();
     const total = countRow?.count ?? 0;
 
-    // If empty in D1, seed initial videos
-    if (total === 0 && (!options || (!options.categoryId && !options.search))) {
-      for (const v of initialVideos) {
-        try {
-          await createVideoArticle(db, v);
-        } catch {}
-      }
-      return { videos: initialVideos.slice(offset, offset + limit), total: initialVideos.length };
+    if (total === 0) {
+      return { videos: [], total: 0 };
     }
 
     const query = `
@@ -2160,6 +2194,124 @@ export async function incrementVideoViews(db: D1Database, idOrSlug: string): Pro
     ).bind(idOrSlug, idOrSlug).run();
   } catch (err) {
     console.error('incrementVideoViews error:', err);
+  }
+}
+
+/**
+ * PUBLISHER REPORTERS & BOT PROFILES MANAGEMENT
+ */
+export async function getPublishers(db: D1Database, options: { onlyActive?: boolean } = {}): Promise<Publisher[]> {
+  try {
+    await ensureTablesExist(db);
+    let query = 'SELECT * FROM publishers';
+    if (options.onlyActive) {
+      query += ' WHERE is_active = 1';
+    }
+    query += ' ORDER BY created_at ASC';
+    const res = await db.prepare(query).all<Publisher>();
+    return res.results || [];
+  } catch (err) {
+    console.error('getPublishers error:', err);
+    return [];
+  }
+}
+
+export async function getPublisherById(db: D1Database, id: string): Promise<Publisher | null> {
+  try {
+    await ensureTablesExist(db);
+    const pub = await db.prepare('SELECT * FROM publishers WHERE id = ?').bind(id).first<Publisher>();
+    return pub || null;
+  } catch (err) {
+    console.error('getPublisherById error:', err);
+    return null;
+  }
+}
+
+export async function getPublisherBySlug(db: D1Database, slug: string): Promise<Publisher | null> {
+  try {
+    await ensureTablesExist(db);
+    const pub = await db.prepare('SELECT * FROM publishers WHERE slug = ?').bind(slug).first<Publisher>();
+    return pub || null;
+  } catch (err) {
+    console.error('getPublisherBySlug error:', err);
+    return null;
+  }
+}
+
+export async function createPublisher(db: D1Database, publisher: Publisher): Promise<boolean> {
+  try {
+    await ensureTablesExist(db);
+    const now = new Date().toISOString();
+    await db.prepare(`
+      INSERT INTO publishers (
+        id, name, slug, role, school, bio, avatar_url, category_specialty, articles_count, is_verified_bot, is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      publisher.id,
+      publisher.name,
+      publisher.slug,
+      publisher.role,
+      publisher.school || 'MUA',
+      publisher.bio,
+      publisher.avatar_url,
+      publisher.category_specialty || 'cat_naija_news',
+      publisher.articles_count || 0,
+      publisher.is_verified_bot ? 1 : 0,
+      publisher.is_active ? 1 : 0,
+      publisher.created_at || now,
+      now
+    ).run();
+    return true;
+  } catch (err) {
+    console.error('createPublisher error:', err);
+    return false;
+  }
+}
+
+export async function updatePublisher(db: D1Database, id: string, updates: Partial<Publisher>): Promise<boolean> {
+  try {
+    await ensureTablesExist(db);
+    const now = new Date().toISOString();
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    const allowed = ['name', 'slug', 'role', 'school', 'bio', 'avatar_url', 'category_specialty', 'articles_count', 'is_verified_bot', 'is_active'];
+    for (const key of allowed) {
+      if ((updates as any)[key] !== undefined) {
+        fields.push(`${key} = ?`);
+        let val = (updates as any)[key];
+        if (key === 'is_verified_bot' || key === 'is_active') {
+          val = val ? 1 : 0;
+        }
+        values.push(val);
+      }
+    }
+
+    if (fields.length === 0) return true;
+    fields.push('updated_at = ?');
+    values.push(now);
+    values.push(id);
+
+    await db.prepare(`UPDATE publishers SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
+    return true;
+  } catch (err) {
+    console.error('updatePublisher error:', err);
+    return false;
+  }
+}
+
+export async function togglePublisherStatus(db: D1Database, id: string, isActive: boolean): Promise<boolean> {
+  return updatePublisher(db, id, { is_active: isActive ? 1 : 0 });
+}
+
+export async function deletePublisher(db: D1Database, id: string): Promise<boolean> {
+  try {
+    await ensureTablesExist(db);
+    await db.prepare('DELETE FROM publishers WHERE id = ?').bind(id).run();
+    return true;
+  } catch (err) {
+    console.error('deletePublisher error:', err);
+    return false;
   }
 }
 

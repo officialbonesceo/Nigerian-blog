@@ -26,8 +26,8 @@ const secretKey =
   '9jaBeacon_bonesceo_secret_key_2026_super_secure';
 const isAdmin = token ? verifyAdminToken(token, secretKey).valid : false;
 
-// If video tab is paused by admin and visitor is not admin, redirect to home
-if (!videosEnabled && !isAdmin) {
+// Videos are currently disabled site-wide
+if (!videosEnabled) {
   return Astro.redirect('/', 302);
 }
 

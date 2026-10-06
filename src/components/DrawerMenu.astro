@@ -78,6 +78,20 @@ const videosEnabled = settings.videos_enabled !== '0';
       </div>
     </div>
 
+    <!-- Market Rates Hub Action -->
+    <a
+      href="/market-rates"
+      class="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all font-bold group"
+    >
+      <span class="text-sm flex items-center gap-2.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        Daily FX & Currency Wire
+      </span>
+      <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-emerald-600 text-white font-black">
+        Live Rates
+      </span>
+    </a>
+
     <!-- Video Hub Primary Action -->
     {videosEnabled && (
       <a

@@ -25,6 +25,8 @@ const imageUrl = article.image_url || DEFAULT_FALLBACK_IMAGE_URL;
       alt={article.title}
       loading="eager"
       decoding="async"
+      referrerpolicy="no-referrer"
+      onerror="this.onerror=null;this.src='/fallback-image.svg'"
       class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
     />
     

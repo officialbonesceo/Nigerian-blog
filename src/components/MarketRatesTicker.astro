@@ -1,0 +1,266 @@
+---
+/**
+ * 9jaBeacon Daily Currency & Market Wire
+ * 
+ * Features:
+ * - Recurring search trends: USD/NGN, GBP/NGN, EUR/NGN, CAD/NGN, USDT/NGN, PMS Fuel, Gold
+ * - Strictly follows site color theme: bg-white dark:bg-slate-900, border-slate-200 dark:border-slate-800
+ * - Non-redirecting client-side verification button
+ * - Live in-page Naira conversion calculator
+ * - Updated 4x daily with explicit African/Lagos timestamps
+ */
+
+import { getVerifiedMarketRates } from '../lib/market-rates';
+
+const initialData = await getVerifiedMarketRates();
+---
+
+<section
+  id="market-rates-section"
+  class="my-6 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs relative transition-colors not-prose"
+  aria-label="Daily Currency and Market Trends"
+>
+  <!-- Header Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 mb-4 border-b border-slate-100 dark:border-slate-800/80">
+    <div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <h3 class="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+          <span>9ja Currency & Daily Market Wire</span>
+        </h3>
+        <span class="text-[9px] px-2 py-0.5 rounded font-mono font-bold uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+          4X DAILY WIRE
+        </span>
+      </div>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+        Verified official CBN NAFEM windows, autonomous parallel street rates, and critical energy benchmarks.
+      </p>
+    </div>
+
+    <!-- Client-Side Live Verification Button & Timestamp -->
+    <div class="flex items-center gap-2.5 self-start sm:self-center shrink-0">
+      <div class="text-right hidden sm:block">
+        <div class="text-[10px] text-slate-400 font-mono">Last Verified</div>
+        <div id="market-rates-timestamp" class="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-mono">
+          {initialData.timestampFormatted}
+        </div>
+      </div>
+
+      <button
+        id="verify-rates-btn"
+        type="button"
+        class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+        title="Check current rates from official sources without leaving this page"
+      >
+        <svg id="verify-spinner" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span id="verify-btn-label">Verify Rates</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Currency & Commodity Cards Grid -->
+  <div id="market-rates-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-3.5">
+    {initialData.rates.map((rate) => (
+      <div
+        class="rate-card p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between transition-all hover:border-emerald-500/40"
+        data-rate-id={rate.id}
+      >
+        <div>
+          <!-- Top Row: Flag & Pair & Trend Badge -->
+          <div class="flex items-center justify-between gap-1 mb-1.5">
+            <span class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1 font-mono">
+              <span class="text-sm">{rate.flag}</span>
+              <span>{rate.pair}</span>
+            </span>
+            <span
+              class={`text-[9px] font-mono px-1 py-0.2 rounded font-bold ${
+                rate.change24h > 0
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                  : rate.change24h < 0
+                  ? 'bg-red-500/15 text-red-600 dark:text-red-400'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              {rate.change24h > 0 ? `+${rate.change24h}%` : `${rate.change24h}%`}
+            </span>
+          </div>
+
+          <!-- Primary Rate Display -->
+          <div class="mt-1">
+            <div class="text-base sm:text-lg font-black text-slate-900 dark:text-white font-mono tracking-tight rate-official-val">
+              ₦{rate.officialSell.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+              Official CBN NAFEM
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Parallel / Street Rate Footer -->
+        {rate.parallelSell && (
+          <div class="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-mono">
+            <span class="text-slate-500 dark:text-slate-400">Street / BDC:</span>
+            <span class="font-bold text-amber-600 dark:text-amber-400 rate-parallel-val">
+              ₦{rate.parallelSell.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+
+  <!-- Interactive Client-Side In-Page Naira Currency Converter -->
+  <div class="mt-4 p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 font-bold">
+        ₦
+      </div>
+      <div>
+        <h4 class="text-xs font-bold text-slate-900 dark:text-white">
+          Instant Naira Rate Calculator
+        </h4>
+        <p class="text-[10px] text-slate-500 dark:text-slate-400">
+          Compute real-time conversions against CBN official and street rates.
+        </p>
+      </div>
+    </div>
+
+    <!-- Converter Form Controls -->
+    <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+      <div class="relative w-28 sm:w-32">
+        <input
+          type="number"
+          id="calc-input-amount"
+          value="100"
+          min="1"
+          class="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-500"
+          placeholder="Amount"
+        />
+      </div>
+
+      <select
+        id="calc-select-currency"
+        class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-500"
+      >
+        <option value="usd">USD ($)</option>
+        <option value="gbp">GBP (£)</option>
+        <option value="eur">EUR (€)</option>
+        <option value="cad">CAD (C$)</option>
+        <option value="usdt">USDT (₮)</option>
+      </select>
+
+      <div class="px-3 py-1.5 rounded-lg bg-emerald-600/10 dark:bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 whitespace-nowrap min-w-[130px] text-center">
+        = <span id="calc-result-naira">₦154,550</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verification Source & Methodology Footer -->
+  <div class="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px] text-slate-400 font-mono">
+    <div class="flex items-center gap-1.5">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+      <span id="market-rates-source">Source: {initialData.source}</span>
+    </div>
+    <span>Data provided for informational reference. No external redirect required.</span>
+  </div>
+</section>
+
+<!-- Client Script for Non-Redirect Live Verification -->
+<script is:inline>
+  (function () {
+    const verifyBtn = document.getElementById('verify-rates-btn');
+    const verifyLabel = document.getElementById('verify-btn-label');
+    const verifySpinner = document.getElementById('verify-spinner');
+    const timestampEl = document.getElementById('market-rates-timestamp');
+    const sourceEl = document.getElementById('market-rates-source');
+
+    const calcAmount = document.getElementById('calc-input-amount');
+    const calcCurrency = document.getElementById('calc-select-currency');
+    const calcResult = document.getElementById('calc-result-naira');
+
+    let currentRates = {
+      usd: 1545.50,
+      gbp: 2010.00,
+      eur: 1675.00,
+      cad: 1128.00,
+      usdt: 1585.00,
+    };
+
+    function updateCalculator() {
+      if (!calcAmount || !calcCurrency || !calcResult) return;
+      const amt = parseFloat(calcAmount.value) || 0;
+      const curr = calcCurrency.value || 'usd';
+      const rate = currentRates[curr] || 1545.50;
+      const total = amt * rate;
+      calcResult.textContent = '₦' + Math.round(total).toLocaleString('en-US');
+    }
+
+    if (calcAmount && calcCurrency) {
+      calcAmount.addEventListener('input', updateCalculator);
+      calcCurrency.addEventListener('change', updateCalculator);
+    }
+
+    if (verifyBtn) {
+      verifyBtn.addEventListener('click', async function () {
+        verifyBtn.disabled = true;
+        if (verifyLabel) verifyLabel.textContent = 'Verifying...';
+        if (verifySpinner) verifySpinner.classList.add('animate-spin');
+
+        try {
+          const res = await fetch('/api/market-rates', { cache: 'no-store' });
+          const data = await res.json();
+
+          if (data && data.success && data.rates) {
+            data.rates.forEach(function (r) {
+              const card = document.querySelector('[data-rate-id="' + r.id + '"]');
+              if (card) {
+                const offEl = card.querySelector('.rate-official-val');
+                if (offEl && r.officialSell) {
+                  offEl.textContent = '₦' + r.officialSell.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+                const parEl = card.querySelector('.rate-parallel-val');
+                if (parEl && r.parallelSell) {
+                  parEl.textContent = '₦' + r.parallelSell.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+              }
+
+              if (r.id in currentRates && r.officialSell) {
+                currentRates[r.id] = r.officialSell;
+              }
+            });
+
+            if (timestampEl && data.timestampFormatted) {
+              timestampEl.textContent = data.timestampFormatted;
+            }
+            if (sourceEl && data.source) {
+              sourceEl.textContent = 'Source: ' + data.source;
+            }
+
+            updateCalculator();
+
+            if (verifyLabel) verifyLabel.textContent = '✓ Verified';
+            setTimeout(function () {
+              if (verifyLabel) verifyLabel.textContent = 'Verify Rates';
+              verifyBtn.disabled = false;
+            }, 2500);
+          } else {
+            throw new Error('Verification data unavailable');
+          }
+        } catch (err) {
+          if (verifyLabel) verifyLabel.textContent = 'Retried';
+          setTimeout(function () {
+            if (verifyLabel) verifyLabel.textContent = 'Verify Rates';
+            verifyBtn.disabled = false;
+          }, 1500);
+        } finally {
+          if (verifySpinner) verifySpinner.classList.remove('animate-spin');
+        }
+      });
+    }
+  })();
+</script>
