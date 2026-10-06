@@ -1,0 +1,81 @@
+name: Meta Threads Social Syndication
+
+# ==============================================================================
+# 9jaBeacon - Autonomous Meta Threads Social Syndication
+#
+# TRIGGER POLICY:
+# - Schedule: Thrice daily at 06:30, 12:30, 18:30 UTC (07:30, 13:30, 19:30 WAT)
+# - Workflow Dispatch: Manual 1-click broadcast from GitHub Actions UI
+# - Push events: Strictly disabled to conserve Actions minutes
+# ==============================================================================
+
+on:
+  schedule:
+    - cron: '30 6,12,18 * * *' # Thrice daily
+  workflow_dispatch:
+    inputs:
+      article_slug:
+        description: 'Article Slug to broadcast (leave empty to broadcast latest unsyndicated story)'
+        required: false
+        default: ''
+        type: string
+      force:
+        description: 'Force broadcast even if already posted'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  threads-broadcast:
+    name: 🧵 Broadcast to Meta Threads
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push'
+    permissions:
+      contents: read
+
+    steps:
+      - name: 📦 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 🟢 Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          check-latest: false
+
+      - name: 📦 Install Runtime Packages
+        run: npm install --no-audit --no-fund
+
+      - name: 📥 Sync Latest Articles from Upstream (Cloudflare D1)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          ALLOW_SEED_ARTICLES: 'false'
+          ALLOW_SEED_DATA: 'false'
+        run: npx tsx scripts/sync-cache.ts || true
+
+      - name: 🧵 Publish to Meta Threads Graph API
+        env:
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          THREADS_APP_ID: ${{ secrets.THREADS_APP_ID }}
+          THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+          TARGET_SLUG: ${{ github.event.inputs.article_slug }}
+          FORCE_BROADCAST: ${{ github.event.inputs.force }}
+          SITE_URL: https://www.9jabeacon.name.ng
+        run: npx tsx scripts/broadcast-threads.ts
+
+      - name: 📤 Push Syndication Log to Upstream Datastore
+        if: always()
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          ALLOW_SEED_ARTICLES: 'false'
+          ALLOW_SEED_DATA: 'false'
+        run: npx tsx scripts/sync-upstream.ts || true
