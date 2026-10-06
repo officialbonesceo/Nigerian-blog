@@ -1,13 +1,13 @@
 ---
 /**
- * Compact Daily Currency Trends Wire Strip for Homepage
- * Follows 9jaBeacon strict theme styling:
- * bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800
- * No excess glassmorphism, perfectly responsive.
+ * Low-Profile Compact Daily Currency Trends Strip
+ * Placed in the bottom section of the homepage.
+ * Keeps a small, unobtrusive footprint so editorial news takes center stage.
+ * Features a direct button to the full /market-rates wire hub.
  */
 import { DEFAULT_MARKET_RATES } from '../lib/market-rates';
 
-const primaryRates = DEFAULT_MARKET_RATES.slice(0, 5); // USD, GBP, EUR, CAD, USDT
+const primaryRates = DEFAULT_MARKET_RATES.slice(0, 4); // USD, GBP, EUR, USDT
 const nowStr = new Date().toLocaleTimeString('en-NG', {
   hour: '2-digit',
   minute: '2-digit',
@@ -16,113 +16,39 @@ const nowStr = new Date().toLocaleTimeString('en-NG', {
 });
 ---
 
-<div class="my-3 p-3 sm:p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs transition-colors">
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
-    <div class="flex items-center gap-2 flex-wrap">
-      <span class="relative flex h-2 w-2">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-      </span>
-      <span class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider font-mono">
-        DAILY FX & MARKET WIRE
-      </span>
-      <span class="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-        4X DAILY
-      </span>
-      <span class="text-[10px] text-slate-400 font-mono hidden sm:inline">
-        • Updated {nowStr} WAT
-      </span>
-    </div>
-
-    <div class="flex items-center gap-2">
-      <button
-        id="mini-verify-btn"
-        type="button"
-        onclick="verifyMiniStripRates()"
-        class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 transition cursor-pointer"
-        title="Check live verified CBN rates"
-      >
-        <svg id="mini-verify-spin" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        <span id="mini-verify-label">Verify Now</span>
-      </button>
-      <span class="text-slate-300 dark:text-slate-700">|</span>
-      <a
-        href="/market-rates"
-        class="text-[11px] font-bold text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition flex items-center gap-0.5"
-      >
-        <span>Full Wire</span>
-        <span>→</span>
-      </a>
-    </div>
-  </div>
-
-  <!-- Horizontal Scrollable or Wrap Currency Badges -->
-  <div id="mini-rates-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pt-2.5">
-    {primaryRates.map((r) => (
-      <div
-        class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex flex-col justify-between transition-colors hover:border-emerald-500/40"
-        data-pair={r.id}
-      >
-        <div class="flex items-center justify-between text-[11px]">
-          <span class="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1 font-mono">
-            <span>{r.flag}</span>
-            <span>{r.pair.replace(' / NGN', '')}</span>
-          </span>
-          <span class={`text-[9px] font-mono font-bold ${r.change24h > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
-            {r.change24h > 0 ? `+${r.change24h}%` : `${r.change24h}%`}
-          </span>
-        </div>
-        <div class="mt-1 flex items-baseline justify-between">
-          <span class="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono rate-val">
-            ₦{r.officialSell.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-          </span>
-          <span class="text-[9px] text-slate-400 font-mono">
-            {r.parallelSell ? `BDC: ₦${Math.round(r.parallelSell)}` : 'CBN'}
-          </span>
-        </div>
+<div class="my-6 p-3 sm:p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs transition-colors">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <!-- Left: Title & Quick Rate Pills -->
+    <div class="flex items-center gap-3 flex-wrap">
+      <div class="flex items-center gap-1.5 shrink-0">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-xs font-black text-slate-900 dark:text-white font-mono tracking-tight">
+          Naira FX Trends
+        </span>
+        <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono">
+          {nowStr} WAT
+        </span>
       </div>
-    ))}
+
+      <!-- Compact Rate Badges -->
+      <div class="flex items-center gap-1.5 flex-wrap">
+        {primaryRates.map((r) => (
+          <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-[11px] font-mono">
+            <span class="text-xs">{r.flag}</span>
+            <span class="font-bold text-slate-700 dark:text-slate-300">{r.id.toUpperCase()}:</span>
+            <span class="font-extrabold text-slate-900 dark:text-white">₦{Math.round(r.officialSell).toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Right: High-Converting Button to Full Wire Page -->
+    <a
+      href="/market-rates"
+      class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs whitespace-nowrap active:scale-95 shrink-0"
+    >
+      <span>Full FX & Rates Wire</span>
+      <span aria-hidden="true">→</span>
+    </a>
   </div>
 </div>
-
-<script is:inline>
-  async function verifyMiniStripRates() {
-    const btn = document.getElementById('mini-verify-btn');
-    const label = document.getElementById('mini-verify-label');
-    const spin = document.getElementById('mini-verify-spin');
-    if (!btn || !label || !spin) return;
-
-    label.textContent = 'Verifying...';
-    spin.classList.add('animate-spin');
-
-    try {
-      const res = await fetch('/api/market-rates');
-      if (!res.ok) throw new Error('Failed to fetch verified rates');
-      const data = await res.json();
-      if (data.rates && Array.isArray(data.rates)) {
-        data.rates.forEach((r) => {
-          const card = document.querySelector(`[data-pair="${r.id}"]`);
-          if (card) {
-            const valEl = card.querySelector('.rate-val');
-            if (valEl) {
-              valEl.textContent = '₦' + Number(r.officialSell).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-            }
-          }
-        });
-        label.textContent = 'Verified ✓';
-        setTimeout(() => {
-          label.textContent = 'Verify Now';
-        }, 3000);
-      }
-    } catch (e) {
-      label.textContent = 'Error';
-      setTimeout(() => {
-        label.textContent = 'Verify Now';
-      }, 2500);
-    } finally {
-      spin.classList.remove('animate-spin');
-    }
-  }
-</script>

@@ -15,15 +15,41 @@ const pageDesc = "Real-time verified daily exchange rates for US Dollar (USD), B
 
 const jsonLd = {
   "@context": "https://schema.org",
-  "@type": "FinancialProduct",
-  "name": "Nigerian Naira Daily Currency Wire",
-  "description": pageDesc,
-  "provider": {
-    "@type": "NewsMediaOrganization",
-    "name": "9jaBeacon",
-    "url": "https://www.9jabeacon.name.ng"
-  },
-  "url": "https://www.9jabeacon.name.ng/market-rates"
+  "@graph": [
+    {
+      "@type": "FinancialService",
+      "name": "Nigeria Daily Currency & Foreign Exchange Rates Wire",
+      "description": pageDesc,
+      "provider": {
+        "@type": "NewsMediaOrganization",
+        "name": "9jaBeacon",
+        "url": "https://www.9jabeacon.name.ng"
+      },
+      "url": "https://www.9jabeacon.name.ng/market-rates",
+      "currenciesAccepted": "NGN, USD, GBP, EUR, CAD, USDT",
+      "areaServed": "Nigeria"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://www.9jabeacon.name.ng/market-rates#webpage",
+      "url": "https://www.9jabeacon.name.ng/market-rates",
+      "name": pageTitle,
+      "description": pageDesc,
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "9jaBeacon",
+        "url": "https://www.9jabeacon.name.ng"
+      },
+      "about": [
+        { "@type": "Thing", "name": "Dollar to Naira Exchange Rate" },
+        { "@type": "Thing", "name": "CBN NAFEM Official Window" },
+        { "@type": "Thing", "name": "Aboki FX Street Parallel Market" },
+        { "@type": "Thing", "name": "Pound to Naira Today" },
+        { "@type": "Thing", "name": "Euro to Naira Today" },
+        { "@type": "Thing", "name": "USDT to Naira P2P Rate" }
+      ]
+    }
+  ]
 };
 ---
 

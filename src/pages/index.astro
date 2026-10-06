@@ -171,25 +171,12 @@ const filteredLatest = page === 1 && effectiveTopStory
     </div>
   </div>
 
-  <!-- Live Daily Currency Trends Wire Strip (Page 1) -->
-  {page === 1 && <CurrencyMiniStrip />}
-
-  <!-- Top Strategic Partner Banner (Page 1) -->
-  {page === 1 && siteSettings.ads_enabled !== '0' && (
-    <div class="my-2.5 flex justify-center">
-      <AdSlot format="banner-320x50" index={0} loading="eager" />
-    </div>
-  )}
-
   <!-- Top Story Spotlight (Page 1) -->
   {page === 1 && effectiveTopStory && (
     <div class="mt-2 mb-6">
       <TopStoryCard article={effectiveTopStory} />
     </div>
   )}
-
-  <!-- Daily Currency & Market Wire (Page 1) -->
-  {page === 1 && <MarketRatesTicker />}
 
   <!-- Latest News Feed -->
   {filteredLatest.length > 0 ? (
@@ -301,7 +288,26 @@ const filteredLatest = page === 1 && effectiveTopStory
     <MostReadSection articles={mostRead} />
   )}
 
+  <!-- Compact Daily Naira FX Trends Strip (Down Part of Page) -->
+  {page === 1 && <CurrencyMiniStrip />}
+
   <!-- Engaging Fact-Checking & Editorial FAQ Section (with Google FAQPage JSON-LD Schema) -->
   <FAQSection />
+
+  <!-- Google & Bing Search Rich Snippets: Naira FX & Currency Trends Wire -->
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "FinancialService",
+    "name": "9jaBeacon Daily Naira FX & Exchange Rate Intelligence",
+    "description": "Daily verified exchange rates for USD to NGN, GBP to Naira, Euro to NGN, and USDT P2P parallel street rates in Nigeria.",
+    "url": `${siteBase}/market-rates`,
+    "areaServed": "NG",
+    "currenciesAccepted": "NGN, USD, GBP, EUR, CAD, USDT",
+    "provider": {
+      "@type": "NewsMediaOrganization",
+      "name": "9jaBeacon",
+      "url": siteBase
+    }
+  })} />
 </Layout>
 
