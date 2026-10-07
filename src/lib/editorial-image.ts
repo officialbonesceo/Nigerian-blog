@@ -354,19 +354,19 @@ const NON_HUMAN_STOCK_ASSETS: Record<string, { url: string; caption: string; cre
     credit: 'Defense Information Archive',
   },
   transit: {
-    url: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Urban public transport fleet, municipal transit bus corridors, and passenger mobility.',
-    credit: 'Urban Mobility Authority / Unsplash',
+    url: 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Interstate transport arterial road networks and municipal highway infrastructure.',
+    credit: 'National Highway Infrastructure / Unsplash',
   },
   health: {
-    url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Public health laboratory diagnostics, epidemiological surveillance, and clinical care.',
-    credit: 'Health Sciences Archive / Unsplash',
+    url: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Modern healthcare medical center, patient clinical care, and diagnostics.',
+    credit: 'Healthcare Sciences Archive / Unsplash',
   },
   agriculture: {
-    url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Wholesale agricultural commodities, municipal produce distribution, and food supply chains.',
-    credit: 'Agricultural Trade Bureau / Unsplash',
+    url: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=80',
+    caption: 'Agricultural grain harvest, commercial farm cultivation, and food supply chains.',
+    credit: 'Agricultural Production Bureau / Unsplash',
   },
   aviation: {
     url: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1200&q=80',
@@ -375,8 +375,8 @@ const NON_HUMAN_STOCK_ASSETS: Record<string, { url: string; caption: string; cre
   },
   flood: {
     url: 'https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1200&q=80',
-    caption: 'Severe seasonal precipitation, flash flood emergency response, and ecological impact.',
-    credit: 'Meteorological Dispatch / Unsplash',
+    caption: 'Severe seasonal precipitation, emergency flood management, and hydrological monitoring.',
+    credit: 'Emergency Disaster Relief Dispatch / Unsplash',
   },
   construction: {
     url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1200&q=80',
@@ -406,13 +406,149 @@ const NON_HUMAN_STOCK_ASSETS: Record<string, { url: string; caption: string; cre
 };
 
 /**
+ * Extracts clean topic search keywords from article context for Unsplash / Pexels search
+ */
+export function extractImageSearchQuery(title: string, category?: string): string {
+  const lower = title.toLowerCase();
+
+  // Law enforcement / Crime / Court (Must be checked FIRST so crimes never match hospital/injuries)
+  if (/\b(police|arrest|suspect|robbery|gunmen|bandits|kidnap|efcc|icpc|ndlea|fraud|detained|custody|court|judge|tribunal|arraigned)\b/i.test(lower)) {
+    if (/\b(court|judge|tribunal|arraigned|remanded|bail|justice|ruling)\b/i.test(lower)) {
+      return 'courtroom gavel justice trial';
+    }
+    return 'police security investigation law enforcement';
+  }
+
+  // Economy / Currency / Markets / Banking
+  if (/\b(cbn|naira|fx|forex|inflation|bank|monetary|reserve|interest rate|economy|ngx|stock|equities)\b/i.test(lower)) {
+    if (/\b(stock|equities|shares|market rally|ngx)\b/i.test(lower)) {
+      return 'stock market financial exchange terminal';
+    }
+    return 'central bank currency money finance';
+  }
+
+  // Energy / Fuel / Oil / Power
+  if (/\b(petrol|fuel|nnpc|refinery|crude|oil|gas|power grid|electricity|blackout|transmission)\b/i.test(lower)) {
+    if (/\b(solar|clean energy|renewable)\b/i.test(lower)) {
+      return 'solar energy panels infrastructure';
+    }
+    return 'energy petroleum oil refinery facility';
+  }
+
+  // Sports / Athletics
+  if (category === 'cat_sports' || /\b(super eagles|falcons|football|soccer|premier league|champions league|match|stadium|afcon|fifa|boxing|bout)\b/i.test(lower)) {
+    return 'football soccer match stadium floodlights';
+  }
+
+  // Tech / Telecom / 3MTT / Innovation
+  if (/\b(tech|telecom|software|startup|fintech|ai|broadband|mtn|airtel|3mtt|digital|cyber)\b/i.test(lower)) {
+    return 'modern technology innovation computing digital';
+  }
+
+  // Agriculture / Food security
+  if (/\b(farmer|farm|agriculture|harvest|food prices|crops|grain|fertilizer|palm oil)\b/i.test(lower)) {
+    return 'agriculture farmland harvest crops';
+  }
+
+  // Education / Universities / ASUU
+  if (/\b(asuu|university|students|lecturers|academic|polytechnic|education|cadet|graduate)\b/i.test(lower)) {
+    return 'university students campus lecture';
+  }
+
+  // Health / Medicine / Hospitals (strict medical only)
+  if (/\b(hospital|doctor|nurses|clinical|medical center|disease|malaria|cholera|epidemic|outbreak)\b/i.test(lower)) {
+    return 'modern hospital clinic healthcare';
+  }
+
+  // Aviation
+  if (/\b(flight|airline|airport|aircraft|aviation|plane)\b/i.test(lower)) {
+    return 'commercial airplane aviation airport';
+  }
+
+  // Transport & Roads
+  if (/\b(road|highway|expressway|bridge|railway|train|transit)\b/i.test(lower)) {
+    return 'highway expressway modern transport infrastructure';
+  }
+
+  // Governance / Diplomacy
+  if (category === 'cat_world' || /\b(summit|unga|treaty|diplomacy|president|governor|senate|minister|bilateral)\b/i.test(lower)) {
+    return 'government summit diplomacy assembly conference';
+  }
+
+  return 'editorial journalism news';
+}
+
+/**
+ * Dynamic External Stock Photo Search via Unsplash / Pexels API
+ * Activated automatically when UNSPLASH_ACCESS_KEY or PEXELS_API_KEY is supplied.
+ */
+export async function searchDynamicStockPhoto(query: string): Promise<ResolvedImageResult | null> {
+  const unsplashKey = (process.env.UNSPLASH_ACCESS_KEY || '').trim();
+  const pexelsKey = (process.env.PEXELS_API_KEY || '').trim();
+
+  // Try Unsplash API
+  if (unsplashKey) {
+    try {
+      const endpoint = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+      const res = await fetch(endpoint, {
+        headers: { Authorization: `Client-ID ${unsplashKey}` },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (res.ok) {
+        const data = await res.json() as any;
+        const photo = data.results?.[0];
+        if (photo && photo.urls?.regular) {
+          const author = photo.user?.name || 'Unsplash Contributor';
+          return {
+            imageUrl: `${photo.urls.regular}&auto=format&fit=crop&w=1200&q=80`,
+            imageCaption: photo.description || photo.alt_description || `${query} — Verified wire report.`,
+            imageCredit: `${author} / Unsplash`,
+            imageLicense: 'Unsplash Editorial License',
+          };
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Editorial Image]: Unsplash search warning:', err.message);
+    }
+  }
+
+  // Try Pexels API
+  if (pexelsKey) {
+    try {
+      const endpoint = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+      const res = await fetch(endpoint, {
+        headers: { Authorization: pexelsKey },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (res.ok) {
+        const data = await res.json() as any;
+        const photo = data.photos?.[0];
+        if (photo && (photo.src?.large2x || photo.src?.landscape || photo.src?.large)) {
+          const imgUrl = photo.src.large2x || photo.src.landscape || photo.src.large;
+          const author = photo.photographer || 'Pexels Contributor';
+          return {
+            imageUrl: imgUrl,
+            imageCaption: photo.alt || `${query} — Verified wire report.`,
+            imageCredit: `${author} / Pexels`,
+            imageLicense: 'Pexels Editorial License',
+          };
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Editorial Image]: Pexels search warning:', err.message);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Intelligent Multi-Tier Editorial Image Resolver:
  * 1. Prioritizes authentic photographic image from original news wire source.
- * 2. If no source image:
- *    - If human-related (person/public figure): tries Wikipedia Commons for that exact figure.
- *      If Wikipedia has NO authentic photo of that person, SKIPS stock photos completely and uses custom SVG!
- *    - If non-human related (policy, energy, finance, tech, port, climate): tries Wikipedia first,
- *      then high-resolution concept photo (Unsplash), falling back to custom SVG.
+ * 2. If human-related (person/public figure): tries Wikipedia Commons for that exact figure.
+ * 3. Dynamic Unsplash/Pexels API lookup if API key is provided.
+ * 4. Context-accurate themed photo matching with strict category isolation (never cross-contaminates crime and health!).
+ * 5. Clean editorial SVG vector asset fallback.
  */
 export async function resolveEditorialImage(options: {
   title: string;
@@ -436,7 +572,6 @@ export async function resolveEditorialImage(options: {
   const isPerson = isPersonRelatedStory(title, content);
 
   // Tier 2: If human-related (person/public figure): try Wikipedia Commons for that exact figure.
-  // If Wikipedia has NO authentic photo of that person, SKIPS stock photos completely and uses custom SVG!
   if (isPerson) {
     try {
       const wikiPhoto = await fetchVerifiedWikipediaImage(title, category);
@@ -451,65 +586,217 @@ export async function resolveEditorialImage(options: {
     } catch {
       // Graceful continuation
     }
-
-    const svgUrl = generateEditorialSvgDataUrl({
-      title,
-      category: category || 'naija-news',
-      sourceName: sourceName || '9jaBeacon Wire',
-    });
-    return {
-      imageUrl: svgUrl,
-      imageCaption: `${title} — Verified public interest report.`,
-      imageCredit: '9jaBeacon Editorial Visual Desk',
-      imageLicense: 'Vector Editorial Asset',
-    };
   }
 
-  // Tier 4: For NON-HUMAN stories, match the most accurate thematic photo
+  // Tier 3: Dynamic stock photo API search (Unsplash or Pexels if configured)
+  const searchQuery = extractImageSearchQuery(title, category);
+  const dynamicPhoto = await searchDynamicStockPhoto(searchQuery);
+  if (dynamicPhoto) {
+    return dynamicPhoto;
+  }
+
+  // Tier 4: For stories without dynamic API key, match the most accurate themed photo
   const lowerTitle = title.toLowerCase();
   let matchedStock: { url: string; caption: string; credit: string } | null = null;
 
-  if (lowerTitle.includes('police') || lowerTitle.includes('arrest') || lowerTitle.includes('murder') || lowerTitle.includes('gunmen') || lowerTitle.includes('suspect') || lowerTitle.includes('pre-2027') || lowerTitle.includes('warning to political')) {
+  // 4a. Crime, Police, Law Enforcement, EFCC, Courts, Arrests (STRICTLY FIRST)
+  if (
+    lowerTitle.includes('police') ||
+    lowerTitle.includes('arrest') ||
+    lowerTitle.includes('suspect') ||
+    lowerTitle.includes('gunmen') ||
+    lowerTitle.includes('bandits') ||
+    lowerTitle.includes('kidnap') ||
+    lowerTitle.includes('robbery') ||
+    lowerTitle.includes('efcc') ||
+    lowerTitle.includes('icpc') ||
+    lowerTitle.includes('ndlea') ||
+    lowerTitle.includes('detained') ||
+    lowerTitle.includes('custody') ||
+    lowerTitle.includes('warning to political')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.police;
-  } else if (lowerTitle.includes('court') || lowerTitle.includes('judge') || lowerTitle.includes('justice') || lowerTitle.includes('tribunal') || lowerTitle.includes('lawyer') || lowerTitle.includes('arraigned') || lowerTitle.includes('remanded')) {
+  } else if (
+    lowerTitle.includes('court') ||
+    lowerTitle.includes('judge') ||
+    lowerTitle.includes('justice') ||
+    lowerTitle.includes('tribunal') ||
+    lowerTitle.includes('lawyer') ||
+    lowerTitle.includes('arraigned') ||
+    lowerTitle.includes('remanded') ||
+    lowerTitle.includes('nullifies')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.justice;
-  } else if (lowerTitle.includes('refinery') || lowerTitle.includes('petrol') || lowerTitle.includes('fuel') || lowerTitle.includes('crude oil') || lowerTitle.includes('nnpc') || lowerTitle.includes('dangote refinery')) {
+  } else if (
+    lowerTitle.includes('refinery') ||
+    lowerTitle.includes('petrol') ||
+    lowerTitle.includes('fuel') ||
+    lowerTitle.includes('crude oil') ||
+    lowerTitle.includes('nnpc') ||
+    lowerTitle.includes('dangote refinery')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.refinery;
-  } else if (lowerTitle.includes('crypto') || lowerTitle.includes('bitcoin') || lowerTitle.includes('blockchain') || lowerTitle.includes('binance')) {
+  } else if (
+    lowerTitle.includes('crypto') ||
+    lowerTitle.includes('bitcoin') ||
+    lowerTitle.includes('blockchain') ||
+    lowerTitle.includes('binance')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.crypto;
-  } else if (lowerTitle.includes('solar') || lowerTitle.includes('clean energy') || lowerTitle.includes('renewable') || lowerTitle.includes('climate')) {
+  } else if (
+    lowerTitle.includes('solar') ||
+    lowerTitle.includes('clean energy') ||
+    lowerTitle.includes('renewable') ||
+    lowerTitle.includes('climate')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.solar;
-  } else if (lowerTitle.includes('equities') || lowerTitle.includes('ngx') || lowerTitle.includes('stock exchange') || lowerTitle.includes('shares')) {
+  } else if (
+    lowerTitle.includes('equities') ||
+    lowerTitle.includes('ngx') ||
+    lowerTitle.includes('stock exchange') ||
+    lowerTitle.includes('shares')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.equities;
-  } else if (lowerTitle.includes('inflation') || lowerTitle.includes('bank') || lowerTitle.includes('cbn') || lowerTitle.includes('naira') || lowerTitle.includes('interest rate') || lowerTitle.includes('fx')) {
+  } else if (
+    lowerTitle.includes('inflation') ||
+    lowerTitle.includes('bank') ||
+    lowerTitle.includes('cbn') ||
+    lowerTitle.includes('naira') ||
+    lowerTitle.includes('interest rate') ||
+    lowerTitle.includes('fx') ||
+    lowerTitle.includes('liquidity')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.finance;
-  } else if (lowerTitle.includes('asuu') || lowerTitle.includes('university') || lowerTitle.includes('student') || lowerTitle.includes('academic') || lowerTitle.includes('lecturer') || lowerTitle.includes('higher institution') || lowerTitle.includes('cadet') || lowerTitle.includes('graduate')) {
+  } else if (
+    lowerTitle.includes('asuu') ||
+    lowerTitle.includes('university') ||
+    lowerTitle.includes('student') ||
+    lowerTitle.includes('academic') ||
+    lowerTitle.includes('lecturer') ||
+    lowerTitle.includes('higher institution') ||
+    lowerTitle.includes('cadet') ||
+    lowerTitle.includes('graduate')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.education;
-  } else if (lowerTitle.includes('military') || lowerTitle.includes('army') || lowerTitle.includes('troops') || lowerTitle.includes('defence academy') || lowerTitle.includes('weapons depot') || lowerTitle.includes('blast') || lowerTitle.includes('security')) {
+  } else if (
+    lowerTitle.includes('military') ||
+    lowerTitle.includes('army') ||
+    lowerTitle.includes('troops') ||
+    lowerTitle.includes('defence academy') ||
+    lowerTitle.includes('fansan yamma') ||
+    lowerTitle.includes('security')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.defense;
-  } else if (lowerTitle.includes('bus') || lowerTitle.includes('transit') || lowerTitle.includes('rail') || lowerTitle.includes('highway') || lowerTitle.includes('commuter') || lowerTitle.includes('transport')) {
+  } else if (
+    lowerTitle.includes('bus') ||
+    lowerTitle.includes('transit') ||
+    lowerTitle.includes('rail') ||
+    lowerTitle.includes('highway') ||
+    lowerTitle.includes('commuter') ||
+    lowerTitle.includes('transport')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.transit;
-  } else if (lowerTitle.includes('building') || lowerTitle.includes('collapse') || lowerTitle.includes('demolition') || lowerTitle.includes('construction') || lowerTitle.includes('estate')) {
+  } else if (
+    lowerTitle.includes('building') ||
+    lowerTitle.includes('collapse') ||
+    lowerTitle.includes('demolition') ||
+    lowerTitle.includes('construction') ||
+    lowerTitle.includes('estate')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.construction;
-  } else if (lowerTitle.includes('flood') || lowerTitle.includes('rain') || lowerTitle.includes('storm') || lowerTitle.includes('disaster')) {
+  } else if (
+    lowerTitle.includes('flood') ||
+    lowerTitle.includes('rain') ||
+    lowerTitle.includes('storm') ||
+    lowerTitle.includes('disaster')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.flood;
-  } else if (lowerTitle.includes('hospital') || lowerTitle.includes('poison') || lowerTitle.includes('health') || lowerTitle.includes('medical') || lowerTitle.includes('disease') || lowerTitle.includes('dead') || lowerTitle.includes('died') || lowerTitle.includes('injured')) {
+  } else if (
+    lowerTitle.includes('hospital') ||
+    lowerTitle.includes('health') ||
+    lowerTitle.includes('medical') ||
+    lowerTitle.includes('clinical') ||
+    lowerTitle.includes('disease') ||
+    lowerTitle.includes('malaria') ||
+    lowerTitle.includes('cholera')
+  ) {
+    // Legitimate medical & healthcare stories ONLY
     matchedStock = NON_HUMAN_STOCK_ASSETS.health;
-  } else if (lowerTitle.includes('food') || lowerTitle.includes('palm oil') || lowerTitle.includes('palm wine') || lowerTitle.includes('farm') || lowerTitle.includes('market') || lowerTitle.includes('crop')) {
+  } else if (
+    lowerTitle.includes('food') ||
+    lowerTitle.includes('palm oil') ||
+    lowerTitle.includes('palm wine') ||
+    lowerTitle.includes('farm') ||
+    lowerTitle.includes('market') ||
+    lowerTitle.includes('crop') ||
+    lowerTitle.includes('herbal mixture') ||
+    lowerTitle.includes('consumer protection')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.agriculture;
-  } else if (lowerTitle.includes('aviation') || lowerTitle.includes('flight') || lowerTitle.includes('airline') || lowerTitle.includes('airport') || lowerTitle.includes('plane')) {
+  } else if (
+    lowerTitle.includes('aviation') ||
+    lowerTitle.includes('flight') ||
+    lowerTitle.includes('airline') ||
+    lowerTitle.includes('airport') ||
+    lowerTitle.includes('plane')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.aviation;
-  } else if (lowerTitle.includes('phone') || lowerTitle.includes('smartphone') || lowerTitle.includes('apple') || lowerTitle.includes('samsung') || lowerTitle.includes('gadget')) {
+  } else if (
+    lowerTitle.includes('phone') ||
+    lowerTitle.includes('smartphone') ||
+    lowerTitle.includes('apple') ||
+    lowerTitle.includes('samsung') ||
+    lowerTitle.includes('gadget')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.mobile;
-  } else if (lowerTitle.includes('export') || /\bports?\b/i.test(lowerTitle) || lowerTitle.includes('customs') || lowerTitle.includes('cargo') || lowerTitle.includes('trade surplus')) {
+  } else if (
+    lowerTitle.includes('export') ||
+    /\bports?\b/i.test(lowerTitle) ||
+    lowerTitle.includes('customs') ||
+    lowerTitle.includes('cargo') ||
+    lowerTitle.includes('trade surplus')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.trade;
-  } else if (lowerTitle.includes('telecom') || lowerTitle.includes('broadband') || lowerTitle.includes('fintech') || /\bdata\b/i.test(lowerTitle) || lowerTitle.includes('software') || lowerTitle.includes('mtn')) {
+  } else if (
+    lowerTitle.includes('telecom') ||
+    lowerTitle.includes('broadband') ||
+    lowerTitle.includes('fintech') ||
+    /\bdata\b/i.test(lowerTitle) ||
+    lowerTitle.includes('software') ||
+    lowerTitle.includes('mtn') ||
+    lowerTitle.includes('3mtt') ||
+    lowerTitle.includes('idice') ||
+    lowerTitle.includes('innovators')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.tech;
-  } else if (lowerTitle.includes('boxing') || lowerTitle.includes('heavyweight') || lowerTitle.includes('joshua') || lowerTitle.includes('fury') || lowerTitle.includes('bout')) {
+  } else if (
+    lowerTitle.includes('boxing') ||
+    lowerTitle.includes('heavyweight') ||
+    lowerTitle.includes('joshua') ||
+    lowerTitle.includes('fury') ||
+    lowerTitle.includes('bout')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.boxing;
-  } else if (category === 'cat_sports' || lowerTitle.includes('league') || lowerTitle.includes('tournament') || lowerTitle.includes('stadium') || lowerTitle.includes('match') || /\bcup\b/i.test(lowerTitle) || lowerTitle.includes('coach')) {
+  } else if (
+    category === 'cat_sports' ||
+    lowerTitle.includes('league') ||
+    lowerTitle.includes('tournament') ||
+    lowerTitle.includes('stadium') ||
+    lowerTitle.includes('match') ||
+    /\bcup\b/i.test(lowerTitle) ||
+    lowerTitle.includes('coach')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.stadium;
-  } else if (category === 'cat_world' || lowerTitle.includes('summit') || lowerTitle.includes('un ') || lowerTitle.includes('treaty') || lowerTitle.includes('unga') || lowerTitle.includes('north korea') || lowerTitle.includes('diplomacy') || lowerTitle.includes('intelligence')) {
+  } else if (
+    category === 'cat_world' ||
+    lowerTitle.includes('summit') ||
+    lowerTitle.includes('un ') ||
+    lowerTitle.includes('treaty') ||
+    lowerTitle.includes('unga') ||
+    lowerTitle.includes('north korea') ||
+    lowerTitle.includes('diplomacy') ||
+    lowerTitle.includes('intelligence')
+  ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.summit;
   } else {
     matchedStock = NON_HUMAN_STOCK_ASSETS.governance;

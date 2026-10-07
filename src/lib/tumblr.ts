@@ -176,14 +176,25 @@ export async function postToTumblr(payload: TumblrPostPayload): Promise<TumblrPu
   bodyHtml += `<hr />`;
   bodyHtml += `<p><em>Read the full verified report on 9jaBeacon:</em> <a href="${payload.canonicalUrl}" target="_blank" rel="noopener noreferrer">${payload.canonicalUrl}</a></p>`;
 
-  const bodyParams: Record<string, string> = {
-    type: 'text',
-    title: payload.title,
-    body: bodyHtml,
-    tags: cleanTags,
-    format: 'html',
-    canonical_url: payload.canonicalUrl,
-  };
+  const hasImage = Boolean(payload.imageUrl && payload.imageUrl.startsWith('http'));
+  const bodyParams: Record<string, string> = hasImage
+    ? {
+        type: 'photo',
+        source: payload.imageUrl!,
+        caption: bodyHtml,
+        link_url: payload.canonicalUrl,
+        tags: cleanTags,
+        format: 'html',
+        canonical_url: payload.canonicalUrl,
+      }
+    : {
+        type: 'text',
+        title: payload.title,
+        body: bodyHtml,
+        tags: cleanTags,
+        format: 'html',
+        canonical_url: payload.canonicalUrl,
+      };
 
   // Attempt strategies:
   // Strategy 1: OAuth 1.0a HMAC-SHA1 signed with full domain (e.g. 9jabeacon.tumblr.com)

@@ -3,6 +3,7 @@ import type { Article, Category, Source, AutomationSetting, AutomationLog, Artic
 import { initialCategories, initialArticles, initialSources, initialVideos } from './seed-data';
 import { INITIAL_PUBLISHERS } from './publishers-data';
 import { executeD1Query } from './d1-sync';
+import { getContextualThematicImage } from './thematic-image';
 
 let localSqliteDb: any = null;
 
@@ -710,37 +711,8 @@ function formatArticle(art: any): Article {
     !imageUrl.startsWith('http');
 
   if (isHotlinkBlocked) {
-    const fallbackMap: Record<string, string[]> = {
-      cat_money_hustle: [
-        'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
-      ],
-      cat_sports: [
-        'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1489944445391-11dd35574549?auto=format&fit=crop&w=1200&q=80',
-      ],
-      cat_naija_news: [
-        'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1579208575657-c595a05383b7?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=1200&q=80',
-      ],
-      cat_world: [
-        'https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
-      ],
-    };
-
-    const targetPool = fallbackMap[art.category_id] ||
-      fallbackMap[catSlug === 'business' ? 'cat_money_hustle' : catSlug === 'sports' ? 'cat_sports' : catSlug === 'world' ? 'cat_world' : 'cat_naija_news'] ||
-      fallbackMap.cat_naija_news;
-    const hash = (art.id || title || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
-    imageUrl = targetPool[Math.abs(hash) % targetPool.length];
+    const thematic = getContextualThematicImage(title, art.category_id || catSlug, art.slug);
+    imageUrl = thematic.imageUrl;
   }
 
   return {
