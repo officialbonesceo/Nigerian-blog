@@ -38,14 +38,21 @@ async function main() {
 
   if (!blogId) {
     console.error('❌ Missing TUMBLR_BLOG_IDENTIFIER (e.g. 9jabeacon.tumblr.com).');
-    console.error('   Please configure this secret in GitHub Actions, .env, or in the 9jaBeacon Admin Panel.');
+    console.error('   Please configure this secret in GitHub Actions Secrets as TUMBLR_BLOG_IDENTIFIER.');
     process.exit(1);
   }
+
+  console.log(`📡 Blog Identifier: ${blogId}`);
+  console.log(`🔑 Credentials Detected:`);
+  console.log(`   - Consumer Key:    ${consumerKey ? '✅ Set (' + consumerKey.slice(0, 6) + '...)' : '❌ Not set'}`);
+  console.log(`   - Consumer Secret: ${consumerSecret ? '✅ Set' : '❌ Not set'}`);
+  console.log(`   - Token:           ${token ? '✅ Set (' + token.slice(0, 6) + '...)' : '❌ Not set'}`);
+  console.log(`   - Token Secret:    ${tokenSecret ? '✅ Set' : '❌ Not set'}`);
 
   if (!token && !consumerKey) {
     console.error('❌ Missing Tumblr credentials.');
     console.error('   Please configure TUMBLR_CONSUMER_KEY, TUMBLR_CONSUMER_SECRET, TUMBLR_TOKEN, TUMBLR_TOKEN_SECRET');
-    console.error('   or TUMBLR_ACCESS_TOKEN in GitHub Actions Secrets, .env, or in the Admin Panel.');
+    console.error('   or TUMBLR_ACCESS_TOKEN in GitHub Actions Secrets.');
     process.exit(1);
   }
 
@@ -130,6 +137,15 @@ async function main() {
     } catch {}
   } else {
     console.error(`❌ Tumblr syndication error: ${res.error}`);
+    console.error('\n🛠️ Tumblr Authentication Troubleshooting Checklist:');
+    console.error('   1. Verify TUMBLR_BLOG_IDENTIFIER in GitHub Secrets matches your blog (e.g. 9jabeacon.tumblr.com or 9jabeacon).');
+    console.error('   2. If using OAuth 1.0a, ensure all 4 keys are set in GitHub Secrets without leading/trailing spaces:');
+    console.error('      - TUMBLR_CONSUMER_KEY (OAuth Consumer Key)');
+    console.error('      - TUMBLR_CONSUMER_SECRET (OAuth Consumer Secret)');
+    console.error('      - TUMBLR_TOKEN (OAuth Access Token)');
+    console.error('      - TUMBLR_TOKEN_SECRET (OAuth Token Secret)');
+    console.error('   3. If using OAuth 2.0 Bearer token: Ensure TUMBLR_TOKEN or TUMBLR_ACCESS_TOKEN is an active token.');
+    console.error('   4. Check your Tumblr App Permissions at https://www.tumblr.com/oauth/apps to ensure Write permissions are enabled.');
     process.exit(1);
   }
 }

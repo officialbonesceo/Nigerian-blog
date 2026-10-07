@@ -2,9 +2,9 @@
  * Tumblr Autonomous Syndication Engine for 9jaBeacon
  * 
  * Supports Tumblr API v2 publishing:
- * - OAuth 2.0 / Bearer Token authorization
- * - OAuth 1.0a HMAC-SHA1 signed requests
- * - Rich NPF (Neue Post Format) & Legacy Text/Photo formats
+ * - RFC 5849 / RFC 3986 compliant OAuth 1.0a HMAC-SHA1 signed requests
+ * - OAuth 2.0 / Bearer Token authorization fallback
+ * - Auto-retries across auth strategies to eliminate false-negative 401s
  * - Auto-tags posts (#Nigeria, #NaijaNews, #9jaBeacon, Category)
  * - Embeds high-res canonical image, punchy excerpt, and backlink to 9jaBeacon
  */
@@ -35,6 +35,15 @@ export interface TumblrPublishResult {
 }
 
 /**
+ * Strict RFC 3986 percent-encoding required by OAuth 1.0a (RFC 5849 §3.6).
+ * Standard JavaScript encodeURIComponent leaves ! ' ( ) * unescaped,
+ * which causes HMAC-SHA1 signature mismatches and HTTP 401 Unauthorized.
+ */
+export function rfc3986(str: string): string {
+  return encodeURIComponent(str).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+}
+
+/**
  * Generates an OAuth 1.0a Authorization header for Tumblr v2 endpoints.
  */
 function generateOAuth1Header(params: {
@@ -45,7 +54,7 @@ function generateOAuth1Header(params: {
   token: string;
   tokenSecret: string;
   bodyParams?: Record<string, string>;
-}): string {
+}): { authHeader: string; signedBody: string } {
   const { method, url, consumerKey, consumerSecret, token, tokenSecret, bodyParams = {} } = params;
 
   const oauthParams: Record<string, string> = {
@@ -57,19 +66,22 @@ function generateOAuth1Header(params: {
     oauth_version: '1.0',
   };
 
-  const allParams = { ...oauthParams, ...bodyParams };
+  // Collect all parameters (OAuth header parameters + form body parameters)
+  const allParams: Record<string, string> = { ...oauthParams, ...bodyParams };
   const sortedKeys = Object.keys(allParams).sort();
+
   const paramString = sortedKeys
-    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(allParams[k])}`)
+    .map((k) => `${rfc3986(k)}=${rfc3986(allParams[k])}`)
     .join('&');
 
+  const cleanUrl = url.split('?')[0];
   const baseString = [
     method.toUpperCase(),
-    encodeURIComponent(url.split('?')[0]),
-    encodeURIComponent(paramString),
+    rfc3986(cleanUrl),
+    rfc3986(paramString),
   ].join('&');
 
-  const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`;
+  const signingKey = `${rfc3986(consumerSecret)}&${rfc3986(tokenSecret)}`;
   const signature = crypto
     .createHmac('sha1', signingKey)
     .update(baseString)
@@ -79,9 +91,17 @@ function generateOAuth1Header(params: {
 
   const headerParts = Object.keys(oauthParams)
     .sort()
-    .map((k) => `${encodeURIComponent(k)}="${encodeURIComponent(oauthParams[k])}"`);
+    .map((k) => `${rfc3986(k)}="${rfc3986(oauthParams[k])}"`);
 
-  return `OAuth ${headerParts.join(', ')}`;
+  const authHeader = `OAuth ${headerParts.join(', ')}`;
+
+  // The request body MUST use the exact same RFC 3986 encoding (spaces as %20, not +)
+  const bodyKeys = Object.keys(bodyParams).sort();
+  const signedBody = bodyKeys
+    .map((k) => `${rfc3986(k)}=${rfc3986(bodyParams[k])}`)
+    .join('&');
+
+  return { authHeader, signedBody };
 }
 
 /**
@@ -96,22 +116,25 @@ export function normalizeTumblrBlog(blog: string): string {
 }
 
 /**
- * Publishes a verified news wire story to Tumblr.
+ * Publishes a verified news wire story to Tumblr with automatic fallback across auth methods.
  */
 export async function postToTumblr(payload: TumblrPostPayload): Promise<TumblrPublishResult> {
-  const blogId = normalizeTumblrBlog(
+  const rawBlog = (
     payload.blogIdentifier ||
     process.env.TUMBLR_BLOG_IDENTIFIER ||
     process.env.TUMBLR_BLOG_NAME ||
     '9jabeacon.tumblr.com'
-  );
+  ).trim();
 
-  const consumerKey = payload.consumerKey || process.env.TUMBLR_CONSUMER_KEY || '';
-  const consumerSecret = payload.consumerSecret || process.env.TUMBLR_CONSUMER_SECRET || '';
-  const token = payload.token || payload.accessToken || process.env.TUMBLR_TOKEN || process.env.TUMBLR_ACCESS_TOKEN || '';
-  const tokenSecret = payload.tokenSecret || process.env.TUMBLR_TOKEN_SECRET || '';
+  const blogId = normalizeTumblrBlog(rawBlog);
+  const shortBlogId = rawBlog.replace(/\.tumblr\.com$/i, '');
 
-  if (!blogId) {
+  const consumerKey = (payload.consumerKey || process.env.TUMBLR_CONSUMER_KEY || '').trim();
+  const consumerSecret = (payload.consumerSecret || process.env.TUMBLR_CONSUMER_SECRET || '').trim();
+  const token = (payload.token || payload.accessToken || process.env.TUMBLR_TOKEN || process.env.TUMBLR_ACCESS_TOKEN || '').trim();
+  const tokenSecret = (payload.tokenSecret || process.env.TUMBLR_TOKEN_SECRET || '').trim();
+
+  if (!rawBlog) {
     return { success: false, error: 'Missing TUMBLR_BLOG_IDENTIFIER (e.g. 9jabeacon.tumblr.com)' };
   }
 
@@ -144,7 +167,6 @@ export async function postToTumblr(payload: TumblrPostPayload): Promise<TumblrPu
   bodyHtml += `<p><strong>${cleanSummary}</strong></p>`;
 
   if (payload.content) {
-    // Include excerpt paragraph from content if available
     const snippet = payload.content.replace(/<[^>]*>?/gm, '').slice(0, 350).trim();
     if (snippet && snippet !== cleanSummary) {
       bodyHtml += `<p>${snippet}...</p>`;
@@ -154,67 +176,151 @@ export async function postToTumblr(payload: TumblrPostPayload): Promise<TumblrPu
   bodyHtml += `<hr />`;
   bodyHtml += `<p><em>Read the full verified report on 9jaBeacon:</em> <a href="${payload.canonicalUrl}" target="_blank" rel="noopener noreferrer">${payload.canonicalUrl}</a></p>`;
 
-  const endpoint = `https://api.tumblr.com/v2/blog/${blogId}/post`;
+  const bodyParams: Record<string, string> = {
+    type: 'text',
+    title: payload.title,
+    body: bodyHtml,
+    tags: cleanTags,
+    format: 'html',
+    canonical_url: payload.canonicalUrl,
+  };
 
-  try {
-    let authHeader = '';
-    const bodyParams: Record<string, string> = {
-      type: 'text',
-      title: payload.title,
-      body: bodyHtml,
-      tags: cleanTags,
-      format: 'html',
-      canonical_url: payload.canonicalUrl,
-    };
+  // Attempt strategies:
+  // Strategy 1: OAuth 1.0a HMAC-SHA1 signed with full domain (e.g. 9jabeacon.tumblr.com)
+  // Strategy 2: OAuth 1.0a HMAC-SHA1 signed with short blog name (e.g. 9jabeacon)
+  // Strategy 3: OAuth 2.0 Bearer token (Authorization: Bearer <token>)
+  // Strategy 4: Bearer token with JSON NPF endpoint
 
-    if (consumerKey && consumerSecret && token && tokenSecret) {
-      // Full OAuth 1.0a flow
-      authHeader = generateOAuth1Header({
+  const candidates: Array<{
+    name: string;
+    endpoint: string;
+    method: 'POST';
+    headers: Record<string, string>;
+    body: string;
+  }> = [];
+
+  // If full OAuth 1.0a credentials provided
+  if (consumerKey && consumerSecret && token && tokenSecret) {
+    const ep1 = `https://api.tumblr.com/v2/blog/${blogId}/post`;
+    const { authHeader: h1, signedBody: b1 } = generateOAuth1Header({
+      method: 'POST',
+      url: ep1,
+      consumerKey,
+      consumerSecret,
+      token,
+      tokenSecret,
+      bodyParams,
+    });
+    candidates.push({
+      name: 'OAuth 1.0a (Full Blog Identifier)',
+      endpoint: ep1,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': h1,
+      },
+      body: b1,
+    });
+
+    if (shortBlogId !== blogId) {
+      const ep2 = `https://api.tumblr.com/v2/blog/${shortBlogId}/post`;
+      const { authHeader: h2, signedBody: b2 } = generateOAuth1Header({
         method: 'POST',
-        url: endpoint,
+        url: ep2,
         consumerKey,
         consumerSecret,
         token,
         tokenSecret,
         bodyParams,
       });
-    } else if (token) {
-      // OAuth 2.0 Bearer token flow
-      authHeader = `Bearer ${token}`;
+      candidates.push({
+        name: 'OAuth 1.0a (Short Blog Name)',
+        endpoint: ep2,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': h2,
+        },
+        body: b2,
+      });
     }
+  }
 
-    const formBody = new URLSearchParams(bodyParams).toString();
-
-    const response = await fetch(endpoint, {
+  // If token is present, also add OAuth 2.0 Bearer strategies
+  if (token) {
+    candidates.push({
+      name: 'OAuth 2.0 Bearer Token (Form)',
+      endpoint: `https://api.tumblr.com/v2/blog/${blogId}/post`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Authorization': `Bearer ${token}`,
       },
-      body: formBody,
+      body: new URLSearchParams(bodyParams).toString(),
     });
 
-    const data: any = await response.json();
+    // Neue Post Format (NPF) JSON payload
+    const npfBody = JSON.stringify({
+      content: [
+        ...(payload.imageUrl ? [{ type: 'image', media: [{ url: payload.imageUrl }] }] : []),
+        { type: 'text', subtype: 'heading1', text: payload.title },
+        { type: 'text', text: cleanSummary },
+        { type: 'text', subtype: 'link', text: `Read on 9jaBeacon: ${payload.canonicalUrl}`, url: payload.canonicalUrl },
+      ],
+      tags: cleanTags,
+    });
 
-    if (response.ok && (data?.meta?.status === 201 || data?.meta?.status === 200 || data?.response?.id)) {
-      const postId = data?.response?.id || data?.response?.id_string;
-      const postUrl = `https://${blogId}/post/${postId}`;
-      return {
-        success: true,
-        postId,
-        postUrl,
-      };
-    }
-
-    const errorMessage = data?.meta?.msg || data?.response?.errors?.[0]?.message || response.statusText || 'Tumblr publication failed';
-    return {
-      success: false,
-      error: `Tumblr API HTTP ${response.status}: ${errorMessage}`,
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      error: `Network exception during Tumblr publish: ${err.message}`,
-    };
+    candidates.push({
+      name: 'OAuth 2.0 Bearer Token (NPF JSON)',
+      endpoint: `https://api.tumblr.com/v2/blog/${blogId}/posts`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: npfBody,
+    });
   }
+
+  let lastError = 'No strategies available';
+
+  for (const strategy of candidates) {
+    try {
+      console.log(`     🔄 Attempting Tumblr dispatch via: ${strategy.name}...`);
+      const response = await fetch(strategy.endpoint, {
+        method: strategy.method,
+        headers: strategy.headers,
+        body: strategy.body,
+      });
+
+      const data: any = await response.json().catch(() => ({}));
+
+      if (response.ok && (data?.meta?.status === 201 || data?.meta?.status === 200 || data?.response?.id)) {
+        const postId = data?.response?.id || data?.response?.id_string;
+        const postUrl = `https://${blogId}/post/${postId}`;
+        return {
+          success: true,
+          postId,
+          postUrl,
+        };
+      }
+
+      const msg = data?.meta?.msg || data?.response?.errors?.[0]?.message || data?.errors?.[0]?.message || response.statusText;
+      lastError = `Tumblr HTTP ${response.status} (${strategy.name}): ${msg || 'Unauthorized/Forbidden'}`;
+      console.warn(`     ⚠️ Strategy [${strategy.name}] returned: ${lastError}`);
+
+      // If error is NOT a 401/404 authentication error (e.g. rate limit 429), break early
+      if (response.status !== 401 && response.status !== 404 && response.status !== 403) {
+        break;
+      }
+    } catch (err: any) {
+      lastError = `Network error on ${strategy.name}: ${err.message}`;
+      console.warn(`     ⚠️ ${lastError}`);
+    }
+  }
+
+  return {
+    success: false,
+    error: lastError,
+  };
 }

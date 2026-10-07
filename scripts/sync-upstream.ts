@@ -128,6 +128,29 @@ async function main() {
   const logColumns = ['id','event_type','source_id','message','level','created_at'];
 
   const articleCount = await insertMissing('articles', articleColumns, articleRows);
+
+  // Synchronize and heal images on existing articles in remote Cloudflare D1
+  console.log('🖼️ Verifying and healing article images in upstream Cloudflare D1...');
+  let updatedImages = 0;
+  for (const art of articleRows) {
+    const img = value(art, 'image_url');
+    if (img && typeof img === 'string' && img.startsWith('https://')) {
+      try {
+        await run(
+          `UPDATE articles SET 
+             image_url = ?, 
+             image_caption = COALESCE(image_caption, ?), 
+             image_credit = COALESCE(image_credit, ?) 
+           WHERE id = ? 
+             AND (image_url IS NULL OR image_url = '' OR image_url LIKE '%wikimedia.org%' OR image_url LIKE '%channelstv.com%' OR image_url LIKE '%legit.ng%')`,
+          [img, value(art, 'image_caption'), value(art, 'image_credit'), value(art, 'id')]
+        );
+        updatedImages++;
+      } catch {}
+    }
+  }
+  console.log(`🖼️ Remote D1 image check complete: ${updatedImages} article images verified/healed.`);
+
   const rejectionCount = await insertMissing('rejected_articles', rejectionColumns, rejections);
   const logCount = await insertMissing('automation_logs', logColumns, logs);
 

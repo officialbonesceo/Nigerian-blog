@@ -128,11 +128,16 @@ async function main() {
     snapshots.articles = await fetchRows('articles').catch(() => initialArticles as any);
   }
 
-  // Parent tables first, then articles.
-  syncTable('categories', snapshots.categories);
-  syncTable('sources', snapshots.sources);
-  syncTable('automation_settings', snapshots.automation_settings);
-  syncTable('articles', snapshots.articles);
+  // Temporarily disable foreign keys during ephemeral cache sync
+  db.pragma('foreign_keys = OFF');
+  try {
+    syncTable('categories', snapshots.categories);
+    syncTable('sources', snapshots.sources);
+    syncTable('automation_settings', snapshots.automation_settings);
+    syncTable('articles', snapshots.articles);
+  } finally {
+    db.pragma('foreign_keys = ON');
+  }
 
   console.log('D1 snapshot loaded successfully. Local SQLite is build-only and will never be committed.');
   db.close();
