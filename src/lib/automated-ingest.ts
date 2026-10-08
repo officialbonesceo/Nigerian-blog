@@ -30,6 +30,8 @@ import { cleanAndFormatArticleHtml } from './content-formatter';
 import { isPublisherLogoOrBanner, resolveEditorialImage } from './editorial-image';
 import { postToBluesky } from './bluesky';
 import { postToBuffer } from './buffer';
+import { postToTumblr } from './tumblr';
+import { postToThreads } from './threads';
 
 export interface FeedItemValidated {
   title: string;

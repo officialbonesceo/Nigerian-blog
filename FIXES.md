@@ -65,6 +65,25 @@ System falls back to AI-generated editorial image or `/fallback-image.svg`.
 - **Video Google Sitemap**:
   - Google Video XML sitemap tags (`<video:video>`) added to `src/pages/sitemap.xml.ts`.
 
+### 9. Context-Accurate News Imagery & Social Syndication Engine
+- **Image Relevance Overhaul**:
+  - Completely eradicated mismatched medical syringe photos on arrest/crime stories.
+  - Strict priority isolation: Police, EFCC, ICPC, arrest, murder, robbery, and court stories are evaluated first and mapped to courtroom gavels, scales of justice, and verified law enforcement assets.
+  - Health category strictly isolated to genuine healthcare, clinical medicine, and hospitals with modern medical center photography.
+  - Re-aligned all 38 existing database articles with authentic, verified imagery.
+- **Dynamic Stock Photo APIs (Unsplash & Pexels)**:
+  - Added support for `UNSPLASH_ACCESS_KEY` and `PEXELS_API_KEY` with automated topic keyword query generation.
+  - Integrated fallback to curated authentic photography and Wikimedia Commons.
+- **Tumblr Social Syndication (Image Guarantee)**:
+  - Fixed Tumblr dispatch to guarantee valid raster HTTPS image (`source`) and rich HTML layout with prominent backlinks to 9jaBeacon.
+  - Added Neue Post Format (NPF) image blocks.
+- **Bluesky & Meta Threads Syndication**:
+  - Automated rich preview cards with verified image blobs linking directly back to 9jaBeacon canonical articles.
+- **Homepage Currency Footprint & Google SEO**:
+  - Moved currency trends to a compact, non-intrusive strip at the down part of the home page.
+  - Added prominent action button leading to the dedicated `/market-rates` hub.
+  - Injected Schema.org `FinancialService` and `WebPage` JSON-LD microdata for Google search ranking.
+
 ## 🔄 Still Recommended (Bigger Work)
 
 

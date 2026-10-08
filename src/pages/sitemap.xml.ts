@@ -40,9 +40,17 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
   siteBase = siteBase.replace(/\/+$/, '');
   const siteName = settings.site_name || '9jaBeacon';
 
-  const categoryUrls = categories.map(c => `
+  const seenSlugs = new Set<string>();
+  const categoryUrls = categories
+    .map(c => (c.slug === 'money-hustle' ? 'business' : c.slug))
+    .filter(slug => {
+      if (seenSlugs.has(slug)) return false;
+      seenSlugs.add(slug);
+      return true;
+    })
+    .map(slug => `
   <url>
-    <loc>${siteBase}/category/${escapeXml(c.slug)}</loc>
+    <loc>${siteBase}/category/${escapeXml(slug)}</loc>
     <changefreq>hourly</changefreq>
     <priority>0.85</priority>
   </url>`).join('');

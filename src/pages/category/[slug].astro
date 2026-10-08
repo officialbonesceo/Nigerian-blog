@@ -7,6 +7,7 @@ import { getD1, getCategoryBySlug, getArticles, getCategories } from '../../lib/
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/');
+if (slug === 'money-hustle') return Astro.redirect('/category/business', 301);
 const d1 = getD1(Astro.locals);
 const category = await getCategoryBySlug(d1, slug);
 if (!category) return Astro.redirect('/404');

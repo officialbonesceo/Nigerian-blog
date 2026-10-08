@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Disallow: /bonesceo/admin
+Disallow: /admin
+Disallow: /api/admin/
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-News
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: msnbot
+Allow: /
+
+Sitemap: https://www.9jabeacon.name.ng/sitemap.xml
+Sitemap: https://www.9jabeacon.name.ng/news-sitemap.xml

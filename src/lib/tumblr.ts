@@ -145,6 +145,26 @@ export async function postToTumblr(payload: TumblrPostPayload): Promise<TumblrPu
     };
   }
 
+  // Guarantee valid raster HTTPS image (Tumblr photo posts reject SVGs and relative paths)
+  let validImageUrl = (payload.imageUrl || '').trim();
+  if (
+    !validImageUrl ||
+    validImageUrl.startsWith('data:') ||
+    validImageUrl.includes('.svg') ||
+    !validImageUrl.startsWith('http')
+  ) {
+    const cat = (payload.category || '').toLowerCase();
+    if (cat.includes('sport')) {
+      validImageUrl = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80';
+    } else if (cat.includes('business') || cat.includes('money') || cat.includes('economy')) {
+      validImageUrl = 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80';
+    } else if (cat.includes('tech')) {
+      validImageUrl = 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80';
+    } else {
+      validImageUrl = 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=1200&q=80';
+    }
+  }
+
   // Build clean tags
   const tagsList = ['Nigeria', 'NaijaNews', '9jaBeacon', 'BreakingNews'];
   if (payload.category) {
@@ -159,28 +179,29 @@ export async function postToTumblr(payload: TumblrPostPayload): Promise<TumblrPu
   const cleanSummary = (payload.summary || '').replace(/<[^>]*>?/gm, '').trim();
   let bodyHtml = '';
 
-  if (payload.imageUrl) {
-    bodyHtml += `<p><img src="${payload.imageUrl}" alt="${payload.title.replace(/"/g, '&quot;')}" style="max-width:100%;height:auto;border-radius:8px;" /></p>`;
+  if (validImageUrl) {
+    bodyHtml += `<p><a href="${payload.canonicalUrl}" target="_blank" rel="noopener noreferrer"><img src="${validImageUrl}" alt="${payload.title.replace(/"/g, '&quot;')}" style="max-width:100%;height:auto;border-radius:10px;display:block;margin-bottom:12px;" /></a></p>`;
   }
 
-  bodyHtml += `<h3>${payload.title}</h3>`;
+  bodyHtml += `<h2><a href="${payload.canonicalUrl}" target="_blank" rel="noopener noreferrer" style="color:#0f172a;text-decoration:none;">${payload.title}</a></h2>`;
   bodyHtml += `<p><strong>${cleanSummary}</strong></p>`;
 
+  let snippet = '';
   if (payload.content) {
-    const snippet = payload.content.replace(/<[^>]*>?/gm, '').slice(0, 350).trim();
+    snippet = payload.content.replace(/<[^>]*>?/gm, '').slice(0, 400).trim();
     if (snippet && snippet !== cleanSummary) {
       bodyHtml += `<p>${snippet}...</p>`;
     }
   }
 
-  bodyHtml += `<hr />`;
-  bodyHtml += `<p><em>Read the full verified report on 9jaBeacon:</em> <a href="${payload.canonicalUrl}" target="_blank" rel="noopener noreferrer">${payload.canonicalUrl}</a></p>`;
+  bodyHtml += `<hr style="margin:20px 0;border:none;border-top:1px solid #e2e8f0;" />`;
+  bodyHtml += `<p style="padding:12px 16px;background:#f8fafc;border-left:4px solid #10b981;border-radius:6px;"><strong>Read the complete verified investigative report on 9jaBeacon:</strong><br /><a href="${payload.canonicalUrl}" target="_blank" rel="noopener noreferrer" style="color:#10b981;font-weight:bold;">${payload.canonicalUrl}</a></p>`;
 
-  const hasImage = Boolean(payload.imageUrl && payload.imageUrl.startsWith('http'));
+  const hasImage = Boolean(validImageUrl && validImageUrl.startsWith('http'));
   const bodyParams: Record<string, string> = hasImage
     ? {
         type: 'photo',
-        source: payload.imageUrl!,
+        source: validImageUrl,
         caption: bodyHtml,
         link_url: payload.canonicalUrl,
         tags: cleanTags,
@@ -273,7 +294,7 @@ export async function postToTumblr(payload: TumblrPostPayload): Promise<TumblrPu
     // Neue Post Format (NPF) JSON payload
     const npfBody = JSON.stringify({
       content: [
-        ...(payload.imageUrl ? [{ type: 'image', media: [{ url: payload.imageUrl }] }] : []),
+        ...(validImageUrl ? [{ type: 'image', media: [{ url: validImageUrl }] }] : []),
         { type: 'text', subtype: 'heading1', text: payload.title },
         { type: 'text', text: cleanSummary },
         { type: 'text', subtype: 'link', text: `Read on 9jaBeacon: ${payload.canonicalUrl}`, url: payload.canonicalUrl },

@@ -95,15 +95,29 @@ export async function postToThreads(payload: ThreadsPostPayload): Promise<Thread
     createParams.append('access_token', accessToken);
     createParams.append('text', text);
 
-    // Only attach image if it's a valid HTTPS raster image (Threads rejects SVGs and non-public URLs)
-    const validImage = payload.imageUrl &&
-      payload.imageUrl.startsWith('https://') &&
-      !payload.imageUrl.endsWith('.svg') &&
-      !payload.imageUrl.includes('svg');
+    // Guarantee valid raster HTTPS image (Threads rejects SVGs and non-public URLs)
+    let validImageUrl = (payload.imageUrl || '').trim();
+    if (
+      !validImageUrl ||
+      validImageUrl.startsWith('data:') ||
+      validImageUrl.includes('.svg') ||
+      !validImageUrl.startsWith('http')
+    ) {
+      const cat = (payload.category || '').toLowerCase();
+      if (cat.includes('sport')) {
+        validImageUrl = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80';
+      } else if (cat.includes('business') || cat.includes('money') || cat.includes('economy')) {
+        validImageUrl = 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80';
+      } else if (cat.includes('tech')) {
+        validImageUrl = 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80';
+      } else {
+        validImageUrl = 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=1200&q=80';
+      }
+    }
 
-    if (validImage) {
+    if (validImageUrl) {
       createParams.append('media_type', 'IMAGE');
-      createParams.append('image_url', payload.imageUrl!);
+      createParams.append('image_url', validImageUrl);
     } else {
       createParams.append('media_type', 'TEXT');
     }

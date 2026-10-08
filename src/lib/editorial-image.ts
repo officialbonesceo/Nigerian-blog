@@ -2,6 +2,7 @@
  * 9jaBeacon High-Definition Editorial SVG Generator & Publisher Image Sanitizer
  * Generates vector-crisp editorial cards and filters out publisher watermarks/logos.
  */
+import { GoogleGenAI } from '@google/genai';
 
 export interface EditorialSvgOptions {
   title: string;
@@ -479,6 +480,65 @@ export function extractImageSearchQuery(title: string, category?: string): strin
 }
 
 /**
+ * Uses AI to analyze the news story and decide the optimal visual search keyword
+ * for Unsplash / Pexels image search.
+ * Features:
+ * - Direct Gemini flash model inference.
+ * - Negative prompt enforcement (never outputs syringes for crime/accidents).
+ * - Comprehensive logging of any failure.
+ * - Non-blocking fallback to deterministic rules.
+ */
+export async function extractAiImageSearchQuery(title: string, content?: string, category?: string): Promise<string> {
+  const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
+
+  if (geminiKey) {
+    try {
+      const ai = new GoogleGenAI();
+      const prompt = `Analyze this news article headline, category, and lead context.
+Generate 2 to 4 precise visual keywords in English for an editorial stock photography search (Unsplash/Pexels).
+
+Headline: "${title}"
+Category: "${category || 'Naija News'}"
+Context: "${(content || '').slice(0, 250).replace(/<[^>]+>/g, '').trim()}"
+
+STRICT RULES:
+1. Output ONLY 2 to 4 keywords separated by spaces (e.g. "police arrest law enforcement", "central bank currency market", "boxing championship ring", "commercial airplane flight").
+2. NEVER output "syringe", "needle", "injection", or "vaccine" for crime, arrest, murder, trial, robbery, or poisoning stories!
+3. No punctuation, no markdown, no quotes, no explanations.`;
+
+      const aiPromise = ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+      });
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('AI keyword decision timed out (3500ms)')), 3500)
+      );
+
+      const response: any = await Promise.race([aiPromise, timeoutPromise]);
+      const rawText = (response?.text || '').trim().replace(/["'`.\n\r]/g, ' ').replace(/\s+/g, ' ');
+
+      if (rawText && rawText.length > 2) {
+        // Strict guard against syringes on crime/arrest stories
+        const sanitized = rawText
+          .replace(/\b(syringe|needle|injection|vaccine)\b/gi, 'investigation')
+          .trim();
+        const words = sanitized.split(' ').filter(Boolean).slice(0, 4).join(' ');
+        if (words) {
+          console.log(`🤖 [AI Image Keyword Engine]: Selected "${words}" for "${title.slice(0, 45)}..."`);
+          return words;
+        }
+      }
+    } catch (aiErr: any) {
+      console.warn(`⚠️ [AI Image Keyword Engine Warning]: Decision failed (${aiErr.message || String(aiErr)}). Logging error and using verified deterministic rule-based query.`);
+    }
+  }
+
+  // Deterministic rule-based extraction fallback
+  return extractImageSearchQuery(title, category);
+}
+
+/**
  * Dynamic External Stock Photo Search via Unsplash / Pexels API
  * Activated automatically when UNSPLASH_ACCESS_KEY or PEXELS_API_KEY is supplied.
  */
@@ -588,8 +648,8 @@ export async function resolveEditorialImage(options: {
     }
   }
 
-  // Tier 3: Dynamic stock photo API search (Unsplash or Pexels if configured)
-  const searchQuery = extractImageSearchQuery(title, category);
+  // Tier 3: Dynamic stock photo API search (AI Engine keyword decision with Unsplash / Pexels)
+  const searchQuery = await extractAiImageSearchQuery(title, content, category);
   const dynamicPhoto = await searchDynamicStockPhoto(searchQuery);
   if (dynamicPhoto) {
     return dynamicPhoto;

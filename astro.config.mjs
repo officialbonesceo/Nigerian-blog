@@ -3,6 +3,8 @@ import cloudflare from '@astrojs/cloudflare';
 import tailwind from '@astrojs/tailwind';
 
 export default defineConfig({
+  site: 'https://www.9jabeacon.name.ng',
+  trailingSlash: 'never',
   output: 'server',
   adapter: cloudflare({ imageService: 'cloudflare' }),
   devToolbar: { enabled: false },
