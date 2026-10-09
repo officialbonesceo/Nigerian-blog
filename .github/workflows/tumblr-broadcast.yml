@@ -69,6 +69,9 @@ jobs:
           TARGET_SLUG: ${{ github.event.inputs.article_slug }}
           FORCE_BROADCAST: ${{ github.event.inputs.force }}
           SITE_URL: https://www.9jabeacon.name.ng
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: npx tsx scripts/broadcast-tumblr.ts
 
       - name: 📤 Push Syndication Log to Upstream Datastore

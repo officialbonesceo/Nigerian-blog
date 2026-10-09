@@ -35,6 +35,7 @@ export interface AiSynthesisResult {
   readingTimeMinutes?: number;
   tags?: string[];
   keyTakeaways?: string[];
+  imageSearchKeyword?: string;
   error?: string;
   traceLogs?: string[];
 }
@@ -139,7 +140,8 @@ Return ONLY valid JSON (no markdown fences, strictly parseable):
     "Direct policy or economic impact point",
     "Official stance or regulatory action",
     "Upcoming date or milestone to watch"
-  ]
+  ],
+  "image_search_keyword": "2 to 4 precise English visual keywords for stock photo search (e.g. 'police court gavel', 'central bank money currency', 'football match stadium', 'commercial airplane airport'). Never use medical/syringe terms for crime/arrest stories."
 }`;
 
 export async function synthesizeNewsArticle(
@@ -615,6 +617,7 @@ function parseAiJsonResponse(
   keyTakeaways: string[];
   wordCount: number;
   paragraphCount: number;
+  imageSearchKeyword?: string;
 } | null {
   if (!rawText) return null;
 
@@ -677,6 +680,11 @@ function parseAiJsonResponse(
       ? obj.key_takeaways.map((t: any) => String(t).trim()).filter(Boolean)
       : [];
 
+    const rawImgKeyword = obj.image_search_keyword || obj.imageSearchKeyword || obj.image_keyword;
+    const cleanImgKeyword = (rawImgKeyword && typeof rawImgKeyword === 'string')
+      ? rawImgKeyword.replace(/<[^>]*>/g, '').replace(/["'`]/g, ' ').replace(/\s+/g, ' ').trim()
+      : undefined;
+
     return {
       title: rawTitle,
       summary: summary.trim(),
@@ -686,6 +694,7 @@ function parseAiJsonResponse(
       keyTakeaways: takeaways,
       wordCount,
       paragraphCount,
+      imageSearchKeyword: cleanImgKeyword,
     };
   } catch {
     return null;

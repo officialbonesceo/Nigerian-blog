@@ -356,3 +356,47 @@ export async function postToTumblr(payload: TumblrPostPayload): Promise<TumblrPu
     error: lastError,
   };
 }
+
+/**
+ * Live deduplication check against the Tumblr blog.
+ * Reads recent public posts from the blog's RSS feed to ensure the exact article slug or title
+ * is NOT posted multiple times, eliminating duplicate feed spamming.
+ */
+export async function checkIfUrlAlreadyOnTumblrBlog(
+  blogIdentifier: string,
+  targetSlugOrUrl: string,
+  titleSnippet?: string
+): Promise<{ exists: boolean; postUrl?: string }> {
+  try {
+    const rawBlog = (blogIdentifier || '').trim();
+    if (!rawBlog) return { exists: false };
+    const clean = rawBlog.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').trim();
+    const blogUrl = clean.includes('.') ? clean : `${clean}.tumblr.com`;
+
+    const rssUrl = `https://${blogUrl}/rss`;
+    const res = await fetch(rssUrl, {
+      headers: { 'User-Agent': '9jaBeacon-Deduplication-Checker/1.0' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return { exists: false };
+    const xml = await res.text();
+    const cleanTarget = targetSlugOrUrl.toLowerCase().trim().replace(/^https?:\/\/[^/]+/i, '').replace(/^\/news\//, '');
+
+    // Check if XML body contains the slug
+    if (cleanTarget && cleanTarget.length > 3 && xml.toLowerCase().includes(cleanTarget)) {
+      return { exists: true };
+    }
+
+    // Check if XML title matches title snippet
+    if (titleSnippet && titleSnippet.trim().length > 10) {
+      const cleanTitle = titleSnippet.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').slice(0, 30).trim();
+      if (cleanTitle.length > 8 && xml.toLowerCase().includes(cleanTitle)) {
+        return { exists: true };
+      }
+    }
+
+    return { exists: false };
+  } catch {
+    return { exists: false };
+  }
+}

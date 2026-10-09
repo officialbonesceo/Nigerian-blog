@@ -28,7 +28,7 @@ const isAdmin = token ? verifyAdminToken(token, secretKey).valid : false;
 
 // Videos are currently disabled site-wide
 if (!videosEnabled) {
-  return Astro.redirect('/', 302);
+  return Astro.redirect('/', 301);
 }
 
 const selectedCategory = url.searchParams.get('category') || undefined;

@@ -21,7 +21,12 @@ if (!slug) return Astro.redirect('/');
 
 const d1 = getD1(Astro.locals);
 const article = await getArticleBySlug(d1, slug);
-if (!article) return Astro.redirect('/404');
+if (!article) {
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"/><title>Story Not Found - 9jaBeacon</title><meta name="robots" content="noindex, follow"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" type="image/svg+xml" href="/favicon.svg"/></head><body style="background:#020617;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;text-align:center;"><div style="max-width:440px;"><div style="width:64px;height:64px;border-radius:16px;background:rgba(6,78,59,0.5);border:1px solid rgba(16,185,129,0.3);color:#34d399;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;font-weight:900;">404</div><h1 style="font-size:22px;margin:0 0 8px;">Story Not Found</h1><p style="color:#94a3b8;font-size:14px;margin:0 0 24px;">The news report you requested may have moved or expired.</p><a href="/" style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:14px;">Return to Homepage</a></div></body></html>`, {
+    status: 404,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
+}
 
 // 301 Permanent Redirect if accessed via legacy/un-normalized slug to preserve SEO authority
 if (article.slug && article.slug !== slug) {
@@ -276,8 +281,13 @@ const structuredData = [
       />
       {(article.image_caption || article.image_credit) && (
         <figcaption class="p-3 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-800/80">
-          {article.image_caption || article.title}
-          {article.image_credit && <span class="text-slate-400 dark:text-slate-500"> · Photo / Wire: {article.image_credit}</span>}
+          {article.image_caption && <span>{article.image_caption}</span>}
+          {article.image_credit && (
+            <span class="text-slate-400 dark:text-slate-500">
+              {article.image_caption ? ' · ' : ''}
+              <Fragment set:html={article.image_credit} />
+            </span>
+          )}
         </figcaption>
       )}
     </figure>

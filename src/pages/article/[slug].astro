@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
 const { slug } = Astro.params;
-if (slug) return Astro.redirect(`/news/${slug}`);
-return Astro.redirect('/');
+if (slug) return Astro.redirect(`/news/${slug}`, 301);
+return Astro.redirect('/', 301);
 ---

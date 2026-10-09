@@ -4,7 +4,7 @@
  */
 
 import { db } from '../src/lib/db';
-import { postToTumblr } from '../src/lib/tumblr';
+import { postToTumblr, checkIfUrlAlreadyOnTumblrBlog } from '../src/lib/tumblr';
 
 async function main() {
   console.log('=====================================================');
@@ -81,21 +81,44 @@ async function main() {
     if (force) {
       article = candidateArticles[0];
     } else {
+      console.log(`🔍 Scanning ${candidateArticles.length} recent articles for unsyndicated story...`);
       for (const cand of candidateArticles) {
+        // 1. Check local audit logs
         const logged = db.prepare(`
           SELECT * FROM automation_logs 
           WHERE event_type = 'TUMBLR_PUBLISH_SUCCESS' 
-            AND (source_id = ? OR message LIKE ?)
-        `).get(cand.id, `%${cand.slug}%`);
+            AND (source_id = ? OR source_id = ? OR message LIKE ? OR message LIKE ?)
+        `).get(cand.id, cand.slug, `%${cand.slug}%`, `%${cand.id}%`);
 
-        if (!logged) {
-          article = cand;
-          break;
+        if (logged) {
+          continue;
         }
+
+        // 2. Check live Tumblr blog feed directly (detects prior syndication across CI environments)
+        const liveCheck = await checkIfUrlAlreadyOnTumblrBlog(blogId, cand.slug, cand.title);
+        if (liveCheck.exists) {
+          console.log(`   ⏭️ Skipping "/news/${cand.slug}" (already verified on live Tumblr blog timeline)`);
+          try {
+            db.prepare(`
+              INSERT INTO automation_logs (id, event_type, source_id, message, level, created_at)
+              VALUES (?, 'TUMBLR_PUBLISH_SUCCESS', ?, ?, 'info', CURRENT_TIMESTAMP)
+            `).run(
+              'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+              cand.id,
+              `[slug: ${cand.slug}] Live Tumblr blog sync: verified existing on blog`
+            );
+          } catch {}
+          continue;
+        }
+
+        // Found an unsyndicated story!
+        article = cand;
+        break;
       }
 
       if (!article) {
-        console.log(`✅ All ${candidateArticles.length} recent articles have already been broadcasted to Tumblr.`);
+        console.log(`✅ Deduplication passed: All ${candidateArticles.length} recent articles have already been broadcasted to Tumblr.`);
+        console.log(`   Zero duplicates allowed. Skipping.`);
         process.exit(0);
       }
     }
@@ -132,7 +155,7 @@ async function main() {
       `).run(
         'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         article.id,
-        `Dispatched to Tumblr: ${res.postUrl || article.slug}`
+        `[slug: ${article.slug}] Dispatched to Tumblr: ${res.postUrl || ''}`
       );
     } catch {}
   } else {

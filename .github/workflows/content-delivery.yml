@@ -97,11 +97,23 @@ jobs:
           TUMBLR_TOKEN: ${{ secrets.TUMBLR_TOKEN }}
           TUMBLR_TOKEN_SECRET: ${{ secrets.TUMBLR_TOKEN_SECRET }}
           TUMBLR_ACCESS_TOKEN: ${{ secrets.TUMBLR_ACCESS_TOKEN }}
+          TUMBLR_AUTO_POST_ENABLED: ${{ secrets.TUMBLR_AUTO_POST_ENABLED || 'true' }}
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
           THREADS_APP_ID: ${{ secrets.THREADS_APP_ID }}
           THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
-          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          THREADS_AUTO_POST_ENABLED: ${{ secrets.THREADS_AUTO_POST_ENABLED || 'true' }}
+          BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
+          BUFFER_PROFILE_ID_FACEBOOK: ${{ secrets.BUFFER_PROFILE_ID_FACEBOOK }}
+          BUFFER_PROFILE_ID_INSTAGRAM: ${{ secrets.BUFFER_PROFILE_ID_INSTAGRAM }}
+          BUFFER_PROFILE_ID_PINTEREST: ${{ secrets.BUFFER_PROFILE_ID_PINTEREST }}
+          BUFFER_AUTO_POST_ENABLED: ${{ secrets.BUFFER_AUTO_POST_ENABLED || 'true' }}
+          MEDIA_AUTOMATION_ENABLED: ${{ secrets.MEDIA_AUTOMATION_ENABLED || 'true' }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY || secrets.UNSPLASH_CLIENT_ID || secrets.UNSPLASH_API_KEY || secrets.UNSPLASH_KEY }}
+          UNSPLASH_SECRET_KEY: ${{ secrets.UNSPLASH_SECRET_KEY || secrets.UNSPLASH_CLIENT_SECRET || secrets.UNSPLASH_SECRET }}
+          UNSPLASH_APP_ID: ${{ secrets.UNSPLASH_APP_ID || secrets.UNSPLASH_APPLICATION_ID || secrets.UNSPLASH_ID }}
+          UNSPLASH_APP_NAME: ${{ secrets.UNSPLASH_APP_NAME || secrets.UNSPLASH_NAME || '9jaBeacon' }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           MAX_ARTICLES_PER_RUN: '3'
           NODE_ENV: production
@@ -111,7 +123,10 @@ jobs:
 
       - name: 🖼️ Align & Verify Article Imagery (No Mis-Matched Photos)
         env:
-          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY || secrets.UNSPLASH_CLIENT_ID || secrets.UNSPLASH_API_KEY || secrets.UNSPLASH_KEY }}
+          UNSPLASH_SECRET_KEY: ${{ secrets.UNSPLASH_SECRET_KEY || secrets.UNSPLASH_CLIENT_SECRET || secrets.UNSPLASH_SECRET }}
+          UNSPLASH_APP_ID: ${{ secrets.UNSPLASH_APP_ID || secrets.UNSPLASH_APPLICATION_ID || secrets.UNSPLASH_ID }}
+          UNSPLASH_APP_NAME: ${{ secrets.UNSPLASH_APP_NAME || secrets.UNSPLASH_NAME || '9jaBeacon' }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: npx tsx scripts/fix-article-images.ts || true
 

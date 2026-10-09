@@ -242,6 +242,14 @@ function initDatabase() {
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN status TEXT DEFAULT 'info'`).run(); } catch {}
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN event_type TEXT`).run(); } catch {}
   try { db.prepare(`ALTER TABLE automation_logs ADD COLUMN level TEXT DEFAULT 'info'`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE articles ADD COLUMN syndicated_bluesky INTEGER DEFAULT 0`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE articles ADD COLUMN syndicated_tumblr INTEGER DEFAULT 0`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE articles ADD COLUMN syndicated_threads INTEGER DEFAULT 0`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE articles ADD COLUMN syndicated_buffer INTEGER DEFAULT 0`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE articles ADD COLUMN syndicated_bluesky_at TEXT`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE articles ADD COLUMN syndicated_tumblr_at TEXT`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE articles ADD COLUMN syndicated_threads_at TEXT`).run(); } catch {}
+  try { db.prepare(`ALTER TABLE articles ADD COLUMN syndicated_buffer_at TEXT`).run(); } catch {}
 
   // Seed/Upsert Categories
   const insertCat = db.prepare(`
@@ -343,6 +351,11 @@ function initDatabase() {
     insertSettingOrIgnore.run('bluesky_identifier', '', 'Bluesky Handle or Username (e.g. 9jabeacon.bsky.social)');
     insertSettingOrIgnore.run('bluesky_app_password', '', 'Bluesky App Password generated in Settings (xxxx-xxxx-xxxx-xxxx)');
     insertSettingOrIgnore.run('bluesky_auto_post_enabled', 'true', 'Enable automatic publishing of synthesized articles to Bluesky');
+    insertSettingOrIgnore.run('tumblr_blog_identifier', '', 'Tumblr Blog Identifier (e.g. 9jabeacon.tumblr.com)');
+    insertSettingOrIgnore.run('tumblr_auto_post_enabled', 'true', 'Enable automatic publishing of synthesized articles to Tumblr');
+    insertSettingOrIgnore.run('threads_user_id', '', 'Meta Threads User ID');
+    insertSettingOrIgnore.run('threads_auto_post_enabled', 'true', 'Enable automatic publishing of synthesized articles to Threads');
+    insertSettingOrIgnore.run('media_automation_enabled', 'true', 'Master toggle defaulting all media post syndication channels to true');
   }
 
   // Seed default site settings

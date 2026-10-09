@@ -140,7 +140,7 @@ export async function postToThreads(payload: ThreadsPostPayload): Promise<Thread
     const creationId = createData.id;
 
     // Step 2: If image was provided, briefly await container processing (Threads requires status: FINISHED)
-    if (validImage) {
+    if (validImageUrl) {
       let isReady = false;
       for (let attempt = 0; attempt < 5; attempt++) {
         await new Promise((r) => setTimeout(r, 2000));

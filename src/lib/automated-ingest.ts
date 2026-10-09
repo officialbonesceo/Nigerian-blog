@@ -28,9 +28,9 @@ import {
 import type { Article } from './types';
 import { cleanAndFormatArticleHtml } from './content-formatter';
 import { isPublisherLogoOrBanner, resolveEditorialImage } from './editorial-image';
-import { postToBluesky } from './bluesky';
+import { postToBluesky, checkIfUrlAlreadyOnBlueskyTimeline } from './bluesky';
 import { postToBuffer } from './buffer';
-import { postToTumblr } from './tumblr';
+import { postToTumblr, checkIfUrlAlreadyOnTumblrBlog } from './tumblr';
 import { postToThreads } from './threads';
 
 export interface FeedItemValidated {
@@ -58,6 +58,7 @@ export interface EditorialRewriteResult {
   category?: ArticleCategory;
   tags?: string[];
   readingTimeMinutes?: number;
+  imageSearchKeyword?: string;
   reasons?: string[];
   rawError?: string;
 }
@@ -316,6 +317,7 @@ ${sourceExcerpt}
                   category: { type: Type.STRING, enum: ['naija-news', 'business', 'sports', 'world'] },
                   tags: { type: Type.ARRAY, items: { type: Type.STRING } },
                   readTime: { type: Type.INTEGER },
+                  imageSearchKeyword: { type: Type.STRING, description: '2 to 4 precise visual keywords in English for editorial stock photo search (e.g. "police court gavel", "central bank money currency", "football match stadium", "commercial airplane flight"). Never use syringe/needle on crime stories.' },
                 },
                 required: ['title', 'summary', 'content', 'category', 'tags', 'readTime'],
               },
@@ -414,6 +416,7 @@ ${sourceExcerpt}
         category: normalizedCategory,
         tags: Array.isArray(parsed.tags) ? parsed.tags : ['news', 'nigeria'],
         readingTimeMinutes: honestReadTime,
+        imageSearchKeyword: parsed.imageSearchKeyword ? String(parsed.imageSearchKeyword).trim() : undefined,
       };
     } catch (err: any) {
       if (attempt === 2) {
@@ -538,16 +541,14 @@ export async function runIngestionPipeline(
         const desk = getDeskAttribution(categorySlug);
         const uniqueSlug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
 
-        // Multi-tier visual resolution:
-        // 1. Source image (if valid, not logo/banner)
-        // 2. If human/person story: try Wikipedia; if not found on Wikipedia, SKIP stock photos and use SVG
-        // 3. If non-human story: try Wikipedia, then curated conceptual photography (Unsplash), then SVG
+        // Multi-tier visual resolution powered by AI image search keyword
         const visual = await resolveEditorialImage({
           title: rewrite.title,
           content: rewrite.content,
           category: categorySlug,
           sourceName: source.name,
           sourceImageUrl: item.imageUrl,
+          aiKeyword: rewrite.imageSearchKeyword,
         });
 
         const newArticle: Article = {
@@ -581,36 +582,82 @@ export async function runIngestionPipeline(
         if (inserted) {
           result.inserted++;
 
-          // Autonomous Bluesky syndication if enabled in settings
+          // Autonomous Media Syndication - Defaults all media automation to TRUE
           try {
             const autoSettings = await getAutomationSettings(db).catch(() => []);
             const sMap: Record<string, string> = {};
             for (const s of autoSettings) sMap[s.key] = s.value;
-            if (sMap.bluesky_auto_post_enabled === 'true' && sMap.bluesky_identifier && sMap.bluesky_app_password) {
-              const siteSettings = await getSiteSettings(db).catch(() => ({} as Record<string, string>));
-              const siteBase = ((siteSettings as any).site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
-              postToBluesky({
-                title: newArticle.title,
-                summary: newArticle.summary,
-                category: categorySlug,
-                imageUrl: newArticle.image_url,
-                slug: newArticle.slug,
-                canonicalUrl: `${siteBase}/news/${newArticle.slug}`,
-              }, {
-                identifier: sMap.bluesky_identifier,
-                appPassword: sMap.bluesky_app_password,
-              }, siteBase).catch(bErr => console.warn('[Bluesky Auto-Post Notice]:', bErr.message));
+            const siteSettings = await getSiteSettings(db).catch(() => ({} as Record<string, string>));
+            const siteBase = ((siteSettings as any).site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+            const canonicalUrl = `${siteBase}/news/${newArticle.slug}`;
+
+            // 1. Autonomous Bluesky syndication (defaults to enabled, deduplicated)
+            const bskyAuto = sMap.bluesky_auto_post_enabled !== 'false' && (process.env.BLUESKY_AUTO_POST_ENABLED !== 'false');
+            const bskyId = sMap.bluesky_identifier || (typeof process !== 'undefined' ? process.env?.BLUESKY_IDENTIFIER : '');
+            const bskyPass = sMap.bluesky_app_password || (typeof process !== 'undefined' ? process.env?.BLUESKY_APP_PASSWORD : '');
+            if (bskyAuto && bskyId && bskyPass) {
+              checkIfUrlAlreadyOnBlueskyTimeline(bskyId, newArticle.slug).then((liveCheck) => {
+                if (liveCheck.exists) {
+                  console.log(`[Bluesky Ingest Notice]: Skipped duplicate post for /news/${newArticle.slug}`);
+                  return;
+                }
+                postToBluesky({
+                  title: newArticle.title,
+                  summary: newArticle.summary,
+                  category: categorySlug,
+                  imageUrl: newArticle.image_url,
+                  slug: newArticle.slug,
+                  canonicalUrl,
+                }, {
+                  identifier: bskyId,
+                  appPassword: bskyPass,
+                }, siteBase).catch(bErr => console.warn('[Bluesky Auto-Post Notice]:', bErr.message));
+              }).catch(() => {});
             }
 
-            // Autonomous Buffer syndication (Facebook, Instagram, Pinterest) if enabled
-            if (sMap.buffer_auto_post_enabled === 'true' && sMap.buffer_access_token) {
-              const siteSettings = await getSiteSettings(db).catch(() => ({} as Record<string, string>));
-              const siteBase = ((siteSettings as any).site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+            // 2. Autonomous Tumblr syndication (defaults to enabled, deduplicated)
+            const tumblrAuto = sMap.tumblr_auto_post_enabled !== 'false' && (process.env.TUMBLR_AUTO_POST_ENABLED !== 'false');
+            const tumblrBlog = sMap.tumblr_blog_identifier || (typeof process !== 'undefined' ? (process.env?.TUMBLR_BLOG_IDENTIFIER || process.env?.TUMBLR_BLOG_NAME) : '');
+            if (tumblrAuto && tumblrBlog) {
+              checkIfUrlAlreadyOnTumblrBlog(tumblrBlog, newArticle.slug, newArticle.title).then((liveCheck) => {
+                if (liveCheck.exists) {
+                  console.log(`[Tumblr Ingest Notice]: Skipped duplicate post for /news/${newArticle.slug}`);
+                  return;
+                }
+                postToTumblr({
+                  title: newArticle.title,
+                  summary: newArticle.summary,
+                  content: newArticle.content,
+                  canonicalUrl,
+                  category: categorySlug,
+                  imageUrl: newArticle.image_url,
+                }).catch(tErr => console.warn('[Tumblr Auto-Post Notice]:', tErr.message));
+              }).catch(() => {});
+            }
+
+            // 3. Autonomous Meta Threads syndication (defaults to enabled)
+            const threadsAuto = sMap.threads_auto_post_enabled !== 'false' && (process.env.THREADS_AUTO_POST_ENABLED !== 'false');
+            const threadsUser = sMap.threads_user_id || (typeof process !== 'undefined' ? process.env?.THREADS_USER_ID : '');
+            const threadsToken = sMap.threads_access_token || (typeof process !== 'undefined' ? process.env?.THREADS_ACCESS_TOKEN : '');
+            if (threadsAuto && threadsUser && threadsToken) {
+              postToThreads({
+                title: newArticle.title,
+                summary: newArticle.summary,
+                canonicalUrl,
+                category: categorySlug,
+                imageUrl: newArticle.image_url,
+              }).catch(thErr => console.warn('[Threads Auto-Post Notice]:', thErr.message));
+            }
+
+            // 4. Autonomous Buffer syndication (Facebook, Instagram, Pinterest - defaults to enabled)
+            const bufferAuto = sMap.buffer_auto_post_enabled !== 'false' && (process.env.BUFFER_AUTO_POST_ENABLED !== 'false');
+            const bufferToken = sMap.buffer_access_token || (typeof process !== 'undefined' ? process.env?.BUFFER_ACCESS_TOKEN : '');
+            if (bufferAuto && bufferToken) {
               postToBuffer({
-                accessToken: sMap.buffer_access_token,
-                facebookProfileId: sMap.buffer_profile_ids_facebook,
-                instagramProfileId: sMap.buffer_profile_ids_instagram,
-                pinterestProfileId: sMap.buffer_profile_ids_pinterest,
+                accessToken: bufferToken,
+                facebookProfileId: sMap.buffer_profile_ids_facebook || (typeof process !== 'undefined' ? process.env?.BUFFER_PROFILE_ID_FACEBOOK : ''),
+                instagramProfileId: sMap.buffer_profile_ids_instagram || (typeof process !== 'undefined' ? process.env?.BUFFER_PROFILE_ID_INSTAGRAM : ''),
+                pinterestProfileId: sMap.buffer_profile_ids_pinterest || (typeof process !== 'undefined' ? process.env?.BUFFER_PROFILE_ID_PINTEREST : ''),
                 autoPostEnabled: true,
                 maxPostsPerWorkflow: 1,
               }, {
@@ -618,8 +665,8 @@ export async function runIngestionPipeline(
                 summary: newArticle.summary,
                 categoryName: categorySlug,
                 imageUrl: newArticle.image_url,
-                canonicalUrl: `${siteBase}/news/${newArticle.slug}`,
-              }).catch(bufErr => console.warn('[Buffer/Pinterest Auto-Post Notice]:', bufErr.message));
+                canonicalUrl,
+              }).catch(bufErr => console.warn('[Buffer Auto-Post Notice]:', bufErr.message));
             }
           } catch {}
         } else {

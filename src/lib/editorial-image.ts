@@ -491,9 +491,10 @@ export function extractImageSearchQuery(title: string, category?: string): strin
 export async function extractAiImageSearchQuery(title: string, content?: string, category?: string): Promise<string> {
   const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
 
+  // Tier 1 AI: Google Gemini AI
   if (geminiKey) {
     try {
-      const ai = new GoogleGenAI();
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
       const prompt = `Analyze this news article headline, category, and lead context.
 Generate 2 to 4 precise visual keywords in English for an editorial stock photography search (Unsplash/Pexels).
 
@@ -507,12 +508,12 @@ STRICT RULES:
 3. No punctuation, no markdown, no quotes, no explanations.`;
 
       const aiPromise = ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
       });
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('AI keyword decision timed out (3500ms)')), 3500)
+        setTimeout(() => reject(new Error('AI keyword decision timed out (4000ms)')), 4000)
       );
 
       const response: any = await Promise.race([aiPromise, timeoutPromise]);
@@ -530,7 +531,85 @@ STRICT RULES:
         }
       }
     } catch (aiErr: any) {
-      console.warn(`⚠️ [AI Image Keyword Engine Warning]: Decision failed (${aiErr.message || String(aiErr)}). Logging error and using verified deterministic rule-based query.`);
+      console.warn(`⚠️ [AI Image Keyword Engine Warning]: Gemini decision failed (${aiErr.message || String(aiErr)}).`);
+    }
+  }
+
+  // Tier 2 AI: OpenRouter API Fallback
+  const openrouterKey = (process.env.OPENROUTER_API_KEY || '').trim();
+  if (openrouterKey) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openrouterKey}`,
+        },
+        body: JSON.stringify({
+          model: 'qwen/qwen-2.5-72b-instruct:free',
+          messages: [
+            {
+              role: 'user',
+              content: `Output 2 to 4 visual stock photo keywords in English for: "${title}". Rules: ONLY keywords, no quotes, no syringes for crime.`
+            }
+          ],
+          max_tokens: 20,
+        }),
+        signal: AbortSignal.timeout(4000),
+      });
+      if (res.ok) {
+        const data = await res.json() as any;
+        const text = (data.choices?.[0]?.message?.content || '').trim().replace(/["'`.\n\r]/g, ' ').replace(/\s+/g, ' ');
+        if (text && text.length > 2) {
+          const sanitized = text.replace(/\b(syringe|needle|injection|vaccine)\b/gi, 'investigation').trim();
+          const words = sanitized.split(' ').filter(Boolean).slice(0, 4).join(' ');
+          if (words) {
+            console.log(`🤖 [OpenRouter AI Image Keyword Engine]: Selected "${words}" for "${title.slice(0, 45)}..."`);
+            return words;
+          }
+        }
+      }
+    } catch (orErr: any) {
+      console.warn(`⚠️ [OpenRouter Image Keyword Warning]:`, orErr.message);
+    }
+  }
+
+  // Tier 3 AI: Cloudflare Workers AI Fallback
+  const cfAccount = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+  const cfToken = (process.env.CLOUDFLARE_API_TOKEN || '').trim();
+  if (cfAccount && cfToken) {
+    try {
+      const cfRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAccount}/ai/run/@cf/meta/llama-3.1-8b-instruct`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${cfToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: `Output 2 to 4 visual stock photo keywords in English for headline: "${title}". Rules: ONLY keywords separated by spaces, no punctuation, no medical terms on crime.`
+            }
+          ],
+          max_tokens: 30,
+        }),
+        signal: AbortSignal.timeout(4000),
+      });
+      if (cfRes.ok) {
+        const cfData = await cfRes.json() as any;
+        const raw = (cfData?.result?.response || cfData?.response || '').trim().replace(/["'`.\n\r]/g, ' ').replace(/\s+/g, ' ');
+        if (raw && raw.length > 2) {
+          const sanitized = raw.replace(/\b(syringe|needle|injection|vaccine)\b/gi, 'investigation').trim();
+          const words = sanitized.split(' ').filter(Boolean).slice(0, 4).join(' ');
+          if (words) {
+            console.log(`🤖 [Cloudflare AI Image Keyword Engine]: Selected "${words}" for "${title.slice(0, 45)}..."`);
+            return words;
+          }
+        }
+      }
+    } catch (cfErr: any) {
+      console.warn(`⚠️ [Cloudflare AI Image Keyword Warning]:`, cfErr.message);
     }
   }
 
@@ -538,47 +617,159 @@ STRICT RULES:
   return extractImageSearchQuery(title, category);
 }
 
+export interface UnsplashCredentials {
+  accessKey: string;
+  secretKey: string;
+  appId: string;
+  appName: string;
+}
+
+/**
+ * Robust Unsplash credential resolver:
+ * Automatically recognizes all naming conventions used across GitHub Secrets, Cloudflare, and local .env:
+ * - Access Key / Client ID: UNSPLASH_ACCESS_KEY, UNSPLASH_CLIENT_ID, UNSPLASH_API_KEY, UNSPLASH_KEY, etc.
+ * - Secret Key: UNSPLASH_SECRET_KEY, UNSPLASH_CLIENT_SECRET, UNSPLASH_SECRET, etc.
+ * - App ID: UNSPLASH_APP_ID, UNSPLASH_APPLICATION_ID, UNSPLASH_ID.
+ * - App Name: UNSPLASH_APP_NAME, UNSPLASH_NAME, UNSPLASH_APPLICATION_NAME (used for TOS UTM referral tags).
+ *
+ * Includes heuristic validation to ensure a numeric App ID is never mistakenly sent as an API Bearer token,
+ * and extracts the real 30-45 char Access Key even if fields were swapped or pasted with "Client-ID " prefix.
+ */
+export function resolveUnsplashCredentials(): UnsplashCredentials {
+  const env = typeof process !== 'undefined' ? process.env || {} : {};
+
+  // Check possible access key / client ID names
+  let accessKey = (
+    env.UNSPLASH_ACCESS_KEY ||
+    env.UNSPLASH_CLIENT_ID ||
+    env.UNSPLASH_API_KEY ||
+    env.UNSPLASH_KEY ||
+    env.UNSPLASH_PUBLIC_KEY ||
+    env.UNSPLASH_ACCESS ||
+    env.UNSPLASH_TOKEN ||
+    ''
+  ).trim();
+
+  // Check possible secret key / client secret names
+  let secretKey = (
+    env.UNSPLASH_SECRET_KEY ||
+    env.UNSPLASH_CLIENT_SECRET ||
+    env.UNSPLASH_SECRET ||
+    env.UNSPLASH_SECRET_TOKEN ||
+    ''
+  ).trim();
+
+  // Check possible app ID names
+  let appId = (
+    env.UNSPLASH_APP_ID ||
+    env.UNSPLASH_APPLICATION_ID ||
+    env.UNSPLASH_ID ||
+    ''
+  ).trim();
+
+  // Check registered app name (used in UTM source tag as required by Unsplash TOS)
+  let appName = (
+    env.UNSPLASH_APP_NAME ||
+    env.UNSPLASH_APPLICATION_NAME ||
+    env.UNSPLASH_NAME ||
+    '9jaBeacon'
+  ).trim();
+
+  // Clean any pasted prefixes like "Client-ID ", "Bearer ", or surrounding quotes
+  accessKey = accessKey.replace(/^Client-ID\s+/i, '').replace(/^Bearer\s+/i, '').replace(/^["']|["']$/g, '').trim();
+  secretKey = secretKey.replace(/^["']|["']$/g, '').trim();
+  appId = appId.replace(/^["']|["']$/g, '').trim();
+
+  // Heuristic safety #1: Did the user paste their long Access Key into UNSPLASH_APP_ID or UNSPLASH_ID?
+  // (An Unsplash access key is alphanumeric and >= 20 characters, while App ID is typically a 4-8 digit number)
+  if (!accessKey && appId && appId.length >= 20) {
+    accessKey = appId;
+    appId = '';
+  }
+
+  // Heuristic safety #2: Did the user paste their numeric App ID into UNSPLASH_ACCESS_KEY?
+  if (accessKey && /^\d+$/.test(accessKey) && accessKey.length < 12) {
+    if (!appId) appId = accessKey;
+    accessKey = ''; // Pure numeric cannot be an Unsplash Access Key
+  }
+
+  return {
+    accessKey,
+    secretKey,
+    appId,
+    appName: appName || '9jaBeacon',
+  };
+}
+
 /**
  * Dynamic External Stock Photo Search via Unsplash / Pexels API
- * Activated automatically when UNSPLASH_ACCESS_KEY or PEXELS_API_KEY is supplied.
+ * Activated automatically when UNSPLASH_ACCESS_KEY / CLIENT_ID is supplied.
+ * Fully compliant with Unsplash API Terms of Service (download triggers, live UTM attribution links).
  */
 export async function searchDynamicStockPhoto(query: string): Promise<ResolvedImageResult | null> {
-  const unsplashKey = (process.env.UNSPLASH_ACCESS_KEY || '').trim();
-  const pexelsKey = (process.env.PEXELS_API_KEY || '').trim();
+  const unsplashCreds = resolveUnsplashCredentials();
+  const unsplashKey = unsplashCreds.accessKey;
+  const appName = unsplashCreds.appName;
+  const utmSource = encodeURIComponent(appName.replace(/\s+/g, ''));
 
-  // Try Unsplash API
+  const pexelsKey = (typeof process !== 'undefined' ? (process.env?.PEXELS_API_KEY || '') : '').trim();
+
+  // Try Unsplash API with full TOS compliance
   if (unsplashKey) {
     try {
       const endpoint = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
       const res = await fetch(endpoint, {
-        headers: { Authorization: `Client-ID ${unsplashKey}` },
+        headers: {
+          'Authorization': `Client-ID ${unsplashKey}`,
+          'Accept-Version': 'v1',
+        },
         signal: AbortSignal.timeout(6000),
       });
+
       if (res.ok) {
         const data = await res.json() as any;
         const photo = data.results?.[0];
         if (photo && photo.urls?.regular) {
-          const author = photo.user?.name || 'Unsplash Contributor';
+          // Unsplash TOS Requirement #1: Trigger download event location asynchronously to credit the photographer
+          if (photo.links?.download_location) {
+            fetch(photo.links.download_location, {
+              headers: { Authorization: `Client-ID ${unsplashKey}` },
+              signal: AbortSignal.timeout(3000),
+            }).catch(() => {});
+          }
+
+          const author = photo.user?.name || photo.user?.username || 'Unsplash Contributor';
+          const authorUrl = photo.user?.links?.html
+            ? `${photo.user.links.html}?utm_source=${utmSource}&utm_medium=referral`
+            : `https://unsplash.com/?utm_source=${utmSource}&utm_medium=referral`;
+          const unsplashHome = `https://unsplash.com/?utm_source=${utmSource}&utm_medium=referral`;
+
+          // Unsplash TOS Requirement #2: Formatted attribution with photographer & Unsplash links with UTM tracking
+          const creditHtml = `Photo by <a href="${authorUrl}" target="_blank" rel="noopener noreferrer" class="underline hover:text-emerald-500">${author}</a> on <a href="${unsplashHome}" target="_blank" rel="noopener noreferrer" class="underline hover:text-emerald-500">Unsplash</a>`;
+
           return {
             imageUrl: `${photo.urls.regular}&auto=format&fit=crop&w=1200&q=80`,
             imageCaption: photo.description || photo.alt_description || `${query} — Verified wire report.`,
-            imageCredit: `${author} / Unsplash`,
-            imageLicense: 'Unsplash Editorial License',
+            imageCredit: creditHtml,
+            imageLicense: 'Unsplash License (Free Editorial Use with Attribution)',
           };
         }
+      } else {
+        const errBody = await res.text().catch(() => '');
+        console.warn(`[Unsplash API Notice]: HTTP ${res.status} - ${errBody.slice(0, 120)}`);
       }
     } catch (err: any) {
       console.warn('[Editorial Image]: Unsplash search warning:', err.message);
     }
   }
 
-  // Try Pexels API
+  // Try Pexels API (handles paused API gracefully)
   if (pexelsKey) {
     try {
       const endpoint = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
       const res = await fetch(endpoint, {
         headers: { Authorization: pexelsKey },
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(4000),
       });
       if (res.ok) {
         const data = await res.json() as any;
@@ -593,9 +784,11 @@ export async function searchDynamicStockPhoto(query: string): Promise<ResolvedIm
             imageLicense: 'Pexels Editorial License',
           };
         }
+      } else {
+        console.warn(`[Pexels API Notice]: API status ${res.status} (Pexels may be paused or rate-limited). Falling back cleanly.`);
       }
     } catch (err: any) {
-      console.warn('[Editorial Image]: Pexels search warning:', err.message);
+      console.warn('[Editorial Image]: Pexels search notice:', err.message);
     }
   }
 
@@ -616,8 +809,9 @@ export async function resolveEditorialImage(options: {
   category?: string;
   sourceName?: string;
   sourceImageUrl?: string | null;
+  aiKeyword?: string | null;
 }): Promise<ResolvedImageResult> {
-  const { title, content, category, sourceName, sourceImageUrl } = options;
+  const { title, content, category, sourceName, sourceImageUrl, aiKeyword } = options;
 
   // Tier 1: Authentic photo from original news wire
   if (sourceImageUrl && !isPublisherLogoOrBanner(sourceImageUrl)) {
@@ -648,22 +842,32 @@ export async function resolveEditorialImage(options: {
     }
   }
 
-  // Tier 3: Dynamic stock photo API search (AI Engine keyword decision with Unsplash / Pexels)
-  const searchQuery = await extractAiImageSearchQuery(title, content, category);
+  // Tier 3: AI Engine visual keyword decision + Dynamic stock photo API search (Unsplash / Pexels)
+  let searchQuery = (aiKeyword && typeof aiKeyword === 'string' && aiKeyword.trim().length > 2)
+    ? aiKeyword.trim()
+    : '';
+
+  if (!searchQuery) {
+    searchQuery = await extractAiImageSearchQuery(title, content, category);
+  } else {
+    console.log(`🤖 [AI Image Keyword Engine]: Using AI-decided keyword "${searchQuery}" for "${title.slice(0, 45)}..."`);
+  }
+
   const dynamicPhoto = await searchDynamicStockPhoto(searchQuery);
   if (dynamicPhoto) {
     return dynamicPhoto;
   }
 
-  // Tier 4: For stories without dynamic API key, match the most accurate themed photo
+  // Tier 4: Contextual curated themed photo matching utilizing title AND the AI visual keyword
   const lowerTitle = title.toLowerCase();
+  const searchContext = `${lowerTitle} ${searchQuery.toLowerCase()}`;
   let matchedStock: { url: string; caption: string; credit: string } | null = null;
 
   // 4a. Crime, Police, Law Enforcement, EFCC, Courts, Arrests (STRICTLY FIRST)
   if (
-    lowerTitle.includes('police') ||
-    lowerTitle.includes('arrest') ||
-    lowerTitle.includes('suspect') ||
+    searchContext.includes('police') ||
+    searchContext.includes('arrest') ||
+    searchContext.includes('suspect') ||
     lowerTitle.includes('gunmen') ||
     lowerTitle.includes('bandits') ||
     lowerTitle.includes('kidnap') ||
@@ -772,15 +976,21 @@ export async function resolveEditorialImage(options: {
   ) {
     matchedStock = NON_HUMAN_STOCK_ASSETS.flood;
   } else if (
-    lowerTitle.includes('hospital') ||
-    lowerTitle.includes('health') ||
-    lowerTitle.includes('medical') ||
-    lowerTitle.includes('clinical') ||
-    lowerTitle.includes('disease') ||
-    lowerTitle.includes('malaria') ||
-    lowerTitle.includes('cholera')
+    (searchContext.includes('hospital') ||
+    searchContext.includes('health') ||
+    searchContext.includes('medical') ||
+    searchContext.includes('clinical') ||
+    searchContext.includes('disease') ||
+    searchContext.includes('malaria') ||
+    searchContext.includes('cholera')) &&
+    !searchContext.includes('arrest') &&
+    !searchContext.includes('police') &&
+    !searchContext.includes('robbery') &&
+    !searchContext.includes('murder') &&
+    !searchContext.includes('court') &&
+    !searchContext.includes('suspect')
   ) {
-    // Legitimate medical & healthcare stories ONLY
+    // Legitimate medical & healthcare stories ONLY (strictly isolated from crime/legal news)
     matchedStock = NON_HUMAN_STOCK_ASSETS.health;
   } else if (
     lowerTitle.includes('food') ||

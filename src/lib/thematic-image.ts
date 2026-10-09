@@ -168,28 +168,49 @@ const TOPIC_ASSETS = {
   ],
 };
 
+import { resolveUnsplashCredentials } from './editorial-image';
+
 /**
- * Live search via official Unsplash API if UNSPLASH_ACCESS_KEY is configured in GitHub Secrets
+ * Live search via official Unsplash API with full TOS compliance (download ping, UTM attribution)
  */
 async function tryUnsplashApiSearch(query: string): Promise<ThematicImageResult | null> {
-  const accessKey = (
-    (typeof process !== 'undefined' ? (process.env?.UNSPLASH_ACCESS_KEY || process.env?.UNSPLASH_API_KEY) : '') ||
-    ''
-  ).trim();
-
+  const { accessKey, appName } = resolveUnsplashCredentials();
   if (!accessKey) return null;
 
+  const utmSource = encodeURIComponent(appName.replace(/\s+/g, ''));
+
   try {
-    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&client_id=${accessKey}&per_page=1&orientation=landscape`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': `Client-ID ${accessKey}`,
+        'Accept-Version': 'v1',
+      },
+      signal: AbortSignal.timeout(4000),
+    });
     if (!res.ok) return null;
     const data: any = await res.json();
     if (data?.results?.[0]?.urls?.regular) {
       const photo = data.results[0];
+
+      // Unsplash TOS Requirement #1: Trigger download event location asynchronously
+      if (photo.links?.download_location) {
+        fetch(photo.links.download_location, {
+          headers: { Authorization: `Client-ID ${accessKey}` },
+          signal: AbortSignal.timeout(3000),
+        }).catch(() => {});
+      }
+
+      const author = photo.user?.name || photo.user?.username || 'Unsplash Contributor';
+      const authorUrl = photo.user?.links?.html
+        ? `${photo.user.links.html}?utm_source=${utmSource}&utm_medium=referral`
+        : `https://unsplash.com/?utm_source=${utmSource}&utm_medium=referral`;
+      const unsplashHome = `https://unsplash.com/?utm_source=${utmSource}&utm_medium=referral`;
+
       return {
-        imageUrl: photo.urls.regular,
+        imageUrl: `${photo.urls.regular}&auto=format&fit=crop&w=1200&q=80`,
         caption: photo.alt_description || photo.description || `Editorial reporting on ${query}.`,
-        credit: `Photo by ${photo.user?.name || 'Unsplash Contributor'} on Unsplash`,
+        credit: `Photo by <a href="${authorUrl}" target="_blank" rel="noopener noreferrer" class="underline hover:text-emerald-500">${author}</a> on <a href="${unsplashHome}" target="_blank" rel="noopener noreferrer" class="underline hover:text-emerald-500">Unsplash</a>`,
       };
     }
   } catch {

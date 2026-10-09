@@ -12,7 +12,6 @@ import { initialCategories, initialSources } from '../src/lib/seed-data';
 import { uploadToCloudinaryDetailed, verifyCloudinaryConnection } from '../src/lib/cloudinary';
 import {
   synthesizeNewsArticle,
-  generateEditorialNewsImage,
   type AiCredentialsConfig
 } from '../src/lib/ai-engine';
 import {
@@ -26,9 +25,11 @@ import {
   compileTrendingBriefingBundle,
   checkTodayPublishedCount,
 } from '../src/lib/trending-search-engine';
-import { postToBluesky } from '../src/lib/bluesky';
-import { postToTumblr } from '../src/lib/tumblr';
+import { postToBluesky, checkIfUrlAlreadyOnBlueskyTimeline } from '../src/lib/bluesky';
+import { postToTumblr, checkIfUrlAlreadyOnTumblrBlog } from '../src/lib/tumblr';
 import { postToThreads } from '../src/lib/threads';
+import { postToBuffer } from '../src/lib/buffer';
+import { resolveEditorialImage, resolveUnsplashCredentials } from '../src/lib/editorial-image';
 
 interface SourceRow {
   id: string;
@@ -208,6 +209,10 @@ async function main() {
   aiConfig.workingCloudflareModels = workingCloudflareModels;
 
   console.log(`  🌸 Pollinations Server:   ${aiConfig.pollinationsApiKey ? '✅ Configured' : 'ℹ️ Optional fallback'}`);
+  const unsplashCreds = resolveUnsplashCredentials();
+  console.log(`  📸 Unsplash Photo API:    ${unsplashCreds.accessKey ? `✅ Configured (App: "${unsplashCreds.appName}", Key: ${unsplashCreds.accessKey.slice(0, 8)}...${unsplashCreds.appId ? `, ID: ${unsplashCreds.appId}` : ''})` : 'ℹ️ Not set'}`);
+  const pexelsKey = (process.env.PEXELS_API_KEY || '').trim();
+  console.log(`  📷 Pexels Photo API:      ${pexelsKey ? 'ℹ️ Present (fallback)' : 'ℹ️ Optional / paused'}`);
   console.log('----------------------------------------------------------------\n');
 
   // Ensure categories exist in database
@@ -330,10 +335,21 @@ async function main() {
       }
       const articleId = 'art_' + Date.now();
 
-      let finalImageUrl = '/fallback-image.svg';
-      const generatedImage = await generateEditorialNewsImage({ title: aiResult.title, categoryId, summary: aiResult.summary }, aiConfig);
-      if (generatedImage.imageUrl) {
-        const uploadRes = await uploadToCloudinaryDetailed(generatedImage.imageUrl, { cloudName, uploadPreset, folder: '9jabeacon/articles' });
+      const resolvedImg = await resolveEditorialImage({
+        title: aiResult.title,
+        content: aiResult.content,
+        category: categoryId,
+        sourceName: briefing.sourceName,
+        aiKeyword: aiResult.imageSearchKeyword,
+      });
+
+      let finalImageUrl = resolvedImg.imageUrl;
+      let finalCaption = resolvedImg.imageCaption || `Verified investigative report on trending national topic: ${trend.query}.`;
+      let finalCredit = resolvedImg.imageCredit || briefing.sourceName;
+      let finalLicense = resolvedImg.imageLicense || 'Editorial Fair Attribution';
+
+      if (finalImageUrl && !finalImageUrl.includes('res.cloudinary.com')) {
+        const uploadRes = await uploadToCloudinaryDetailed(finalImageUrl, { cloudName, uploadPreset, folder: '9jabeacon/articles' });
         if (uploadRes.success && uploadRes.url.includes('res.cloudinary.com')) {
           finalImageUrl = uploadRes.url;
           totalCloudinarySuccess++;
@@ -346,8 +362,8 @@ async function main() {
         }
         insertArticle.run({
           id: articleId, slug, title: aiResult.title, summary: aiResult.summary, content: aiResult.content,
-          category_id: categoryId, image_url: finalImageUrl, image_caption: `Verified investigative report on trending national topic: ${trend.query}.`,
-          image_credit: briefing.sourceName, image_license: 'Editorial Fair Attribution',
+          category_id: categoryId, image_url: finalImageUrl, image_caption: finalCaption,
+          image_credit: finalCredit, image_license: finalLicense,
           author_name: desk.name, author_role: desk.role, author_avatar: desk.avatar,
           is_top_story: totalPublished === 0 ? 1 : 0, is_trending: 1, is_breaking: 1,
           views_count: 0, reading_time_minutes: aiResult.readingTimeMinutes || 4,
@@ -362,56 +378,74 @@ async function main() {
         const bskyAuto = process.env.BLUESKY_AUTO_POST_ENABLED !== 'false';
         if (bskyAuto && bskyId && bskyPass) {
           try {
-            console.log(`     🦋 Syndicating trending lead to Bluesky (@${bskyId})...`);
-            const bskyRes = await postToBluesky({
-              title: aiResult.title,
-              summary: aiResult.summary || '',
-              category: categoryId,
-              imageUrl: finalImageUrl,
-              slug,
-              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
-            }, {
-              identifier: bskyId,
-              appPassword: bskyPass,
-            }, 'https://www.9jabeacon.name.ng');
-
-            if (bskyRes.success) {
-              console.log(`     ✅ [BLUESKY SYNDICATED] -> ${bskyRes.postUrl}`);
-              try {
-                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'BLUESKY_PUBLISH_SUCCESS', 'src_trending_engine', `Dispatched to Bluesky: ${bskyRes.postUrl}`, 'info');
-              } catch {}
+            // Strict live timeline deduplication check
+            const bskyLiveCheck = await checkIfUrlAlreadyOnBlueskyTimeline(bskyId, slug);
+            if (bskyLiveCheck.exists) {
+              console.log(`     ⏭️ [BLUESKY SKIPPED] Trending story "/news/${slug}" is already live on Bluesky timeline.`);
             } else {
-              console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyRes.error}`);
+              console.log(`     🦋 Syndicating trending lead to Bluesky (@${bskyId})...`);
+              const bskyRes = await postToBluesky({
+                title: aiResult.title,
+                summary: aiResult.summary || '',
+                category: categoryId,
+                imageUrl: finalImageUrl,
+                slug,
+                canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+              }, {
+                identifier: bskyId,
+                appPassword: bskyPass,
+              }, 'https://www.9jabeacon.name.ng');
+
+              if (bskyRes.success) {
+                console.log(`     ✅ [BLUESKY SYNDICATED] -> ${bskyRes.postUrl}`);
+                try {
+                  insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'BLUESKY_PUBLISH_SUCCESS', articleId, `[slug: ${slug}] Dispatched to Bluesky: ${bskyRes.postUrl}`, 'info');
+                  db.prepare('UPDATE articles SET syndicated_bluesky = 1 WHERE slug = ?').run(slug);
+                } catch {}
+              } else {
+                console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyRes.error}`);
+              }
             }
           } catch (bskyErr: any) {
             console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyErr.message}`);
           }
         }
 
-        // Optional Tumblr Syndication
-        if (process.env.TUMBLR_BLOG_IDENTIFIER && (process.env.TUMBLR_TOKEN || process.env.TUMBLR_CONSUMER_KEY)) {
+        // Autonomous Tumblr Syndication (defaults to enabled, strict live deduplication)
+        const tumblrAuto = process.env.TUMBLR_AUTO_POST_ENABLED !== 'false';
+        const tumblrBlogId = process.env.TUMBLR_BLOG_IDENTIFIER || '';
+        if (tumblrAuto && tumblrBlogId && (process.env.TUMBLR_TOKEN || process.env.TUMBLR_CONSUMER_KEY)) {
           try {
-            console.log(`     📟 Syndicating to Tumblr...`);
-            const tRes = await postToTumblr({
-              title: aiResult.title,
-              summary: aiResult.summary || '',
-              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
-              category: categoryId,
-              imageUrl: finalImageUrl,
-            });
-            if (tRes.success) {
-              console.log(`     ✅ [TUMBLR SYNDICATED] -> ${tRes.postUrl}`);
-              try {
-                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'TUMBLR_PUBLISH_SUCCESS', 'src_trending_engine', `Dispatched to Tumblr: ${tRes.postUrl}`, 'info');
-              } catch {}
+            // Strict live blog deduplication check
+            const tumblrLiveCheck = await checkIfUrlAlreadyOnTumblrBlog(tumblrBlogId, slug, aiResult.title);
+            if (tumblrLiveCheck.exists) {
+              console.log(`     ⏭️ [TUMBLR SKIPPED] Trending story "/news/${slug}" is already live on Tumblr blog.`);
+            } else {
+              console.log(`     📟 Syndicating to Tumblr...`);
+              const tRes = await postToTumblr({
+                title: aiResult.title,
+                summary: aiResult.summary || '',
+                content: aiResult.content,
+                canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+                category: categoryId,
+                imageUrl: finalImageUrl,
+              });
+              if (tRes.success) {
+                console.log(`     ✅ [TUMBLR SYNDICATED] -> ${tRes.postUrl}`);
+                try {
+                  insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'TUMBLR_PUBLISH_SUCCESS', articleId, `[slug: ${slug}] Dispatched to Tumblr: ${tRes.postUrl}`, 'info');
+                  db.prepare('UPDATE articles SET syndicated_tumblr = 1 WHERE slug = ?').run(slug);
+                } catch {}
+              }
             }
           } catch (tErr: any) {
             console.warn(`     ⚠️ [TUMBLR NOTICE] ${tErr.message}`);
           }
         }
 
-        // Optional Meta Threads Syndication
-        if (process.env.THREADS_USER_ID && process.env.THREADS_ACCESS_TOKEN) {
+        // Autonomous Meta Threads Syndication (defaults to enabled)
+        const threadsAuto = process.env.THREADS_AUTO_POST_ENABLED !== 'false';
+        if (threadsAuto && process.env.THREADS_USER_ID && process.env.THREADS_ACCESS_TOKEN) {
           try {
             console.log(`     🧵 Syndicating to Threads...`);
             const thRes = await postToThreads({
@@ -429,6 +463,37 @@ async function main() {
             }
           } catch (thErr: any) {
             console.warn(`     ⚠️ [THREADS NOTICE] ${thErr.message}`);
+          }
+        }
+
+        // Autonomous Buffer Syndication (Facebook, Instagram, Pinterest - defaults to enabled)
+        const bufferAuto = process.env.BUFFER_AUTO_POST_ENABLED !== 'false';
+        const bufferToken = process.env.BUFFER_ACCESS_TOKEN || '';
+        if (bufferAuto && bufferToken) {
+          try {
+            console.log(`     📢 Syndicating trending lead to Buffer (Facebook / IG / Pinterest)...`);
+            const bufRes = await postToBuffer({
+              accessToken: bufferToken,
+              facebookProfileId: process.env.BUFFER_PROFILE_ID_FACEBOOK || '',
+              instagramProfileId: process.env.BUFFER_PROFILE_ID_INSTAGRAM || '',
+              pinterestProfileId: process.env.BUFFER_PROFILE_ID_PINTEREST || '',
+              autoPostEnabled: true,
+              maxPostsPerWorkflow: 1,
+            }, {
+              title: aiResult.title,
+              summary: aiResult.summary || '',
+              categoryName: categoryId,
+              imageUrl: finalImageUrl,
+              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+            });
+            if (bufRes.success) {
+              console.log(`     ✅ [BUFFER SYNDICATED] Dispatched to social channels.`);
+              try {
+                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'BUFFER_PUBLISH_SUCCESS', 'src_trending_engine', `Dispatched to Buffer social channels`, 'info');
+              } catch {}
+            }
+          } catch (bufErr: any) {
+            console.warn(`     ⚠️ [BUFFER NOTICE] ${bufErr.message}`);
           }
         }
       } catch (err: any) {
@@ -607,20 +672,24 @@ async function main() {
       const articleId = 'art_' + Date.now();
 
       let rawImageUrl = item.enclosure?.url || item.mediaContent?.$?.url;
-      let imageCaption = `Verified editorial synthesis of news wire report from ${source.name}.`;
-      let imageCredit = source.name;
       if (!isGoodArticleImage(rawImageUrl)) rawImageUrl = undefined;
 
-      if (!rawImageUrl) {
-        const generatedImage = await generateEditorialNewsImage({ title: aiResult.title, categoryId, summary: aiResult.summary }, aiConfig);
-        rawImageUrl = generatedImage.imageUrl;
-        imageCaption = generatedImage.caption;
-        imageCredit = generatedImage.credit;
-      }
+      const resolved = await resolveEditorialImage({
+        title: aiResult.title,
+        content: aiResult.content,
+        category: categoryId,
+        sourceName: source.name,
+        sourceImageUrl: rawImageUrl,
+        aiKeyword: aiResult.imageSearchKeyword,
+      });
 
-      let finalImageUrl = rawImageUrl;
-      if (rawImageUrl) {
-        const uploadRes = await uploadToCloudinaryDetailed(rawImageUrl, { cloudName, uploadPreset, folder: '9jabeacon/articles' });
+      let finalImageUrl = resolved.imageUrl;
+      let imageCaption = resolved.imageCaption || `Verified editorial synthesis of news wire report from ${source.name}.`;
+      let imageCredit = resolved.imageCredit || source.name;
+      let imageLicense = resolved.imageLicense || source.license_notes || 'Editorial Fair Attribution';
+
+      if (finalImageUrl && !finalImageUrl.includes('res.cloudinary.com')) {
+        const uploadRes = await uploadToCloudinaryDetailed(finalImageUrl, { cloudName, uploadPreset, folder: '9jabeacon/articles' });
         if (uploadRes.success && uploadRes.url.includes('res.cloudinary.com')) {
           finalImageUrl = uploadRes.url;
           totalCloudinarySuccess++;
@@ -637,7 +706,7 @@ async function main() {
         insertArticle.run({
           id: articleId, slug, title: aiResult.title, summary: aiResult.summary, content: aiResult.content,
           category_id: categoryId, image_url: finalImageUrl, image_caption: imageCaption, image_credit: imageCredit,
-          image_license: source.license_notes || 'Editorial Fair Attribution', author_name: desk.name,
+          image_license: imageLicense, author_name: desk.name,
           author_role: desk.role, author_avatar: desk.avatar,
           is_top_story: totalPublished === 0 ? 1 : 0,
           is_trending: totalPublished < 4 ? 1 : 0,
@@ -654,56 +723,74 @@ async function main() {
         const bskyAuto = process.env.BLUESKY_AUTO_POST_ENABLED !== 'false';
         if (bskyAuto && bskyId && bskyPass) {
           try {
-            console.log(`     🦋 Syndicating to Bluesky (@${bskyId})...`);
-            const bskyRes = await postToBluesky({
-              title: aiResult.title,
-              summary: aiResult.summary || '',
-              category: categoryId,
-              imageUrl: finalImageUrl,
-              slug,
-              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
-            }, {
-              identifier: bskyId,
-              appPassword: bskyPass,
-            }, 'https://www.9jabeacon.name.ng');
-
-            if (bskyRes.success) {
-              console.log(`     ✅ [BLUESKY SYNDICATED] -> ${bskyRes.postUrl}`);
-              try {
-                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'BLUESKY_PUBLISH_SUCCESS', source.id, `Dispatched to Bluesky: ${bskyRes.postUrl}`, 'info');
-              } catch {}
+            // Strict live timeline deduplication check
+            const bskyLiveCheck = await checkIfUrlAlreadyOnBlueskyTimeline(bskyId, slug);
+            if (bskyLiveCheck.exists) {
+              console.log(`     ⏭️ [BLUESKY SKIPPED] Story "/news/${slug}" is already live on Bluesky timeline.`);
             } else {
-              console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyRes.error}`);
+              console.log(`     🦋 Syndicating to Bluesky (@${bskyId})...`);
+              const bskyRes = await postToBluesky({
+                title: aiResult.title,
+                summary: aiResult.summary || '',
+                category: categoryId,
+                imageUrl: finalImageUrl,
+                slug,
+                canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+              }, {
+                identifier: bskyId,
+                appPassword: bskyPass,
+              }, 'https://www.9jabeacon.name.ng');
+
+              if (bskyRes.success) {
+                console.log(`     ✅ [BLUESKY SYNDICATED] -> ${bskyRes.postUrl}`);
+                try {
+                  insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'BLUESKY_PUBLISH_SUCCESS', articleId, `[slug: ${slug}] Dispatched to Bluesky: ${bskyRes.postUrl}`, 'info');
+                  db.prepare('UPDATE articles SET syndicated_bluesky = 1 WHERE slug = ?').run(slug);
+                } catch {}
+              } else {
+                console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyRes.error}`);
+              }
             }
           } catch (bskyErr: any) {
             console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyErr.message}`);
           }
         }
 
-        // Optional Tumblr Syndication
-        if (process.env.TUMBLR_BLOG_IDENTIFIER && (process.env.TUMBLR_TOKEN || process.env.TUMBLR_CONSUMER_KEY)) {
+        // Autonomous Tumblr Syndication (defaults to enabled, strict live deduplication)
+        const tumblrAuto = process.env.TUMBLR_AUTO_POST_ENABLED !== 'false';
+        const tumblrBlogId = process.env.TUMBLR_BLOG_IDENTIFIER || '';
+        if (tumblrAuto && tumblrBlogId && (process.env.TUMBLR_TOKEN || process.env.TUMBLR_CONSUMER_KEY)) {
           try {
-            console.log(`     📟 Syndicating to Tumblr...`);
-            const tRes = await postToTumblr({
-              title: aiResult.title,
-              summary: aiResult.summary || '',
-              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
-              category: categoryId,
-              imageUrl: finalImageUrl,
-            });
-            if (tRes.success) {
-              console.log(`     ✅ [TUMBLR SYNDICATED] -> ${tRes.postUrl}`);
-              try {
-                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'TUMBLR_PUBLISH_SUCCESS', source.id, `Dispatched to Tumblr: ${tRes.postUrl}`, 'info');
-              } catch {}
+            // Strict live blog deduplication check
+            const tumblrLiveCheck = await checkIfUrlAlreadyOnTumblrBlog(tumblrBlogId, slug, aiResult.title);
+            if (tumblrLiveCheck.exists) {
+              console.log(`     ⏭️ [TUMBLR SKIPPED] Story "/news/${slug}" is already live on Tumblr blog.`);
+            } else {
+              console.log(`     📟 Syndicating to Tumblr...`);
+              const tRes = await postToTumblr({
+                title: aiResult.title,
+                summary: aiResult.summary || '',
+                content: aiResult.content,
+                canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+                category: categoryId,
+                imageUrl: finalImageUrl,
+              });
+              if (tRes.success) {
+                console.log(`     ✅ [TUMBLR SYNDICATED] -> ${tRes.postUrl}`);
+                try {
+                  insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'TUMBLR_PUBLISH_SUCCESS', articleId, `[slug: ${slug}] Dispatched to Tumblr: ${tRes.postUrl}`, 'info');
+                  db.prepare('UPDATE articles SET syndicated_tumblr = 1 WHERE slug = ?').run(slug);
+                } catch {}
+              }
             }
           } catch (tErr: any) {
             console.warn(`     ⚠️ [TUMBLR NOTICE] ${tErr.message}`);
           }
         }
 
-        // Optional Meta Threads Syndication
-        if (process.env.THREADS_USER_ID && process.env.THREADS_ACCESS_TOKEN) {
+        // Autonomous Meta Threads Syndication (defaults to enabled)
+        const threadsAuto = process.env.THREADS_AUTO_POST_ENABLED !== 'false';
+        if (threadsAuto && process.env.THREADS_USER_ID && process.env.THREADS_ACCESS_TOKEN) {
           try {
             console.log(`     🧵 Syndicating to Threads...`);
             const thRes = await postToThreads({
@@ -721,6 +808,37 @@ async function main() {
             }
           } catch (thErr: any) {
             console.warn(`     ⚠️ [THREADS NOTICE] ${thErr.message}`);
+          }
+        }
+
+        // Autonomous Buffer Syndication (Facebook, Instagram, Pinterest - defaults to enabled)
+        const bufferAuto = process.env.BUFFER_AUTO_POST_ENABLED !== 'false';
+        const bufferToken = process.env.BUFFER_ACCESS_TOKEN || '';
+        if (bufferAuto && bufferToken) {
+          try {
+            console.log(`     📢 Syndicating to Buffer (Facebook / IG / Pinterest)...`);
+            const bufRes = await postToBuffer({
+              accessToken: bufferToken,
+              facebookProfileId: process.env.BUFFER_PROFILE_ID_FACEBOOK || '',
+              instagramProfileId: process.env.BUFFER_PROFILE_ID_INSTAGRAM || '',
+              pinterestProfileId: process.env.BUFFER_PROFILE_ID_PINTEREST || '',
+              autoPostEnabled: true,
+              maxPostsPerWorkflow: 1,
+            }, {
+              title: aiResult.title,
+              summary: aiResult.summary || '',
+              categoryName: categoryId,
+              imageUrl: finalImageUrl,
+              canonicalUrl: `https://www.9jabeacon.name.ng/news/${slug}`,
+            });
+            if (bufRes.success) {
+              console.log(`     ✅ [BUFFER SYNDICATED] Dispatched to social channels.`);
+              try {
+                insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'BUFFER_PUBLISH_SUCCESS', source.id, `Dispatched to Buffer social channels`, 'info');
+              } catch {}
+            }
+          } catch (bufErr: any) {
+            console.warn(`     ⚠️ [BUFFER NOTICE] ${bufErr.message}`);
           }
         }
       } catch (insertErr: any) {

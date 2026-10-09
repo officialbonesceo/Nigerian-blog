@@ -27,18 +27,21 @@ const secretKey =
 const isAdmin = token ? verifyAdminToken(token, secretKey).valid : false;
 
 // Videos are currently disabled site-wide
-if (!videosEnabled) {
-  return Astro.redirect('/', 302);
-}
-
-if (!slug) {
-  return Astro.redirect('/', 302);
+// Videos are currently disabled site-wide or missing
+if (!videosEnabled || !slug) {
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"/><title>Video Not Available - 9jaBeacon</title><meta name="robots" content="noindex, follow"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" type="image/svg+xml" href="/favicon.svg"/></head><body style="background:#020617;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;text-align:center;"><div style="max-width:440px;"><div style="width:64px;height:64px;border-radius:16px;background:rgba(6,78,59,0.5);border:1px solid rgba(16,185,129,0.3);color:#34d399;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;font-weight:900;">404</div><h1 style="font-size:22px;margin:0 0 8px;">Video Broadcast Unavailable</h1><p style="color:#94a3b8;font-size:14px;margin:0 0 24px;">The video broadcast you requested is currently unavailable or has expired.</p><a href="/" style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:14px;">Return to Homepage</a></div></body></html>`, {
+    status: 404,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
 }
 
 const video = await getVideoArticleBySlug(db, slug);
 
 if (!video) {
-  return Astro.redirect('/404', 302);
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"/><title>Video Not Found - 9jaBeacon</title><meta name="robots" content="noindex, follow"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" type="image/svg+xml" href="/favicon.svg"/></head><body style="background:#020617;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;text-align:center;"><div style="max-width:440px;"><div style="width:64px;height:64px;border-radius:16px;background:rgba(6,78,59,0.5);border:1px solid rgba(16,185,129,0.3);color:#34d399;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;font-weight:900;">404</div><h1 style="font-size:22px;margin:0 0 8px;">Video Broadcast Not Found</h1><p style="color:#94a3b8;font-size:14px;margin:0 0 24px;">The video broadcast you requested could not be found.</p><a href="/" style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:14px;">Return to Homepage</a></div></body></html>`, {
+    status: 404,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
 }
 
 // Track real view count

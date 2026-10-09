@@ -73,8 +73,8 @@ async function main() {
     console.log(`🔍 Scanning ${candidateArticles.length} recent articles for first unsyndicated story...`);
 
     for (const candidate of candidateArticles) {
-      // 1. Check local logs
-      if (loggedIds.has(candidate.id) || loggedMessages.includes(candidate.slug)) {
+      // 1. Check local logs & syndicated flag
+      if (candidate.syndicated_bluesky === 1 || loggedIds.has(candidate.id) || loggedIds.has(candidate.slug) || loggedMessages.includes(candidate.slug)) {
         continue;
       }
 
@@ -91,9 +91,10 @@ async function main() {
               'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
               'BLUESKY_PUBLISH_SUCCESS',
               candidate.id,
-              `Timeline sync: ${liveCheck.postUrl || candidate.slug}`,
+              `[slug: ${candidate.slug}] Timeline sync: ${liveCheck.postUrl || candidate.slug}`,
               'info'
             );
+            db.prepare('UPDATE articles SET syndicated_bluesky = 1 WHERE id = ? OR slug = ?').run(candidate.id, candidate.slug);
           } catch {}
           continue;
         }
@@ -143,9 +144,10 @@ async function main() {
         'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         'BLUESKY_PUBLISH_SUCCESS',
         article.id,
-        `CI Syndication to Bluesky: ${result.postUrl}`,
+        `[slug: ${article.slug}] CI Syndication to Bluesky: ${result.postUrl}`,
         'info'
       );
+      db.prepare('UPDATE articles SET syndicated_bluesky = 1 WHERE id = ? OR slug = ?').run(article.id, article.slug);
     } catch {}
 
     // If running in CI with D1 credentials, also persist log directly to production D1
@@ -162,7 +164,7 @@ async function main() {
           'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
           'BLUESKY_PUBLISH_SUCCESS',
           article.id,
-          `CI Bluesky broadcast: ${result.postUrl}`,
+          `[slug: ${article.slug}] CI Bluesky broadcast: ${result.postUrl}`,
           'info'
         ], { accountId: d1Account, apiToken: d1Token, databaseNameOrId: d1DbId });
         console.log(`📡 Log synced to production D1 database.`);

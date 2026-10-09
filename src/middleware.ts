@@ -8,20 +8,20 @@ const INGEST_INTERVAL_MS = 25 * 60 * 1000; // 25 minutes
 
 export const onRequest = defineMiddleware(async ({ request, url, redirect, locals }, next) => {
   const host = (request.headers.get('host') || url.hostname).toLowerCase().split(':')[0];
-  const proto = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
   const pathname = url.pathname;
   const isLocal = host === 'localhost' || host === '127.0.0.1' || host.includes('.run.app');
 
-  // 1. Google Search Console: 301 Permanent Redirect apex, http, & pages.dev to canonical https://www.9jabeacon.name.ng
+  // 1. Google Search Console: 301 Permanent Redirect apex & pages.dev to canonical https://www.9jabeacon.name.ng
+  // Guard against redirect loops: Never issue redirect if already on www.9jabeacon.name.ng
   if (!isLocal) {
-    if (host === '9jabeacon.name.ng' || host === '9jabeacon.pages.dev' || (proto === 'http' && host.includes('9jabeacon'))) {
+    if (host === '9jabeacon.name.ng' || host.endsWith('.pages.dev')) {
       const cleanPath = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
       return redirect(`https://www.9jabeacon.name.ng${cleanPath}${url.search}`, 301);
     }
   }
 
-  // 2. Google Search Console: Trailing slash normalisation (never leave duplicate trailing slash URLs)
-  if (pathname.length > 1 && pathname.endsWith('/') && !pathname.startsWith('/_astro')) {
+  // 2. Google Search Console: Trailing slash normalisation (never leave duplicate trailing slash URLs, preserve root '/')
+  if (pathname.length > 1 && pathname.endsWith('/') && !pathname.startsWith('/_astro') && !pathname.startsWith('/api/')) {
     const cleanPath = pathname.slice(0, -1);
     return redirect(`${cleanPath}${url.search}`, 301);
   }

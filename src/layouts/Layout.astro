@@ -58,7 +58,7 @@ const isPaginated = !isNaN(parsedPage) && parsedPage > 1;
 
 let computedPath = '';
 if (pagePath === '/') {
-  computedPath = isPaginated ? `/?page=${parsedPage}` : '';
+  computedPath = isPaginated ? `/?page=${parsedPage}` : '/';
 } else {
   computedPath = isPaginated ? `${pagePath}?page=${parsedPage}` : pagePath;
 }

@@ -57,5 +57,7 @@ jobs:
         env:
           BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_IDENTIFIER }}
           BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          BLUESKY_AUTO_POST_ENABLED: ${{ secrets.BLUESKY_AUTO_POST_ENABLED || 'true' }}
+          SITE_URL: https://www.9jabeacon.name.ng
           TARGET_SLUG: ${{ github.event.inputs.article_slug }}
         run: npx tsx scripts/broadcast-latest-bluesky.ts
