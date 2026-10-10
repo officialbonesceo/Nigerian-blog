@@ -14,9 +14,10 @@ name: Content Delivery & Sync Pipeline
 
 on:
   schedule:
-    # 3 runs daily spaced evenly across prime Nigerian reading windows (06:00, 13:00, 20:00 UTC)
-    # Corresponding to 07:00, 14:00, 21:00 West Africa Time (WAT)
-    - cron: '0 6,13,20 * * *'
+    # 4 runs daily spaced evenly across prime Nigerian daytime windows (05:00, 10:00, 15:00, 20:00 UTC)
+    # Corresponding to 06:00, 11:00, 16:00, 21:00 West Africa Time (WAT)
+    # Satisfies 2 articles per category/day without rate limits
+    - cron: '0 5,10,15,20 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -120,23 +121,6 @@ jobs:
           ALLOW_SEED_DATA: 'false'
         run: npx tsx scripts/content-worker.ts
 
-      - name: 🖼️ Align & Verify Article Imagery (No Mis-Matched Photos)
-        env:
-          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY || secrets.UNSPLASH_CLIENT_ID || secrets.UNSPLASH_API_KEY || secrets.UNSPLASH_KEY }}
-          UNSPLASH_SECRET_KEY: ${{ secrets.UNSPLASH_SECRET_KEY || secrets.UNSPLASH_CLIENT_SECRET || secrets.UNSPLASH_SECRET }}
-          UNSPLASH_APP_ID: ${{ secrets.UNSPLASH_APP_ID || secrets.UNSPLASH_APPLICATION_ID || secrets.UNSPLASH_ID }}
-          UNSPLASH_APP_NAME: ${{ secrets.UNSPLASH_APP_NAME || secrets.UNSPLASH_NAME || '9jaBeacon' }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-        run: npx tsx scripts/fix-article-images.ts || true
-
-      - name: 🛡️ Remediate Sports Category Mis-Tagging
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-        run: npx tsx scripts/fix-sports-mistagging.ts
-
       - name: 📤 Push Processed Updates to Upstream Datastore
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -146,14 +130,6 @@ jobs:
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'
         run: npx tsx scripts/sync-upstream.ts
-
-      - name: 👥 Synchronize Profile Records
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-        run: npx tsx scripts/normalize-profiles.ts
 
       - name: 🧹 Verify Workspace Cleanliness
         run: |

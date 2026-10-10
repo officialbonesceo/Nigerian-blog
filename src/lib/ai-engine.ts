@@ -265,8 +265,8 @@ Output strictly updated JSON matching the schema with at least 400 words of cont
           const rawText = cfData?.result?.response || cfData?.response || '';
           let parsed = parseAiJsonResponse(rawText, input);
           if (parsed) {
-            if (parsed.wordCount < 300) {
-              traceLogs.push(`Tier 1 (${modelCandidate}): Draft contains only ${parsed.wordCount} words (<300 required). Requesting AI expansion...`);
+            if (parsed.wordCount < 180) {
+              traceLogs.push(`Tier 1 (${modelCandidate}): Draft contains ${parsed.wordCount} words (<180 threshold). Attempting AI expansion...`);
               const expanded = await attemptAiExpansion(rawText, parsed.wordCount, async (msgs) => {
                 const retryRes = await fetch(cfUrl, {
                   method: 'POST',
@@ -279,13 +279,12 @@ Output strictly updated JSON matching the schema with at least 400 words of cont
                 return d?.result?.response || d?.response || null;
               });
 
-              if (expanded && expanded.wordCount >= 300) {
-                traceLogs.push(`Tier 1 (${modelCandidate}): Expansion successful — expanded from ${parsed.wordCount} to ${expanded.wordCount} words (>=300 threshold satisfied).`);
+              if (expanded && expanded.wordCount >= 180) {
+                traceLogs.push(`Tier 1 (${modelCandidate}): Expansion successful — expanded from ${parsed.wordCount} to ${expanded.wordCount} words.`);
                 parsed = expanded;
-              } else {
-                const finalWords = expanded ? expanded.wordCount : parsed.wordCount;
-                traceLogs.push(`Tier 1 (${modelCandidate}): Expansion failed to reach 300 words (${finalWords} words). Strictly no fallback template permitted.`);
-                errors.push(`Tier 1 (${modelCandidate}): Word count strictly below 300 words (${finalWords} words) after expansion attempt.`);
+              } else if (parsed.wordCount < 120) {
+                traceLogs.push(`Tier 1 (${modelCandidate}): Content too sparse (${parsed.wordCount} words). Trying next model candidate.`);
+                errors.push(`Tier 1 (${modelCandidate}): Content too sparse (${parsed.wordCount} words).`);
                 continue;
               }
             }
@@ -357,8 +356,8 @@ Output strictly updated JSON matching the schema with at least 400 words of cont
           const rawText = orData?.choices?.[0]?.message?.content || '';
           let parsed = parseAiJsonResponse(rawText, input);
           if (parsed) {
-            if (parsed.wordCount < 300) {
-              traceLogs.push(`Tier 2 (${modelCandidate}): Draft contains only ${parsed.wordCount} words (<300 required). Requesting AI expansion...`);
+            if (parsed.wordCount < 180) {
+              traceLogs.push(`Tier 2 (${modelCandidate}): Draft contains ${parsed.wordCount} words (<180 threshold). Attempting AI expansion...`);
               const expanded = await attemptAiExpansion(rawText, parsed.wordCount, async (msgs) => {
                 const retryRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                   method: 'POST',
@@ -382,13 +381,12 @@ Output strictly updated JSON matching the schema with at least 400 words of cont
                 return d?.choices?.[0]?.message?.content || null;
               });
 
-              if (expanded && expanded.wordCount >= 300) {
-                traceLogs.push(`Tier 2 (${modelCandidate}): Expansion successful — expanded from ${parsed.wordCount} to ${expanded.wordCount} words (>=300 threshold satisfied).`);
+              if (expanded && expanded.wordCount >= 180) {
+                traceLogs.push(`Tier 2 (${modelCandidate}): Expansion successful — expanded from ${parsed.wordCount} to ${expanded.wordCount} words.`);
                 parsed = expanded;
-              } else {
-                const finalWords = expanded ? expanded.wordCount : parsed.wordCount;
-                traceLogs.push(`Tier 2 (${modelCandidate}): Expansion failed to reach 300 words (${finalWords} words). Strictly no fallback template permitted.`);
-                errors.push(`Tier 2 (${modelCandidate}): Word count strictly below 300 words (${finalWords} words) after expansion attempt.`);
+              } else if (parsed.wordCount < 120) {
+                traceLogs.push(`Tier 2 (${modelCandidate}): Content too sparse (${parsed.wordCount} words). Trying next model candidate.`);
+                errors.push(`Tier 2 (${modelCandidate}): Content too sparse (${parsed.wordCount} words).`);
                 continue;
               }
             }

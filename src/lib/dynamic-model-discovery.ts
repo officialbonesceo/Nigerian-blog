@@ -110,8 +110,8 @@ export async function discoverOpenRouterFreeModels(options?: {
         parseFloat(String(m.pricing.prompt || '1')) === 0 &&
         parseFloat(String(m.pricing.completion || '1')) === 0;
 
-      // Filter out embeddings, audio, moderation, and image-only models
-      const isExcluded = /(embed|safety|moderation|clip|whisper|tts|audio|image|vision-only)/i.test(id);
+      // Filter out embeddings, audio, moderation, guardrails, and image-only models
+      const isExcluded = /(embed|safety|moderation|guard|classifier|clip|whisper|tts|audio|image|vision-only)/i.test(id);
       const hasSufficientContext = (m.context_length || 0) >= 4000;
 
       return (isExplicitFreeId || isZeroPrice) && !isExcluded && hasSufficientContext;
@@ -252,8 +252,10 @@ export async function discoverCloudflareModels(options?: {
 
       if (res.ok) {
         const json = (await res.json()) as any;
-        const results = json?.result || [];
-        const modelNames = results.map((m: any) => m.name || m.id).filter(Boolean);
+        const isCfExcluded = (id: string) => /(embed|rerank|flux|diffusion|aura|nova|whisper|vision-only|guard|safety|moderation|classifier|thebloke)/i.test(id);
+        const modelNames = results
+          .map((m: any) => m.name || m.id)
+          .filter((id: string) => Boolean(id) && !isCfExcluded(id));
         if (modelNames.length > 0) {
           cloudflareCache = { data: modelNames, timestamp: now };
           return modelNames;
@@ -280,7 +282,7 @@ export async function discoverCloudflareModels(options?: {
         if (match) {
           const modelId = match[1];
           const isTextGeneration = /(instruct|chat|deepseek|llama|qwen|mistral|gemma|glm)/i.test(modelId);
-          const isExcluded = /(embed|rerank|flux|diffusion|aura|nova|whisper|vision-only)/i.test(modelId);
+          const isExcluded = /(embed|rerank|flux|diffusion|aura|nova|whisper|vision-only|guard|safety|moderation|classifier|thebloke)/i.test(modelId);
           if (isTextGeneration && !isExcluded) {
             discovered.push(modelId);
           }

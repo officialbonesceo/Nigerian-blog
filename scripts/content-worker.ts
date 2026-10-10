@@ -169,40 +169,25 @@ async function main() {
   let workingOpenRouterModels: string[] = [];
   let workingCloudflareModels: string[] = [];
 
-  // Live Discovery for OpenRouter Free Models
-  if (aiConfig.openrouterApiKey) {
-    try {
-      console.log('  🌐 OpenRouter: Probing endpoint for working & free models...');
-      const orResult = await getVerifiedWorkingOpenRouterModels(aiConfig.openrouterApiKey, { maxToProbe: 4 });
-      workingOpenRouterModels = orResult.workingModels;
-      console.log(`     ✅ Found ${workingOpenRouterModels.length} working free models: ${workingOpenRouterModels.slice(0, 3).join(', ')}`);
-    } catch (e: any) {
-      console.warn(`     ⚠️ OpenRouter probe notice: ${e.message}`);
-    }
-  } else {
-    try {
-      const orDiscovered = await discoverOpenRouterFreeModels();
-      console.log(`  🌐 OpenRouter Catalog:   ℹ️ Discovered ${orDiscovered.length} free models (Top: ${orDiscovered.slice(0, 3).join(', ')})`);
-      workingOpenRouterModels = orDiscovered;
-    } catch {}
+  // Direct Discovery for OpenRouter Free Models (zero probe token waste)
+  try {
+    const orDiscovered = await discoverOpenRouterFreeModels({ apiKey: aiConfig.openrouterApiKey });
+    workingOpenRouterModels = orDiscovered.slice(0, 5);
+    console.log(`  🌐 OpenRouter Models:    ✅ Ready with ${workingOpenRouterModels.length} candidates (${workingOpenRouterModels.slice(0, 3).join(', ')})`);
+  } catch (e: any) {
+    console.warn(`  ⚠️ OpenRouter discovery: ${e.message}`);
   }
 
-  // Live Discovery for Cloudflare Workers AI Models
-  if (aiConfig.cloudflareAccountId && aiConfig.cloudflareApiToken) {
-    try {
-      console.log('  ⚡ Cloudflare: Searching endpoint for deployed LLM models...');
-      const cfResult = await getVerifiedWorkingCloudflareModels(aiConfig.cloudflareAccountId, aiConfig.cloudflareApiToken, { maxToProbe: 4 });
-      workingCloudflareModels = cfResult.workingModels;
-      console.log(`     ✅ Found ${workingCloudflareModels.length} working models: ${workingCloudflareModels.slice(0, 3).join(', ')}`);
-    } catch (e: any) {
-      console.warn(`     ⚠️ Cloudflare probe notice: ${e.message}`);
-    }
-  } else {
-    try {
-      const cfDiscovered = await discoverCloudflareModels();
-      console.log(`  ⚡ Cloudflare Catalog:   ℹ️ Discovered ${cfDiscovered.length} active models (Top: ${cfDiscovered.slice(0, 3).join(', ')})`);
-      workingCloudflareModels = cfDiscovered;
-    } catch {}
+  // Direct Discovery for Cloudflare Workers AI Models (zero probe token waste)
+  try {
+    const cfDiscovered = await discoverCloudflareModels({
+      accountId: aiConfig.cloudflareAccountId,
+      apiToken: aiConfig.cloudflareApiToken,
+    });
+    workingCloudflareModels = cfDiscovered.slice(0, 5);
+    console.log(`  ⚡ Cloudflare Models:    ✅ Ready with ${workingCloudflareModels.length} candidates (${workingCloudflareModels.slice(0, 3).join(', ')})`);
+  } catch (e: any) {
+    console.warn(`  ⚠️ Cloudflare discovery: ${e.message}`);
   }
 
   aiConfig.workingOpenRouterModels = workingOpenRouterModels;
@@ -250,15 +235,53 @@ async function main() {
   }
   console.log(`📡 Loaded ${sources.length} active verified RSS news feeds.`);
 
-  const MAX_ARTICLES_PER_RUN = Math.max(parseInt(process.env.MAX_ARTICLES_PER_RUN || '3', 10), 1);
-  const dailyQuota = checkTodayPublishedCount(db);
-  console.log(`📊 Daily In-Depth Editorial Target: ${dailyQuota.count} / ${dailyQuota.maxAllowed} published today.`);
-  if (!dailyQuota.canPublishMore && !process.env.FORCE_RUN) {
-    console.log(`✅ Daily quota of ${dailyQuota.maxAllowed} comprehensive articles reached for today. Skipping run to preserve high editorial standards and avoid content dilution.`);
+  const DAILY_QUOTA_PER_CATEGORY = 2;
+  const CORE_CATEGORIES = [
+    { id: 'cat_naija_news', slug: 'naija-news', name: 'Naija News' },
+    { id: 'cat_money_hustle', slug: 'business', name: 'Business & Economy' },
+    { id: 'cat_sports', slug: 'sports', name: 'Sports' },
+    { id: 'cat_world', slug: 'world', name: 'World Affairs' },
+  ];
+
+  const todayPrefix = new Date().toISOString().split('T')[0];
+  const publishedTodayRows = db.prepare(`
+    SELECT category_id, COUNT(*) as count 
+    FROM articles 
+    WHERE (published_at LIKE ? OR created_at LIKE ?) 
+      AND (status = 'published' OR status IS NULL)
+    GROUP BY category_id
+  `).all(`${todayPrefix}%`, `${todayPrefix}%`) as { category_id: string; count: number }[];
+
+  const categoryTodayCount: Record<string, number> = {};
+  for (const cat of CORE_CATEGORIES) categoryTodayCount[cat.id] = 0;
+  for (const row of publishedTodayRows) {
+    const k = row.category_id || 'cat_naija_news';
+    categoryTodayCount[k] = (categoryTodayCount[k] || 0) + row.count;
+  }
+
+  console.log('\n📊 CATEGORY DAILY TARGET MONITOR (Goal: Exactly 2 per category/day):');
+  console.log('----------------------------------------------------------------');
+  let totalNeededAcrossAll = 0;
+  const neededPerCategory: Record<string, number> = {};
+  for (const cat of CORE_CATEGORIES) {
+    const current = categoryTodayCount[cat.id] || 0;
+    const needed = Math.max(0, DAILY_QUOTA_PER_CATEGORY - current);
+    neededPerCategory[cat.id] = needed;
+    totalNeededAcrossAll += needed;
+    const statusIcon = needed === 0 ? '✅ FULL (2/2)' : `⏳ Needs ${needed} more`;
+    console.log(`  • ${cat.name.padEnd(20)}: ${current} / ${DAILY_QUOTA_PER_CATEGORY} published today [${statusIcon}]`);
+  }
+  console.log('----------------------------------------------------------------\n');
+
+  if (totalNeededAcrossAll === 0 && !process.env.FORCE_RUN) {
+    console.log('🎉 All 4 news desks have satisfied their daily quota (2 articles each, 8 total today)! Skipping run to avoid clutter and preserve quality.');
     db.close();
     return;
   }
-  const remainingToday = Math.min(MAX_ARTICLES_PER_RUN, Math.max(dailyQuota.maxAllowed - dailyQuota.count, 1));
+
+  // Pace runs: publish at most 1 article per active category in this single run (capped at max 2-3 per run)
+  const MAX_ARTICLES_PER_RUN = Math.min(2, totalNeededAcrossAll);
+  const remainingToday = MAX_ARTICLES_PER_RUN;
 
   const startTime = Date.now();
   let totalProcessed = 0;
@@ -512,7 +535,7 @@ async function main() {
     console.warn(`  ⚠️ Google Trends scanner notice: ${trendErr.message}`);
   }
 
-  // Phase 1: Ingest feeds and collect candidates across all enabled wire sources
+  // Phase 1: Ingest feeds for ONLY categories that still have daily quota remaining
   interface RankedCandidate {
     source: SourceRow;
     item: CustomItem;
@@ -527,8 +550,32 @@ async function main() {
     'efcc', 'super eagles', 'osimhen', 'afcon', 'techcabal', 'fintech', 'tax'
   ];
 
-  for (const source of sources) {
-    console.log(`\n📻 Scanning Wire Feed: [${source.name}] (${source.feed_url})`);
+  const categoriesNeedingArticles = CORE_CATEGORIES.filter((c) => (neededPerCategory[c.id] || 0) > 0);
+  const targetedSources: SourceRow[] = [];
+
+  for (const cat of categoriesNeedingArticles) {
+    const catSources = db.prepare(`
+      SELECT * FROM sources 
+      WHERE is_enabled = 1 AND category_default_id = ?
+      ORDER BY last_fetched_at ASC, trust_score DESC
+      LIMIT 2
+    `).all(cat.id) as SourceRow[];
+
+    if (catSources.length > 0) {
+      targetedSources.push(...catSources);
+    } else {
+      const fallback = sources.filter((s) => s.category_default_id === cat.id).slice(0, 2);
+      targetedSources.push(...fallback);
+    }
+  }
+
+  console.log(`\n📡 Targeted Selective Ingestion: Scanning ${targetedSources.length} feeds across active categories needing news (${categoriesNeedingArticles.map(c => c.name).join(', ')}).`);
+
+  for (const source of targetedSources) {
+    console.log(`\n📻 Scanning Targeted Feed: [${source.name}] (${source.feed_url})`);
+
+    // Polite spacing between feed requests to avoid rate limitations
+    await new Promise((r) => setTimeout(r, 1200));
 
     let feedItems: CustomItem[] = [];
     try {
@@ -599,7 +646,7 @@ async function main() {
   // Sort candidates by highest journalistic quality score within each category
   candidatePool.sort((a, b) => b.score - a.score);
 
-  // Group candidate pool by category to guarantee diverse category coverage (prevents Naija News monopolizing all slots)
+  // Group candidate pool by category to guarantee diverse category coverage
   const poolByCat: Record<string, RankedCandidate[]> = {
     cat_money_hustle: [],
     cat_sports: [],
@@ -612,9 +659,9 @@ async function main() {
     else poolByCat.cat_naija_news.push(c);
   }
 
-  // Interleave candidates so Business, Sports, World, and Naija News each get an equal turn
+  // Interleave candidates across active categories needing news
   const balancedCandidates: RankedCandidate[] = [];
-  const catKeys = ['cat_money_hustle', 'cat_sports', 'cat_world', 'cat_naija_news'];
+  const catKeys = ['cat_money_hustle', 'cat_sports', 'cat_world', 'cat_naija_news'].filter((k) => (neededPerCategory[k] || 0) > 0);
   const maxPoolDepth = Math.max(...catKeys.map((k) => poolByCat[k].length), 0);
   for (let d = 0; d < maxPoolDepth; d++) {
     for (const k of catKeys) {
@@ -623,13 +670,20 @@ async function main() {
   }
 
   const activeCandidates = balancedCandidates.length ? balancedCandidates : candidatePool;
-  console.log(`\n🎯 Evaluated ${candidatePool.length} fresh leads across all feeds (${poolByCat.cat_money_hustle.length} Business, ${poolByCat.cat_sports.length} Sports, ${poolByCat.cat_world.length} World, ${poolByCat.cat_naija_news.length} Naija News). Balanced selection active.`);
+  console.log(`\n🎯 Evaluated ${candidatePool.length} fresh leads across active targeted feeds. Balanced selection ready.`);
 
   // Phase 2: Synthesize and publish the curated stories
   for (const candidate of activeCandidates) {
     if (totalPublished >= MAX_ARTICLES_PER_RUN) break;
 
     const { source, item, score } = candidate;
+    const targetCatId = source.category_default_id || 'cat_naija_news';
+    if ((neededPerCategory[targetCatId] || 0) <= 0) {
+      continue; // Skip if this category quota has already been fulfilled in this run
+    }
+
+    // Rate-safe spacing between AI synthesis requests
+    await new Promise((r) => setTimeout(r, 2000));
     totalProcessed++;
 
     console.log(`\n  📝 [Score ${score}] Synthesizing Top Lead: "${item.title?.slice(0, 65)}..." (${source.name})`);
@@ -722,6 +776,9 @@ async function main() {
           updated_at: new Date().toISOString(), created_at: new Date().toISOString(), status: 'published',
         });
         totalPublished++;
+        if (neededPerCategory[categoryId] !== undefined) {
+          neededPerCategory[categoryId]--;
+        }
         insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'ARTICLE_PUBLISHED', source.id, `Synthesized & published "${aiResult.title.slice(0, 50)}..." via ${aiResult.provider} (${aiResult.modelUsed}).`, 'info');
 
         const bskyId = process.env.BLUESKY_IDENTIFIER;
