@@ -115,11 +115,23 @@ async function main() {
     return row;
   });
 
+  // Ensure syndication tracking columns exist in remote D1 articles table
+  try { await run(`ALTER TABLE articles ADD COLUMN syndicated_bluesky INTEGER DEFAULT 0`); } catch {}
+  try { await run(`ALTER TABLE articles ADD COLUMN syndicated_tumblr INTEGER DEFAULT 0`); } catch {}
+  try { await run(`ALTER TABLE articles ADD COLUMN syndicated_threads INTEGER DEFAULT 0`); } catch {}
+  try { await run(`ALTER TABLE articles ADD COLUMN syndicated_buffer INTEGER DEFAULT 0`); } catch {}
+  try { await run(`ALTER TABLE articles ADD COLUMN syndicated_bluesky_at TEXT`); } catch {}
+  try { await run(`ALTER TABLE articles ADD COLUMN syndicated_tumblr_at TEXT`); } catch {}
+  try { await run(`ALTER TABLE articles ADD COLUMN syndicated_threads_at TEXT`); } catch {}
+  try { await run(`ALTER TABLE articles ADD COLUMN syndicated_buffer_at TEXT`); } catch {}
+
   const articleColumns = [
     'id','slug','title','summary','content','category_id','image_url','image_caption',
     'image_credit','image_license','author_name','author_role','author_avatar',
     'is_top_story','is_trending','is_breaking','views_count','reading_time_minutes',
-    'source_id','source_name','source_original_url','published_at','updated_at','created_at','status'
+    'source_id','source_name','source_original_url','published_at','updated_at','created_at','status',
+    'syndicated_bluesky','syndicated_tumblr','syndicated_threads','syndicated_buffer',
+    'syndicated_bluesky_at','syndicated_tumblr_at','syndicated_threads_at','syndicated_buffer_at'
   ];
   const rejectionColumns = [
     'id','source_id','source_name','original_title','original_url','raw_content',
@@ -128,6 +140,46 @@ async function main() {
   const logColumns = ['id','event_type','source_id','message','level','created_at'];
 
   const articleCount = await insertMissing('articles', articleColumns, articleRows);
+
+  // Synchronize and persist social syndication flags (Tumblr, Bluesky) to upstream Cloudflare D1
+  console.log('📡 Synchronizing social syndication flags (Tumblr, Bluesky) to upstream Cloudflare D1...');
+  let updatedSyndication = 0;
+  for (const art of articleRows) {
+    const synTumblr = value(art, 'syndicated_tumblr');
+    const synBluesky = value(art, 'syndicated_bluesky');
+    const synThreads = value(art, 'syndicated_threads');
+    const synBuffer = value(art, 'syndicated_buffer');
+    if (synTumblr === 1 || synBluesky === 1 || synThreads === 1 || synBuffer === 1) {
+      try {
+        await run(
+          `UPDATE articles SET 
+             syndicated_tumblr = MAX(COALESCE(syndicated_tumblr, 0), ?),
+             syndicated_tumblr_at = COALESCE(?, syndicated_tumblr_at),
+             syndicated_bluesky = MAX(COALESCE(syndicated_bluesky, 0), ?),
+             syndicated_bluesky_at = COALESCE(?, syndicated_bluesky_at),
+             syndicated_threads = MAX(COALESCE(syndicated_threads, 0), ?),
+             syndicated_threads_at = COALESCE(?, syndicated_threads_at),
+             syndicated_buffer = MAX(COALESCE(syndicated_buffer, 0), ?),
+             syndicated_buffer_at = COALESCE(?, syndicated_buffer_at)
+           WHERE id = ? OR slug = ?`,
+          [
+            synTumblr ?? 0,
+            value(art, 'syndicated_tumblr_at'),
+            synBluesky ?? 0,
+            value(art, 'syndicated_bluesky_at'),
+            synThreads ?? 0,
+            value(art, 'syndicated_threads_at'),
+            synBuffer ?? 0,
+            value(art, 'syndicated_buffer_at'),
+            value(art, 'id'),
+            value(art, 'slug')
+          ]
+        );
+        updatedSyndication++;
+      } catch {}
+    }
+  }
+  console.log(`📡 Remote D1 syndication status saved: ${updatedSyndication} articles updated.`);
 
   // Synchronize and heal images on existing articles in remote Cloudflare D1
   console.log('🖼️ Verifying and healing article images in upstream Cloudflare D1...');

@@ -4401,249 +4401,247 @@ const yearsUntilFull5Gb = (daysUntilFull5Gb / 365).toFixed(1);
                   id="wb-presenter-box" 
                   class="relative w-40 h-40 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl transition-all duration-200 bg-[#152a4d] select-none"
                 >
-                  <!-- SVG Modular Broadcast Presenter (User's Exact Character & Art Style) -->
+                  <!-- SVG Modular Broadcast Presenter (Articulated Golden Stickman Anchor) -->
                   <svg id="wb-scene-svg" viewBox="0 0 400 480" class="w-full h-full drop-shadow-md select-none transition-all duration-300">
                     <defs>
-                      <!-- User's Shaded Cylindrical Neck Gradient -->
+                      <!-- Stickman Gold Glow Filter -->
+                      <filter id="wbGoldGlow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="3.5" result="blur"/>
+                        <feMerge>
+                          <feMergeNode in="blur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
+
+                      <!-- Stickman Radiant Aura -->
+                      <radialGradient id="wbStickmanAura" cx="50%" cy="50%" r="50%">
+                        <stop id="wbAuraStop1" offset="0%" stop-color="#fde047" stop-opacity="0.3"/>
+                        <stop id="wbAuraStop2" offset="80%" stop-color="#eab308" stop-opacity="0.05"/>
+                        <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+                      </radialGradient>
+
+                      <!-- Metallic Desk Gradient -->
+                      <linearGradient id="wbDeskGrad" x1="0" y1="0" x2="1" y2="0">
+                        <stop id="wbDeskStop1" offset="0%" stop-color="#0f172a"/>
+                        <stop offset="50%" stop-color="#1e293b"/>
+                        <stop id="wbDeskStop2" offset="100%" stop-color="#0f172a"/>
+                      </linearGradient>
+
+                      <!-- Compatibility gradients for dynamic JS styling -->
                       <linearGradient id="wbNeckGrad" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stop-color="#b8734c"/>
-                        <stop offset="35%" stop-color="#f0b687"/>
-                        <stop offset="65%" stop-color="#f0b687"/>
-                        <stop offset="100%" stop-color="#b8734c"/>
+                        <stop id="wbSkinStop1" offset="0%" stop-color="#facc15"/>
+                        <stop id="wbSkinStop2" offset="100%" stop-color="#eab308"/>
+                      </linearGradient>
+                      <linearGradient id="wbSuitGrad" x1="0" y1="0" x2="1" y2="0">
+                        <stop id="wbSuitStop1" offset="0%" stop-color="#0f172a"/>
+                        <stop id="wbSuitStop2" offset="100%" stop-color="#1e293b"/>
                       </linearGradient>
                     </defs>
 
                     <!-- Studio Background Wall & Monitors -->
-                    <rect x="0" y="0" width="400" height="480" fill="#152a4d"/>
-                    <circle cx="340" cy="70" r="120" fill="#1c3560"/>
+                    <rect x="0" y="0" width="400" height="480" fill="#070b14"/>
+                    <rect x="0" y="240" width="400" height="240" fill="#0b1329"/>
 
-                    <!-- Left Monitor Graphic (Chart) -->
+                    <!-- Horizon LED Blue Strip -->
+                    <rect x="0" y="240" width="400" height="3" fill="#38bdf8" opacity="0.85"/>
+                    <rect x="0" y="242" width="400" height="10" fill="#38bdf8" opacity="0.12"/>
+
+                    <!-- Left Monitor Graphic (FX Rates & Market Chart) -->
                     <g id="wb-monitor-chart">
-                      <rect x="18" y="92" width="92" height="60" rx="4" fill="#1c3560"/>
-                      <rect x="28" y="100" width="72" height="44" rx="2" fill="#2a4d85"/>
-                      <path d="M40 130 L54 112 L66 124 L84 106" stroke="#7fa8e0" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                      <rect x="18" y="92" width="92" height="60" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+                      <rect x="26" y="98" width="76" height="48" rx="2" fill="#1e293b"/>
+                      <path d="M34 130 L48 114 L60 124 L86 106" stroke="#10b981" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                      <text x="64" y="140" fill="#94a3b8" font-family="system-ui" font-size="7" font-weight="700" text-anchor="middle">FX RATES (NGN)</text>
                     </g>
 
-                    <!-- Right Monitor Graphic (Clock / Dial) -->
+                    <!-- Right Monitor Graphic (Live Status / Clock) -->
                     <g id="wb-monitor-dial">
-                      <rect x="290" y="92" width="92" height="60" rx="4" fill="#1c3560"/>
-                      <rect x="300" y="100" width="72" height="44" rx="2" fill="#2a4d85"/>
-                      <circle cx="336" cy="122" r="14" fill="none" stroke="#7fa8e0" stroke-width="3"/>
-                      <path d="M336 122 L336 112 M336 122 L344 126" stroke="#7fa8e0" stroke-width="3" stroke-linecap="round"/>
+                      <rect x="290" y="92" width="92" height="60" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+                      <rect x="298" y="98" width="76" height="48" rx="2" fill="#1e293b"/>
+                      <circle cx="336" cy="120" r="13" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
+                      <path d="M336 120 L336 112 M336 120 L343 124" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+                      <text x="336" y="140" fill="#94a3b8" font-family="system-ui" font-size="7" font-weight="700" text-anchor="middle">LIVE NEWS</text>
                     </g>
 
-                    <!-- Studio Horizon Red Line -->
-                    <rect x="0" y="250" width="400" height="4" fill="#c4372a"/>
+                    <!-- Golden Stickman Studio Aura -->
+                    <circle cx="200" cy="190" r="110" fill="url(#wbStickmanAura)"/>
 
                     <!-- CHARACTER BOB GROUP -->
-                    <g id="wb-bob-group" class="bob" transform="translate(200,219) scale(0.72) translate(-200,-270)">
+                    <g id="wb-bob-group" class="bob" transform="translate(200,219) scale(0.75) translate(-200,-250)">
+
+                      <!-- STICKMAN GOLDEN SPINE -->
+                      <line id="wb-stickman-spine" x1="200" y1="180" x2="200" y2="390" stroke="#facc15" stroke-width="10" stroke-linecap="round" filter="url(#wbGoldGlow)"/>
+
+                      <!-- CRIMSON SILK TIE & SHIRT COLLAR -->
+                      <polygon id="wb-tie-body" points="200,225 208,245 200,310 192,245" fill="#ef4444"/>
+                      <circle id="wb-tie-knot" cx="200" cy="225" r="5" fill="#dc2626"/>
+                      <circle id="wb-shirt" cx="200" cy="216" r="4" fill="#f8fafc"/>
 
                       <!-- ===== GESTURE LIBRARY (8 Switchable Arm/Hand States) ===== -->
 
-                      <!-- 1. g-idle -->
+                      <!-- 1. g-idle (Both Hands Resting on Desk) -->
                       <g id="wb-g-idle" class="wb-gesture-group opacity-100 transition-opacity duration-200">
-                        <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-                        <path d="M248 344 Q260 392 242 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-                        <ellipse cx="234" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-                        <path d="M152 450 Q166 444 180 450" stroke="#c8875c" stroke-width="2" fill="none" stroke-linecap="round"/>
-                        <path d="M220 450 Q234 444 248 450" stroke="#c8875c" stroke-width="2" fill="none" stroke-linecap="round"/>
+                        <path d="M200 230 Q150 290 135 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="135" cy="385" r="8" fill="#fde047"/>
+                        <path d="M200 230 Q250 290 265 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="265" cy="385" r="8" fill="#fde047"/>
                       </g>
 
-                      <!-- 2. g-point-left -->
+                      <!-- 2. g-point-left (Points to Chart / FX Monitor) -->
                       <g id="wb-g-point-left" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
-                        <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-                        <path d="M248 344 Q190 318 120 298 Q92 290 70 286" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="68" cy="284" rx="15" ry="9" transform="rotate(-14 68 284)" fill="#dc9b6c"/>
-                        <path d="M56 281 L36 277" stroke="#dc9b6c" stroke-width="7" stroke-linecap="round"/>
+                        <path d="M200 230 Q250 290 265 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="265" cy="385" r="8" fill="#fde047"/>
+                        <path d="M200 230 Q130 220 55 190" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="55" cy="190" r="9" fill="#fde047"/>
+                        <line x1="55" y1="190" x2="35" y2="185" stroke="#facc15" stroke-width="5" stroke-linecap="round"/>
                       </g>
 
-                      <!-- 3. g-point-right (Pointing to Big Side Projection Screen) -->
+                      <!-- 3. g-point-right (Points to Big Side Projection Screen) -->
                       <g id="wb-g-point-right" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
-                        <path d="M248 344 Q260 392 242 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="234" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-                        <path d="M152 344 Q210 318 280 298 Q308 290 330 286" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="332" cy="284" rx="15" ry="9" transform="rotate(14 332 284)" fill="#dc9b6c"/>
-                        <path d="M344 281 L364 277" stroke="#dc9b6c" stroke-width="7" stroke-linecap="round"/>
+                        <path d="M200 230 Q150 290 135 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="135" cy="385" r="8" fill="#fde047"/>
+                        <path d="M200 230 Q270 220 345 190" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="345" cy="190" r="9" fill="#fde047"/>
+                        <line x1="345" y1="190" x2="365" y2="185" stroke="#facc15" stroke-width="5" stroke-linecap="round"/>
                       </g>
 
-                      <!-- 4. g-point-up -->
+                      <!-- 4. g-point-up (Points up to Headline Ribbon) -->
                       <g id="wb-g-point-up" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
-                        <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-                        <path d="M248 344 Q244 280 224 230" stroke="#1c2c4a" stroke-width="28" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="220" cy="220" rx="12" ry="10" fill="#dc9b6c"/>
-                        <path d="M220 210 L220 178" stroke="#dc9b6c" stroke-width="8" stroke-linecap="round"/>
+                        <path d="M200 230 Q150 290 135 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="135" cy="385" r="8" fill="#fde047"/>
+                        <path d="M200 230 Q240 160 220 95" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="220" cy="95" r="8" fill="#fde047"/>
+                        <line x1="220" y1="95" x2="220" y2="75" stroke="#facc15" stroke-width="5" stroke-linecap="round"/>
                       </g>
 
-                      <!-- 5. g-explain -->
+                      <!-- 5. g-explain (Two-Hand Open Explanation) -->
                       <g id="wb-g-explain" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
-                        <path d="M152 344 Q128 316 138 294" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
-                        <path d="M248 344 Q272 316 262 294" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="128" cy="288" rx="20" ry="15" fill="#dc9b6c"/>
-                        <ellipse cx="272" cy="288" rx="20" ry="15" fill="#dc9b6c"/>
-                        <path d="M118 278 L118 296 M128 276 L128 298 M138 278 L138 296" stroke="#c8875c" stroke-width="2.5" stroke-linecap="round"/>
-                        <path d="M262 278 L262 296 M272 276 L272 298 M282 278 L282 296" stroke="#c8875c" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M200 230 Q140 190 95 215" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="95" cy="215" r="9" fill="#fde047"/>
+                        <path d="M200 230 Q260 190 305 215" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="305" cy="215" r="9" fill="#fde047"/>
                       </g>
 
-                      <!-- 6. g-emphasize -->
+                      <!-- 6. g-emphasize (Key Fact Emphasis Gesture) -->
                       <g id="wb-g-emphasize" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
-                        <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-                        <path d="M248 344 Q232 300 216 266" stroke="#1c2c4a" stroke-width="28" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="213" cy="258" rx="13" ry="11" fill="#dc9b6c"/>
-                        <path d="M213 248 L213 222" stroke="#dc9b6c" stroke-width="8" stroke-linecap="round"/>
+                        <path d="M200 230 Q150 290 135 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="135" cy="385" r="8" fill="#fde047"/>
+                        <path d="M200 230 Q240 190 250 215" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="250" cy="215" r="9" fill="#fde047"/>
+                        <line x1="250" y1="215" x2="265" y2="205" stroke="#facc15" stroke-width="5" stroke-linecap="round"/>
                       </g>
 
-                      <!-- 7. g-wave -->
+                      <!-- 7. g-wave (Sign-off Wrap Closing Wave) -->
                       <g id="wb-g-wave" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
-                        <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-                        <path d="M248 344 Q256 294 230 252" stroke="#1c2c4a" stroke-width="28" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="226" cy="244" rx="16" ry="14" fill="#dc9b6c"/>
-                        <path d="M214 230 L208 218" stroke="#dc9b6c" stroke-width="5" stroke-linecap="round"/>
-                        <path d="M224 226 L222 212" stroke="#dc9b6c" stroke-width="5" stroke-linecap="round"/>
-                        <path d="M234 228 L238 214" stroke="#dc9b6c" stroke-width="5" stroke-linecap="round"/>
+                        <path d="M200 230 Q150 290 135 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="135" cy="385" r="8" fill="#fde047"/>
+                        <path d="M200 230 Q270 170 260 105" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="260" cy="105" r="10" fill="#fde047"/>
+                        <path d="M250 95 L245 85 M260 92 L260 80 M270 95 L275 85" stroke="#facc15" stroke-width="3.5" stroke-linecap="round"/>
                       </g>
 
-                      <!-- 8. g-reading (Consulting Briefing Book / Tablet) -->
+                      <!-- 8. g-reading (Consulting Digital Tablet on Desk) -->
                       <g id="wb-g-reading" class="wb-gesture-group opacity-0 pointer-events-none transition-opacity duration-200">
-                        <path d="M152 344 Q130 390 165 428" stroke="#1c2c4a" stroke-width="32" fill="none" stroke-linecap="round"/>
-                        <rect x="150" y="400" width="54" height="38" rx="3" fill="#e9edf2" stroke="#b9c2cc" stroke-width="1.5" transform="rotate(-8 177 419)"/>
-                        <line x1="156" y1="409" x2="198" y2="403" stroke="#047857" stroke-width="1.5" transform="rotate(-8 177 419)"/>
-                        <line x1="156" y1="416" x2="194" y2="410" stroke="#64748b" stroke-width="1" transform="rotate(-8 177 419)"/>
-                        <line x1="156" y1="422" x2="190" y2="416" stroke="#64748b" stroke-width="1" transform="rotate(-8 177 419)"/>
-                        <ellipse cx="176" cy="434" rx="16" ry="11" fill="#dc9b6c"/>
-                        <path d="M248 344 Q260 392 242 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-                        <ellipse cx="234" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
+                        <path d="M200 230 Q140 290 150 365" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <!-- Glowing Newsroom Tablet -->
+                        <rect x="120" y="355" width="56" height="38" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+                        <line x1="128" y1="365" x2="168" y2="365" stroke="#10b981" stroke-width="1.5"/>
+                        <line x1="128" y1="373" x2="160" y2="373" stroke="#94a3b8" stroke-width="1.5"/>
+                        <line x1="128" y1="381" x2="152" y2="381" stroke="#94a3b8" stroke-width="1.5"/>
+                        <path d="M200 230 Q250 290 265 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+                        <circle cx="265" cy="385" r="8" fill="#fde047"/>
                       </g>
 
-                      <!-- WARDROBE: Broad Navy Blazer, Collar & Crimson Silk Tie -->
-                      <path d="M70 480 Q75 360 140 332 Q170 322 200 322 Q230 322 260 332 Q325 360 330 480 Z" fill="#1c2c4a"/>
-                      <path d="M170 335 L200 358 L185 337 Z" fill="#0e1830"/>
-                      <path d="M230 335 L200 358 L215 337 Z" fill="#0e1830"/>
-                      <ellipse cx="200" cy="345" rx="20" ry="11" fill="#f4f6f9"/>
-                      <path d="M192 343 Q200 339 208 343 L205 393 Q200 399 195 393 Z" fill="#c4372a"/>
+                      <!-- ===== HEAD GROUP: Turns and tips together with transform-origin ===== -->
+                      <g id="wb-head-group" class="head-group-el transition-transform duration-300" style="transform-origin: 200px 140px;">
 
-                      <!-- NECK: Shaded Cylindrical Gradient -->
-                      <path d="M186 300 Q182 314 180 330 Q200 340 220 330 Q218 314 214 300 Q200 308 186 300 Z" fill="url(#wbNeckGrad)"/>
+                        <!-- STICKMAN HEAD CIRCLE -->
+                        <circle id="wb-stickman-head" cx="200" cy="140" r="48" fill="#0f172a" stroke="#facc15" stroke-width="8" filter="url(#wbGoldGlow)"/>
 
-                      <!-- ===== HEAD GROUP: Rotates/Tips with transform-origin ===== -->
-                      <g id="wb-head-group" class="head-group-el transition-transform duration-300" style="transform-origin: 200px 300px;">
+                        <!-- BROADCAST HEADSET & BOOM MIC -->
+                        <path id="wb-headset-band" d="M148 136 Q200 82 252 136" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+                        <rect id="wb-headset-ear-l" x="144" y="126" width="9" height="22" rx="4" fill="#38bdf8"/>
+                        <rect id="wb-headset-ear-r" x="247" y="126" width="9" height="22" rx="4" fill="#38bdf8"/>
+                        <path d="M148 144 Q165 168 186 160" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+                        <circle cx="186" cy="160" r="3.5" fill="#ef4444"/>
 
-                        <!-- Ears -->
-                        <path d="M130 238 Q140 234 142 246 Q144 258 134 264 Q124 260 124 248 Q124 240 130 238 Z" fill="#c8875c"/>
-                        <path d="M270 238 Q260 234 258 246 Q256 258 266 264 Q276 260 276 248 Q276 240 270 238 Z" fill="#c8875c"/>
-
-                        <!-- Head Shape -->
-                        <path d="M200 130
-                                 C 246 130 268 168 266 210
-                                 C 265 248 254 280 238 302
-                                 C 224 320 212 328 200 328
-                                 C 188 328 176 320 162 302
-                                 C 146 280 135 248 134 210
-                                 C 132 168 154 130 200 130 Z" fill="#dc9b6c"/>
-                        <path d="M238 200 C 244 240 232 280 210 306 C 232 300 250 268 252 226 C 253 216 246 206 238 200 Z" fill="#c8875c"/>
-
-                        <!-- Hair & Side Tapers -->
-                        <path d="M130 210
-                                 C 122 150 158 100 200 100
-                                 C 242 100 278 150 270 210
-                                 C 264 190 248 175 228 172
-                                 C 220 165 210 162 200 162
-                                 C 190 162 180 165 172 172
-                                 C 152 175 136 190 130 210 Z" fill="#1c1410"/>
-                        <path d="M190 165 Q196 150 206 160 Q198 172 190 165 Z" fill="#140d09"/>
-                        <path d="M214 168 Q222 152 232 164 Q222 176 214 168 Z" fill="#140d09"/>
-                        <path d="M166 172 Q172 158 182 168 Q174 180 166 172 Z" fill="#140d09"/>
-                        <path d="M175 155 Q195 140 215 150" stroke="#4a372a" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6"/>
+                        <!-- SMART ANCHOR GLASSES (Optional toggle) -->
+                        <g id="wb-glasses-aud" class="hidden">
+                          <rect x="174" y="128" width="20" height="15" rx="3" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+                          <rect x="206" y="128" width="20" height="15" rx="3" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+                          <line x1="194" y1="135" x2="206" y2="135" stroke="#e2e8f0" stroke-width="2"/>
+                        </g>
 
                         <!-- EXPRESSION LIBRARY (Eyebrows) -->
                         <g id="wb-expr-neutral" class="wb-expr-group opacity-100 transition-opacity duration-200">
-                          <path d="M156 202 Q170 192 186 198" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
-                          <path d="M214 198 Q230 192 244 202" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                          <path d="M174 122 Q184 118 194 122" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                          <path d="M206 122 Q216 118 226 122" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
                         </g>
                         <g id="wb-expr-happy" class="wb-expr-group opacity-0 pointer-events-none transition-opacity duration-200">
-                          <path d="M154 200 Q170 184 188 196" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
-                          <path d="M212 196 Q230 184 246 200" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                          <path d="M174 120 Q184 112 194 120" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                          <path d="M206 120 Q216 112 226 120" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
                         </g>
                         <g id="wb-expr-serious" class="wb-expr-group opacity-0 pointer-events-none transition-opacity duration-200">
-                          <path d="M156 206 Q170 202 186 206" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
-                          <path d="M214 206 Q230 202 244 206" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                          <path d="M174 124 Q184 128 194 124" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                          <path d="M206 124 Q216 128 226 124" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
                         </g>
                         <g id="wb-expr-surprised" class="wb-expr-group opacity-0 pointer-events-none transition-opacity duration-200">
-                          <path d="M152 190 Q170 172 190 188" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
-                          <path d="M210 188 Q230 172 248 190" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                          <path d="M172 114 Q184 104 196 114" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                          <path d="M204 114 Q216 104 228 114" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
                         </g>
                         <g id="wb-expr-concerned" class="wb-expr-group opacity-0 pointer-events-none transition-opacity duration-200">
-                          <path d="M156 206 Q170 196 188 192" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
-                          <path d="M212 192 Q230 196 244 206" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+                          <path d="M174 124 Q184 116 194 120" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                          <path d="M206 120 Q216 116 226 124" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
                         </g>
 
-                        <!-- EYES: Outer (scale) > Eyelid (blink) > Sclera + Iris Group (gaze) -->
-                        <g id="wb-eye-outer-l" class="eye-outer transition-transform duration-200" style="transform-origin: 171px 220px;">
-                          <g class="eye-lid" style="transform-origin: 171px 220px;">
-                            <ellipse cx="171" cy="220" rx="14" ry="10" fill="#f4f6f9"/>
-                            <g class="iris-group transition-transform duration-200">
-                              <circle cx="173" cy="221" r="6.5" fill="#5c3a22"/>
-                              <circle cx="173" cy="221" r="3" fill="#1c1410"/>
-                              <circle cx="175.5" cy="218.5" r="1.6" fill="#fff"/>
-                            </g>
-                            <path d="M157 220 Q171 210 185 220" stroke="#1c1410" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+                        <!-- GLOWING EYES: Outer (gaze shift) > Eyelid (blinking) -->
+                        <g id="wb-eye-outer-l" class="eye-outer transition-transform duration-200" style="transform-origin: 184px 136px;">
+                          <g class="eye-lid" style="transform-origin: 184px 136px;">
+                            <ellipse cx="184" cy="136" rx="5.5" ry="7.5" fill="#fef08a"/>
+                            <ellipse cx="184" cy="136" rx="2.5" ry="4" fill="#0f172a"/>
                           </g>
                         </g>
 
-                        <g id="wb-eye-outer-r" class="eye-outer transition-transform duration-200" style="transform-origin: 229px 220px;">
-                          <g class="eye-lid" style="transform-origin: 229px 220px;">
-                            <ellipse cx="229" cy="220" rx="14" ry="10" fill="#f4f6f9"/>
-                            <g class="iris-group transition-transform duration-200">
-                              <circle cx="227" cy="221" r="6.5" fill="#5c3a22"/>
-                              <circle cx="227" cy="221" r="3" fill="#1c1410"/>
-                              <circle cx="229.5" cy="218.5" r="1.6" fill="#fff"/>
-                            </g>
-                            <path d="M215 220 Q229 210 243 220" stroke="#1c1410" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+                        <g id="wb-eye-outer-r" class="eye-outer transition-transform duration-200" style="transform-origin: 216px 136px;">
+                          <g class="eye-lid" style="transform-origin: 216px 136px;">
+                            <ellipse cx="216" cy="136" rx="5.5" ry="7.5" fill="#fef08a"/>
+                            <ellipse cx="216" cy="136" rx="2.5" ry="4" fill="#0f172a"/>
                           </g>
                         </g>
 
-                        <!-- Nose -->
-                        <path d="M198 226 Q191 252 186 262 Q193 267 200 266" stroke="#c8875c" stroke-width="3" fill="none" stroke-linecap="round"/>
-
-                        <!-- MOUTH FRAMES (Firmly locked inside head group, never on neck) -->
+                        <!-- MOUTH FRAMES FOR REAL-TIME LIP-SYNC -->
                         <g id="wb-mouth-container">
                           <!-- Closed -->
                           <g id="wb-mouth-closed" class="transition-opacity duration-150 opacity-100">
-                            <path d="M174 292 Q200 300 226 292 Q212 298 200 298 Q188 298 174 292 Z" fill="#8f3f30"/>
+                            <path d="M188 158 Q200 166 212 158" stroke="#facc15" stroke-width="4.5" fill="none" stroke-linecap="round"/>
                           </g>
-                          <!-- Open (Teeth row) -->
+                          <!-- Open Talking -->
                           <g id="wb-mouth-open" class="transition-opacity duration-150 opacity-0 pointer-events-none">
-                            <path d="M178 290 Q200 286 222 290 Q220 304 200 306 Q180 304 178 290 Z" fill="#5c2018"/>
-                            <path d="M183 291 Q200 288 217 291 Q216 297 200 298 Q184 297 183 291 Z" fill="#fff"/>
+                            <ellipse cx="200" cy="160" rx="8" ry="6" fill="#facc15"/>
                           </g>
-                          <!-- Wide (Upper teeth row and pink tongue) -->
+                          <!-- Wide Alert / Emphatic -->
                           <g id="wb-mouth-wide" class="transition-opacity duration-150 opacity-0 pointer-events-none">
-                            <path d="M168 288 Q200 282 230 288 Q228 310 200 314 Q172 310 168 288 Z" fill="#5c2018"/>
-                            <path d="M174 290 Q200 285 226 290 Q224 298 200 300 Q176 298 174 290 Z" fill="#fff"/>
-                            <ellipse cx="200" cy="306" rx="13" ry="6" fill="#c0504d"/>
+                            <ellipse cx="200" cy="162" rx="13" ry="9" fill="#facc15"/>
                           </g>
                         </g>
                       </g>
                     </g>
 
-                    <!-- DESK & FOREGROUND -->
-                    <rect x="0" y="342" width="400" height="14" fill="#1c3560"/>
-                    <path d="M0 356 L400 356 L400 480 L0 480 Z" fill="#0e1626"/>
+                    <!-- MODERN NEWSROOM DESK & FOREGROUND -->
+                    <polygon points="30,410 370,410 400,480 0,480" fill="url(#wbDeskGrad)" stroke="#1e293b" stroke-width="2"/>
+                    <line x1="0" y1="412" x2="400" y2="412" stroke="#38bdf8" stroke-width="3"/>
 
-                    <!-- 9JA BEACON Studio Badge -->
-                    <rect x="304" y="16" width="80" height="34" rx="4" fill="#c4372a"/>
-                    <text x="344" y="31" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="11" font-weight="700" fill="#fff">9JA</text>
-                    <text x="344" y="44" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="10" font-weight="700" fill="#fff">BEACON</text>
+                    <!-- Desk Microphone with Red Tally Ring -->
+                    <line x1="85" y1="412" x2="105" y2="350" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+                    <ellipse cx="105" cy="350" rx="4" ry="7" fill="#0f172a" stroke="#ef4444" stroke-width="2"/>
+
+                    <!-- 9JA BEACON Desk Badge -->
+                    <rect x="145" y="426" width="110" height="24" rx="4" fill="#0f172a" stroke="#facc15" stroke-width="1.5"/>
+                    <text id="wb-desk-nameplate" x="200" y="442" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="900" letter-spacing="1.5" fill="#facc15">BEACON STICKMAN</text>
 
                     <!-- Lower Third News Straps -->
-                    <rect x="0" y="442" width="400" height="24" fill="#c4372a"/>
-                    <text id="wb-lower-headline" x="16" y="459" font-family="-apple-system, sans-serif" font-size="13" font-weight="700" fill="#fff">BREAKING NEWS</text>
-                    <rect x="0" y="466" width="400" height="14" fill="#f4f6f9"/>
-                    <text id="wb-lower-ticker" x="16" y="477" font-family="-apple-system, sans-serif" font-size="10" font-weight="600" fill="#233a5c">Live from the studio</text>
+                    <rect x="0" y="456" width="400" height="24" fill="#ef4444"/>
+                    <text id="wb-lower-headline" x="16" y="472" font-family="system-ui, sans-serif" font-size="12" font-weight="900" fill="#fff">BREAKING NEWS</text>
                   </svg>
 
                   <!-- Active Pose & Gaze Overlay Badges -->
@@ -4949,7 +4947,7 @@ const yearsUntilFull5Gb = (daysUntilFull5Gb / 365).toFixed(1);
                   data-presenter-btn={p.id}
                   onclick={`selectWorkbenchPresenter('${p.id}')`}
                   class={`p-2.5 rounded-xl border text-left transition flex items-center gap-2.5 cursor-pointer ${
-                    p.id === 'presenter_femi'
+                    p.id === 'presenter_stickman'
                       ? 'bg-emerald-950/40 border-emerald-500/80 text-white'
                       : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-300'
                   }`}
@@ -5125,6 +5123,227 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
               <div class="flex justify-between">
                 <span>Tension Music:</span>
                 <code class="text-emerald-400">public/audio/breaking-news-tension-bed.wav</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- STICKMAN PRESENTER CAPABILITY SUITE & VIDEO ENGINE PREVIEW -->
+      <!-- ============================================================ -->
+      <div class="p-6 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-amber-500/30 shadow-2xl space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+          <div class="space-y-1">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase tracking-wider font-mono">
+              <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+              Stickman Presenter &bull; Capability Showcase
+            </div>
+            <h3 class="text-xl font-black text-white tracking-tight flex items-center gap-2">
+              <span>What the Beacon Stickman Can Do</span>
+            </h3>
+            <p class="text-xs text-slate-400 max-w-3xl leading-relaxed">
+              Autonomous kinetic news anchor engineered for 100% headless video rendering, real-time client-side speech cadence, 9-pose modular articulation, and instant multi-platform social syndication with zero device lag.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <span class="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 font-bold text-amber-400">1080x1920 (9:16) & 16:9</span>
+            <span class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 font-bold text-slate-300">0$ API Cost</span>
+            <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 font-bold text-emerald-400">Anti-Spam Verified</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <!-- LEFT: 9:16 HIGH-DEFINITION VERTICAL VIDEO PREVIEW PLAYER (SHORTS / REELS / TIKTOK) -->
+          <div class="lg:col-span-5 flex flex-col space-y-3 p-4 rounded-xl bg-slate-950 border border-slate-800">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black uppercase tracking-wider text-amber-400 font-mono flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
+                Rendered Stickman Video (9:16 Vertical)
+              </span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-300 font-bold border border-amber-500/20">
+                1080 &times; 1920 HD
+              </span>
+            </div>
+
+            <!-- Video Player -->
+            <div class="relative w-full aspect-[9/16] max-h-[520px] mx-auto rounded-xl overflow-hidden bg-black border-2 border-amber-500/30 shadow-2xl flex items-center justify-center group">
+              <video 
+                id="stickman-preview-video"
+                controls 
+                loop 
+                playsinline
+                preload="metadata"
+                poster="/videos/stickman-thumbnail.jpg"
+                class="w-full h-full object-contain bg-slate-950"
+              >
+                <source src="/videos/stickman-preview.mp4" type="video/mp4" />
+                Your browser does not support video playback.
+              </video>
+            </div>
+
+            <!-- Render Status & Specs -->
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-400 space-y-1.5">
+              <div class="flex justify-between items-center text-slate-300">
+                <span>Output Resolution:</span>
+                <span class="text-emerald-400 font-bold">1080 x 1920 (TikTok/Reels/Shorts)</span>
+              </div>
+              <div class="flex justify-between items-center text-slate-300">
+                <span>Audio Soundbed:</span>
+                <span class="text-amber-400 font-bold">Stereo Tension Pulse (48kHz)</span>
+              </div>
+              <div class="flex justify-between items-center text-slate-300">
+                <span>Motion Engine:</span>
+                <span class="text-slate-200">Headless ffmpeg (Deterministic)</span>
+              </div>
+            </div>
+
+            <!-- 1-Click Video Re-Render Controller -->
+            <div class="space-y-2 pt-2 border-t border-slate-800/80">
+              <label class="text-[11px] font-bold text-slate-300">Motivational Headline / Topic</label>
+              <input 
+                type="text" 
+                id="stickman-video-headline"
+                value="DISCIPLINE TODAY, DESTINY TOMORROW"
+                class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs font-mono focus:border-amber-500 focus:outline-hidden"
+              />
+
+              <div class="flex flex-wrap gap-2 pt-1">
+                <button
+                  type="button"
+                  id="btn-render-stickman"
+                  onclick="renderStickmanVideo()"
+                  class="flex-1 px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-black font-mono inline-flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20 transition cursor-pointer"
+                >
+                  <svg class="w-4 h-4 text-slate-950" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  <span>Render New Stickman Video</span>
+                </button>
+                <a
+                  href="/videos/stickman-preview.mp4"
+                  download="9jabeacon-stickman-broadcast.mp4"
+                  class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold font-mono inline-flex items-center gap-1.5 transition cursor-pointer"
+                  title="Download MP4 file"
+                >
+                  <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                  <span>Download MP4</span>
+                </a>
+              </div>
+              <div id="stickman-render-status" class="text-[11px] font-mono text-slate-400 min-h-[16px]"></div>
+            </div>
+          </div>
+
+          <!-- RIGHT: "WHAT STICKMAN CAN DO" - CAPABILITY MATRIX -->
+          <div class="lg:col-span-7 space-y-4">
+            <h4 class="text-xs font-black uppercase tracking-wider text-amber-400 font-mono">
+              Core Broadcast Capabilities & Live Interactive Rig
+            </h4>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <!-- Capability 1: 9 Articulated Gestures -->
+              <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xs font-black">
+                    1
+                  </div>
+                  <h5 class="text-xs font-bold text-white">9-Pose Live Articulation</h5>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  Switch the Stickman Anchor's arms, posture, and gaze in real time. Click any gesture to preview it instantly on the broadcast stage:
+                </p>
+                <div class="flex flex-wrap gap-1">
+                  <button type="button" onclick="setWorkbenchGesture('idle')" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer">Idle Rest</button>
+                  <button type="button" onclick="setWorkbenchGesture('point-left')" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer">Point FX Chart</button>
+                  <button type="button" onclick="setWorkbenchGesture('point-right')" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer">Point Screen</button>
+                  <button type="button" onclick="setWorkbenchGesture('point-up')" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer">Point Headline</button>
+                  <button type="button" onclick="setWorkbenchGesture('explain')" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer">2-Hand Explain</button>
+                  <button type="button" onclick="setWorkbenchGesture('emphasize')" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer">Emphasize</button>
+                  <button type="button" onclick="setWorkbenchGesture('reading')" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer">Read Tablet</button>
+                  <button type="button" onclick="setWorkbenchGesture('wave')" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer">Sign-off Wave</button>
+                </div>
+              </div>
+
+              <!-- Capability 2: Real-Time Lip-Sync Speech Engine -->
+              <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs font-black">
+                    2
+                  </div>
+                  <h5 class="text-xs font-bold text-white">Real-Time Lip-Sync Engine</h5>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  Stickman's mouth shapes automatically track real-time speech phonemes during broadcast playback. $0 API cost, zero network lag.
+                </p>
+                <div class="flex items-center gap-1.5 pt-1">
+                  <span class="text-[10px] font-mono text-slate-500">Mouth Shapes:</span>
+                  <button type="button" onclick="setWorkbenchMouth('closed')" class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-300 cursor-pointer">Closed</button>
+                  <button type="button" onclick="setWorkbenchMouth('open')" class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-300 cursor-pointer">Talking</button>
+                  <button type="button" onclick="setWorkbenchMouth('wide')" class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-300 cursor-pointer">Wide Alert</button>
+                </div>
+              </div>
+
+              <!-- Capability 3: Autonomous Headless HD Video Pipeline -->
+              <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-xs font-black">
+                    3
+                  </div>
+                  <h5 class="text-xs font-bold text-white">Headless ffmpeg Production</h5>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  Renders full 1080p broadcast MP4s via GitHub Actions or Node.js without using client memory or crashing low-end visitor devices.
+                </p>
+                <div class="p-2 rounded bg-slate-900 text-[10px] font-mono text-slate-300 border border-slate-800/80">
+                  <code>node scripts/generate-stickman-video.cjs</code>
+                </div>
+              </div>
+
+              <!-- Capability 4: Data-Driven Beat Reporting -->
+              <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xs font-black">
+                    4
+                  </div>
+                  <h5 class="text-xs font-bold text-white">Live Data & FX Pointing</h5>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  Stickman turns to side monitors to highlight Naira FX rates, Central Bank interest rate alerts, and live oil market movements.
+                </p>
+                <div class="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 font-bold">
+                  <span>&bull; NGN/USD Official & Parallel Window Tracking</span>
+                </div>
+              </div>
+
+              <!-- Capability 5: Anti-Spam Social Multi-Broadcasting -->
+              <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-pink-400 text-xs font-black">
+                    5
+                  </div>
+                  <h5 class="text-xs font-bold text-white">Tumblr & Bluesky Multi-Dispatch</h5>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  Equipped with 3-tier live deduplication (API v2 + RSS + timeline check) to eliminate double-posting and feed spam across all networks.
+                </p>
+                <div class="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+                  <span class="text-emerald-400">&check; Zero Feed Spam</span>
+                  <span class="text-emerald-400">&check; Verified Thumbnails</span>
+                </div>
+              </div>
+
+              <!-- Capability 6: Ready for Self-Hosted DB Migration -->
+              <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xs font-black">
+                    6
+                  </div>
+                  <h5 class="text-xs font-bold text-white">100% Migration Ready</h5>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  Built with modular vector assets, standardized D1/PostgreSQL/SQLite schemas, and zero vendor lock-in for your own backend server.
+                </p>
+                <div class="flex items-center gap-2 text-[10px] font-mono text-blue-400">
+                  <span>SQLite &bull; Cloudflare D1 &bull; PostgreSQL Compatible</span>
+                </div>
               </div>
             </div>
           </div>
@@ -5479,11 +5698,22 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
     // Option A Presenter Live Studio & Workbench
     // ==========================================
     const workbenchPresentersData = {
+      presenter_stickman: {
+        name: 'Beacon Stickman Anchor',
+        role: 'Chief AI Broadcast Anchor & Visual Presenter',
+        tag: 'BEACON STICKMAN • CHIEF NEWSROOM ANCHOR',
+        sprite: '/presenters/stickman/stickman_anchor_idle.svg',
+        gender: 'male',
+        pitch: 1.0,
+        rate: 1.0,
+        presetHeadline: '9jaBeacon Visual Newsroom: Stickman Anchor Live On Air Across Nigeria',
+        presetScript: 'Good evening Nigeria. This is the 9jaBeacon Automated Newsroom with your Chief Stickman Anchor. Delivering instant verified breaking news, economic breakdowns, and investigative alerts directly to your feed.'
+      },
       presenter_femi: {
-        name: 'Femi Adeleke',
+        name: 'Stickman Femi (National Affairs)',
         role: 'Senior National Affairs & Breaking Politics Anchor',
-        tag: 'FEMI ADELEKE • SENIOR NATIONAL AFFAIRS ANCHOR',
-        sprite: '/presenters/femi.jpg',
+        tag: 'STICKMAN FEMI • SENIOR NATIONAL AFFAIRS ANCHOR',
+        sprite: '/presenters/stickman/stickman_anchor_breaking.svg',
         gender: 'male',
         pitch: 0.95,
         rate: 1.0,
@@ -5491,10 +5721,10 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         presetScript: 'Good evening. This is 9jaBeacon National News. The Federal Government has today approved an extensive digital infrastructure roadmap aimed at accelerating nationwide broadband, powering startups, and modernizing public services across Nigeria.'
       },
       presenter_amaka: {
-        name: 'Amaka Okafor',
+        name: 'Stickman Amaka (Investigative Desk)',
         role: 'Chief Primetime & Investigative News Anchor',
-        tag: 'AMAKA OKAFOR • CHIEF PRIMETIME & INVESTIGATIVE ANCHOR',
-        sprite: '/presenters/amaka.jpg',
+        tag: 'STICKMAN AMAKA • CHIEF INVESTIGATIVE ANCHOR',
+        sprite: '/presenters/stickman/stickman_anchor_thinking.svg',
         gender: 'female',
         pitch: 1.1,
         rate: 1.0,
@@ -5502,10 +5732,10 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         presetScript: 'Good evening. An exclusive 9jaBeacon investigative report reveals a major revenue surge across key maritime corridors. Maritime authorities confirmed modern customs modernization and automation have curtailed systemic leakages.'
       },
       presenter_tunde: {
-        name: 'Babatunde Bello',
+        name: 'Stickman Tunde (Economy & Tech)',
         role: 'Business, Tech & Economic Intelligence Anchor',
-        tag: 'BABATUNDE BELLO • BUSINESS & TECH INTELLIGENCE ANCHOR',
-        sprite: '/presenters/tunde.jpg',
+        tag: 'STICKMAN TUNDE • BUSINESS & FX MARKETS ANCHOR',
+        sprite: '/presenters/stickman/stickman_anchor_pointing_screen.svg',
         gender: 'male',
         pitch: 1.0,
         rate: 1.05,
@@ -5513,10 +5743,10 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         presetScript: 'From the 9jaBeacon Business Desk, foreign exchange reserves registered substantial expansion this week, bolstered by diaspora inflows and non-oil export receipts. Central financial authorities signaled steady structural stability.'
       },
       presenter_zainab: {
-        name: 'Zainab Aliyu',
+        name: 'Stickman Zainab (Culture & Sports)',
         role: 'Culture, Lifestyle, Diaspora & Sports Anchor',
-        tag: 'ZAINAB ALIYU • CULTURE & DIASPORA SPECIAL CORRESPONDENT',
-        sprite: '/presenters/zainab.jpg',
+        tag: 'STICKMAN ZAINAB • CULTURE & SPORTS CORRESPONDENT',
+        sprite: '/presenters/stickman/stickman_anchor_victory.svg',
         gender: 'female',
         pitch: 1.15,
         rate: 1.0,
@@ -5526,7 +5756,7 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
     };
 
     window.workbenchSettings = {
-      activePresenterId: 'presenter_femi',
+      activePresenterId: 'presenter_stickman',
       hasBreakingAlert: false,
       speechRate: 1.0,
       isPlaying: false,
@@ -5547,58 +5777,50 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
     }
 
     const puppetPresenterConfigs = {
+      presenter_stickman: {
+        goldColor: '#facc15',
+        tie: '#ef4444',
+        knot: '#dc2626',
+        headsetColor: '#38bdf8',
+        hasGlasses: false,
+        name: 'BEACON STICKMAN'
+      },
       presenter_femi: {
-        skin1: '#5c3317',
-        skin2: '#3d200d',
-        suit1: '#1e293b',
-        suit2: '#0f172a',
-        shirt: '#f8fafc',
+        goldColor: '#facc15',
         tie: '#059669',
         knot: '#047857',
+        headsetColor: '#10b981',
         hasGlasses: false,
-        hasHijab: false,
-        name: 'FEMI ADELEKE'
+        name: 'STICKMAN FEMI'
       },
       presenter_amaka: {
-        skin1: '#783c28',
-        skin2: '#542616',
-        suit1: '#9f1239',
-        suit2: '#881337',
-        shirt: '#09090b',
+        goldColor: '#facc15',
         tie: '#f59e0b',
         knot: '#d97706',
+        headsetColor: '#f59e0b',
         hasGlasses: false,
-        hasHijab: false,
-        name: 'AMAKA OKAFOR'
+        name: 'STICKMAN AMAKA'
       },
       presenter_tunde: {
-        skin1: '#66361e',
-        skin2: '#452210',
-        suit1: '#334155',
-        suit2: '#1e293b',
-        shirt: '#e0f2fe',
+        goldColor: '#38bdf8',
         tie: '#831843',
         knot: '#701a75',
+        headsetColor: '#38bdf8',
         hasGlasses: true,
-        hasHijab: false,
-        name: 'BABATUNDE BELLO'
+        name: 'STICKMAN TUNDE'
       },
       presenter_zainab: {
-        skin1: '#7b4424',
-        skin2: '#572c14',
-        suit1: '#0f766e',
-        suit2: '#115e59',
-        shirt: '#f0fdfa',
-        tie: '#f59e0b',
-        knot: '#d97706',
+        goldColor: '#facc15',
+        tie: '#ec4899',
+        knot: '#db2777',
+        headsetColor: '#ec4899',
         hasGlasses: false,
-        hasHijab: true,
-        name: 'ZAINAB ALIYU'
+        name: 'STICKMAN ZAINAB'
       }
     };
 
     window.selectWorkbenchPresenter = function(presenterId) {
-      const p = workbenchPresentersData[presenterId];
+      const p = workbenchPresentersData[presenterId] || workbenchPresentersData.presenter_stickman;
       if (!p) return;
       workbenchSettings.activePresenterId = presenterId;
 
@@ -5611,24 +5833,22 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         }
       });
 
-      // Update Modular Puppet Visual Features
-      const cfg = puppetPresenterConfigs[presenterId] || puppetPresenterConfigs.presenter_femi;
-      const s1 = document.getElementById('wbSkinStop1');
-      const s2 = document.getElementById('wbSkinStop2');
-      const su1 = document.getElementById('wbSuitStop1');
-      const su2 = document.getElementById('wbSuitStop2');
-      const shirt = document.getElementById('wb-shirt');
+      // Update Stickman Visual Features
+      const cfg = puppetPresenterConfigs[presenterId] || puppetPresenterConfigs.presenter_stickman;
+      const spine = document.getElementById('wb-stickman-spine');
+      const head = document.getElementById('wb-stickman-head');
       const tieBody = document.getElementById('wb-tie-body');
       const tieKnot = document.getElementById('wb-tie-knot');
       const deskName = document.getElementById('wb-desk-nameplate');
+      const headsetL = document.getElementById('wb-headset-ear-l');
+      const headsetR = document.getElementById('wb-headset-ear-r');
 
-      if (s1) s1.setAttribute('stop-color', cfg.skin1);
-      if (s2) s2.setAttribute('stop-color', cfg.skin2);
-      if (su1) su1.setAttribute('stop-color', cfg.suit1);
-      if (su2) su2.setAttribute('stop-color', cfg.suit2);
-      if (shirt) shirt.setAttribute('fill', cfg.shirt);
-      if (tieBody) tieBody.setAttribute('fill', cfg.tie);
-      if (tieKnot) tieKnot.setAttribute('fill', cfg.knot);
+      if (spine && cfg.goldColor) spine.setAttribute('stroke', cfg.goldColor);
+      if (head && cfg.goldColor) head.setAttribute('stroke', cfg.goldColor);
+      if (tieBody && cfg.tie) tieBody.setAttribute('fill', cfg.tie);
+      if (tieKnot && cfg.knot) tieKnot.setAttribute('fill', cfg.knot);
+      if (headsetL && cfg.headsetColor) headsetL.setAttribute('fill', cfg.headsetColor);
+      if (headsetR && cfg.headsetColor) headsetR.setAttribute('fill', cfg.headsetColor);
       if (deskName) deskName.textContent = cfg.name;
 
       // Toggle glasses
@@ -6413,6 +6633,53 @@ Full verified citizen reporting on www.9jabeacon.name.ng</textarea>
         }
       } catch (err) {
         console.error('Timeline API call failed:', err);
+      }
+    };
+
+    window.renderStickmanVideo = async function() {
+      const btn = document.getElementById('btn-render-stickman');
+      const statusEl = document.getElementById('stickman-render-status');
+      const videoPlayer = document.getElementById('stickman-preview-video');
+      const headline = (document.getElementById('stickman-video-headline')?.value || 'DISCIPLINE TODAY, DESTINY TOMORROW').trim();
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<svg class="w-4 h-4 animate-spin inline mr-1.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Rendering Stickman HD Video...`;
+      }
+      if (statusEl) {
+        statusEl.className = 'text-xs font-mono text-amber-400 flex items-center gap-1.5';
+        statusEl.textContent = 'Rendering 1080x1920 MP4 with headless ffmpeg motion graph...';
+      }
+
+      try {
+        const res = await fetch('/api/admin/generate-stickman-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ headline })
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (statusEl) {
+            statusEl.className = 'text-xs font-mono text-emerald-400 flex items-center gap-1.5';
+            statusEl.textContent = '✅ ' + (data.message || 'Render complete! Reloading video player...');
+          }
+          if (videoPlayer) {
+            videoPlayer.src = (data.videoUrl || '/videos/stickman-preview.mp4') + '?t=' + Date.now();
+            videoPlayer.load();
+          }
+        } else {
+          throw new Error(data.error || 'Render failed');
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.className = 'text-xs font-mono text-red-400';
+          statusEl.textContent = 'Error: ' + err.message;
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<svg class="w-4 h-4 text-slate-950 inline mr-1.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> <span>Render New Stickman Video</span>`;
+        }
       }
     };
 

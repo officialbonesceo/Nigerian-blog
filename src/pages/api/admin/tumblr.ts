@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getD1, getArticleById, getAutomationSettings, getSiteSettings, addAutomationLog } from '../../../lib/runtime-db';
+import { getD1, getArticleById, getSiteSettings, addAutomationLog, updateArticle } from '../../../lib/runtime-db';
 import { postToTumblr } from '../../../lib/tumblr';
 
 export const POST: APIRoute = async ({ request, locals }) => {
@@ -97,11 +97,20 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
 
     if (result.success) {
+      if (body.articleId) {
+        try {
+          await updateArticle(db, body.articleId, {
+            syndicated_tumblr: 1,
+            syndicated_tumblr_at: new Date().toISOString(),
+          });
+        } catch {}
+      }
+
       try {
         await addAutomationLog(
           db,
           'TUMBLR_PUBLISH_SUCCESS',
-          'admin_api',
+          body.articleId || 'admin_api',
           `Dispatched story to Tumblr (${blogIdentifier}): ${result.postUrl || result.postId}`,
           'info'
         );

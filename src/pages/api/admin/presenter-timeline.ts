@@ -30,7 +30,7 @@ export const POST: APIRoute = async ({ request, locals, cookies }) => {
 
     let finalScript = scriptText;
     let finalHeadline = headline;
-    let autoPresenterId = requestedPresenterId || 'presenter_femi';
+    let autoPresenterId = requestedPresenterId || 'presenter_stickman';
     let keyPoints = [
       'Major structural policy update announced with immediate nationwide effect.',
       'Federal and state stakeholders align on comprehensive implementation.',

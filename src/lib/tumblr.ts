@@ -359,13 +359,18 @@ export async function postToTumblr(payload: TumblrPostPayload): Promise<TumblrPu
 
 /**
  * Live deduplication check against the Tumblr blog.
- * Reads recent public posts from the blog's RSS feed to ensure the exact article slug or title
- * is NOT posted multiple times, eliminating duplicate feed spamming.
+ * 3-Tier Multi-Check:
+ * 1. Official Tumblr API v2 (/v2/blog/{blog}/posts) with API key / OAuth
+ * 2. Blog public RSS feed (/rss)
+ * 3. Blog public HTML timeline page
+ *
+ * Prevents double-broadcasting and guarantees zero spamming across all CI runs.
  */
 export async function checkIfUrlAlreadyOnTumblrBlog(
   blogIdentifier: string,
   targetSlugOrUrl: string,
-  titleSnippet?: string
+  titleSnippet?: string,
+  credentials?: { consumerKey?: string; token?: string }
 ): Promise<{ exists: boolean; postUrl?: string }> {
   try {
     const rawBlog = (blogIdentifier || '').trim();
@@ -373,27 +378,117 @@ export async function checkIfUrlAlreadyOnTumblrBlog(
     const clean = rawBlog.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').trim();
     const blogUrl = clean.includes('.') ? clean : `${clean}.tumblr.com`;
 
-    const rssUrl = `https://${blogUrl}/rss`;
-    const res = await fetch(rssUrl, {
-      headers: { 'User-Agent': '9jaBeacon-Deduplication-Checker/1.0' },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return { exists: false };
-    const xml = await res.text();
-    const cleanTarget = targetSlugOrUrl.toLowerCase().trim().replace(/^https?:\/\/[^/]+/i, '').replace(/^\/news\//, '');
+    const cleanTarget = (targetSlugOrUrl || '')
+      .toLowerCase()
+      .trim()
+      .replace(/^https?:\/\/[^/]+/i, '')
+      .replace(/^\/news\//, '')
+      .replace(/\/+$/, '')
+      .replace(/\.html$/, '');
 
-    // Check if XML body contains the slug
-    if (cleanTarget && cleanTarget.length > 3 && xml.toLowerCase().includes(cleanTarget)) {
-      return { exists: true };
+    const cleanTitle = (titleSnippet || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const titleKeywords = cleanTitle.split(' ').filter((w) => w.length > 3).slice(0, 5);
+
+    const apiKey = (credentials?.consumerKey || process.env.TUMBLR_CONSUMER_KEY || '').trim();
+    const token = (credentials?.token || process.env.TUMBLR_TOKEN || process.env.TUMBLR_ACCESS_TOKEN || '').trim();
+
+    // --- TIER 1: Official Tumblr API v2 ---
+    if (apiKey || token) {
+      try {
+        const apiUrl = apiKey
+          ? `https://api.tumblr.com/v2/blog/${blogUrl}/posts?api_key=${encodeURIComponent(apiKey)}&limit=30`
+          : `https://api.tumblr.com/v2/blog/${blogUrl}/posts?limit=30`;
+        const headers: Record<string, string> = { 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const apiRes = await fetch(apiUrl, { headers, signal: AbortSignal.timeout(6000) });
+        if (apiRes.ok) {
+          const apiJson: any = await apiRes.json().catch(() => ({}));
+          const posts = apiJson?.response?.posts || [];
+          if (Array.isArray(posts) && posts.length > 0) {
+            for (const p of posts) {
+              const postUrl = p.post_url || p.url || '';
+              const haystack = [
+                p.summary || '',
+                p.title || '',
+                p.caption || '',
+                p.body || '',
+                p.slug || '',
+                p.link_url || '',
+                postUrl,
+                JSON.stringify(p.tags || []),
+              ].join(' ').toLowerCase();
+
+              // Check slug / target URL
+              if (cleanTarget && cleanTarget.length > 3 && haystack.includes(cleanTarget)) {
+                return { exists: true, postUrl };
+              }
+
+              // Check title matching
+              if (titleKeywords.length >= 3) {
+                const matchCount = titleKeywords.filter((w) => haystack.includes(w)).length;
+                if (matchCount >= Math.min(titleKeywords.length, 3)) {
+                  return { exists: true, postUrl };
+                }
+              }
+            }
+          }
+        }
+      } catch {}
     }
 
-    // Check if XML title matches title snippet
-    if (titleSnippet && titleSnippet.trim().length > 10) {
-      const cleanTitle = titleSnippet.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').slice(0, 30).trim();
-      if (cleanTitle.length > 8 && xml.toLowerCase().includes(cleanTitle)) {
-        return { exists: true };
+    // --- TIER 2: Public RSS Feed ---
+    try {
+      const rssUrl = `https://${blogUrl}/rss`;
+      const res = await fetch(rssUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (res.ok) {
+        const xml = (await res.text()).toLowerCase();
+        if (cleanTarget && cleanTarget.length > 3 && xml.includes(cleanTarget)) {
+          return { exists: true };
+        }
+        if (titleKeywords.length >= 3) {
+          const matchCount = titleKeywords.filter((w) => xml.includes(w)).length;
+          if (matchCount >= Math.min(titleKeywords.length, 3)) {
+            return { exists: true };
+          }
+        }
       }
-    }
+    } catch {}
+
+    // --- TIER 3: Public Blog HTML Page ---
+    try {
+      const htmlRes = await fetch(`https://${blogUrl}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (htmlRes.ok) {
+        const html = (await htmlRes.text()).toLowerCase();
+        if (cleanTarget && cleanTarget.length > 3 && (html.includes(cleanTarget) || html.includes(`/news/${cleanTarget}`))) {
+          return { exists: true };
+        }
+        if (titleKeywords.length >= 3) {
+          const matchCount = titleKeywords.filter((w) => html.includes(w)).length;
+          if (matchCount >= Math.min(titleKeywords.length, 3)) {
+            return { exists: true };
+          }
+        }
+      }
+    } catch {}
 
     return { exists: false };
   } catch {

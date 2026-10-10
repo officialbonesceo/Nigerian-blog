@@ -193,14 +193,35 @@ export const corePoseLibrary = {
 
 export const presenters: NewsPresenter[] = [
   {
+    id: 'presenter_stickman',
+    name: 'Beacon Stickman Anchor',
+    gender: 'male',
+    role: 'Chief AI Broadcast Anchor & Newsroom Presenter',
+    department: '9jaBeacon Automated Visual Newsroom',
+    bio: 'Dynamic kinetic stickman broadcast presenter delivering fast, verified breaking bulletins, financial breakdowns, and investigative briefings with real-time lip-sync and modular gesture articulation.',
+    avatar_url: '/presenters/stickman/stickman_avatar.svg',
+    sprite_url: '/presenters/stickman/stickman_anchor_idle.svg',
+    poses: standardPoses,
+    preferred_categories: ['cat_naija_news', 'cat_politics', 'cat_security', 'cat_money_hustle', 'cat_world', 'cat_sports'],
+    accent: 'Nigerian English (Crisp Broadcast / Baritone)',
+    voice_settings: {
+      pitch: 1.0,
+      rate: 1.0,
+      lang: 'en-NG',
+      preferred_gender: 'male'
+    },
+    status: 'active',
+    display_order: 1
+  },
+  {
     id: 'presenter_femi',
-    name: 'Femi Adeleke',
+    name: 'Stickman Femi (National Affairs)',
     gender: 'male',
     role: 'Senior National Affairs & Breaking Politics Anchor',
     department: 'National Desk & Governance',
-    bio: 'Authoritative broadcast journalist with over a decade covering Aso Rock, presidential directives, legislative debates, and national security briefings across Nigeria.',
-    avatar_url: '/presenters/femi.jpg',
-    sprite_url: '/presenters/femi.jpg',
+    bio: 'High-alert stickman anchor covering Aso Rock, presidential executive orders, national security briefings, and parliamentary debates.',
+    avatar_url: '/presenters/stickman/stickman_anchor_breaking.svg',
+    sprite_url: '/presenters/stickman/stickman_anchor_breaking.svg',
     poses: standardPoses,
     preferred_categories: ['cat_naija_news', 'cat_politics', 'cat_security'],
     accent: 'Nigerian English (Authoritative / Baritone)',
@@ -211,17 +232,17 @@ export const presenters: NewsPresenter[] = [
       preferred_gender: 'male'
     },
     status: 'active',
-    display_order: 1
+    display_order: 2
   },
   {
     id: 'presenter_amaka',
-    name: 'Amaka Okafor',
+    name: 'Stickman Amaka (Investigative Desk)',
     gender: 'female',
     role: 'Chief Primetime & Special Investigative Anchor',
     department: 'Primetime & Investigative Unit',
-    bio: 'Renowned investigative journalist and evening news anchor known for razor-sharp reporting on civic accountability, economy, human rights, and breaking national developments.',
-    avatar_url: '/presenters/amaka.jpg',
-    sprite_url: '/presenters/amaka.jpg',
+    bio: 'Investigative stickman anchor analyzing policy accountability, civic transparency, human rights dossiers, and deep-dive public interest reports.',
+    avatar_url: '/presenters/stickman/stickman_anchor_thinking.svg',
+    sprite_url: '/presenters/stickman/stickman_anchor_thinking.svg',
     poses: standardPoses,
     preferred_categories: ['cat_naija_news', 'cat_politics', 'cat_world'],
     accent: 'Nigerian English (Clear / Crisp Soprano)',
@@ -232,17 +253,17 @@ export const presenters: NewsPresenter[] = [
       preferred_gender: 'female'
     },
     status: 'active',
-    display_order: 2
+    display_order: 3
   },
   {
     id: 'presenter_tunde',
-    name: 'Babatunde Bello',
+    name: 'Stickman Tunde (Economy & Tech)',
     gender: 'male',
     role: 'Economy, Fintech & Business Intelligence Anchor',
     department: 'Money, Tech & Markets',
-    bio: 'Financial analyst and modern tech presenter decoding Central Bank monetary shifts, FX markets, Nigerian startup ecosystems, and practical wealth strategies.',
-    avatar_url: '/presenters/tunde.jpg',
-    sprite_url: '/presenters/tunde.jpg',
+    bio: 'Data-driven stickman anchor pointing directly to live FX rates, Central Bank monetary updates, startup rounds, and wealth strategies.',
+    avatar_url: '/presenters/stickman/stickman_anchor_pointing_screen.svg',
+    sprite_url: '/presenters/stickman/stickman_anchor_pointing_screen.svg',
     poses: standardPoses,
     preferred_categories: ['cat_money_hustle', 'cat_tech_vibes'],
     accent: 'Nigerian English (Energetic / Analytical)',
@@ -253,17 +274,17 @@ export const presenters: NewsPresenter[] = [
       preferred_gender: 'male'
     },
     status: 'active',
-    display_order: 3
+    display_order: 4
   },
   {
     id: 'presenter_zainab',
-    name: 'Zainab Aliyu',
+    name: 'Stickman Zainab (Culture & Sports)',
     gender: 'female',
     role: 'Culture, Lifestyle & Global Diaspora Anchor',
     department: 'Culture, Sports & Global Affairs',
-    bio: 'Dynamic broadcast journalist chronicling Nollywood, Afrobeats global milestones, African diaspora excellence, grassroots sports, and cross-continental cultural narratives.',
-    avatar_url: '/presenters/zainab.jpg',
-    sprite_url: '/presenters/zainab.jpg',
+    bio: 'Triumphant stickman host chronicling Afrobeats global milestones, Super Eagles tournament victories, Nollywood releases, and African excellence.',
+    avatar_url: '/presenters/stickman/stickman_anchor_victory.svg',
+    sprite_url: '/presenters/stickman/stickman_anchor_victory.svg',
     poses: standardPoses,
     preferred_categories: ['cat_culture_lifestyle', 'cat_sports', 'cat_world'],
     accent: 'Nigerian English (Eloquent / Engaging)',
@@ -274,7 +295,7 @@ export const presenters: NewsPresenter[] = [
       preferred_gender: 'female'
     },
     status: 'active',
-    display_order: 4
+    display_order: 5
   }
 ];
 

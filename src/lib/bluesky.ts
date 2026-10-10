@@ -734,7 +734,7 @@ export async function getBlueskyChannelAnalytics(rawIdentifier?: string): Promis
     let totalQuotes = 0;
 
     try {
-      const feedRes = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(actor)}&limit=15`, {
+      const feedRes = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(actor)}&limit=50`, {
         headers: { 'Accept': 'application/json' },
         signal: AbortSignal.timeout(8000),
       });
@@ -843,19 +843,48 @@ export async function getBlueskyChannelAnalytics(rawIdentifier?: string): Promis
  * Live deduplication check against the AT Protocol author feed.
  * Prevents double-broadcasting the same story across automated runs or CI schedules.
  */
-export async function checkIfUrlAlreadyOnBlueskyTimeline(actor: string, targetSlugOrUrl: string): Promise<{ exists: boolean; postUrl?: string }> {
+export async function checkIfUrlAlreadyOnBlueskyTimeline(
+  actor: string,
+  targetSlugOrUrl: string,
+  titleSnippet?: string
+): Promise<{ exists: boolean; postUrl?: string }> {
   try {
     const analytics = await getBlueskyChannelAnalytics(actor);
     if (!analytics || !analytics.success || !Array.isArray(analytics.recentPosts)) {
       return { exists: false };
     }
 
-    const cleanTarget = targetSlugOrUrl.toLowerCase().trim().replace(/^https?:\/\/[^/]+/i, '');
+    const cleanTarget = (targetSlugOrUrl || '')
+      .toLowerCase()
+      .trim()
+      .replace(/^https?:\/\/[^/]+/i, '')
+      .replace(/^\/news\//, '')
+      .replace(/\/+$/, '')
+      .replace(/\.html$/, '');
+
+    const cleanTitle = (titleSnippet || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const titleKeywords = cleanTitle.split(' ').filter((w) => w.length > 3).slice(0, 5);
+
     for (const post of analytics.recentPosts) {
-      const textMatch = post.text.toLowerCase().includes(cleanTarget);
-      const titleMatch = post.externalTitle && post.externalTitle.toLowerCase().includes(cleanTarget);
-      if (textMatch || titleMatch) {
+      const postText = (post.text || '').toLowerCase();
+      const extTitle = (post.externalTitle || '').toLowerCase();
+      const combined = `${postText} ${extTitle}`;
+
+      // 1. Direct slug match
+      if (cleanTarget && cleanTarget.length > 3 && combined.includes(cleanTarget)) {
         return { exists: true, postUrl: post.url };
+      }
+
+      // 2. Keyword title match (prevent reposts even if slug differed slightly)
+      if (titleKeywords.length >= 3) {
+        const matches = titleKeywords.filter((w) => combined.includes(w)).length;
+        if (matches >= Math.min(titleKeywords.length, 3)) {
+          return { exists: true, postUrl: post.url };
+        }
       }
     }
 

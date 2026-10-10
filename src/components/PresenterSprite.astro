@@ -111,250 +111,220 @@ const viewBoxValue = viewMode === 'closeup' ? '100 90 200 310' : '0 0 400 480';
       <desc>Modular flat cartoon news anchor with selectable gestures, expressions, head-turn gaze, and lip-sync mouth frames.</desc>
 
       <defs>
-        <!-- Shaded cylindrical neck gradient from user design -->
-        <linearGradient id={`neckGrad_${presenter.id}`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#b8734c"/>
-          <stop offset="35%" stop-color="#f0b687"/>
-          <stop offset="65%" stop-color="#f0b687"/>
-          <stop offset="100%" stop-color="#b8734c"/>
+      <defs>
+        <!-- Golden Glow Filter -->
+        <filter id={`smGoldGlow_${presenter.id}`} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <!-- Metallic Desk Gradient -->
+        <linearGradient id={`smDeskGrad_${presenter.id}`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="50%" stop-color="#1e293b"/>
+          <stop offset="100%" stop-color="#0f172a"/>
         </linearGradient>
       </defs>
 
       {viewMode === 'full' && (
-        <!-- Studio Background -->
-        <rect x="0" y="0" width="400" height="480" fill="#152a4d"/>
-        <circle cx="340" cy="70" r="120" fill="#1c3560"/>
+        <!-- Studio Background Wall & Monitors -->
+        <rect x="0" y="0" width="400" height="480" fill="#090d16"/>
+        <rect x="0" y="240" width="400" height="240" fill="#0b1329"/>
 
-        <!-- Left Monitor: Line Chart -->
+        <!-- Horizon LED Strip -->
+        <rect x="0" y="240" width="400" height="3" fill="#38bdf8" opacity="0.85"/>
+
+        <!-- Left Monitor Graphic (Chart) -->
         <g class="studio-monitor-left">
-          <rect x="18" y="92" width="92" height="60" rx="4" fill="#1c3560"/>
-          <rect x="28" y="100" width="72" height="44" rx="2" fill="#2a4d85"/>
-          <path d="M40 130 L54 112 L66 124 L84 106" stroke="#7fa8e0" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="18" y="92" width="92" height="60" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+          <rect x="26" y="98" width="76" height="48" rx="2" fill="#1e293b"/>
+          <path d="M34 130 L48 114 L60 124 L86 106" stroke="#10b981" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="64" y="140" fill="#94a3b8" font-family="system-ui" font-size="7" font-weight="700" text-anchor="middle">FX RATES (NGN)</text>
         </g>
 
-        <!-- Right Monitor: Clock/Dial -->
+        <!-- Right Monitor Graphic (Clock / Dial) -->
         <g class="studio-monitor-right">
-          <rect x="290" y="92" width="92" height="60" rx="4" fill="#1c3560"/>
-          <rect x="300" y="100" width="72" height="44" rx="2" fill="#2a4d85"/>
-          <circle cx="336" cy="122" r="14" fill="none" stroke="#7fa8e0" stroke-width="3"/>
-          <path d="M336 122 L336 112 M336 122 L344 126" stroke="#7fa8e0" stroke-width="3" stroke-linecap="round"/>
+          <rect x="290" y="92" width="92" height="60" rx="4" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+          <rect x="298" y="98" width="76" height="48" rx="2" fill="#1e293b"/>
+          <circle cx="336" cy="120" r="13" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
+          <path d="M336 120 L336 112 M336 120 L343 124" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+          <text x="336" y="140" fill="#94a3b8" font-family="system-ui" font-size="7" font-weight="700" text-anchor="middle">LIVE NEWS</text>
         </g>
 
-        <!-- Red Horizon Accent Line -->
-        <rect x="0" y="250" width="400" height="4" fill="#c4372a"/>
+        <!-- Golden Studio Ambient Aura behind Anchor -->
+        <circle cx="200" cy="200" r="100" fill="#fde047" opacity="0.12"/>
       )}
 
-      <!-- Character Bob Group with Preserved Anchor Geometry -->
-      <g class="bob" transform="translate(200,219) scale(0.72) translate(-200,-270)">
+      <!-- CHARACTER BOB GROUP -->
+      <g class="bob" transform="translate(200,219) scale(0.75) translate(-200,-250)">
+
+        <!-- STICKMAN SPINE -->
+        <line x1="200" y1="180" x2="200" y2="390" stroke="#facc15" stroke-width="9" stroke-linecap="round" filter={`url(#smGoldGlow_${presenter.id})`}/>
+
+        <!-- CRIMSON TIE -->
+        <polygon points="200,225 208,245 200,310 192,245" fill="#ef4444"/>
 
         <!-- ===== GESTURE LIBRARY (8 Switchable Arm/Hand States) ===== -->
 
-        <!-- 1. g-idle -->
+        <!-- 1. g-idle (Both Hands Resting on Desk) -->
         <g class={`gesture-group ${activeGesture === 'g-idle' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} id={`g-idle-${presenter.id}`}>
-          <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-          <path d="M248 344 Q260 392 242 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-          <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-          <ellipse cx="234" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-          <path d="M152 450 Q166 444 180 450" stroke="#c8875c" stroke-width="2" fill="none" stroke-linecap="round"/>
-          <path d="M220 450 Q234 444 248 450" stroke="#c8875c" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path d="M200 230 Q150 290 135 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="135" cy="385" r="8" fill="#fde047"/>
+          <path d="M200 230 Q250 290 265 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="265" cy="385" r="8" fill="#fde047"/>
         </g>
 
-        <!-- 2. g-point-left -->
+        <!-- 2. g-point-left (Points to Chart / FX Monitor) -->
         <g class={`gesture-group ${activeGesture === 'g-point-left' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} id={`g-point-left-${presenter.id}`}>
-          <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-          <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-          <path d="M248 344 Q190 318 120 298 Q92 290 70 286" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
-          <ellipse cx="68" cy="284" rx="15" ry="9" transform="rotate(-14 68 284)" fill="#dc9b6c"/>
-          <path d="M56 281 L36 277" stroke="#dc9b6c" stroke-width="7" stroke-linecap="round"/>
+          <path d="M200 230 Q250 290 265 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="265" cy="385" r="8" fill="#fde047"/>
+          <path d="M200 230 Q130 220 55 190" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="55" cy="190" r="9" fill="#fde047"/>
+          <line x1="55" y1="190" x2="35" y2="185" stroke="#facc15" stroke-width="5" stroke-linecap="round"/>
         </g>
 
         <!-- 3. g-point-right (Points to Side Projection Screen) -->
         <g class={`gesture-group ${activeGesture === 'g-point-right' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} id={`g-point-right-${presenter.id}`}>
-          <path d="M248 344 Q260 392 242 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-          <ellipse cx="234" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-          <path d="M152 344 Q210 318 280 298 Q308 290 330 286" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
-          <ellipse cx="332" cy="284" rx="15" ry="9" transform="rotate(14 332 284)" fill="#dc9b6c"/>
-          <path d="M344 281 L364 277" stroke="#dc9b6c" stroke-width="7" stroke-linecap="round"/>
+          <path d="M200 230 Q150 290 135 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="135" cy="385" r="8" fill="#fde047"/>
+          <path d="M200 230 Q270 220 345 190" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="345" cy="190" r="9" fill="#fde047"/>
+          <line x1="345" y1="190" x2="365" y2="185" stroke="#facc15" stroke-width="5" stroke-linecap="round"/>
         </g>
 
-        <!-- 4. g-point-up -->
+        <!-- 4. g-point-up (Points up to Headline Ribbon) -->
         <g class={`gesture-group ${activeGesture === 'g-point-up' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} id={`g-point-up-${presenter.id}`}>
-          <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-          <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-          <path d="M248 344 Q244 280 224 230" stroke="#1c2c4a" stroke-width="28" fill="none" stroke-linecap="round"/>
-          <ellipse cx="220" cy="220" rx="12" ry="10" fill="#dc9b6c"/>
-          <path d="M220 210 L220 178" stroke="#dc9b6c" stroke-width="8" stroke-linecap="round"/>
+          <path d="M200 230 Q150 290 135 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="135" cy="385" r="8" fill="#fde047"/>
+          <path d="M200 230 Q240 160 220 95" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="220" cy="95" r="8" fill="#fde047"/>
+          <line x1="220" y1="95" x2="220" y2="75" stroke="#facc15" stroke-width="5" stroke-linecap="round"/>
         </g>
 
-        <!-- 5. g-explain -->
+        <!-- 5. g-explain (Two-Hand Open Explanation) -->
         <g class={`gesture-group ${activeGesture === 'g-explain' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} id={`g-explain-${presenter.id}`}>
-          <path d="M152 344 Q128 316 138 294" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
-          <path d="M248 344 Q272 316 262 294" stroke="#1c2c4a" stroke-width="30" fill="none" stroke-linecap="round"/>
-          <ellipse cx="128" cy="288" rx="20" ry="15" fill="#dc9b6c"/>
-          <ellipse cx="272" cy="288" rx="20" ry="15" fill="#dc9b6c"/>
-          <path d="M118 278 L118 296 M128 276 L128 298 M138 278 L138 296" stroke="#c8875c" stroke-width="2.5" stroke-linecap="round"/>
-          <path d="M262 278 L262 296 M272 276 L272 298 M282 278 L282 296" stroke="#c8875c" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M200 230 Q140 190 95 215" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="95" cy="215" r="9" fill="#fde047"/>
+          <path d="M200 230 Q260 190 305 215" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="305" cy="215" r="9" fill="#fde047"/>
         </g>
 
-        <!-- 6. g-emphasize -->
+        <!-- 6. g-emphasize (Key Fact Emphasis Gesture) -->
         <g class={`gesture-group ${activeGesture === 'g-emphasize' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} id={`g-emphasize-${presenter.id}`}>
-          <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-          <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-          <path d="M248 344 Q232 300 216 266" stroke="#1c2c4a" stroke-width="28" fill="none" stroke-linecap="round"/>
-          <ellipse cx="213" cy="258" rx="13" ry="11" fill="#dc9b6c"/>
-          <path d="M213 248 L213 222" stroke="#dc9b6c" stroke-width="8" stroke-linecap="round"/>
+          <path d="M200 230 Q150 290 135 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="135" cy="385" r="8" fill="#fde047"/>
+          <path d="M200 230 Q240 190 250 215" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="250" cy="215" r="9" fill="#fde047"/>
+          <line x1="250" y1="215" x2="265" y2="205" stroke="#facc15" stroke-width="5" stroke-linecap="round"/>
         </g>
 
-        <!-- 7. g-wave (Sign-off) -->
+        <!-- 7. g-wave (Sign-off Wrap Closing Wave) -->
         <g class={`gesture-group ${activeGesture === 'g-wave' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} id={`g-wave-${presenter.id}`}>
-          <path d="M152 344 Q140 392 158 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-          <ellipse cx="166" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
-          <path d="M248 344 Q256 294 230 252" stroke="#1c2c4a" stroke-width="28" fill="none" stroke-linecap="round"/>
-          <ellipse cx="226" cy="244" rx="16" ry="14" fill="#dc9b6c"/>
-          <path d="M214 230 L208 218" stroke="#dc9b6c" stroke-width="5" stroke-linecap="round"/>
-          <path d="M224 226 L222 212" stroke="#dc9b6c" stroke-width="5" stroke-linecap="round"/>
-          <path d="M234 228 L238 214" stroke="#dc9b6c" stroke-width="5" stroke-linecap="round"/>
+          <path d="M200 230 Q150 290 135 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="135" cy="385" r="8" fill="#fde047"/>
+          <path d="M200 230 Q270 170 260 105" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="260" cy="105" r="10" fill="#fde047"/>
+          <path d="M250 95 L245 85 M260 92 L260 80 M270 95 L275 85" stroke="#facc15" stroke-width="3.5" stroke-linecap="round"/>
         </g>
 
-        <!-- 8. g-reading (Consulting Briefing Book / Tablet) -->
+        <!-- 8. g-reading (Consulting Digital Tablet on Desk) -->
         <g class={`gesture-group ${activeGesture === 'g-reading' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} id={`g-reading-${presenter.id}`}>
-          <path d="M152 344 Q130 390 165 428" stroke="#1c2c4a" stroke-width="32" fill="none" stroke-linecap="round"/>
-          <!-- Dossier Bulletin Sheet -->
-          <rect x="150" y="400" width="54" height="38" rx="3" fill="#e9edf2" stroke="#b9c2cc" stroke-width="1.5" transform="rotate(-8 177 419)"/>
-          <line x1="156" y1="409" x2="198" y2="403" stroke="#047857" stroke-width="1.5" transform="rotate(-8 177 419)"/>
-          <line x1="156" y1="416" x2="194" y2="410" stroke="#64748b" stroke-width="1" transform="rotate(-8 177 419)"/>
-          <line x1="156" y1="422" x2="190" y2="416" stroke="#64748b" stroke-width="1" transform="rotate(-8 177 419)"/>
-          <ellipse cx="176" cy="434" rx="16" ry="11" fill="#dc9b6c"/>
-          <path d="M248 344 Q260 392 242 442" stroke="#1c2c4a" stroke-width="34" fill="none" stroke-linecap="round"/>
-          <ellipse cx="234" cy="452" rx="19" ry="13" fill="#dc9b6c"/>
+          <path d="M200 230 Q140 290 150 365" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <!-- Glowing Newsroom Tablet -->
+          <rect x="120" y="355" width="56" height="38" rx="4" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+          <line x1="128" y1="365" x2="168" y2="365" stroke="#10b981" stroke-width="1.5"/>
+          <line x1="128" y1="373" x2="160" y2="373" stroke="#94a3b8" stroke-width="1.5"/>
+          <line x1="128" y1="381" x2="152" y2="381" stroke="#94a3b8" stroke-width="1.5"/>
+          <path d="M200 230 Q250 290 265 385" stroke="#facc15" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <circle cx="265" cy="385" r="8" fill="#fde047"/>
         </g>
-
-        <!-- WARDROBE: Broad Navy Blazer, Inner Collar, Shirt & Crimson Tie -->
-        <path d="M70 480 Q75 360 140 332 Q170 322 200 322 Q230 322 260 332 Q325 360 330 480 Z" fill="#1c2c4a"/>
-        <path d="M170 335 L200 358 L185 337 Z" fill="#0e1830"/>
-        <path d="M230 335 L200 358 L215 337 Z" fill="#0e1830"/>
-        <ellipse cx="200" cy="345" rx="20" ry="11" fill="#f4f6f9"/>
-        <path d="M192 343 Q200 339 208 343 L205 393 Q200 399 195 393 Z" fill="#c4372a"/>
-
-        <!-- NECK: Cylindrical Shading with Gradient (Remains anchored while head turns) -->
-        <path d="M186 300 Q182 314 180 330 Q200 340 220 330 Q218 314 214 300 Q200 308 186 300 Z" fill={`url(#neckGrad_${presenter.id})`}/>
 
         <!-- ===== HEAD GROUP: Turns and tips together with transform-origin ===== -->
-        <g id={`head-group-${presenter.id}`} class="head-group-el transition-transform duration-300" style="transform-origin: 200px 300px;">
+        <g id={`head-group-${presenter.id}`} class="head-group-el transition-transform duration-300" style="transform-origin: 200px 140px;">
 
-          <!-- Ears -->
-          <path d="M130 238 Q140 234 142 246 Q144 258 134 264 Q124 260 124 248 Q124 240 130 238 Z" fill="#c8875c"/>
-          <path d="M270 238 Q260 234 258 246 Q256 258 266 264 Q276 260 276 248 Q276 240 270 238 Z" fill="#c8875c"/>
+          <!-- STICKMAN HEAD CIRCLE -->
+          <circle cx="200" cy="140" r="48" fill="#0f172a" stroke="#facc15" stroke-width="8" filter={`url(#smGoldGlow_${presenter.id})`}/>
 
-          <!-- Head Shape -->
-          <path d="M200 130
-                   C 246 130 268 168 266 210
-                   C 265 248 254 280 238 302
-                   C 224 320 212 328 200 328
-                   C 188 328 176 320 162 302
-                   C 146 280 135 248 134 210
-                   C 132 168 154 130 200 130 Z" fill="#dc9b6c"/>
-          <path d="M238 200 C 244 240 232 280 210 306 C 232 300 250 268 252 226 C 253 216 246 206 238 200 Z" fill="#c8875c"/>
-
-          <!-- Stylized Dark Hair & Side Tapers -->
-          <path d="M130 210
-                   C 122 150 158 100 200 100
-                   C 242 100 278 150 270 210
-                   C 264 190 248 175 228 172
-                   C 220 165 210 162 200 162
-                   C 190 162 180 165 172 172
-                   C 152 175 136 190 130 210 Z" fill="#1c1410"/>
-          <path d="M190 165 Q196 150 206 160 Q198 172 190 165 Z" fill="#140d09"/>
-          <path d="M214 168 Q222 152 232 164 Q222 176 214 168 Z" fill="#140d09"/>
-          <path d="M166 172 Q172 158 182 168 Q174 180 166 172 Z" fill="#140d09"/>
-          <path d="M175 155 Q195 140 215 150" stroke="#4a372a" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.6"/>
+          <!-- BROADCAST HEADSET -->
+          <path d="M148 136 Q200 82 252 136" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+          <rect x="144" y="126" width="9" height="22" rx="4" fill="#38bdf8"/>
+          <rect x="247" y="126" width="9" height="22" rx="4" fill="#38bdf8"/>
+          <path d="M148 144 Q165 168 186 160" fill="none" stroke="#94a3b8" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="186" cy="160" r="3.5" fill="#ef4444"/>
 
           <!-- EXPRESSION LIBRARY (Eyebrows) -->
           <g class={`expr-group ${activeExpression === 'expr-neutral' ? 'opacity-100' : 'opacity-0'}`} id={`expr-neutral-${presenter.id}`}>
-            <path d="M156 202 Q170 192 186 198" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
-            <path d="M214 198 Q230 192 244 202" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M174 122 Q184 118 194 122" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <path d="M206 122 Q216 118 226 122" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
           </g>
           <g class={`expr-group ${activeExpression === 'expr-happy' ? 'opacity-100' : 'opacity-0'}`} id={`expr-happy-${presenter.id}`}>
-            <path d="M154 200 Q170 184 188 196" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
-            <path d="M212 196 Q230 184 246 200" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M174 120 Q184 112 194 120" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <path d="M206 120 Q216 112 226 120" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
           </g>
           <g class={`expr-group ${activeExpression === 'expr-serious' ? 'opacity-100' : 'opacity-0'}`} id={`expr-serious-${presenter.id}`}>
-            <path d="M156 206 Q170 202 186 206" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
-            <path d="M214 206 Q230 202 244 206" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M174 124 Q184 128 194 124" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <path d="M206 124 Q216 128 226 124" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
           </g>
           <g class={`expr-group ${activeExpression === 'expr-surprised' ? 'opacity-100' : 'opacity-0'}`} id={`expr-surprised-${presenter.id}`}>
-            <path d="M152 190 Q170 172 190 188" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
-            <path d="M210 188 Q230 172 248 190" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M172 114 Q184 104 196 114" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <path d="M204 114 Q216 104 228 114" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
           </g>
           <g class={`expr-group ${activeExpression === 'expr-concerned' ? 'opacity-100' : 'opacity-0'}`} id={`expr-concerned-${presenter.id}`}>
-            <path d="M156 206 Q170 196 188 192" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
-            <path d="M212 192 Q230 196 244 206" stroke="#1c1410" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M174 124 Q184 116 194 120" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <path d="M206 120 Q216 116 226 124" stroke="#facc15" stroke-width="3.5" fill="none" stroke-linecap="round"/>
           </g>
 
-          <!-- EYES: Outer (expression/reading scale) > Eyelid (blinking) > Sclera + Iris Group (gaze) -->
-          <g class="eye-outer transition-transform duration-200" style="transform-origin: 171px 220px;">
-            <g class="eye-lid" style="transform-origin: 171px 220px;">
-              <ellipse cx="171" cy="220" rx="14" ry="10" fill="#f4f6f9"/>
-              <g class="iris-group transition-transform duration-200">
-                <circle cx="173" cy="221" r="6.5" fill="#5c3a22"/>
-                <circle cx="173" cy="221" r="3" fill="#1c1410"/>
-                <circle cx="175.5" cy="218.5" r="1.6" fill="#fff"/>
-              </g>
-              <path d="M157 220 Q171 210 185 220" stroke="#1c1410" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+          <!-- GLOWING EYES: Outer > Eyelid (blinking) > Sclera + Iris Group -->
+          <g class="eye-outer transition-transform duration-200" style="transform-origin: 184px 136px;">
+            <g class="eye-lid" style="transform-origin: 184px 136px;">
+              <ellipse cx="184" cy="136" rx="5.5" ry="7.5" fill="#fef08a"/>
+              <ellipse cx="184" cy="136" rx="2.5" ry="4" fill="#0f172a"/>
             </g>
           </g>
 
-          <g class="eye-outer transition-transform duration-200" style="transform-origin: 229px 220px;">
-            <g class="eye-lid" style="transform-origin: 229px 220px;">
-              <ellipse cx="229" cy="220" rx="14" ry="10" fill="#f4f6f9"/>
-              <g class="iris-group transition-transform duration-200">
-                <circle cx="227" cy="221" r="6.5" fill="#5c3a22"/>
-                <circle cx="227" cy="221" r="3" fill="#1c1410"/>
-                <circle cx="229.5" cy="218.5" r="1.6" fill="#fff"/>
-              </g>
-              <path d="M215 220 Q229 210 243 220" stroke="#1c1410" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+          <g class="eye-outer transition-transform duration-200" style="transform-origin: 216px 136px;">
+            <g class="eye-lid" style="transform-origin: 216px 136px;">
+              <ellipse cx="216" cy="136" rx="5.5" ry="7.5" fill="#fef08a"/>
+              <ellipse cx="216" cy="136" rx="2.5" ry="4" fill="#0f172a"/>
             </g>
           </g>
 
-          <!-- Nose -->
-          <path d="M198 226 Q191 252 186 262 Q193 267 200 266" stroke="#c8875c" stroke-width="3" fill="none" stroke-linecap="round"/>
-
-          <!-- MOUTH SHAPES: Locked inside Head Group directly above chin (NEVER on neck!) -->
+          <!-- MOUTH CLUSTER FOR REAL-TIME LIP-SYNC -->
           <g class={`mouth-cluster ${propMouth === 'auto' ? 'mouth-auto-cycle' : 'mouth-static'}`}>
             <!-- Closed -->
             <g id={`mouth-closed-${presenter.id}`} class={`mouth-frame-closed ${propMouth === 'closed' ? 'opacity-100' : ''}`}>
-              <path d="M174 292 Q200 300 226 292 Q212 298 200 298 Q188 298 174 292 Z" fill="#8f3f30"/>
+              <path d="M188 158 Q200 166 212 158" stroke="#facc15" stroke-width="4.5" fill="none" stroke-linecap="round"/>
             </g>
-            <!-- Open with Upper Teeth -->
+            <!-- Open Talking -->
             <g id={`mouth-open-${presenter.id}`} class={`mouth-frame-open ${propMouth === 'open' ? 'opacity-100' : ''}`}>
-              <path d="M178 290 Q200 286 222 290 Q220 304 200 306 Q180 304 178 290 Z" fill="#5c2018"/>
-              <path d="M183 291 Q200 288 217 291 Q216 297 200 298 Q184 297 183 291 Z" fill="#fff"/>
+              <ellipse cx="200" cy="160" rx="8" ry="6" fill="#facc15"/>
             </g>
-            <!-- Wide with Upper Teeth and Pink Tongue -->
+            <!-- Wide Alert -->
             <g id={`mouth-wide-${presenter.id}`} class={`mouth-frame-wide ${propMouth === 'wide' ? 'opacity-100' : ''}`}>
-              <path d="M168 288 Q200 282 230 288 Q228 310 200 314 Q172 310 168 288 Z" fill="#5c2018"/>
-              <path d="M174 290 Q200 285 226 290 Q224 298 200 300 Q176 298 174 290 Z" fill="#fff"/>
-              <ellipse cx="200" cy="306" rx="13" ry="6" fill="#c0504d"/>
+              <ellipse cx="200" cy="162" rx="13" ry="9" fill="#facc15"/>
             </g>
           </g>
         </g>
       </g>
 
       {viewMode === 'full' && (
-        <!-- DESK & BRANDING FOREGROUND -->
-        <rect x="0" y="342" width="400" height="14" fill="#1c3560"/>
-        <path d="M0 356 L400 356 L400 480 L0 480 Z" fill="#0e1626"/>
+        <!-- MODERN NEWSROOM DESK & FOREGROUND -->
+        <polygon points="30,410 370,410 400,480 0,480" fill={`url(#smDeskGrad_${presenter.id})`} stroke="#1e293b" stroke-width="2"/>
+        <line x1="0" y1="412" x2="400" y2="412" stroke="#38bdf8" stroke-width="3"/>
 
-        <!-- 9JA BEACON Studio Bug Badge -->
-        <rect x="304" y="16" width="80" height="34" rx="4" fill="#c4372a"/>
-        <text x="344" y="31" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="11" font-weight="700" fill="#fff">9JA</text>
-        <text x="344" y="44" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="10" font-weight="700" fill="#fff">BEACON</text>
+        <!-- Desk Microphone with Red Tally Ring -->
+        <line x1="85" y1="412" x2="105" y2="350" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+        <ellipse cx="105" cy="350" rx="4" ry="7" fill="#0f172a" stroke="#ef4444" stroke-width="2"/>
+
+        <!-- 9JA BEACON Newsroom Desk Medallion -->
+        <rect x="150" y="426" width="100" height="24" rx="4" fill="#0f172a" stroke="#facc15" stroke-width="1.5"/>
+        <text x="200" y="442" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="900" letter-spacing="1.5" fill="#facc15">9JA BEACON</text>
 
         <!-- Lower Third News Straps -->
-        <rect x="0" y="442" width="400" height="24" fill="#c4372a"/>
-        <text x="16" y="459" font-family="-apple-system, sans-serif" font-size="13" font-weight="700" fill="#fff">{headline}</text>
-        <rect x="0" y="466" width="400" height="14" fill="#f4f6f9"/>
-        <text x="16" y="477" font-family="-apple-system, sans-serif" font-size="10" font-weight="600" fill="#233a5c">{ticker}</text>
+        <rect x="0" y="456" width="400" height="24" fill="#ef4444"/>
+        <text x="16" y="472" font-family="system-ui, sans-serif" font-size="12" font-weight="900" fill="#fff">{headline}</text>
       )}
     </svg>
 

@@ -83,7 +83,12 @@ async function main() {
     } else {
       console.log(`🔍 Scanning ${candidateArticles.length} recent articles for unsyndicated story...`);
       for (const cand of candidateArticles) {
-        // 1. Check local audit logs
+        // 1. Check syndicated_tumblr flag in database
+        if (cand.syndicated_tumblr === 1) {
+          continue;
+        }
+
+        // 2. Check local audit logs
         const logged = db.prepare(`
           SELECT * FROM automation_logs 
           WHERE event_type = 'TUMBLR_PUBLISH_SUCCESS' 
@@ -91,14 +96,19 @@ async function main() {
         `).get(cand.id, cand.slug, `%${cand.slug}%`, `%${cand.id}%`);
 
         if (logged) {
+          try {
+            db.prepare(`UPDATE articles SET syndicated_tumblr = 1 WHERE id = ? OR slug = ?`).run(cand.id, cand.slug);
+          } catch {}
           continue;
         }
 
-        // 2. Check live Tumblr blog feed directly (detects prior syndication across CI environments)
-        const liveCheck = await checkIfUrlAlreadyOnTumblrBlog(blogId, cand.slug, cand.title);
+        // 3. Check live Tumblr blog directly with API & RSS credentials
+        const liveCheck = await checkIfUrlAlreadyOnTumblrBlog(blogId, cand.slug, cand.title, { consumerKey, token });
         if (liveCheck.exists) {
           console.log(`   ⏭️ Skipping "/news/${cand.slug}" (already verified on live Tumblr blog timeline)`);
           try {
+            db.prepare(`UPDATE articles SET syndicated_tumblr = 1, syndicated_tumblr_at = ? WHERE id = ? OR slug = ?`)
+              .run(new Date().toISOString(), cand.id, cand.slug);
             db.prepare(`
               INSERT INTO automation_logs (id, event_type, source_id, message, level, created_at)
               VALUES (?, 'TUMBLR_PUBLISH_SUCCESS', ?, ?, 'info', CURRENT_TIMESTAMP)
@@ -149,6 +159,8 @@ async function main() {
     console.log(`🔗 Post URL: ${res.postUrl}`);
 
     try {
+      db.prepare(`UPDATE articles SET syndicated_tumblr = 1, syndicated_tumblr_at = ? WHERE id = ? OR slug = ?`)
+        .run(new Date().toISOString(), article.id, article.slug);
       db.prepare(`
         INSERT INTO automation_logs (id, event_type, source_id, message, level, created_at)
         VALUES (?, 'TUMBLR_PUBLISH_SUCCESS', ?, ?, 'info', CURRENT_TIMESTAMP)

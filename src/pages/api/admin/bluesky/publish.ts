@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getD1, getArticleById, getAutomationSettings, getSiteSettings, addAutomationLog, getAutomationLogs } from '../../../../lib/runtime-db';
+import { getD1, getArticleById, getAutomationSettings, getSiteSettings, addAutomationLog, getAutomationLogs, updateArticle } from '../../../../lib/runtime-db';
 import { postToBluesky, checkIfUrlAlreadyOnBlueskyTimeline } from '../../../../lib/bluesky';
 
 export const POST: APIRoute = async ({ request, locals }) => {
@@ -136,6 +136,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const postResult = await postToBluesky(articlePayload, { identifier, appPassword }, siteUrl);
 
     if (postResult.success) {
+      if (targetArticleId) {
+        try {
+          await updateArticle(db, targetArticleId, {
+            syndicated_bluesky: 1,
+            syndicated_bluesky_at: new Date().toISOString(),
+          });
+        } catch {}
+      }
+
       await addAutomationLog(
         db,
         'BLUESKY_PUBLISH_SUCCESS',

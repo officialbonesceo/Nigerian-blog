@@ -327,11 +327,10 @@ async function main() {
       const desk = EDITORIAL_DESKS[categoryId] || DEFAULT_DESK;
       const slugBase = slugify(aiResult.title);
       let slug = slugBase;
-      const existingArticle = db.prepare('SELECT id FROM articles WHERE slug = ?').get(slug);
+      const existingArticle = db.prepare('SELECT id FROM articles WHERE slug = ? OR title = ?').get(slug, aiResult.title);
       if (existingArticle) {
-        let counter = 2;
-        while (db.prepare('SELECT id FROM articles WHERE slug = ?').get(`${slugBase}-${counter}`)) counter++;
-        slug = `${slugBase}-${counter}`;
+        console.log(`     ⏭️ [DUPLICATE BLOCKED] Trending story "${aiResult.title.slice(0, 40)}" (slug: ${slug}) already exists. Skipping duplicate.`);
+        continue;
       }
       const articleId = 'art_' + Date.now();
 
@@ -379,9 +378,12 @@ async function main() {
         if (bskyAuto && bskyId && bskyPass) {
           try {
             // Strict live timeline deduplication check
-            const bskyLiveCheck = await checkIfUrlAlreadyOnBlueskyTimeline(bskyId, slug);
+            const bskyLiveCheck = await checkIfUrlAlreadyOnBlueskyTimeline(bskyId, slug, aiResult.title);
             if (bskyLiveCheck.exists) {
               console.log(`     ⏭️ [BLUESKY SKIPPED] Trending story "/news/${slug}" is already live on Bluesky timeline.`);
+              try {
+                db.prepare('UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?').run(new Date().toISOString(), slug);
+              } catch {}
             } else {
               console.log(`     🦋 Syndicating trending lead to Bluesky (@${bskyId})...`);
               const bskyRes = await postToBluesky({
@@ -400,7 +402,7 @@ async function main() {
                 console.log(`     ✅ [BLUESKY SYNDICATED] -> ${bskyRes.postUrl}`);
                 try {
                   insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'BLUESKY_PUBLISH_SUCCESS', articleId, `[slug: ${slug}] Dispatched to Bluesky: ${bskyRes.postUrl}`, 'info');
-                  db.prepare('UPDATE articles SET syndicated_bluesky = 1 WHERE slug = ?').run(slug);
+                  db.prepare('UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?').run(new Date().toISOString(), slug);
                 } catch {}
               } else {
                 console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyRes.error}`);
@@ -417,9 +419,15 @@ async function main() {
         if (tumblrAuto && tumblrBlogId && (process.env.TUMBLR_TOKEN || process.env.TUMBLR_CONSUMER_KEY)) {
           try {
             // Strict live blog deduplication check
-            const tumblrLiveCheck = await checkIfUrlAlreadyOnTumblrBlog(tumblrBlogId, slug, aiResult.title);
+            const tumblrLiveCheck = await checkIfUrlAlreadyOnTumblrBlog(tumblrBlogId, slug, aiResult.title, {
+              consumerKey: process.env.TUMBLR_CONSUMER_KEY,
+              token: process.env.TUMBLR_TOKEN || process.env.TUMBLR_ACCESS_TOKEN,
+            });
             if (tumblrLiveCheck.exists) {
               console.log(`     ⏭️ [TUMBLR SKIPPED] Trending story "/news/${slug}" is already live on Tumblr blog.`);
+              try {
+                db.prepare('UPDATE articles SET syndicated_tumblr = 1, syndicated_tumblr_at = ? WHERE slug = ?').run(new Date().toISOString(), slug);
+              } catch {}
             } else {
               console.log(`     📟 Syndicating to Tumblr...`);
               const tRes = await postToTumblr({
@@ -434,7 +442,7 @@ async function main() {
                 console.log(`     ✅ [TUMBLR SYNDICATED] -> ${tRes.postUrl}`);
                 try {
                   insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'TUMBLR_PUBLISH_SUCCESS', articleId, `[slug: ${slug}] Dispatched to Tumblr: ${tRes.postUrl}`, 'info');
-                  db.prepare('UPDATE articles SET syndicated_tumblr = 1 WHERE slug = ?').run(slug);
+                  db.prepare('UPDATE articles SET syndicated_tumblr = 1, syndicated_tumblr_at = ? WHERE slug = ?').run(new Date().toISOString(), slug);
                 } catch {}
               }
             }
@@ -661,13 +669,11 @@ async function main() {
       const slugBase = slugify(aiResult.title);
       let slug = slugBase;
       // Guarantee clean URL without random hashes, only numbering on rare collision
-      const existingArticle = db.prepare('SELECT id FROM articles WHERE slug = ?').get(slug);
+      const existingArticle = db.prepare('SELECT id FROM articles WHERE slug = ? OR title = ?').get(slug, aiResult.title);
       if (existingArticle) {
-        let counter = 2;
-        while (db.prepare('SELECT id FROM articles WHERE slug = ?').get(`${slugBase}-${counter}`)) {
-          counter++;
-        }
-        slug = `${slugBase}-${counter}`;
+        console.log(`     ⏭️ [DUPLICATE BLOCKED] Article "${aiResult.title.slice(0, 40)}" (slug: ${slug}) already exists. Skipping duplicate.`);
+        totalDuplicatesSkipped++;
+        continue;
       }
       const articleId = 'art_' + Date.now();
 
@@ -724,9 +730,12 @@ async function main() {
         if (bskyAuto && bskyId && bskyPass) {
           try {
             // Strict live timeline deduplication check
-            const bskyLiveCheck = await checkIfUrlAlreadyOnBlueskyTimeline(bskyId, slug);
+            const bskyLiveCheck = await checkIfUrlAlreadyOnBlueskyTimeline(bskyId, slug, aiResult.title);
             if (bskyLiveCheck.exists) {
               console.log(`     ⏭️ [BLUESKY SKIPPED] Story "/news/${slug}" is already live on Bluesky timeline.`);
+              try {
+                db.prepare('UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?').run(new Date().toISOString(), slug);
+              } catch {}
             } else {
               console.log(`     🦋 Syndicating to Bluesky (@${bskyId})...`);
               const bskyRes = await postToBluesky({
@@ -745,7 +754,7 @@ async function main() {
                 console.log(`     ✅ [BLUESKY SYNDICATED] -> ${bskyRes.postUrl}`);
                 try {
                   insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'BLUESKY_PUBLISH_SUCCESS', articleId, `[slug: ${slug}] Dispatched to Bluesky: ${bskyRes.postUrl}`, 'info');
-                  db.prepare('UPDATE articles SET syndicated_bluesky = 1 WHERE slug = ?').run(slug);
+                  db.prepare('UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?').run(new Date().toISOString(), slug);
                 } catch {}
               } else {
                 console.warn(`     ⚠️ [BLUESKY NOTICE] ${bskyRes.error}`);
@@ -762,9 +771,15 @@ async function main() {
         if (tumblrAuto && tumblrBlogId && (process.env.TUMBLR_TOKEN || process.env.TUMBLR_CONSUMER_KEY)) {
           try {
             // Strict live blog deduplication check
-            const tumblrLiveCheck = await checkIfUrlAlreadyOnTumblrBlog(tumblrBlogId, slug, aiResult.title);
+            const tumblrLiveCheck = await checkIfUrlAlreadyOnTumblrBlog(tumblrBlogId, slug, aiResult.title, {
+              consumerKey: process.env.TUMBLR_CONSUMER_KEY,
+              token: process.env.TUMBLR_TOKEN || process.env.TUMBLR_ACCESS_TOKEN,
+            });
             if (tumblrLiveCheck.exists) {
               console.log(`     ⏭️ [TUMBLR SKIPPED] Story "/news/${slug}" is already live on Tumblr blog.`);
+              try {
+                db.prepare('UPDATE articles SET syndicated_tumblr = 1, syndicated_tumblr_at = ? WHERE slug = ?').run(new Date().toISOString(), slug);
+              } catch {}
             } else {
               console.log(`     📟 Syndicating to Tumblr...`);
               const tRes = await postToTumblr({
@@ -779,7 +794,7 @@ async function main() {
                 console.log(`     ✅ [TUMBLR SYNDICATED] -> ${tRes.postUrl}`);
                 try {
                   insertLog.run('log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), 'TUMBLR_PUBLISH_SUCCESS', articleId, `[slug: ${slug}] Dispatched to Tumblr: ${tRes.postUrl}`, 'info');
-                  db.prepare('UPDATE articles SET syndicated_tumblr = 1 WHERE slug = ?').run(slug);
+                  db.prepare('UPDATE articles SET syndicated_tumblr = 1, syndicated_tumblr_at = ? WHERE slug = ?').run(new Date().toISOString(), slug);
                 } catch {}
               }
             }

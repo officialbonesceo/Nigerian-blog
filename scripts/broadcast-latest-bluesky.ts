@@ -80,7 +80,7 @@ async function main() {
 
       // 2. Check live Bluesky timeline
       if (!force) {
-        const liveCheck = await checkIfUrlAlreadyOnBlueskyTimeline(identifier, candidate.slug);
+        const liveCheck = await checkIfUrlAlreadyOnBlueskyTimeline(identifier, candidate.slug, candidate.title);
         if (liveCheck.exists) {
           console.log(`   ⏭️ Skipping "/news/${candidate.slug}" (already on Bluesky timeline)`);
           try {
@@ -94,7 +94,8 @@ async function main() {
               `[slug: ${candidate.slug}] Timeline sync: ${liveCheck.postUrl || candidate.slug}`,
               'info'
             );
-            db.prepare('UPDATE articles SET syndicated_bluesky = 1 WHERE id = ? OR slug = ?').run(candidate.id, candidate.slug);
+            db.prepare('UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE id = ? OR slug = ?')
+              .run(new Date().toISOString(), candidate.id, candidate.slug);
           } catch {}
           continue;
         }
@@ -147,10 +148,11 @@ async function main() {
         `[slug: ${article.slug}] CI Syndication to Bluesky: ${result.postUrl}`,
         'info'
       );
-      db.prepare('UPDATE articles SET syndicated_bluesky = 1 WHERE id = ? OR slug = ?').run(article.id, article.slug);
+      db.prepare('UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE id = ? OR slug = ?')
+        .run(new Date().toISOString(), article.id, article.slug);
     } catch {}
 
-    // If running in CI with D1 credentials, also persist log directly to production D1
+    // If running in CI with D1 credentials, also persist log and syndicated flag directly to production D1
     const d1DbId = (process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_DATABASE_ID || '').trim();
     const d1Token = (process.env.CLOUDFLARE_D1_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '').trim();
     const d1Account = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
@@ -167,7 +169,12 @@ async function main() {
           `[slug: ${article.slug}] CI Bluesky broadcast: ${result.postUrl}`,
           'info'
         ], { accountId: d1Account, apiToken: d1Token, databaseNameOrId: d1DbId });
-        console.log(`📡 Log synced to production D1 database.`);
+
+        await executeD1Query(`
+          UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE id = ? OR slug = ?
+        `, [new Date().toISOString(), article.id, article.slug], { accountId: d1Account, apiToken: d1Token, databaseNameOrId: d1DbId }).catch(() => {});
+
+        console.log(`📡 Syndication flag synced to production D1 database.`);
       } catch (d1Err: any) {
         console.warn('   (Notice: D1 log sync notice)', d1Err.message);
       }

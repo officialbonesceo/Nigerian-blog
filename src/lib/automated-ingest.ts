@@ -596,12 +596,15 @@ export async function runIngestionPipeline(
             const bskyId = sMap.bluesky_identifier || (typeof process !== 'undefined' ? process.env?.BLUESKY_IDENTIFIER : '');
             const bskyPass = sMap.bluesky_app_password || (typeof process !== 'undefined' ? process.env?.BLUESKY_APP_PASSWORD : '');
             if (bskyAuto && bskyId && bskyPass) {
-              checkIfUrlAlreadyOnBlueskyTimeline(bskyId, newArticle.slug).then((liveCheck) => {
+              checkIfUrlAlreadyOnBlueskyTimeline(bskyId, newArticle.slug, newArticle.title).then(async (liveCheck) => {
                 if (liveCheck.exists) {
                   console.log(`[Bluesky Ingest Notice]: Skipped duplicate post for /news/${newArticle.slug}`);
+                  try {
+                    await db.prepare('UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?').bind(new Date().toISOString(), newArticle.slug).run();
+                  } catch {}
                   return;
                 }
-                postToBluesky({
+                const bRes = await postToBluesky({
                   title: newArticle.title,
                   summary: newArticle.summary,
                   category: categorySlug,
@@ -611,28 +614,45 @@ export async function runIngestionPipeline(
                 }, {
                   identifier: bskyId,
                   appPassword: bskyPass,
-                }, siteBase).catch(bErr => console.warn('[Bluesky Auto-Post Notice]:', bErr.message));
-              }).catch(() => {});
+                }, siteBase);
+                if (bRes.success) {
+                  try {
+                    await db.prepare('UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?').bind(new Date().toISOString(), newArticle.slug).run();
+                  } catch {}
+                }
+              }).catch((bErr) => console.warn('[Bluesky Auto-Post Notice]:', bErr?.message));
             }
 
             // 2. Autonomous Tumblr syndication (defaults to enabled, deduplicated)
             const tumblrAuto = sMap.tumblr_auto_post_enabled !== 'false' && (process.env.TUMBLR_AUTO_POST_ENABLED !== 'false');
             const tumblrBlog = sMap.tumblr_blog_identifier || (typeof process !== 'undefined' ? (process.env?.TUMBLR_BLOG_IDENTIFIER || process.env?.TUMBLR_BLOG_NAME) : '');
             if (tumblrAuto && tumblrBlog) {
-              checkIfUrlAlreadyOnTumblrBlog(tumblrBlog, newArticle.slug, newArticle.title).then((liveCheck) => {
+              const tumblrCreds = {
+                consumerKey: sMap.tumblr_consumer_key || (typeof process !== 'undefined' ? process.env?.TUMBLR_CONSUMER_KEY : undefined),
+                token: sMap.tumblr_token || (typeof process !== 'undefined' ? (process.env?.TUMBLR_TOKEN || process.env?.TUMBLR_ACCESS_TOKEN) : undefined),
+              };
+              checkIfUrlAlreadyOnTumblrBlog(tumblrBlog, newArticle.slug, newArticle.title, tumblrCreds).then(async (liveCheck) => {
                 if (liveCheck.exists) {
                   console.log(`[Tumblr Ingest Notice]: Skipped duplicate post for /news/${newArticle.slug}`);
+                  try {
+                    await db.prepare('UPDATE articles SET syndicated_tumblr = 1, syndicated_tumblr_at = ? WHERE slug = ?').bind(new Date().toISOString(), newArticle.slug).run();
+                  } catch {}
                   return;
                 }
-                postToTumblr({
+                const tRes = await postToTumblr({
                   title: newArticle.title,
                   summary: newArticle.summary,
                   content: newArticle.content,
                   canonicalUrl,
                   category: categorySlug,
                   imageUrl: newArticle.image_url,
-                }).catch(tErr => console.warn('[Tumblr Auto-Post Notice]:', tErr.message));
-              }).catch(() => {});
+                });
+                if (tRes.success) {
+                  try {
+                    await db.prepare('UPDATE articles SET syndicated_tumblr = 1, syndicated_tumblr_at = ? WHERE slug = ?').bind(new Date().toISOString(), newArticle.slug).run();
+                  } catch {}
+                }
+              }).catch((tErr) => console.warn('[Tumblr Auto-Post Notice]:', tErr?.message));
             }
 
             // 3. Autonomous Meta Threads syndication (defaults to enabled)
