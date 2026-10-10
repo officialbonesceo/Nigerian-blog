@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 700" width="500" height="700">
+  <defs>
+    <!-- Radiant Golden Aura -->
+    <radialGradient id="smAuraStand" cx="50%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#fde047" stop-opacity="0.35"/>
+      <stop offset="60%" stop-color="#eab308" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Golden Stickman Glow -->
+    <filter id="smGlowStand" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dark Transparent Canvas Base -->
+  <rect width="500" height="700" rx="24" fill="#030712"/>
+  <circle cx="250" cy="200" r="160" fill="url(#smAuraStand)"/>
+
+  <!-- Studio Floor Line -->
+  <line x1="50" y1="620" x2="450" y2="620" stroke="#10b981" stroke-width="3" opacity="0.8"/>
+  <ellipse cx="250" cy="620" rx="140" ry="24" fill="#022c1e" opacity="0.6"/>
+
+  <g filter="url(#smGlowStand)">
+    <!-- Legs -->
+    <line x1="250" y1="420" x2="190" y2="610" stroke="#facc15" stroke-width="12" stroke-linecap="round"/>
+    <line x1="250" y1="420" x2="310" y2="610" stroke="#facc15" stroke-width="12" stroke-linecap="round"/>
+    <!-- Feet -->
+    <line x1="190" y1="610" x2="160" y2="615" stroke="#facc15" stroke-width="12" stroke-linecap="round"/>
+    <line x1="310" y1="610" x2="340" y2="615" stroke="#facc15" stroke-width="12" stroke-linecap="round"/>
+
+    <!-- Spine / Torso -->
+    <line x1="250" y1="230" x2="250" y2="420" stroke="#facc15" stroke-width="14" stroke-linecap="round"/>
+
+    <!-- Left Arm (Gesturing Welcoming) -->
+    <path d="M 250 270 Q 170 290 120 220" stroke="#facc15" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <circle cx="120" cy="220" r="10" fill="#facc15"/>
+
+    <!-- Right Arm (Akimbos / Confident) -->
+    <path d="M 250 270 Q 320 280 340 350" stroke="#facc15" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <circle cx="340" cy="350" r="10" fill="#facc15"/>
+
+    <!-- Crimson Silk Tie -->
+    <path d="M 250 235 L 242 305 L 250 325 L 258 305 Z" fill="#ef4444" stroke="#991b1b" stroke-width="2"/>
+    <circle cx="250" cy="235" r="7" fill="#dc2626"/>
+
+    <!-- Stickman Head (Luminous Ring) -->
+    <circle cx="250" cy="150" r="58" fill="#0b1329" stroke="#facc15" stroke-width="12"/>
+
+    <!-- Expressive Eyes -->
+    <ellipse cx="232" cy="144" rx="6" ry="8" fill="#fef08a"/>
+    <ellipse cx="268" cy="144" rx="6" ry="8" fill="#fef08a"/>
+
+    <!-- Eyebrows -->
+    <path d="M 224 130 Q 232 124 242 128" stroke="#facc15" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <path d="M 258 128 Q 268 124 276 130" stroke="#facc15" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+    <!-- Smile -->
+    <path d="M 235 168 Q 250 184 265 168" stroke="#facc15" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+    <!-- Headset -->
+    <path d="M 188 145 Q 250 78 312 145" stroke="#94a3b8" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <rect x="183" y="132" width="10" height="26" rx="5" fill="#38bdf8"/>
+    <rect x="307" y="132" width="10" height="26" rx="5" fill="#38bdf8"/>
+    <path d="M 188 152 Q 212 182 236 178" stroke="#94a3b8" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <circle cx="236" cy="178" r="4.5" fill="#38bdf8"/>
+  </g>
+</svg>

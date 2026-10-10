@@ -273,15 +273,10 @@ const filteredLatest = page === 1 && effectiveTopStory
     </div>
   )}
 
-  <!-- Adsterra Native Banner (Around The Web) -->
-  {siteSettings.adsterra_enabled !== '0' && siteSettings.adsterra_enabled !== 'false' && (
-    <AdsterraNativeBanner
-      containerId={siteSettings.adsterra_container_id || 'container-4e5de78ab786afbf822590e03b1b657e'}
-      scriptUrl={siteSettings.adsterra_script_url || 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js'}
-      label="Around The Web"
-      smartLinkUrl={siteSettings.ad_smartlink_url || siteSettings.monetag_smartlink_url}
-    />
-  )}
+
+
+  <!-- Native Sponsored Opportunity Grid / Adsterra Native Banner -->
+  <AdsterraNativeBanner className="my-6" />
 
   <!-- Most Read Section -->
   {mostRead.length > 0 && (

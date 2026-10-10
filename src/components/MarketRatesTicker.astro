@@ -180,23 +180,20 @@ const initialData = await getVerifiedMarketRates();
     const sourceEl = document.getElementById('market-rates-source');
 
     const calcAmount = document.getElementById('calc-input-amount');
-    const calcCurrency = document.getElementById('calc-select-currency');
-    const calcResult = document.getElementById('calc-result-naira');
-
-    let currentRates = {
-      usd: 1545.50,
-      gbp: 2010.00,
-      eur: 1675.00,
-      cad: 1128.00,
-      usdt: 1585.00,
+    var currentRates = {
+      usd: 1332.00,
+      gbp: 1765.00,
+      eur: 1494.00,
+      cad: 942.00,
+      usdt: 1385.00,
     };
 
     function updateCalculator() {
       if (!calcAmount || !calcCurrency || !calcResult) return;
-      const amt = parseFloat(calcAmount.value) || 0;
-      const curr = calcCurrency.value || 'usd';
-      const rate = currentRates[curr] || 1545.50;
-      const total = amt * rate;
+      var amt = parseFloat(calcAmount.value) || 0;
+      var curr = calcCurrency.value || 'usd';
+      var rate = currentRates[curr] || 1332.00;
+      var total = amt * rate;
       calcResult.textContent = '₦' + Math.round(total).toLocaleString('en-US');
     }
 
@@ -205,25 +202,27 @@ const initialData = await getVerifiedMarketRates();
       calcCurrency.addEventListener('change', updateCalculator);
     }
 
-    if (verifyBtn) {
-      verifyBtn.addEventListener('click', async function () {
+    function fetchAndApplyRates(isManual) {
+      if (isManual && verifyBtn) {
         verifyBtn.disabled = true;
         if (verifyLabel) verifyLabel.textContent = 'Verifying...';
         if (verifySpinner) verifySpinner.classList.add('animate-spin');
+      }
 
-        try {
-          const res = await fetch('/api/market-rates', { cache: 'no-store' });
-          const data = await res.json();
-
-          if (data && data.success && data.rates) {
+      fetch('/api/market-rates', { cache: 'no-store' })
+        .then(function (res) {
+          return res.ok ? res.json() : null;
+        })
+        .then(function (data) {
+          if (data && data.success && Array.isArray(data.rates)) {
             data.rates.forEach(function (r) {
-              const card = document.querySelector('[data-rate-id="' + r.id + '"]');
+              var card = document.querySelector('[data-rate-id="' + r.id + '"]');
               if (card) {
-                const offEl = card.querySelector('.rate-official-val');
+                var offEl = card.querySelector('.rate-official-val');
                 if (offEl && r.officialSell) {
                   offEl.textContent = '₦' + r.officialSell.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
-                const parEl = card.querySelector('.rate-parallel-val');
+                var parEl = card.querySelector('.rate-parallel-val');
                 if (parEl && r.parallelSell) {
                   parEl.textContent = '₦' + r.parallelSell.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
@@ -243,24 +242,36 @@ const initialData = await getVerifiedMarketRates();
 
             updateCalculator();
 
-            if (verifyLabel) verifyLabel.textContent = '✓ Verified';
+            if (isManual && verifyLabel) {
+              verifyLabel.textContent = '✓ Verified';
+              setTimeout(function () {
+                if (verifyLabel) verifyLabel.textContent = 'Verify Rates';
+                if (verifyBtn) verifyBtn.disabled = false;
+              }, 2500);
+            }
+          }
+        })
+        .catch(function () {
+          if (isManual) {
+            if (verifyLabel) verifyLabel.textContent = 'Retried';
             setTimeout(function () {
               if (verifyLabel) verifyLabel.textContent = 'Verify Rates';
-              verifyBtn.disabled = false;
-            }, 2500);
-          } else {
-            throw new Error('Verification data unavailable');
+              if (verifyBtn) verifyBtn.disabled = false;
+            }, 1500);
           }
-        } catch (err) {
-          if (verifyLabel) verifyLabel.textContent = 'Retried';
-          setTimeout(function () {
-            if (verifyLabel) verifyLabel.textContent = 'Verify Rates';
-            verifyBtn.disabled = false;
-          }, 1500);
-        } finally {
+        })
+        .finally(function () {
           if (verifySpinner) verifySpinner.classList.remove('animate-spin');
-        }
+        });
+    }
+
+    if (verifyBtn) {
+      verifyBtn.addEventListener('click', function () {
+        fetchAndApplyRates(true);
       });
     }
+
+    // Auto-sync on load
+    fetchAndApplyRates(false);
   })();
 </script>

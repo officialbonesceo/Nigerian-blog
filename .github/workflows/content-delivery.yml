@@ -109,7 +109,6 @@ jobs:
           BUFFER_PROFILE_ID_PINTEREST: ${{ secrets.BUFFER_PROFILE_ID_PINTEREST }}
           BUFFER_AUTO_POST_ENABLED: ${{ secrets.BUFFER_AUTO_POST_ENABLED || 'true' }}
           MEDIA_AUTOMATION_ENABLED: ${{ secrets.MEDIA_AUTOMATION_ENABLED || 'true' }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY || secrets.UNSPLASH_CLIENT_ID || secrets.UNSPLASH_API_KEY || secrets.UNSPLASH_KEY }}
           UNSPLASH_SECRET_KEY: ${{ secrets.UNSPLASH_SECRET_KEY || secrets.UNSPLASH_CLIENT_SECRET || secrets.UNSPLASH_SECRET }}
           UNSPLASH_APP_ID: ${{ secrets.UNSPLASH_APP_ID || secrets.UNSPLASH_APPLICATION_ID || secrets.UNSPLASH_ID }}
