@@ -998,19 +998,43 @@ export async function incrementArticleView(db: D1Database, id: string) {
 
 export async function getRelatedArticles(db: D1Database, id: string, categoryId: string, limit = 5) {
   try {
-    // Section 6: Strictly query the same category as current post, excluding current article ID, newest first
+    // 1. Primary query: query published articles in the same category, newest first
     const res = await db.prepare(
       `${select} WHERE (a.status='published' OR a.status IS NULL) AND a.id!=? AND a.category_id=? ORDER BY a.published_at DESC LIMIT ?`
     ).bind(id, categoryId, limit).all<Article>();
     
-    if (res?.results?.length) {
-      return res.results.map(formatArticle);
+    let items = (res?.results || []).map(formatArticle);
+    
+    // 2. If the category has fewer than limit items, top up with other fresh published stories
+    // so AI crawlers and readers are ALWAYS served exactly the requested number of recommended stories!
+    if (items.length < limit) {
+      const existingIds = [id, ...items.map(a => a.id)];
+      const placeholders = existingIds.map(() => '?').join(',');
+      const needed = limit - items.length;
+      const topUpRes = await db.prepare(
+        `${select} WHERE (a.status='published' OR a.status IS NULL) AND a.id NOT IN (${placeholders}) ORDER BY a.published_at DESC LIMIT ?`
+      ).bind(...existingIds, needed).all<Article>();
+      if (topUpRes?.results?.length) {
+        items = [...items, ...topUpRes.results.map(formatArticle)];
+      }
     }
-  } catch {}
 
-  // Fallback strictly to matching category only - never pull other categories per Section 6
-  const filtered = (initialArticles as Article[]).filter((a) => a.id !== id && a.category_id === categoryId);
-  return filtered.slice(0, limit).map(formatArticle);
+    if (items.length > 0) {
+      return items.slice(0, limit);
+    }
+  } catch (err) {
+    console.warn('[RelatedArticles] Query warning:', err);
+  }
+
+  // 3. Resilient fallback: seed data in matching category, topped up with other articles
+  const categoryFiltered = (initialArticles as Article[]).filter((a) => a.id !== id && a.category_id === categoryId);
+  if (categoryFiltered.length >= limit) {
+    return categoryFiltered.slice(0, limit).map(formatArticle);
+  }
+
+  const otherArticles = (initialArticles as Article[]).filter((a) => a.id !== id && !categoryFiltered.some(c => c.id === a.id));
+  const fallbackCombined = [...categoryFiltered, ...otherArticles].slice(0, limit);
+  return fallbackCombined.map(formatArticle);
 }
 
 export async function getTopStory(db: D1Database) {

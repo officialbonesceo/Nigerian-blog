@@ -18,19 +18,34 @@ async function main() {
   for (const art of articles) {
     const currentUrl = (art.image_url || '').toLowerCase();
     
-    // Check if current photo is known to be problematic or mismatched
+    // Mismatch heuristics
     const isSyringePhoto = currentUrl.includes('photo-1584515979956-d9f6e5d09982');
     const isRocketPhoto = currentUrl.includes('photo-1541872703');
     const isBusPhoto = currentUrl.includes('photo-1544620347-c4fd4a3d5957');
     const isFallback = !currentUrl || currentUrl.includes('fallback') || currentUrl.includes('placeholder') || currentUrl.startsWith('data:');
     
-    // Check if title is crime/arrest/court/police but current photo is NOT police/justice
+    // Check if proprietary BBC/wire agency image
+    const isRestrictedWire = currentUrl.includes('bbci.co.uk') || currentUrl.includes('bbc.com') || currentUrl.includes('gettyimages') || currentUrl.includes('reuters') || currentUrl.includes('apnews') || currentUrl.includes('punchng.com') || currentUrl.includes('vanguardngr.com');
+
+    // Title context
     const lowerTitle = (art.title || '').toLowerCase();
     const isCrimeOrLawStory = /\b(police|arrest|suspect|robbery|gunmen|bandits|kidnap|efcc|icpc|ndlea|fraud|detained|custody|court|judge|tribunal|arraigned)\b/i.test(lowerTitle);
-    const hasSyringeOnCrime = isCrimeOrLawStory && isSyringePhoto;
-    const hasBusOnPolice = isCrimeOrLawStory && isBusPhoto;
+    const isMilitaryStory = /\b(troops|military|army|soldiers|ambush|clearance|counter-insurgency|fansan yamma|defence)\b/i.test(lowerTitle);
+    const isFoodOrHealthStory = /\b(palm oil|herbal|poisoning|food|hospital|health|consumer protection)\b/i.test(lowerTitle);
+    const isNamedLeader = /\b(tinubu|shettima|sanwo-?olu|fubara|wike|peter\s+obi|atiku|buhari|emefiele|cardoso|dangote|adeleke|soludo|otu|mutfwang|keyamo)\b/i.test(lowerTitle);
 
-    const needsReevaluation = isSyringePhoto || isRocketPhoto || isFallback || hasSyringeOnCrime || hasBusOnPolice;
+    const hasBusOnMilitaryOrCrime = (isMilitaryStory || isCrimeOrLawStory) && isBusPhoto;
+    const hasSyringeOnCrimeOrFood = (isCrimeOrLawStory || isFoodOrHealthStory) && isSyringePhoto;
+    const hasRocketOnGeneral = isRocketPhoto && !lowerTitle.includes('space') && !lowerTitle.includes('rocket');
+    const hasGenericOnLeader = isNamedLeader && (isBusPhoto || isRocketPhoto || isSyringePhoto || isFallback);
+
+    const needsReevaluation =
+      isFallback ||
+      isRestrictedWire ||
+      hasBusOnMilitaryOrCrime ||
+      hasSyringeOnCrimeOrFood ||
+      hasRocketOnGeneral ||
+      hasGenericOnLeader;
 
     if (!needsReevaluation) {
       continue;
@@ -49,7 +64,7 @@ async function main() {
     console.log(`   -> New Image: ${resolved.imageUrl.slice(0, 80)}...`);
     console.log(`   -> Caption:   ${resolved.imageCaption}`);
 
-    // Update in local SQLite db
+    // Update in local SQLite db (9jabeacon.db)
     db.prepare(`
       UPDATE articles 
       SET image_url = ?, image_caption = ?, image_credit = ?, image_license = ?
@@ -61,6 +76,34 @@ async function main() {
       resolved.imageLicense,
       art.id
     );
+
+    // Also update directly in any Miniflare SQLite databases in .wrangler state
+    try {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const Database = (await import('better-sqlite3')).default;
+      const miniflareDir = path.resolve(process.cwd(), '.wrangler/state/v3/d1/miniflare-D1DatabaseObject');
+      if (fs.existsSync(miniflareDir)) {
+        const files = fs.readdirSync(miniflareDir);
+        for (const f of files) {
+          if (f.endsWith('.sqlite')) {
+            const mfDb = new Database(path.join(miniflareDir, f));
+            mfDb.prepare(`
+              UPDATE articles 
+              SET image_url = ?, image_caption = ?, image_credit = ?, image_license = ?
+              WHERE id = ?
+            `).run(
+              resolved.imageUrl,
+              resolved.imageCaption,
+              resolved.imageCredit,
+              resolved.imageLicense,
+              art.id
+            );
+            mfDb.close();
+          }
+        }
+      }
+    } catch {}
 
     // Also update in runtime-db if D1 binding exists
     try {

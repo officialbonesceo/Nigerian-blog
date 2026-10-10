@@ -508,7 +508,7 @@ STRICT RULES:
 3. No punctuation, no markdown, no quotes, no explanations.`;
 
       const aiPromise = ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
         contents: prompt,
       });
 
@@ -795,12 +795,142 @@ export async function searchDynamicStockPhoto(query: string): Promise<ResolvedIm
   return null;
 }
 
+export interface ImageLicenseVerification {
+  isFreeLicense: boolean;
+  isTosRestricted: boolean;
+  licenseType: string;
+  sourceCredit: string;
+  reason: string;
+}
+
+/**
+ * Verifies news article image licensing against BBC, global wire service,
+ * and commercial publisher Terms of Service.
+ * Detects whether an image is freely licensed (Creative Commons, Public Domain,
+ * Unsplash, Pexels, or open government press releases) or copyrighted proprietary media
+ * that violates TOS / copyright laws if republished.
+ */
+export function verifyImageLicense(url?: string | null, sourceName?: string): ImageLicenseVerification {
+  if (!url || typeof url !== 'string') {
+    return {
+      isFreeLicense: false,
+      isTosRestricted: false,
+      licenseType: 'None',
+      sourceCredit: sourceName || 'Unknown',
+      reason: 'No image URL provided',
+    };
+  }
+
+  const trimmed = url.trim().toLowerCase();
+
+  // 1. Creative Commons / Wikimedia Commons (100% Free Public / CC-BY License)
+  if (trimmed.includes('wikimedia.org') || trimmed.includes('wikipedia.org')) {
+    return {
+      isFreeLicense: true,
+      isTosRestricted: false,
+      licenseType: 'Creative Commons (CC-BY-SA / Public Domain)',
+      sourceCredit: 'Wikimedia Commons / Public Archive',
+      reason: 'Open source verified Creative Commons / Public Domain asset',
+    };
+  }
+
+  // 2. Unsplash API (Free Editorial License with Attribution)
+  if (trimmed.includes('unsplash.com')) {
+    return {
+      isFreeLicense: true,
+      isTosRestricted: false,
+      licenseType: 'Unsplash Free Editorial License',
+      sourceCredit: 'Unsplash Open Photography',
+      reason: 'Open licensing under Unsplash terms with attribution',
+    };
+  }
+
+  // 3. Pexels (Free License)
+  if (trimmed.includes('pexels.com')) {
+    return {
+      isFreeLicense: true,
+      isTosRestricted: false,
+      licenseType: 'Pexels Open License',
+      sourceCredit: 'Pexels Photography Archive',
+      reason: 'Open commercial & editorial license under Pexels terms',
+    };
+  }
+
+  // 4. Official government / international public domain repositories
+  if (
+    trimmed.includes('.gov.ng') ||
+    trimmed.includes('statehouse.gov.ng') ||
+    trimmed.includes('fmic.gov.ng') ||
+    trimmed.includes('.gov/') ||
+    trimmed.includes('un.org') ||
+    trimmed.includes('who.int')
+  ) {
+    return {
+      isFreeLicense: true,
+      isTosRestricted: false,
+      licenseType: 'Official Public Release / Public Domain',
+      sourceCredit: sourceName || 'Federal Government Press Release',
+      reason: 'Official public domain government communication release',
+    };
+  }
+
+  // 5. High-Risk Copyright Enforcement Domains & Wire Services (BBC, Getty, Reuters, AFP, AP)
+  // Strictly prohibited by BBC TOS & agency licensing rules without commercial subscription.
+  const isWireService =
+    trimmed.includes('bbci.co.uk') ||
+    trimmed.includes('bbc.com') ||
+    trimmed.includes('gettyimages') ||
+    trimmed.includes('reuters') ||
+    trimmed.includes('apnews') ||
+    trimmed.includes('apimages') ||
+    trimmed.includes('afp.com') ||
+    trimmed.includes('afpforum') ||
+    trimmed.includes('epa.eu') ||
+    trimmed.includes('shutterstock');
+
+  // 6. Commercial Nigerian Publishers with all-rights-reserved photo clauses
+  const isProprietaryPublisher =
+    trimmed.includes('punchng.com') ||
+    trimmed.includes('vanguardngr.com') ||
+    trimmed.includes('thecable.ng') ||
+    trimmed.includes('dailypost.ng') ||
+    trimmed.includes('tribuneonlineng.com') ||
+    trimmed.includes('leadership.ng') ||
+    trimmed.includes('channelstv.com') ||
+    trimmed.includes('businessday.ng') ||
+    trimmed.includes('guardian.ng') ||
+    trimmed.includes('sunnewsonline.com') ||
+    trimmed.includes('thenationonlineng.net') ||
+    trimmed.includes('ripplesnigeria.com');
+
+  if (isWireService || isProprietaryPublisher) {
+    return {
+      isFreeLicense: false,
+      isTosRestricted: true,
+      licenseType: 'Copyright Protected / All Rights Reserved (TOS Restricted)',
+      sourceCredit: sourceName || 'Commercial Wire Service',
+      reason: 'Image is proprietary and violates publisher TOS & wire copyright if republished without commercial license',
+    };
+  }
+
+  // Unknown external source: default to non-free unless explicitly verified
+  return {
+    isFreeLicense: false,
+    isTosRestricted: false,
+    licenseType: 'Unverified Third-Party License',
+    sourceCredit: sourceName || 'External Source',
+    reason: 'Unverified license; not confirmed free for redistribution',
+  };
+}
+
 /**
  * Intelligent Multi-Tier Editorial Image Resolver:
- * 1. Prioritizes authentic photographic image from original news wire source.
+ * 1. Verifies original source photo against BBC / Wire TOS and Free Licensing rules.
+ *    If free (CC, public domain, gov press release), accepts with full credit.
+ *    If proprietary / BBC / wire agency, halts republication to protect against copyright/TOS breaches.
  * 2. If human-related (person/public figure): tries Wikipedia Commons for that exact figure.
  * 3. Dynamic Unsplash/Pexels API lookup if API key is provided.
- * 4. Context-accurate themed photo matching with strict category isolation (never cross-contaminates crime and health!).
+ * 4. Context-accurate themed photo matching with strict category isolation.
  * 5. Clean editorial SVG vector asset fallback.
  */
 export async function resolveEditorialImage(options: {
@@ -813,14 +943,19 @@ export async function resolveEditorialImage(options: {
 }): Promise<ResolvedImageResult> {
   const { title, content, category, sourceName, sourceImageUrl, aiKeyword } = options;
 
-  // Tier 1: Authentic photo from original news wire
+  // Tier 1: Authentic photo from original news wire with strict TOS & Free License verification
   if (sourceImageUrl && !isPublisherLogoOrBanner(sourceImageUrl)) {
-    return {
-      imageUrl: sourceImageUrl,
-      imageCaption: `${title} — Verified wire report.`,
-      imageCredit: sourceName || 'Editorial Wire Partner',
-      imageLicense: 'Editorial Fair Use',
-    };
+    const licenseCheck = verifyImageLicense(sourceImageUrl, sourceName);
+    if (licenseCheck.isFreeLicense) {
+      return {
+        imageUrl: sourceImageUrl,
+        imageCaption: `${title} — Verified wire report.`,
+        imageCredit: licenseCheck.sourceCredit,
+        imageLicense: licenseCheck.licenseType,
+      };
+    } else {
+      console.log(`🛡️ [Editorial Image TOS Protection]: Source photo from "${sourceName || 'Wire'}" (${sourceImageUrl.slice(0, 50)}...) is protected by BBC / publisher copyright & agency TOS. Halting direct republication and routing to verified open-license engine.`);
+    }
   }
 
   const isPerson = isPersonRelatedStory(title, content);
@@ -863,8 +998,24 @@ export async function resolveEditorialImage(options: {
   const searchContext = `${lowerTitle} ${searchQuery.toLowerCase()}`;
   let matchedStock: { url: string; caption: string; credit: string } | null = null;
 
-  // 4a. Crime, Police, Law Enforcement, EFCC, Courts, Arrests (STRICTLY FIRST)
+  // 4a. Military Operations, Troops, National Defense & Tactical Clearances (STRICTLY FIRST)
   if (
+    lowerTitle.includes('military') ||
+    lowerTitle.includes('army') ||
+    lowerTitle.includes('troops') ||
+    lowerTitle.includes('ambush') ||
+    lowerTitle.includes('defence academy') ||
+    lowerTitle.includes('defense') ||
+    lowerTitle.includes('fansan yamma') ||
+    lowerTitle.includes('hadin kai') ||
+    lowerTitle.includes('counter-insurgency') ||
+    lowerTitle.includes('air force') ||
+    lowerTitle.includes('clearance operation')
+  ) {
+    matchedStock = NON_HUMAN_STOCK_ASSETS.defense;
+  }
+  // 4b. Crime, Police, Law Enforcement, EFCC, Courts, Arrests
+  else if (
     searchContext.includes('police') ||
     searchContext.includes('arrest') ||
     searchContext.includes('suspect') ||

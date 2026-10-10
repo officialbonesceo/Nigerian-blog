@@ -48,6 +48,31 @@ Allow: /
 User-agent: msnbot
 Allow: /
 
+# AI Crawlers & Semantic Search Engines
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
 Sitemap: ${siteBase}/sitemap.xml
 Sitemap: ${siteBase}/news-sitemap.xml
 `.trim();
