@@ -1277,7 +1277,17 @@ export async function getAutomationLogs(db: D1Database, limit = 35) {
 export async function addAutomationLog(db: D1Database, action: string, sourceId: string | null, message: string, status: 'info' | 'warning' | 'error' = 'info') {
   try {
     const id = `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    await db.prepare('INSERT INTO automation_logs (id, action, source_id, message, status) VALUES (?, ?, ?, ?, ?)').bind(id, action, sourceId, message, status).run();
+    // Keep message concise to avoid database bloat (max 500 chars)
+    const truncatedMessage = String(message || '').slice(0, 500);
+    await db.prepare('INSERT INTO automation_logs (id, action, source_id, message, status) VALUES (?, ?, ?, ?, ?)').bind(id, action, sourceId, truncatedMessage, status).run();
+
+    // Prevent unbounded table growth: keep only the latest 200 logs
+    if (Math.random() < 0.15) {
+      await db.prepare(`
+        DELETE FROM automation_logs 
+        WHERE id NOT IN (SELECT id FROM automation_logs ORDER BY created_at DESC LIMIT 200)
+      `).run().catch(() => {});
+    }
   } catch {}
 }
 
@@ -1302,17 +1312,151 @@ export async function getRejectedArticles(db: D1Database, limit = 50) {
 export async function recordRejectedArticle(db: D1Database, data: Record<string, unknown>) {
   try {
     const id = `rej_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    // Truncate raw content to avoid storing multi-KB scraped webpages in database
+    const truncatedContent = String(data.raw_content || '').slice(0, 400);
     await db.prepare('INSERT INTO rejected_articles (id, source_id, source_name, original_title, original_url, raw_content, rejection_reason, ai_tier_failures) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(
       id,
       String(data.source_id || ''),
       String(data.source_name || ''),
-      String(data.original_title || ''),
-      String(data.original_url || ''),
-      String(data.raw_content || ''),
-      String(data.rejection_reason || ''),
-      String(data.ai_tier_failures || '')
+      String(data.original_title || '').slice(0, 300),
+      String(data.original_url || '').slice(0, 500),
+      truncatedContent,
+      String(data.rejection_reason || '').slice(0, 250),
+      String(data.ai_tier_failures || '').slice(0, 250)
     ).run();
+
+    // Prune rejected articles older than 14 days or beyond 100 items
+    if (Math.random() < 0.2) {
+      await db.prepare(`
+        DELETE FROM rejected_articles 
+        WHERE id NOT IN (SELECT id FROM rejected_articles ORDER BY created_at DESC LIMIT 100)
+      `).run().catch(() => {});
+    }
   } catch {}
+}
+
+export async function getDatabaseStorageStats(db: D1Database) {
+  try {
+    const [articles, logs, analytics, rejected, sources, videos, comments, publishers] = await Promise.all([
+      db.prepare('SELECT COUNT(*) AS count FROM articles').first<{ count: number }>().catch(() => ({ count: 0 })),
+      db.prepare('SELECT COUNT(*) AS count FROM automation_logs').first<{ count: number }>().catch(() => ({ count: 0 })),
+      db.prepare('SELECT COUNT(*) AS count FROM visitor_analytics').first<{ count: number }>().catch(() => ({ count: 0 })),
+      db.prepare('SELECT COUNT(*) AS count FROM rejected_articles').first<{ count: number }>().catch(() => ({ count: 0 })),
+      db.prepare('SELECT COUNT(*) AS count FROM sources').first<{ count: number }>().catch(() => ({ count: 0 })),
+      db.prepare('SELECT COUNT(*) AS count FROM video_articles').first<{ count: number }>().catch(() => ({ count: 0 })),
+      db.prepare('SELECT COUNT(*) AS count FROM article_comments').first<{ count: number }>().catch(() => ({ count: 0 })),
+      db.prepare('SELECT COUNT(*) AS count FROM publishers').first<{ count: number }>().catch(() => ({ count: 0 })),
+    ]);
+
+    const articlesCount = (articles as any)?.count ?? 0;
+    const logsCount = (logs as any)?.count ?? 0;
+    const analyticsCount = (analytics as any)?.count ?? 0;
+    const rejectedCount = (rejected as any)?.count ?? 0;
+    const sourcesCount = (sources as any)?.count ?? 0;
+    const videosCount = (videos as any)?.count ?? 0;
+    const commentsCount = (comments as any)?.count ?? 0;
+    const publishersCount = (publishers as any)?.count ?? 0;
+
+    // Pragma checks if supported (SQLite / D1)
+    let pageCount = 0;
+    let pageSize = 4096;
+    let freelistCount = 0;
+    try {
+      const pc = await db.prepare('PRAGMA page_count').first<{ page_count: number }>();
+      const ps = await db.prepare('PRAGMA page_size').first<{ page_size: number }>();
+      const fc = await db.prepare('PRAGMA freelist_count').first<{ freelist_count: number }>();
+      pageCount = (pc as any)?.page_count ?? 0;
+      pageSize = (ps as any)?.page_size ?? 4096;
+      freelistCount = (fc as any)?.freelist_count ?? 0;
+    } catch {}
+
+    const estimatedBytes = pageCount > 0 ? pageCount * pageSize : 0;
+    const freeBytes = freelistCount * pageSize;
+
+    return {
+      success: true,
+      tables: {
+        articles: articlesCount,
+        automation_logs: logsCount,
+        visitor_analytics: analyticsCount,
+        rejected_articles: rejectedCount,
+        sources: sourcesCount,
+        video_articles: videosCount,
+        article_comments: commentsCount,
+        publishers: publishersCount,
+      },
+      storage: {
+        pageCount,
+        pageSize,
+        freelistCount,
+        reclaimableBytes: freeBytes,
+        reclaimableMb: +(freeBytes / (1024 * 1024)).toFixed(2),
+        estimatedMb: +(estimatedBytes / (1024 * 1024)).toFixed(2),
+      }
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || 'Failed to inspect database tables',
+      tables: {},
+      storage: {}
+    };
+  }
+}
+
+export async function cleanAndVacuumDatabase(db: D1Database, options: { cleanLogs?: boolean; cleanAnalytics?: boolean; cleanRejected?: boolean; runVacuum?: boolean } = {}) {
+  const result: { logsPruned: number; analyticsPruned: number; rejectedPruned: number; vacuumRun: boolean; errors: string[] } = {
+    logsPruned: 0,
+    analyticsPruned: 0,
+    rejectedPruned: 0,
+    vacuumRun: false,
+    errors: [],
+  };
+
+  try {
+    if (options.cleanLogs !== false) {
+      // Keep only the most recent 100 logs
+      await db.prepare(`
+        DELETE FROM automation_logs 
+        WHERE id NOT IN (SELECT id FROM automation_logs ORDER BY created_at DESC LIMIT 100)
+      `).run().catch((e: any) => result.errors.push(`Logs: ${e.message}`));
+      result.logsPruned = 1;
+    }
+
+    if (options.cleanAnalytics !== false) {
+      // Delete analytics records older than 30 days
+      await db.prepare("DELETE FROM visitor_analytics WHERE visit_date < date('now', '-30 days')")
+        .run().catch((e: any) => result.errors.push(`Analytics: ${e.message}`));
+      result.analyticsPruned = 1;
+    }
+
+    if (options.cleanRejected !== false) {
+      // Delete rejected articles older than 7 days
+      await db.prepare("DELETE FROM rejected_articles WHERE created_at < datetime('now', '-7 days')")
+        .run().catch((e: any) => result.errors.push(`Rejected: ${e.message}`));
+      result.rejectedPruned = 1;
+    }
+
+    if (options.runVacuum !== false) {
+      // Execute VACUUM to reclaim deleted pages on disk
+      try {
+        await db.prepare('VACUUM').run();
+        result.vacuumRun = true;
+      } catch (vacErr: any) {
+        // Some managed environments handle VACUUM automatically or via PRAGMA
+        try {
+          await db.prepare('PRAGMA incremental_vacuum').run();
+          result.vacuumRun = true;
+        } catch {
+          result.errors.push(`Vacuum: ${vacErr.message}`);
+        }
+      }
+    }
+  } catch (err: any) {
+    result.errors.push(err?.message || 'Database cleanup error');
+  }
+
+  return result;
 }
 
 export async function getAnalyticsMetrics(db: D1Database) {
@@ -1385,9 +1529,9 @@ export async function createArticle(db: D1Database, input: Record<string, unknow
     is_trending: Number(input.is_trending || 0),
     is_breaking: Number(input.is_breaking || 0),
     views_count: Number(
-      input.views_count !== undefined && input.views_count !== null && Number(input.views_count) > 0
+      input.views_count !== undefined && input.views_count !== null && Number(input.views_count) >= 0
         ? input.views_count
-        : (85 + Math.floor(Math.random() * 55))
+        : 0
     ),
     reading_time_minutes: Number(input.reading_time_minutes || 2),
     source_id: input.source_id ? String(input.source_id) : null,
@@ -1501,6 +1645,11 @@ export async function logVisitorSession(db: D1Database, input: Record<string, un
       input.referrer ? String(input.referrer) : null,
       String(input.device_type || 'mobile')
     ).run();
+
+    // Auto-prune visitor records older than 30 days periodically (5% chance per visit)
+    if (Math.random() < 0.05) {
+      await db.prepare("DELETE FROM visitor_analytics WHERE visit_date < date('now', '-30 days')").run().catch(() => {});
+    }
   } catch {}
 }
 

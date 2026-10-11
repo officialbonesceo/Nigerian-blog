@@ -252,6 +252,7 @@ export async function discoverCloudflareModels(options?: {
 
       if (res.ok) {
         const json = (await res.json()) as any;
+        const results = json?.result || [];
         const isCfExcluded = (id: string) => /(embed|rerank|flux|diffusion|aura|nova|whisper|vision-only|guard|safety|moderation|classifier|thebloke)/i.test(id);
         const modelNames = results
           .map((m: any) => m.name || m.id)
