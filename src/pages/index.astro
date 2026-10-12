@@ -25,7 +25,8 @@ export const prerender = false;
 const d1 = getD1(Astro.locals);
 
 const page = Math.max(1, parseInt(Astro.url.searchParams.get('page') || '1', 10));
-const pageSize = 8;
+// Spec: home shows ten articles so the feed does not feel empty
+const pageSize = 10;
 const offset = (page - 1) * pageSize;
 
 let topStory: Article | null = null;
@@ -92,8 +93,9 @@ if (page === 1) {
 }
 
 // Exclude the hero story from the feed so there is no duplicate on page 1
+// Keep up to pageSize (10) items in the latest list
 const filteredLatest = page === 1 && effectiveTopStory
-  ? currentFeed.filter((art) => art.id !== effectiveTopStory?.id).slice(0, 6)
+  ? currentFeed.filter((art) => art.id !== effectiveTopStory?.id).slice(0, pageSize)
   : currentFeed;
 ---
 
@@ -171,7 +173,7 @@ const filteredLatest = page === 1 && effectiveTopStory
     </div>
   </div>
 
-  <!-- Top Story Spotlight (Page 1) -->
+  <!-- Top Story Spotlight (Page 1) — static for now; carousel (per-category + ad) lands next -->
   {page === 1 && effectiveTopStory && (
     <div class="mt-2 mb-6">
       <TopStoryCard article={effectiveTopStory} />
@@ -305,4 +307,3 @@ const filteredLatest = page === 1 && effectiveTopStory
     }
   })} />
 </Layout>
-
