@@ -9,7 +9,6 @@ import FAQSection from '../components/FAQSection.astro';
 import AdSlot from '../components/AdSlot.astro';
 import AdsterraNativeBanner from '../components/AdsterraNativeBanner.astro';
 import MarketRatesTicker from '../components/MarketRatesTicker.astro';
-import CurrencyMiniStrip from '../components/CurrencyMiniStrip.astro';
 import {
   getD1,
   getTopStory,
@@ -54,7 +53,6 @@ try {
   siteSettings = settings || {};
   categories = cats || [];
 
-  // Latest published article per category (for carousel)
   if (page === 1 && categories.length > 0) {
     const perCat = await Promise.all(
       categories.map((c) => getArticles(d1, { categoryId: c.id, limit: 1 }))
@@ -73,6 +71,7 @@ try {
 }
 
 const hasNextPage = latestArticles.length > pageSize;
+// Always show full page of stories in the list (including ones also in the carousel)
 const currentFeed = latestArticles.slice(0, pageSize);
 
 const rawSiteBase = (siteSettings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
@@ -80,7 +79,6 @@ const siteBase = rawSiteBase === 'https://9jabeacon.name.ng' ? 'https://www.9jab
 const prevUrl = page > 1 ? (page === 2 ? `${siteBase}/` : `${siteBase}/?page=${page - 1}`) : undefined;
 const nextUrl = hasNextPage ? `${siteBase}/?page=${page + 1}` : undefined;
 
-// Static top-story fallback when carousel is off or has no slides
 let effectiveTopStory: Article | null = null;
 if (page === 1) {
   const heroCandidatePool: Article[] = [];
@@ -110,18 +108,20 @@ if (page === 1) {
 const carouselEnabled = (siteSettings.hero_carousel_enabled ?? '1') !== '0';
 const useCarousel = page === 1 && carouselEnabled && heroSlides.length > 0;
 
-const heroIds = new Set(
-  useCarousel ? heroSlides.map((a) => a.id) : effectiveTopStory ? [effectiveTopStory.id] : []
-);
-const filteredLatest = page === 1 && heroIds.size > 0
-  ? currentFeed.filter((art) => !heroIds.has(art.id)).slice(0, pageSize)
-  : currentFeed;
-
-const adHref = siteSettings.hero_ad_url || siteSettings.ad_smartlink_url || '/contact';
-const adTitle = siteSettings.hero_ad_title || 'Advertise on 9jaBeacon';
-const adTeaser =
-  siteSettings.hero_ad_teaser ||
-  'Reach Nigerians who read verified news every day. Partner with our desk for sponsored features and campaigns.';
+const DEFAULT_ADSTERRA_CONTAINER = 'container-4e5de78ab786afbf822590e03b1b657e';
+const DEFAULT_ADSTERRA_SCRIPT =
+  'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js';
+const heroAdContainer =
+  siteSettings.hero_adsterra_container_id ||
+  siteSettings.adsterra_container_id ||
+  DEFAULT_ADSTERRA_CONTAINER;
+const heroAdScript =
+  siteSettings.hero_adsterra_script_url ||
+  siteSettings.adsterra_script_url ||
+  DEFAULT_ADSTERRA_SCRIPT;
+const smartLink =
+  siteSettings.ad_smartlink_url ||
+  'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead';
 ---
 
 <Layout
@@ -157,25 +157,18 @@ const adTeaser =
       </div>
     </div>
     <div class="flex items-center gap-2 shrink-0">
-      <a href="https://facebook.com/9jabeacon" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-[#1877F2] hover:bg-[#1877F2]/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95">
-        <span>Facebook</span>
-      </a>
-      <a href="https://bsky.app/profile/9jabeacon.bsky.social" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-[#0085FF] hover:bg-[#0085FF]/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95">
-        <span>Bluesky</span>
-      </a>
-      <a href="https://youtube.com/@9jabeacon" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-[#FF0000] hover:bg-[#FF0000]/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95">
-        <span>YouTube</span>
-      </a>
+      <a href="https://facebook.com/9jabeacon" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-[#1877F2] text-white text-[11px] font-bold">Facebook</a>
+      <a href="https://bsky.app/profile/9jabeacon.bsky.social" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-[#0085FF] text-white text-[11px] font-bold">Bluesky</a>
+      <a href="https://youtube.com/@9jabeacon" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-[#FF0000] text-white text-[11px] font-bold">YouTube</a>
     </div>
   </div>
 
-  <!-- Hero: carousel (default) or static top story -->
   {page === 1 && useCarousel && (
     <HeroCarousel
       slides={heroSlides}
-      adHref={adHref}
-      adTitle={adTitle}
-      adTeaser={adTeaser}
+      adsterraContainerId={heroAdContainer}
+      adsterraScriptUrl={heroAdScript}
+      smartLinkUrl={smartLink}
     />
   )}
   {page === 1 && !useCarousel && effectiveTopStory && (
@@ -184,7 +177,7 @@ const adTeaser =
     </div>
   )}
 
-  {filteredLatest.length > 0 ? (
+  {currentFeed.length > 0 ? (
     <section class="mt-4 space-y-3">
       <div class="flex items-center justify-between">
         <h2 class="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -192,17 +185,17 @@ const adTeaser =
           <span>{page === 1 ? 'Latest News' : `News Archive (Page ${page})`}</span>
         </h2>
         <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">
-          {page > 1 ? `Page ${page}` : 'Live Updates'}
+          {page > 1 ? `Page ${page}` : `${currentFeed.length} stories`}
         </span>
       </div>
       <div class="space-y-2.5">
-        {filteredLatest.map((article, idx) => (
+        {currentFeed.map((article, idx) => (
           <>
             <ArticleCard article={article} />
-            {((filteredLatest.length <= 3 && idx === 1) || (filteredLatest.length > 3 && idx === 2)) && (
+            {((currentFeed.length <= 3 && idx === 1) || (currentFeed.length > 3 && idx === 2)) && (
               <AdSlot format="feed" index={1} />
             )}
-            {filteredLatest.length > 4 && idx === 4 && (
+            {currentFeed.length > 4 && idx === 4 && (
               <AdSlot format="breaking-teaser" index={2} />
             )}
           </>
@@ -211,35 +204,26 @@ const adTeaser =
 
       <div class="pt-4 pb-2 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
         {page > 1 ? (
-          <a href={page === 2 ? '/' : `/?page=${page - 1}`} class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5 shadow-xs">
-            <span>&larr;</span><span>Previous</span>
-          </a>
+          <a href={page === 2 ? '/' : `/?page=${page - 1}`} class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">&larr; Previous</a>
         ) : (
           <span class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 text-xs font-bold text-slate-400 cursor-not-allowed">&larr; Previous</span>
         )}
         <div class="flex items-center gap-1.5">
-          {page > 1 && (
-            <a href="/" class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold font-mono text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition">1</a>
-          )}
+          {page > 1 && <a href="/" class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold font-mono flex items-center justify-center">1</a>}
           {page > 2 && <span class="text-xs text-slate-400 font-mono">..</span>}
-          <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white text-xs font-bold font-mono flex items-center justify-center shadow-xs">{page}</span>
-          {hasNextPage && (
-            <a href={`/?page=${page + 1}`} class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold font-mono text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition">{page + 1}</a>
-          )}
+          <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white text-xs font-bold font-mono flex items-center justify-center">{page}</span>
+          {hasNextPage && <a href={`/?page=${page + 1}`} class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold font-mono flex items-center justify-center">{page + 1}</a>}
         </div>
         {hasNextPage ? (
-          <a href={`/?page=${page + 1}`} class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs">
-            <span>Next</span><span>&rarr;</span>
-          </a>
+          <a href={`/?page=${page + 1}`} class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">Next &rarr;</a>
         ) : (
           <span class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 text-xs font-bold text-slate-400 cursor-not-allowed">Next &rarr;</span>
         )}
       </div>
     </section>
   ) : (
-    <div class="mt-4 mb-6 p-8 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center space-y-3 shadow-xs">
+    <div class="mt-4 mb-6 p-8 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center space-y-3">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white">End of Stories</h2>
-      <p class="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto">You have reached the end of the news catalog.</p>
       <a href="/" class="inline-block px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Return to Front Page</a>
     </div>
   )}
@@ -250,7 +234,8 @@ const adTeaser =
     <MostReadSection articles={mostRead} />
   )}
 
-  {page === 1 && <CurrencyMiniStrip />}
+  {/* Full FX wire: official + parallel + live calculator */}
+  {page === 1 && <MarketRatesTicker />}
 
   <FAQSection />
 
@@ -262,10 +247,6 @@ const adTeaser =
     "url": `${siteBase}/market-rates`,
     "areaServed": "NG",
     "currenciesAccepted": "NGN, USD, GBP, EUR, CAD, USDT",
-    "provider": {
-      "@type": "NewsMediaOrganization",
-      "name": "9jaBeacon",
-      "url": siteBase
-    }
+    "provider": { "@type": "NewsMediaOrganization", "name": "9jaBeacon", "url": siteBase }
   })} />
 </Layout>
