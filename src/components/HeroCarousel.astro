@@ -1,0 +1,229 @@
+---
+/**
+ * Hero carousel: latest published article per category, then one ad slide.
+ * News slides: 4.5s | Ad slide: 7s | loops from the start.
+ */
+import type { Article } from '../lib/types';
+import { DEFAULT_FALLBACK_IMAGE_URL } from '../lib/fallback-image';
+
+interface Props {
+  slides: Article[];
+  adHref?: string;
+  adTitle?: string;
+  adTeaser?: string;
+}
+
+const {
+  slides,
+  adHref = '/contact',
+  adTitle = 'Advertise on 9jaBeacon',
+  adTeaser = 'Reach Nigerians who read verified news every day. Partner with our desk for sponsored features and campaigns.',
+} = Astro.props;
+
+const newsCount = slides.length;
+const total = newsCount + 1; // + ad
+---
+
+<section
+  id="hero-carousel"
+  class="relative w-full rounded-2xl overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 bg-slate-900 mb-6"
+  data-news-ms="4500"
+  data-ad-ms="7000"
+  data-news-count={String(newsCount)}
+  data-total={String(total)}
+  aria-roledescription="carousel"
+  aria-label="Top stories by category"
+>
+  <div class="relative aspect-[16/10] sm:aspect-[21/9] w-full">
+    {slides.map((article, i) => {
+      const imageUrl = article.image_url || DEFAULT_FALLBACK_IMAGE_URL;
+      const rawDate = article.published_at ? new Date(article.published_at) : new Date();
+      const formattedDate = !isNaN(rawDate.getTime())
+        ? rawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : 'Today';
+      return (
+        <a
+          href={`/news/${article.slug}`}
+          class={`hero-slide absolute inset-0 block group transition-opacity duration-500 ${i === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
+          data-index={String(i)}
+          data-kind="news"
+          aria-hidden={i === 0 ? 'false' : 'true'}
+        >
+          <img
+            src={imageUrl}
+            alt={article.title}
+            loading={i === 0 ? 'eager' : 'lazy'}
+            decoding="async"
+            referrerpolicy="no-referrer"
+            onerror="this.onerror=null;this.src='/fallback-image.svg'"
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+          />
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent"></div>
+          <div class="absolute inset-0 p-4 sm:p-6 flex flex-col justify-between overflow-hidden">
+            <div class="flex items-center justify-between gap-2">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm shrink-0">
+                <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                {article.category_name || 'Top Story'}
+              </span>
+              {article.category_slug && (
+                <span class="px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur-xs text-slate-300 text-[10px] font-bold uppercase tracking-wider border border-slate-700/50 truncate max-w-[140px]">
+                  Latest in desk
+                </span>
+              )}
+            </div>
+            <div class="space-y-2 overflow-hidden">
+              <h2 class="text-base sm:text-2xl font-extrabold text-white leading-snug group-hover:text-emerald-300 transition-colors line-clamp-3 break-words">
+                {article.title}
+              </h2>
+              <div class="flex items-center gap-3 text-xs text-slate-300 font-medium">
+                <span>{formattedDate}</span>
+                <span class="w-1 h-1 rounded-full bg-slate-500 shrink-0"></span>
+                <span class="flex items-center gap-1 shrink-0">
+                  <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {article.reading_time_minutes || 4} min read
+                </span>
+              </div>
+            </div>
+          </div>
+        </a>
+      );
+    })}
+
+    <!-- Ad slide (last) -->
+    <a
+      href={adHref}
+      class={`hero-slide absolute inset-0 block group transition-opacity duration-500 opacity-0 z-0 pointer-events-none`}
+      data-index={String(newsCount)}
+      data-kind="ad"
+      aria-hidden="true"
+      rel="noopener sponsored"
+    >
+      <div class="w-full h-full bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 flex flex-col justify-between p-4 sm:p-6">
+        <div class="flex items-center justify-between gap-2">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500 text-slate-950 text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+            Sponsored
+          </span>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">9jaBeacon Partners</span>
+        </div>
+        <div class="space-y-2 max-w-xl">
+          <h2 class="text-base sm:text-2xl font-extrabold text-white leading-snug group-hover:text-emerald-300 transition-colors">
+            {adTitle}
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-300 line-clamp-2">{adTeaser}</p>
+          <span class="inline-flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold">
+            Get in touch <span aria-hidden="true">&rarr;</span>
+          </span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Controls -->
+  <div class="absolute bottom-3 left-0 right-0 z-20 flex items-center justify-between px-3 sm:px-4 pointer-events-none">
+    <button
+      type="button"
+      class="hero-prev pointer-events-auto w-8 h-8 rounded-full bg-slate-950/70 border border-slate-600/60 text-white flex items-center justify-center hover:bg-slate-900 transition"
+      aria-label="Previous slide"
+    >
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+    </button>
+    <div class="hero-dots flex items-center gap-1.5 pointer-events-auto" role="tablist" aria-label="Slides">
+      {Array.from({ length: total }).map((_, i) => (
+        <button
+          type="button"
+          class={`hero-dot w-2 h-2 rounded-full transition ${i === 0 ? 'bg-emerald-400 scale-110' : 'bg-white/40 hover:bg-white/70'}`}
+          data-index={String(i)}
+          aria-label={`Go to slide ${i + 1}`}
+          aria-selected={i === 0 ? 'true' : 'false'}
+        />
+      ))}
+    </div>
+    <button
+      type="button"
+      class="hero-next pointer-events-auto w-8 h-8 rounded-full bg-slate-950/70 border border-slate-600/60 text-white flex items-center justify-center hover:bg-slate-900 transition"
+      aria-label="Next slide"
+    >
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+    </button>
+  </div>
+</section>
+
+<script is:inline>
+  (function () {
+    function initHero() {
+      var root = document.getElementById('hero-carousel');
+      if (!root || root.getAttribute('data-hero-bound') === '1') return;
+      root.setAttribute('data-hero-bound', '1');
+
+      var newsMs = parseInt(root.getAttribute('data-news-ms') || '4500', 10);
+      var adMs = parseInt(root.getAttribute('data-ad-ms') || '7000', 10);
+      var total = parseInt(root.getAttribute('data-total') || '1', 10);
+      if (total < 1) return;
+
+      var slides = Array.prototype.slice.call(root.querySelectorAll('.hero-slide'));
+      var dots = Array.prototype.slice.call(root.querySelectorAll('.hero-dot'));
+      var idx = 0;
+      var timer = null;
+      var paused = false;
+
+      function show(i) {
+        idx = ((i % total) + total) % total;
+        slides.forEach(function (el, n) {
+          var on = n === idx;
+          el.classList.toggle('opacity-100', on);
+          el.classList.toggle('z-10', on);
+          el.classList.toggle('opacity-0', !on);
+          el.classList.toggle('z-0', !on);
+          el.classList.toggle('pointer-events-none', !on);
+          el.setAttribute('aria-hidden', on ? 'false' : 'true');
+        });
+        dots.forEach(function (d, n) {
+          var on = n === idx;
+          d.classList.toggle('bg-emerald-400', on);
+          d.classList.toggle('scale-110', on);
+          d.classList.toggle('bg-white/40', !on);
+          d.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        schedule();
+      }
+
+      function schedule() {
+        if (timer) clearTimeout(timer);
+        if (paused) return;
+        var el = slides[idx];
+        var kind = el && el.getAttribute('data-kind');
+        var wait = kind === 'ad' ? adMs : newsMs;
+        timer = setTimeout(function () {
+          show(idx + 1);
+        }, wait);
+      }
+
+      var prev = root.querySelector('.hero-prev');
+      var next = root.querySelector('.hero-next');
+      if (prev) prev.addEventListener('click', function (e) { e.preventDefault(); show(idx - 1); });
+      if (next) next.addEventListener('click', function (e) { e.preventDefault(); show(idx + 1); });
+      dots.forEach(function (d) {
+        d.addEventListener('click', function () {
+          var i = parseInt(d.getAttribute('data-index') || '0', 10);
+          show(i);
+        });
+      });
+
+      root.addEventListener('mouseenter', function () { paused = true; if (timer) clearTimeout(timer); });
+      root.addEventListener('mouseleave', function () { paused = false; schedule(); });
+      root.addEventListener('focusin', function () { paused = true; if (timer) clearTimeout(timer); });
+      root.addEventListener('focusout', function () { paused = false; schedule(); });
+
+      show(0);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initHero);
+    } else {
+      initHero();
+    }
+    document.addEventListener('astro:page-load', initHero);
+  })();
+</script>
