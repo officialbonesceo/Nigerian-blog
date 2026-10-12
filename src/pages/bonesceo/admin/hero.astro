@@ -1,0 +1,130 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { getD1, getSiteSettings } from '../../../lib/runtime-db';
+import { verifyAdminToken, getEnvSecret } from '../../../lib/auth';
+
+const db = getD1(Astro.locals);
+const cookie = Astro.request.headers.get('cookie') || '';
+const authHeader = Astro.request.headers.get('authorization') || '';
+const url = new URL(Astro.request.url);
+const queryToken = url.searchParams.get('token') || '';
+
+let token = '';
+const match = cookie.match(/bonesceo_session=([^;]+)/);
+if (match) token = match[1];
+else if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7).trim();
+else if (queryToken) token = queryToken;
+
+const siteSettings = await getSiteSettings(db);
+const secretKey =
+  getEnvSecret(Astro.locals, 'ADMIN_SECRET_KEY', 'admin_secret_key', 'SECRET_KEY') ||
+  siteSettings.admin_secret_key ||
+  '9jaBeacon_bonesceo_secret_key_2026_super_secure';
+
+const tokenVerification = token ? verifyAdminToken(token, secretKey) : { valid: false };
+if (!tokenVerification.valid && !cookie.includes('bonesceo_session=') && !queryToken) {
+  return Astro.redirect('/bonesceo/admin/login', 302);
+}
+
+if (queryToken && tokenVerification.valid) {
+  const isHttps = Astro.request.url.startsWith('https://') || Astro.request.headers.get('x-forwarded-proto') === 'https';
+  Astro.response.headers.set(
+    'Set-Cookie',
+    `bonesceo_session=${queryToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`
+  );
+}
+
+const carouselOn = siteSettings.hero_carousel_enabled !== '0';
+const containerId =
+  siteSettings.hero_adsterra_container_id ||
+  siteSettings.adsterra_container_id ||
+  'container-4e5de78ab786afbf822590e03b1b657e';
+const scriptUrl =
+  siteSettings.hero_adsterra_script_url ||
+  siteSettings.adsterra_script_url ||
+  'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js';
+---
+
+<Layout title="Hero Carousel Settings — 9jaBeacon" activeNav="menu" isWideLayout={true}>
+  <div class="max-w-2xl mx-auto space-y-6 pb-16">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-black text-slate-900 dark:text-white">Homepage Hero Carousel</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Latest article per category · 4.5s rotate · Adsterra ad slide 7s · then loop
+        </p>
+      </div>
+      <a href="/bonesceo/admin" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">&larr; Command Hub</a>
+    </div>
+
+    <form id="heroForm" class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-5 shadow-xs">
+      <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+        <div>
+          <label for="heroCarouselEnabled" class="text-sm font-bold text-slate-900 dark:text-white block">Enable Hero Carousel</label>
+          <span class="text-[11px] text-slate-500">Off = classic single Top Story card</span>
+        </div>
+        <input type="checkbox" id="heroCarouselEnabled" class="w-5 h-5 rounded text-emerald-600" checked={carouselOn} />
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="heroAdsterraContainerId" class="text-xs font-bold text-slate-700 dark:text-slate-300">Adsterra container ID (hero ad slide)</label>
+        <input type="text" id="heroAdsterraContainerId" value={containerId} class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-sm font-mono" />
+      </div>
+
+      <div class="space-y-1.5">
+        <label for="heroAdsterraScriptUrl" class="text-xs font-bold text-slate-700 dark:text-slate-300">Adsterra script URL</label>
+        <input type="text" id="heroAdsterraScriptUrl" value={scriptUrl} class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-sm font-mono" />
+      </div>
+
+      <div id="heroSaveStatus" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+
+      <button type="submit" id="heroSaveBtn" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">
+        Save Hero Settings
+      </button>
+    </form>
+
+    <p class="text-[11px] text-slate-500">
+      Tip: use a <strong>dedicated</strong> Adsterra zone for the hero if the same container ID is already used lower on the homepage (native banner).
+    </p>
+  </div>
+</Layout>
+
+<script is:inline>
+  document.getElementById('heroForm')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = document.getElementById('heroSaveBtn');
+    var status = document.getElementById('heroSaveStatus');
+    var payload = {
+      hero_carousel_enabled: document.getElementById('heroCarouselEnabled')?.checked ? '1' : '0',
+      hero_adsterra_container_id: document.getElementById('heroAdsterraContainerId')?.value?.trim() || '',
+      hero_adsterra_script_url: document.getElementById('heroAdsterraScriptUrl')?.value?.trim() || '',
+    };
+    if (btn) btn.textContent = 'Saving…';
+    try {
+      var res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'site', settings: payload }),
+      });
+      var data = await res.json();
+      if (status) {
+        status.classList.remove('hidden');
+        if (data.success) {
+          status.textContent = '✅ Saved. Refresh the homepage to see changes.';
+          status.className = 'p-3 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800';
+        } else {
+          status.textContent = '❌ ' + (data.error || 'Save failed');
+          status.className = 'p-3 rounded-xl text-xs font-semibold bg-red-50 dark:bg-red-950/50 text-red-700 border border-red-200';
+        }
+      }
+    } catch (err) {
+      if (status) {
+        status.classList.remove('hidden');
+        status.textContent = '❌ ' + err.message;
+        status.className = 'p-3 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200';
+      }
+    } finally {
+      if (btn) btn.textContent = 'Save Hero Settings';
+    }
+  });
+</script>
