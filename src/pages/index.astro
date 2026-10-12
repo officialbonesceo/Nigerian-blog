@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import TrendingBar from '../components/TrendingBar.astro';
 import TopStoryCard from '../components/TopStoryCard.astro';
+import HeroCarousel from '../components/HeroCarousel.astro';
 import ArticleCard from '../components/ArticleCard.astro';
 import MostReadSection from '../components/MostReadSection.astro';
 import FAQSection from '../components/FAQSection.astro';
@@ -16,16 +17,16 @@ import {
   getMostReadArticles,
   getBreakingArticles,
   getSiteSettings,
+  getCategories,
 } from '../lib/runtime-db';
 
-import type { Article } from '../lib/types';
+import type { Article, Category } from '../lib/types';
 
 export const prerender = false;
 
 const d1 = getD1(Astro.locals);
 
 const page = Math.max(1, parseInt(Astro.url.searchParams.get('page') || '1', 10));
-// Spec: home shows ten articles so the feed does not feel empty
 const pageSize = 10;
 const offset = (page - 1) * pageSize;
 
@@ -33,22 +34,40 @@ let topStory: Article | null = null;
 let latestArticles: Article[] = [];
 let mostRead: Article[] = [];
 let breakingNews: Article[] = [];
-
+let categories: Category[] = [];
 let siteSettings: Record<string, string> = {};
+let heroSlides: Article[] = [];
 
 try {
-  const [top, latest, read, breaking, settings] = await Promise.all([
+  const [top, latest, read, breaking, settings, cats] = await Promise.all([
     page === 1 ? getTopStory(d1) : Promise.resolve(null),
     getArticles(d1, { limit: pageSize + 1, offset }),
     getMostReadArticles(d1, 5),
     page === 1 ? getBreakingArticles(d1, 1) : Promise.resolve([]),
     getSiteSettings(d1),
+    page === 1 ? getCategories(d1) : Promise.resolve([]),
   ]);
   topStory = top;
   latestArticles = latest || [];
   mostRead = read || [];
   breakingNews = breaking || [];
   siteSettings = settings || {};
+  categories = cats || [];
+
+  // Latest published article per category (for carousel)
+  if (page === 1 && categories.length > 0) {
+    const perCat = await Promise.all(
+      categories.map((c) => getArticles(d1, { categoryId: c.id, limit: 1 }))
+    );
+    const seen = new Set<string>();
+    for (const list of perCat) {
+      const a = list?.[0];
+      if (a && a.id && !seen.has(a.id)) {
+        seen.add(a.id);
+        heroSlides.push(a);
+      }
+    }
+  }
 } catch (e) {
   console.error('[index.astro] Error loading articles:', e);
 }
@@ -61,28 +80,24 @@ const siteBase = rawSiteBase === 'https://9jabeacon.name.ng' ? 'https://www.9jab
 const prevUrl = page > 1 ? (page === 2 ? `${siteBase}/` : `${siteBase}/?page=${page - 1}`) : undefined;
 const nextUrl = hasNextPage ? `${siteBase}/?page=${page + 1}` : undefined;
 
-// Dynamic hero rotation across candidate stories with 0 extra database reads and 0 writes
+// Static top-story fallback when carousel is off or has no slides
 let effectiveTopStory: Article | null = null;
 if (page === 1) {
   const heroCandidatePool: Article[] = [];
   const seenIds = new Set<string>();
-
   const poolSources = [
     topStory,
     ...breakingNews,
     ...mostRead.slice(0, 3),
     ...currentFeed.slice(0, 4),
   ].filter((art): art is Article => Boolean(art && art.id));
-
   for (const art of poolSources) {
     if (!seenIds.has(art.id)) {
       seenIds.add(art.id);
       heroCandidatePool.push(art);
     }
   }
-
   if (heroCandidatePool.length > 0) {
-    // Top story must use newest published_at among featured (Spec 2 Section 6)
     heroCandidatePool.sort((a, b) => {
       const timeA = a.published_at ? new Date(a.published_at).getTime() : 0;
       const timeB = b.published_at ? new Date(b.published_at).getTime() : 0;
@@ -92,11 +107,21 @@ if (page === 1) {
   }
 }
 
-// Exclude the hero story from the feed so there is no duplicate on page 1
-// Keep up to pageSize (10) items in the latest list
-const filteredLatest = page === 1 && effectiveTopStory
-  ? currentFeed.filter((art) => art.id !== effectiveTopStory?.id).slice(0, pageSize)
+const carouselEnabled = (siteSettings.hero_carousel_enabled ?? '1') !== '0';
+const useCarousel = page === 1 && carouselEnabled && heroSlides.length > 0;
+
+const heroIds = new Set(
+  useCarousel ? heroSlides.map((a) => a.id) : effectiveTopStory ? [effectiveTopStory.id] : []
+);
+const filteredLatest = page === 1 && heroIds.size > 0
+  ? currentFeed.filter((art) => !heroIds.has(art.id)).slice(0, pageSize)
   : currentFeed;
+
+const adHref = siteSettings.hero_ad_url || siteSettings.ad_smartlink_url || '/contact';
+const adTitle = siteSettings.hero_ad_title || 'Advertise on 9jaBeacon';
+const adTeaser =
+  siteSettings.hero_ad_teaser ||
+  'Reach Nigerians who read verified news every day. Partner with our desk for sponsored features and campaigns.';
 ---
 
 <Layout
@@ -106,7 +131,6 @@ const filteredLatest = page === 1 && effectiveTopStory
   nextUrl={nextUrl}
   activeNav="home"
 >
-  <!-- Breaking News Ticker (Page 1) -->
   {page === 1 && breakingNews[0] && (
     <div class="mb-3 p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 flex items-center gap-2">
       <span class="px-2 py-0.5 rounded bg-red-600 text-white text-[9px] font-black uppercase tracking-wider shrink-0 animate-pulse">
@@ -120,7 +144,6 @@ const filteredLatest = page === 1 && effectiveTopStory
 
   {page === 1 && <TrendingBar />}
 
-  <!-- High-Visibility Community Socials Ribbon -->
   <div class="my-3 p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white border border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-2.5 shadow-sm">
     <div class="flex items-center gap-2.5">
       <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
@@ -133,54 +156,34 @@ const filteredLatest = page === 1 && effectiveTopStory
         <span class="text-[10px] text-slate-300 block sm:inline">Join thousands of Nigerians for verified wire alerts and debates.</span>
       </div>
     </div>
-
     <div class="flex items-center gap-2 shrink-0">
-      <a
-        href="https://facebook.com/9jabeacon"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="px-2.5 py-1 rounded-lg bg-[#1877F2] hover:bg-[#1877F2]/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
-      >
-        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-        </svg>
+      <a href="https://facebook.com/9jabeacon" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-[#1877F2] hover:bg-[#1877F2]/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95">
         <span>Facebook</span>
       </a>
-
-      <a
-        href="https://bsky.app/profile/9jabeacon.bsky.social"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="px-2.5 py-1 rounded-lg bg-[#0085FF] hover:bg-[#0085FF]/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
-      >
-        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 568 501">
-          <path d="M123.121 33.664C188.241 82.553 258.281 181.68 284 234.873c25.719-53.192 95.759-152.32 160.879-198.21C491.56 3.12 568-19.46 568 59.957c0 15.897-9.08 133.567-14.407 152.597-18.528 66.196-85.922 83.18-146.593 72.846 105.992 18.069 132.85 88.04 74.654 147.78-109.972 112.92-167.348-28.327-197.654-88.89-30.306 60.563-87.682 201.81-197.654 88.89-58.196-59.74-31.338-129.711 74.654-147.78C99.329 295.734 31.935 278.75 13.407 212.554 8.08 193.524 0 75.854 0 59.957 0-19.46 76.44 3.12 123.121 33.664z" />
-        </svg>
+      <a href="https://bsky.app/profile/9jabeacon.bsky.social" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-[#0085FF] hover:bg-[#0085FF]/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95">
         <span>Bluesky</span>
       </a>
-
-      <a
-        href="https://youtube.com/@9jabeacon"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="px-2.5 py-1 rounded-lg bg-[#FF0000] hover:bg-[#FF0000]/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
-      >
-        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-        </svg>
+      <a href="https://youtube.com/@9jabeacon" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-[#FF0000] hover:bg-[#FF0000]/90 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95">
         <span>YouTube</span>
       </a>
     </div>
   </div>
 
-  <!-- Top Story Spotlight (Page 1) — static for now; carousel (per-category + ad) lands next -->
-  {page === 1 && effectiveTopStory && (
+  <!-- Hero: carousel (default) or static top story -->
+  {page === 1 && useCarousel && (
+    <HeroCarousel
+      slides={heroSlides}
+      adHref={adHref}
+      adTitle={adTitle}
+      adTeaser={adTeaser}
+    />
+  )}
+  {page === 1 && !useCarousel && effectiveTopStory && (
     <div class="mt-2 mb-6">
       <TopStoryCard article={effectiveTopStory} />
     </div>
   )}
 
-  <!-- Latest News Feed -->
   {filteredLatest.length > 0 ? (
     <section class="mt-4 space-y-3">
       <div class="flex items-center justify-between">
@@ -196,11 +199,9 @@ const filteredLatest = page === 1 && effectiveTopStory
         {filteredLatest.map((article, idx) => (
           <>
             <ArticleCard article={article} />
-            {/* Slot 1: Native In-Feed Wire Card (Format A - Unique Image 1) */}
             {((filteredLatest.length <= 3 && idx === 1) || (filteredLatest.length > 3 && idx === 2)) && (
               <AdSlot format="feed" index={1} />
             )}
-            {/* Slot 2: Urgent Opportunity Bulletin Strip (Format B - Unique Image 2) */}
             {filteredLatest.length > 4 && idx === 4 && (
               <AdSlot format="breaking-teaser" index={2} />
             )}
@@ -208,90 +209,51 @@ const filteredLatest = page === 1 && effectiveTopStory
         ))}
       </div>
 
-      <!-- Feed Pagination Controls -->
       <div class="pt-4 pb-2 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
         {page > 1 ? (
-          <a
-            href={page === 2 ? '/' : `/?page=${page - 1}`}
-            class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5 shadow-xs"
-          >
-            <span>&larr;</span>
-            <span>Previous</span>
+          <a href={page === 2 ? '/' : `/?page=${page - 1}`} class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center gap-1.5 shadow-xs">
+            <span>&larr;</span><span>Previous</span>
           </a>
         ) : (
-          <span class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 text-xs font-bold text-slate-400 cursor-not-allowed">
-            &larr; Previous
-          </span>
+          <span class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 text-xs font-bold text-slate-400 cursor-not-allowed">&larr; Previous</span>
         )}
-
-        <!-- Quick Page Badges -->
         <div class="flex items-center gap-1.5">
           {page > 1 && (
-            <a
-              href="/"
-              class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold font-mono text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition"
-            >
-              1
-            </a>
+            <a href="/" class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold font-mono text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition">1</a>
           )}
           {page > 2 && <span class="text-xs text-slate-400 font-mono">..</span>}
-          <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white text-xs font-bold font-mono flex items-center justify-center shadow-xs">
-            {page}
-          </span>
+          <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white text-xs font-bold font-mono flex items-center justify-center shadow-xs">{page}</span>
           {hasNextPage && (
-            <a
-              href={`/?page=${page + 1}`}
-              class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold font-mono text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition"
-            >
-              {page + 1}
-            </a>
+            <a href={`/?page=${page + 1}`} class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold font-mono text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition">{page + 1}</a>
           )}
         </div>
-
         {hasNextPage ? (
-          <a
-            href={`/?page=${page + 1}`}
-            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-          >
-            <span>Next</span>
-            <span>&rarr;</span>
+          <a href={`/?page=${page + 1}`} class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs">
+            <span>Next</span><span>&rarr;</span>
           </a>
         ) : (
-          <span class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 text-xs font-bold text-slate-400 cursor-not-allowed">
-            Next &rarr;
-          </span>
+          <span class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 text-xs font-bold text-slate-400 cursor-not-allowed">Next &rarr;</span>
         )}
       </div>
     </section>
   ) : (
     <div class="mt-4 mb-6 p-8 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center space-y-3 shadow-xs">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white">End of Stories</h2>
-      <p class="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-        You have reached the end of the news catalog.
-      </p>
-      <a href="/" class="inline-block px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">
-        Return to Front Page
-      </a>
+      <p class="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto">You have reached the end of the news catalog.</p>
+      <a href="/" class="inline-block px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Return to Front Page</a>
     </div>
   )}
 
-
-
-  <!-- Native Sponsored Opportunity Grid / Adsterra Native Banner -->
   <AdsterraNativeBanner className="my-6" />
 
-  <!-- Most Read Section -->
   {mostRead.length > 0 && (
     <MostReadSection articles={mostRead} />
   )}
 
-  <!-- Compact Daily Naira FX Trends Strip (Down Part of Page) -->
   {page === 1 && <CurrencyMiniStrip />}
 
-  <!-- Engaging Fact-Checking & Editorial FAQ Section (with Google FAQPage JSON-LD Schema) -->
   <FAQSection />
 
-  <!-- Google & Bing Search Rich Snippets: Naira FX & Currency Trends Wire -->
   <script type="application/ld+json" set:html={JSON.stringify({
     "@context": "https://schema.org",
     "@type": "FinancialService",
