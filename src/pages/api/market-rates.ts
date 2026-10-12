@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { getVerifiedMarketRates } from '../../lib/market-rates';
 
+export const prerender = false;
+
 export const GET: APIRoute = async () => {
   try {
     const data = await getVerifiedMarketRates();
@@ -8,7 +10,7 @@ export const GET: APIRoute = async () => {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=180, s-maxage=300',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
       },
     });
   } catch (err: any) {

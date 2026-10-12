@@ -1,9 +1,9 @@
 ---
 // src/components/StickmanStudio.astro
 // Single Articulated Vector Stickman Presenter Studio
-// Features: Bold Red Tie, Gaze (Up/Down/Left/Right/Side), Desk ON/OFF (Full Screen),
-// Human Walking Gait (Legs & Arms moving like human), Gestures (Point Left/Right, Hands Sideway),
-// Facial Expressions, Talking Lip-Sync, and Full Interactive Controls.
+// Enhanced Kinematics: Fixed neck & shoulder joints, tall opaque broadcast desk,
+// pick-up tablet reading mode with audience cadence, head-centered face/tie zoom,
+// and bipedal human walking locomotion.
 ---
 
 <div class="space-y-6 select-none" id="stickman-studio-wrapper">
@@ -19,7 +19,7 @@
           <span>9jaBeacon Stickman Motion & Animation Workbench</span>
         </h2>
         <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-3xl leading-relaxed">
-          Procedural SVG stickman presenter with bold red tie &bull; Articulated head gaze, human bipedal walking kinematics, hands sideway / pointing poses, desk toggle (seated vs full-body standing), and live speech lip-sync &mdash; zero external images.
+          Vector stickman with bold red tie &bull; Fixed neck-hinge & shoulder articulation, executive anchor desk, interactive tablet reading (alternating audience & notes gaze), face-centered camera zoom, and live lip-sync.
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
@@ -86,9 +86,9 @@
           <div 
             id="sm-camera-viewport"
             class="relative w-full h-full flex items-center justify-center transition-transform duration-300 ease-out"
-            style="transform: scale(0.95) translateY(0px);"
+            style="transform-origin: 300px 115px; transform: scale(0.95) translateY(0px);"
           >
-            <!-- STICKMAN SVG -->
+            <!-- STICKMAN SVG (600x600 coordinate space) -->
             <svg 
               id="sm-svg" 
               viewBox="0 0 600 600" 
@@ -114,12 +114,34 @@
                   <stop offset="70%" stop-color="#000000" stop-opacity="0.2" />
                   <stop offset="100%" stop-color="#000000" stop-opacity="0" />
                 </radialGradient>
+
+                <!-- Digital Tablet Screen Glow -->
+                <linearGradient id="smTabletGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9" />
+                  <stop offset="100%" stop-color="#0284c7" stop-opacity="0.95" />
+                </linearGradient>
               </defs>
+
+              <!-- EXECUTIVE STUDIO CHAIR (Visible when presenter is seated behind desk) -->
+              <g id="sm-studio-chair" class="transition-opacity duration-300">
+                <!-- High Ergonomic Backrest -->
+                <rect x="240" y="145" width="120" height="150" rx="16" fill="#0b0f19" stroke="currentColor" stroke-width="2.5" class="sm-stroke" />
+                <!-- Studio Headrest -->
+                <rect x="265" y="112" width="70" height="28" rx="8" fill="#1e293b" stroke="currentColor" stroke-width="2" class="sm-stroke" />
+                <!-- Left Armrest -->
+                <rect x="220" y="240" width="20" height="42" rx="6" fill="#1e293b" stroke="currentColor" stroke-width="1.5" class="sm-stroke" />
+                <!-- Right Armrest -->
+                <rect x="360" y="240" width="20" height="42" rx="6" fill="#1e293b" stroke="currentColor" stroke-width="1.5" class="sm-stroke" />
+                <!-- Chair Swivel Column (Under desk) -->
+                <line x1="300" y1="295" x2="300" y2="480" stroke="#334155" stroke-width="12" stroke-linecap="round" />
+                <!-- Chair 5-Star Caster Base -->
+                <path d="M 230 520 L 300 480 L 370 520 M 260 535 L 300 480 L 340 535" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
+              </g>
 
               <!-- ROOT STAGE ACTOR GROUP: Controls horizontal X-position & facing direction -->
               <g id="sm-actor-group" transform="translate(0, 0)">
                 
-                <!-- Floor Contact Shadow -->
+                <!-- Floor Contact Shadow (Hidden when seated behind desk) -->
                 <ellipse 
                   id="sm-floor-shadow" 
                   cx="300" 
@@ -127,7 +149,7 @@
                   rx="65" 
                   ry="12" 
                   fill="url(#smFloorShadow)"
-                  class="transition-all duration-200"
+                  class="transition-opacity duration-200"
                 />
 
                 <!-- ============================================== -->
@@ -149,18 +171,18 @@
                     <line x1="320" y1="525" x2="344" y2="528" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
                   </g>
 
-                  <!-- Dynamic Walking Gait Legs (Hidden when not walking) -->
+                  <!-- Dynamic Walking Gait Legs (Active only when walking) -->
                   <g id="sm-legs-walk" class="hidden">
-                    <!-- Dynamic Left Leg (Controlled via JS animation frame) -->
-                    <path id="sm-walk-leg-l" d="M 288 310 L 270 420 L 260 525 L 240 528" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
-                    <!-- Dynamic Right Leg -->
-                    <path id="sm-walk-leg-r" d="M 312 310 L 330 420 L 340 525 L 360 528" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <!-- Left Leg Dynamic -->
+                    <path id="sm-walk-leg-l" d="M 288 310 L 275 420 L 265 525 L 245 528" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <!-- Right Leg Dynamic -->
+                    <path id="sm-walk-leg-r" d="M 312 310 L 325 420 L 335 525 L 355 528" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
                   </g>
 
-                  <!-- Seated Lower Legs (Under Desk pose) -->
+                  <!-- Seated Pose: Zero legs visible outside desk boundary -->
                   <g id="sm-legs-seated" class="hidden">
-                    <line x1="288" y1="310" x2="282" y2="380" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke opacity-30" />
-                    <line x1="312" y1="310" x2="318" y2="380" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke opacity-30" />
+                    <line x1="288" y1="310" x2="282" y2="350" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke opacity-20" />
+                    <line x1="312" y1="310" x2="318" y2="350" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke opacity-20" />
                   </g>
                 </g>
 
@@ -171,13 +193,13 @@
                 <!-- TORSO, SPINE, COLLAR & BOLD RED TIE -->
                 <!-- ============================================== -->
                 <g id="sm-torso-group">
-                  <!-- Main Spine -->
+                  <!-- Main Spine (from neck base at 150 to pelvis at 310) -->
                   <line id="sm-spine" x1="300" y1="150" x2="300" y2="310" stroke="currentColor" stroke-width="7.5" stroke-linecap="round" class="sm-stroke" />
                   
-                  <!-- Shoulder Crossbar -->
+                  <!-- Shoulder Crossbar (Anchored strictly at 268 and 332) -->
                   <line x1="268" y1="170" x2="332" y2="170" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
 
-                  <!-- Crisp Shirt Collar (Minimalist white flap) -->
+                  <!-- Crisp Shirt Collar (Minimalist white flap at neck base) -->
                   <polygon points="291,146 309,146 305,158 295,158" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" />
 
                   <!-- BOLD RED TIE (Iconic anchor tie) -->
@@ -193,27 +215,26 @@
 
                 <!-- ============================================== -->
                 <!-- ARMS & HANDS (ARTICULATED KINEMATICS) -->
+                <!-- Shoulders rigidly anchored at (268, 170) & (332, 170) -->
                 <!-- ============================================== -->
                 <g id="sm-arms-group">
                   
                   <!-- POSE 1: Hands Sideway (Relaxed Natural Human Stand) -->
                   <g id="sm-arm-pose-sideway" class="sm-arm-pose">
-                    <!-- Left Arm: Hanging relaxed at side -->
+                    <!-- Left Arm: Shoulder (268,170) -> Elbow (258,230) -> Wrist (254,290) -->
                     <path d="M 268 170 L 258 230 L 254 290" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
-                    <!-- Left Hand: subtle palm -->
                     <circle cx="254" cy="292" r="4.5" fill="currentColor" class="sm-fill" />
                     
-                    <!-- Right Arm: Hanging relaxed at side -->
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (342,230) -> Wrist (346,290) -->
                     <path d="M 332 170 L 342 230 L 346 290" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
-                    <!-- Right Hand: subtle palm -->
                     <circle cx="346" cy="292" r="4.5" fill="currentColor" class="sm-fill" />
                   </g>
 
                   <!-- POSE 2: Point Left (Left Arm Pointing, Right Arm Sideway) -->
                   <g id="sm-arm-pose-point-left" class="sm-arm-pose hidden">
-                    <!-- Left Arm: Extended fully pointing left -->
+                    <!-- Left Arm: Shoulder (268,170) -> Elbow (200,170) -> Hand (138,170) -->
                     <path d="M 268 170 L 200 170 L 138 170" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
-                    <!-- Left Hand Pointing: Arrow index finger -->
+                    <!-- Left Hand Pointing -->
                     <polygon points="138,166 122,170 138,174" fill="currentColor" class="sm-fill" />
                     <line x1="138" y1="170" x2="118" y2="170" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" class="sm-stroke" />
                     
@@ -228,31 +249,31 @@
                     <path d="M 268 170 L 258 230 L 254 290" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
                     <circle cx="254" cy="292" r="4.5" fill="currentColor" class="sm-fill" />
                     
-                    <!-- Right Arm: Extended fully pointing right -->
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (400,170) -> Hand (462,170) -->
                     <path d="M 332 170 L 400 170 L 462 170" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
-                    <!-- Right Hand Pointing: Arrow index finger -->
+                    <!-- Right Hand Pointing -->
                     <polygon points="462,166 478,170 462,174" fill="currentColor" class="sm-fill" />
                     <line x1="462" y1="170" x2="482" y2="170" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" class="sm-stroke" />
                   </g>
 
                   <!-- POSE 4: Desk Rest (Both arms resting on anchor desk) -->
                   <g id="sm-arm-pose-desk-rest" class="sm-arm-pose hidden">
-                    <!-- Left Arm: resting forward on desk pad -->
-                    <path d="M 268 170 L 248 230 L 268 280" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
-                    <circle cx="268" cy="280" r="5" fill="currentColor" class="sm-fill" />
+                    <!-- Left Arm: Shoulder (268,170) -> Elbow (245,230) -> Hand (265,275) -->
+                    <path d="M 268 170 L 245 230 L 265 275" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="265" cy="275" r="5" fill="currentColor" class="sm-fill" />
                     
-                    <!-- Right Arm: resting forward holding stylus/notes -->
-                    <path d="M 332 170 L 352 230 L 332 280" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
-                    <circle cx="332" cy="280" r="5" fill="currentColor" class="sm-fill" />
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (355,230) -> Hand (335,275) -->
+                    <path d="M 332 170 L 355 230 L 335 275" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="335" cy="275" r="5" fill="currentColor" class="sm-fill" />
                   </g>
 
                   <!-- POSE 5: Expressive Gesture (Speaking & Presenting with palms) -->
                   <g id="sm-arm-pose-gesture" class="sm-arm-pose hidden">
-                    <!-- Left Arm: gesturing upward -->
+                    <!-- Left Arm: Shoulder (268,170) -> Elbow (240,215) -> Hand (225,200) -->
                     <path d="M 268 170 L 240 215 L 225 200" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
                     <circle cx="225" cy="200" r="5" fill="currentColor" class="sm-fill" />
                     
-                    <!-- Right Arm: gesturing upward -->
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (360,215) -> Hand (375,200) -->
                     <path d="M 332 170 L 360 215 L 375 200" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
                     <circle cx="375" cy="200" r="5" fill="currentColor" class="sm-fill" />
                   </g>
@@ -263,41 +284,68 @@
                     <path d="M 268 170 L 258 230 L 254 290" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
                     <circle cx="254" cy="292" r="4.5" fill="currentColor" class="sm-fill" />
                     
-                    <!-- Right Arm: High waving -->
-                    <path d="M 332 170 L 375 140 L 395 105" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
-                    <!-- Open Hand -->
-                    <circle cx="395" cy="105" r="6" fill="currentColor" class="sm-fill" />
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (370,140) -> Hand (390,105) -->
+                    <path d="M 332 170 L 370 140 L 390 105" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="390" cy="105" r="6" fill="currentColor" class="sm-fill" />
+                  </g>
+
+                  <!-- POSE 7: Picked-Up Tablet & Reading Mode (User Requested) -->
+                  <g id="sm-arm-pose-tablet-read" class="sm-arm-pose hidden">
+                    <!-- Left Arm: Shoulder (268,170) -> Elbow (252,225) -> Hand holding tablet edge (272,250) -->
+                    <path d="M 268 170 L 252 225 L 272 250" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="272" cy="250" r="5" fill="currentColor" class="sm-fill" />
+
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (348,225) -> Hand holding tablet edge (328,250) -->
+                    <path d="M 332 170 L 348 225 L 328 250" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="328" cy="250" r="5" fill="currentColor" class="sm-fill" />
+
+                    <!-- Digital Tablet in Hands (Tilted slightly towards presenter) -->
+                    <g transform="rotate(-3 300 248)">
+                      <!-- Tablet Bezel -->
+                      <rect x="256" y="226" width="88" height="54" rx="6" fill="#090d16" stroke="currentColor" stroke-width="2.5" class="sm-stroke" />
+                      <!-- Glowing News Screen -->
+                      <rect x="261" y="231" width="78" height="44" rx="4" fill="url(#smTabletGlow)" />
+                      <!-- News Lines on Tablet -->
+                      <line x1="266" y1="239" x2="310" y2="239" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+                      <line x1="266" y1="246" x2="330" y2="246" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" opacity="0.9" />
+                      <line x1="266" y1="252" x2="324" y2="252" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" opacity="0.9" />
+                      <line x1="266" y1="258" x2="298" y2="258" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" opacity="0.7" />
+                      <!-- Live Signal Dot -->
+                      <circle cx="330" cy="239" r="2.5" fill="#ef4444" class="animate-pulse" />
+                    </g>
                   </g>
 
                   <!-- Dynamic Walking Arm Swing (Used during active walk cycle) -->
                   <g id="sm-arm-pose-walk" class="sm-arm-pose hidden">
-                    <!-- Dynamic Left Arm (oppositional swing) -->
                     <path id="sm-walk-arm-l" d="M 268 170 L 258 225 L 252 280" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
-                    <!-- Dynamic Right Arm (oppositional swing) -->
                     <path id="sm-walk-arm-r" d="M 332 170 L 342 225 L 348 280" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
                   </g>
                 </g>
 
                 <!-- ============================================== -->
+                <!-- FIXED NECK ANCHOR (NEVER DETACHES) -->
+                <!-- Connects skull base (300, 140) to spine/torso (300, 150) -->
+                <!-- ============================================== -->
+                <line x1="300" y1="140" x2="300" y2="150" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
+
+                <!-- ============================================== -->
                 <!-- ARTICULATED HEAD, GAZE & FACIAL EXPRESSIONS -->
+                <!-- Rotates strictly around skull base (300px 140px) -->
                 <!-- ============================================== -->
                 <g 
                   id="sm-head-group" 
-                  class="transition-transform duration-200 ease-out origin-[300px_105px]"
-                  style="transform-origin: 300px 105px;"
+                  class="transition-transform duration-200 ease-out origin-[300px_140px]"
+                  style="transform-origin: 300px 140px;"
                 >
-                  <!-- Neck Line -->
-                  <line x1="300" y1="140" x2="300" y2="152" stroke="currentColor" stroke-width="6" stroke-linecap="round" class="sm-stroke" />
-
-                  <!-- Head Contour (Clean Vector Circle) -->
+                  <!-- Head Contour (Clean Vector Circle centered at 300, 105) -->
                   <circle 
                     id="sm-head-circle" 
                     cx="300" 
                     cy="105" 
-                    r="36" 
+                    r="35" 
                     fill="#090d16" 
                     stroke="currentColor" 
-                    stroke-width="6" 
+                    stroke-width="6.5" 
                     class="sm-head-base" 
                   />
 
@@ -353,61 +401,74 @@
                   </g>
                 </g>
 
-                <!-- ============================================== -->
-                <!-- NEWS ANCHOR DESK (MODULAR TOGGLEABLE LAYER) -->
-                <!-- ============================================== -->
-                <g id="sm-desk-layer" class="transition-opacity duration-300">
-                  <!-- Desk Drop Shadow -->
-                  <ellipse cx="300" cy="385" rx="160" ry="20" fill="url(#smFloorShadow)" />
+              </g>
 
-                  <!-- Desk Main Body Polygon (Sleek minimalist news desk) -->
-                  <polygon 
-                    points="140,285 460,285 435,380 165,380" 
-                    fill="#0f172a" 
-                    stroke="currentColor" 
-                    stroke-width="2.5" 
-                    class="sm-desk-body"
-                  />
-                  
-                  <!-- Desk Beveled Top Surface (Glass / Reflection look) -->
-                  <polygon 
-                    points="130,278 470,278 460,285 140,285" 
-                    fill="#1e293b" 
-                    stroke="currentColor" 
-                    stroke-width="1.5" 
-                    class="sm-desk-top"
-                  />
-                  <!-- Desk Subtle Glow Edge Line -->
-                  <line x1="130" y1="278" x2="470" y2="278" stroke="#38bdf8" stroke-width="1.5" opacity="0.7" />
+              <!-- ============================================== -->
+              <!-- NEWS ANCHOR DESK (STAGE FOREGROUND LAYER) -->
+              <!-- Placed in fixed stage coordinates outside actor group -->
+              <!-- Solid executive barrier from Y=275 down to floor Y=535 -->
+              <!-- ============================================== -->
+              <g id="sm-desk-layer" class="transition-opacity duration-300">
+                <!-- Wide Desk Floor Shadow -->
+                <ellipse cx="300" cy="535" rx="240" ry="16" fill="url(#smFloorShadow)" />
 
-                  <!-- Anchor Studio Gooseneck Microphone -->
-                  <path d="M 405 278 Q 395 245 385 235" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="sm-stroke" />
-                  <!-- Mic Head with Red Live Indicator Ring -->
-                  <rect x="379" y="226" width="12" height="10" rx="3" fill="#334155" stroke="currentColor" stroke-width="1.2" class="sm-stroke" />
-                  <circle cx="385" cy="231" r="2" fill="#ef4444" class="animate-pulse" />
+                <!-- Solid Executive Modesty Panel (Completely covers lower body from waist Y=256 down to floor Y=535) -->
+                <polygon 
+                  points="60,256 540,256 515,535 85,535" 
+                  fill="#090d16" 
+                  stroke="currentColor" 
+                  stroke-width="3.5" 
+                  class="sm-desk-body"
+                />
+                
+                <!-- Executive Center Accent Panel -->
+                <polygon 
+                  points="120,285 480,285 460,510 140,510" 
+                  fill="#0f172a" 
+                  stroke="currentColor" 
+                  stroke-width="2" 
+                  class="sm-desk-panel"
+                />
 
-                  <!-- Broadcast News Tablet / Papers on Desk -->
-                  <polygon points="215,280 255,279 252,284 212,285" fill="#f8fafc" stroke="#94a3b8" stroke-width="1" />
-                  <polygon points="220,281 250,280 248,284 218,285" fill="#38bdf8" opacity="0.3" />
+                <!-- High-Luster Beveled Desktop Surface (Y=246 to 258, perfectly covering waist/hips) -->
+                <polygon 
+                  points="45,246 555,246 540,258 60,258" 
+                  fill="#1e293b" 
+                  stroke="currentColor" 
+                  stroke-width="2.2" 
+                  class="sm-desk-top"
+                />
+                <!-- Cyan Accent Horizon Neon Trim -->
+                <line x1="45" y1="246" x2="555" y2="246" stroke="#38bdf8" stroke-width="2.5" opacity="0.9" />
 
-                  <!-- Newsroom Digital Emblem / Front Panel Banner -->
-                  <rect x="230" y="320" width="140" height="26" rx="6" fill="#020617" stroke="currentColor" stroke-width="1.2" class="sm-desk-badge" />
-                  <text 
-                    x="300" 
-                    y="337" 
-                    text-anchor="middle" 
-                    font-family="monospace" 
-                    font-size="11" 
-                    font-weight="900" 
-                    letter-spacing="2" 
-                    fill="#f8fafc" 
-                    class="sm-badge-text"
-                  >
-                    9JA BEACON
-                  </text>
+                <!-- Anchor Studio Gooseneck Microphone -->
+                <path d="M 445 246 Q 430 205 408 195" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="sm-stroke" />
+                <rect x="400" y="185" width="16" height="14" rx="4" fill="#334155" stroke="currentColor" stroke-width="1.5" class="sm-stroke" />
+                <circle cx="408" cy="192" r="3" fill="#ef4444" class="animate-pulse" />
+
+                <!-- Desktop Resting Tablet (Hidden when picked up into hands) -->
+                <g id="sm-desk-tablet" class="transition-opacity duration-200">
+                  <polygon points="175,248 235,247 230,255 170,256" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" />
+                  <polygon points="180,249 230,248 227,254 177,255" fill="#38bdf8" opacity="0.5" />
                 </g>
 
+                <!-- Broadcast Digital News Emblem -->
+                <rect x="210" y="315" width="180" height="32" rx="8" fill="#020617" stroke="currentColor" stroke-width="2" class="sm-desk-badge" />
+                <text 
+                  x="300" 
+                  y="336" 
+                  text-anchor="middle" 
+                  font-family="monospace" 
+                  font-size="13" 
+                  font-weight="900" 
+                  letter-spacing="2.5" 
+                  fill="#f8fafc" 
+                  class="sm-badge-text"
+                >
+                  9JABEACON DESK
+                </text>
               </g>
+
             </svg>
           </div>
         </div>
@@ -504,11 +565,11 @@
       <!-- CONTROLS CONTAINER -->
       <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5 transition-colors">
         
-        <!-- SECTION 1: DESK & FRAMING (User Request: sit behind desk, remove desk full screen, distance required) -->
+        <!-- SECTION 1: DESK & FRAMING (Enhanced: Tall Desk + Face-Centered Zoom) -->
         <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>🪑 1. Desk Mode & Camera Distance</span>
+              <span>🪑 1. Desk Mode & Face-Centered Zoom</span>
             </h3>
             <span id="sm-desk-status-pill" class="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">Desk Active</span>
           </div>
@@ -531,23 +592,23 @@
             </button>
           </div>
 
-          <!-- Distance & Framing Presets -->
+          <!-- Distance & Framing Presets (Calibrated for Face & Bold Red Tie) -->
           <div class="space-y-2 pt-1">
             <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
-              Camera Framing & Distance (Kept Within Stage Bounds):
+              Camera Framing (Anchored at Head & Tie):
             </label>
             <div class="grid grid-cols-3 gap-2">
               <button
                 id="btn-frame-full"
                 onclick="setStickmanFraming('full')"
-                class="px-2.5 py-1.5 rounded-lg border font-semibold text-[11px] text-center transition cursor-pointer bg-red-600 border-red-500 text-white"
+                class="px-2.5 py-1.5 rounded-lg border font-semibold text-[11px] text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400"
               >
                 Full Body
               </button>
               <button
                 id="btn-frame-medium"
                 onclick="setStickmanFraming('medium')"
-                class="px-2.5 py-1.5 rounded-lg border font-semibold text-[11px] text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+                class="px-2.5 py-1.5 rounded-lg border font-semibold text-[11px] text-center transition cursor-pointer bg-red-600 border-red-500 text-white"
               >
                 Medium Shot
               </button>
@@ -556,32 +617,63 @@
                 onclick="setStickmanFraming('close')"
                 class="px-2.5 py-1.5 rounded-lg border font-semibold text-[11px] text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400"
               >
-                Close-Up
+                Face Close-Up
               </button>
             </div>
             
-            <!-- Zoom Slider -->
+            <!-- Zoom Slider (Zooms directly into Head/Face/Tie) -->
             <div class="flex items-center gap-3 pt-1">
               <span class="text-[10px] font-mono text-slate-500">Zoom:</span>
               <input 
                 type="range" 
                 id="sm-zoom-slider" 
                 min="65" 
-                max="155" 
-                value="95" 
+                max="160" 
+                value="105" 
                 oninput="setStickmanCustomZoom(this.value)"
                 class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-red-600"
               />
-              <span id="sm-zoom-val" class="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 w-9">95%</span>
+              <span id="sm-zoom-val" class="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 w-9">105%</span>
             </div>
           </div>
         </div>
 
-        <!-- SECTION 2: HEAD & GAZE (User Request: look up, down, side, left and right) -->
+        <!-- SECTION 2: TABLET READING & AUDIENCE CADENCE (User Requested) -->
         <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>👤 2. Head Tilt & Gaze Direction</span>
+              <span>📖 2. Pick Up Tablet & News Reading</span>
+            </h3>
+            <span id="sm-tablet-mode-pill" class="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">Tablet On Desk</span>
+          </div>
+
+          <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
+            Picks up digital tablet from the desk into hands and alternates gaze naturally (looking down at notes, then glancing up at audience):
+          </p>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              id="btn-tablet-pickup"
+              onclick="startTabletReadingCadence()"
+              class="p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-emerald-600 border-emerald-500 text-white shadow-sm"
+            >
+              <span>📖 Pick Up Tablet & Read</span>
+            </button>
+            <button
+              id="btn-tablet-putdown"
+              onclick="putDownTabletToDesk()"
+              class="p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+            >
+              <span>🪑 Put Tablet On Desk</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION 3: HEAD & GAZE (Anchored Neck Joint: No Hinging Off Body) -->
+        <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>👤 3. Head Tilt & Gaze Direction</span>
             </h3>
             <span id="sm-gaze-pill" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">Straight</span>
           </div>
@@ -638,11 +730,80 @@
           </div>
         </div>
 
-        <!-- SECTION 3: HUMAN WALKING & MOTION (User Request: moving, walking left or right, legs moving like human, hands same) -->
+        <!-- SECTION 4: ARMS & HAND POSES (Anchored Shoulders: Never Go Off Body) -->
         <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>🚶 3. Human Walking & Stage Locomotion</span>
+              <span>✋ 4. Arms & Hand Poses</span>
+            </h3>
+            <span id="sm-arm-pill" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">Desk Rest</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <!-- Hands Sideway -->
+            <button
+              id="btn-arm-sideway"
+              onclick="setStickmanArmPose('sideway')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>👇 Hands Sideway</span>
+            </button>
+            <!-- Point Left -->
+            <button
+              id="btn-arm-point-left"
+              onclick="setStickmanArmPose('point-left')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>👈 Point Left</span>
+            </button>
+            <!-- Point Right -->
+            <button
+              id="btn-arm-point-right"
+              onclick="setStickmanArmPose('point-right')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>👉 Point Right</span>
+            </button>
+            <!-- Desk Rest -->
+            <button
+              id="btn-arm-desk-rest"
+              onclick="setStickmanArmPose('desk-rest')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm flex items-center justify-center gap-1"
+            >
+              <span>🪑 Desk Rest</span>
+            </button>
+            <!-- Gesture / Explain -->
+            <button
+              id="btn-arm-gesture"
+              onclick="setStickmanArmPose('gesture')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>👐 Present Palms</span>
+            </button>
+            <!-- Wave -->
+            <button
+              id="btn-arm-wave"
+              onclick="setStickmanArmPose('wave')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>👋 Wave</span>
+            </button>
+            <!-- Read Tablet -->
+            <button
+              id="btn-arm-tablet-read"
+              onclick="startTabletReadingCadence()"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1 col-span-3 sm:col-span-1"
+            >
+              <span>📰 Read Tablet</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION 5: HUMAN WALKING & MOTION -->
+        <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>🚶 5. Human Locomotion & Walking</span>
             </h3>
             <span id="sm-loco-pill" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">Standing</span>
           </div>
@@ -699,72 +860,11 @@
           </div>
         </div>
 
-        <!-- SECTION 4: ARMS & GESTURES (User Request: point to left or right and keep hands sideway) -->
+        <!-- SECTION 6: FACIAL EXPRESSIONS & BLINK -->
         <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>✋ 4. Arms & Hand Poses</span>
-            </h3>
-            <span id="sm-arm-pill" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">Hands Sideway</span>
-          </div>
-
-          <div class="grid grid-cols-3 gap-2">
-            <!-- Hands Sideway (Neutral human stand) -->
-            <button
-              id="btn-arm-sideway"
-              onclick="setStickmanArmPose('sideway')"
-              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm flex items-center justify-center gap-1"
-            >
-              <span>👇 Hands Sideway</span>
-            </button>
-            <!-- Point Left -->
-            <button
-              id="btn-arm-point-left"
-              onclick="setStickmanArmPose('point-left')"
-              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
-            >
-              <span>👈 Point Left</span>
-            </button>
-            <!-- Point Right -->
-            <button
-              id="btn-arm-point-right"
-              onclick="setStickmanArmPose('point-right')"
-              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
-            >
-              <span>👉 Point Right</span>
-            </button>
-            <!-- Desk Rest -->
-            <button
-              id="btn-arm-desk-rest"
-              onclick="setStickmanArmPose('desk-rest')"
-              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
-            >
-              <span>🪑 Desk Rest</span>
-            </button>
-            <!-- Gesture / Explain -->
-            <button
-              id="btn-arm-gesture"
-              onclick="setStickmanArmPose('gesture')"
-              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
-            >
-              <span>👐 Present Palms</span>
-            </button>
-            <!-- Wave -->
-            <button
-              id="btn-arm-wave"
-              onclick="setStickmanArmPose('wave')"
-              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
-            >
-              <span>👋 Wave</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- SECTION 5: FACIAL EXPRESSIONS & BLINK (User Request: add other facial expressions and stuff we discussed) -->
-        <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>😊 5. Facial Expressions & Eyes</span>
+              <span>😊 6. Facial Expressions & Eyes</span>
             </h3>
             <span id="sm-expr-pill" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">Neutral</span>
           </div>
@@ -820,11 +920,11 @@
           </div>
         </div>
 
-        <!-- SECTION 6: TALKING ANIMATION & SPEECH (User Request: make him talking animation stuff) -->
+        <!-- SECTION 7: TALKING ANIMATION & SCRIPT -->
         <div class="space-y-3 pb-2">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>🎙️ 6. Talking Lip-Sync & Speech Script</span>
+              <span>🎙️ 7. Talking Lip-Sync & Speech Script</span>
             </h3>
             <button
               id="btn-toggle-talking"
@@ -918,6 +1018,9 @@
     fill: #090d16;
   }
   .sm-desk-body {
+    fill: #090d16;
+  }
+  .sm-desk-panel {
     fill: #0f172a;
   }
   .sm-desk-top {
@@ -934,8 +1037,11 @@
   .sm-stage-light .sm-desk-body {
     fill: #e2e8f0;
   }
-  .sm-stage-light .sm-desk-top {
+  .sm-stage-light .sm-desk-panel {
     fill: #cbd5e1;
+  }
+  .sm-stage-light .sm-desk-top {
+    fill: #94a3b8;
   }
   .sm-stage-light .sm-badge-text {
     fill: #0f172a;
@@ -943,20 +1049,6 @@
   .sm-stage-light .sm-desk-badge {
     fill: #ffffff;
     stroke: #94a3b8;
-  }
-
-  /* Idle Human Breathing Motion */
-  @keyframes smBreathing {
-    0%, 100% {
-      transform: translateY(0px) scale(1);
-    }
-    50% {
-      transform: translateY(-2px) scale(1.004);
-    }
-  }
-  .sm-idle-breathing {
-    animation: smBreathing 3.6s ease-in-out infinite;
-    transform-origin: 300px 310px;
   }
 
   /* Wave animation for wave pose */
@@ -982,16 +1074,17 @@
     window.smState = {
       isBehindDesk: true,
       framing: 'medium', // 'full' | 'medium' | 'close'
-      zoomPercent: 95,
+      zoomPercent: 105,
       stageX: 0,
       gaze: 'straight', // 'up' | 'down' | 'left' | 'right' | 'straight' | 'side'
       motion: 'idle', // 'idle' | 'walk_left' | 'walk_right'
-      armPose: 'desk-rest', // 'sideway' | 'point-left' | 'point-right' | 'desk-rest' | 'gesture' | 'wave' | 'walk'
+      armPose: 'desk-rest', // 'sideway' | 'point-left' | 'point-right' | 'desk-rest' | 'gesture' | 'wave' | 'tablet-read' | 'walk'
       expression: 'neutral', // 'neutral' | 'happy' | 'serious' | 'surprised' | 'concerned'
       isTalking: false,
+      isReadingTablet: false,
+      tabletReadingCadenceInterval: null,
       talkingInterval: null,
       walkAnimInterval: null,
-      walkCycleTick: 0,
       isPlaying: false,
       timelineInterval: null,
       currentTimeMs: 0,
@@ -1004,8 +1097,10 @@
     window.setStickmanDeskMode = function(isBehindDesk) {
       smState.isBehindDesk = isBehindDesk;
       const deskLayer = document.getElementById('sm-desk-layer');
+      const chairLayer = document.getElementById('sm-studio-chair');
       const legsStand = document.getElementById('sm-legs-stand');
       const legsSeated = document.getElementById('sm-legs-seated');
+      const floorShadow = document.getElementById('sm-floor-shadow');
       const deskStatusPill = document.getElementById('sm-desk-status-pill');
       const badgeMode = document.getElementById('sm-badge-mode');
       const btnOn = document.getElementById('btn-desk-on');
@@ -1013,38 +1108,41 @@
 
       if (isBehindDesk) {
         if (deskLayer) deskLayer.classList.remove('opacity-0', 'pointer-events-none');
-        if (legsStand) legsStand.classList.remove('hidden');
-        if (legsSeated) legsSeated.classList.add('hidden');
-        if (deskStatusPill) deskStatusPill.textContent = 'Desk Active';
+        if (chairLayer) chairLayer.classList.remove('opacity-0');
+        // Behind desk: Completely hide standing legs! Modesty panel covers everything down to floor.
+        if (legsStand) legsStand.classList.add('hidden');
+        if (legsSeated) legsSeated.classList.remove('hidden');
+        if (floorShadow) floorShadow.classList.add('opacity-0');
+        if (deskStatusPill) deskStatusPill.textContent = 'Desk Active (Seated)';
         if (badgeMode) badgeMode.textContent = 'BEHIND DESK';
         
-        btnOn.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
-        btnOff.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
+        if (btnOn) btnOn.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
+        if (btnOff) btnOff.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
         
-        // Default arms to desk-rest if currently sideway
-        if (smState.armPose === 'sideway') {
+        if (smState.armPose === 'sideway' && !smState.isReadingTablet) {
           setStickmanArmPose('desk-rest');
         }
       } else {
         // Full screen / full body standing view without desk
         if (deskLayer) deskLayer.classList.add('opacity-0', 'pointer-events-none');
+        if (chairLayer) chairLayer.classList.add('opacity-0');
         if (legsStand) legsStand.classList.remove('hidden');
         if (legsSeated) legsSeated.classList.add('hidden');
-        if (deskStatusPill) deskStatusPill.textContent = 'Full Screen (No Desk)';
+        if (floorShadow) floorShadow.classList.remove('opacity-0');
+        if (deskStatusPill) deskStatusPill.textContent = 'Full Screen (Standing)';
         if (badgeMode) badgeMode.textContent = 'FULL BODY';
 
-        btnOff.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
-        btnOn.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
+        if (btnOff) btnOff.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
+        if (btnOn) btnOn.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
 
-        // When desk is removed, if arms were desk-rest, switch to hands sideway
-        if (smState.armPose === 'desk-rest') {
+        if (smState.armPose === 'desk-rest' && !smState.isReadingTablet) {
           setStickmanArmPose('sideway');
         }
       }
       applyCameraFraming();
     };
 
-    // 2. CAMERA FRAMING & DISTANCE
+    // 2. CAMERA FRAMING & DISTANCE (Anchored directly at Face & Tie: 300px, 125px)
     window.setStickmanFraming = function(mode) {
       smState.framing = mode;
       const btnFull = document.getElementById('btn-frame-full');
@@ -1062,9 +1160,9 @@
       if (mode === 'full') {
         smState.zoomPercent = 85;
       } else if (mode === 'medium') {
-        smState.zoomPercent = 105;
+        smState.zoomPercent = 110;
       } else if (mode === 'close') {
-        smState.zoomPercent = 140;
+        smState.zoomPercent = 160;
       }
 
       if (zoomSlider) zoomSlider.value = smState.zoomPercent;
@@ -1079,24 +1177,88 @@
     };
 
     function applyCameraFraming() {
+      const svg = document.getElementById('sm-svg');
       const viewport = document.getElementById('sm-camera-viewport');
-      if (!viewport) return;
-      const scale = smState.zoomPercent / 100;
-      
-      // Calculate vertical compensation so stickman stays comfortably centered without clipping
-      let translateY = 0;
-      if (scale > 1.2) {
-        translateY = (scale - 1.0) * -85; // Move up towards face/tie for close up
-      } else if (scale > 1.0) {
-        translateY = (scale - 1.0) * -45;
-      } else {
-        translateY = (1.0 - scale) * 20; // Lower slightly for full body
+      if (!svg) return;
+      if (viewport) {
+        viewport.style.transform = 'none';
+        viewport.style.transformOrigin = 'center center';
       }
-
-      viewport.style.transform = `scale(${scale.toFixed(3)}) translateY(${translateY.toFixed(1)}px)`;
+      const zoom = Math.max(60, Math.min(220, smState.zoomPercent || 100));
+      const scale = zoom / 100;
+      const w = 600 / scale;
+      const h = 600 / scale;
+      // Focus strictly on face (Y=105) and bold red tie (Y=160 to 240)
+      const targetFocusY = smState.isBehindDesk ? 135 : (scale > 1.25 ? 120 : 255);
+      const minX = 300 - w / 2;
+      const minY = targetFocusY - h * (scale > 1.25 ? 0.32 : 0.42);
+      svg.setAttribute('viewBox', `${minX.toFixed(1)} ${minY.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`);
     }
 
-    // 3. STAGE HORIZONTAL X-POSITION
+    // 3. TABLET READING CADENCE (User Requested)
+    window.startTabletReadingCadence = function() {
+      smState.isReadingTablet = true;
+      const btnPickup = document.getElementById('btn-tablet-pickup');
+      const btnPutdown = document.getElementById('btn-tablet-putdown');
+      const deskTablet = document.getElementById('sm-desk-tablet');
+      const pill = document.getElementById('sm-tablet-mode-pill');
+
+      if (btnPickup) btnPickup.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
+      if (btnPutdown) btnPutdown.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
+      if (deskTablet) deskTablet.classList.add('opacity-0');
+      if (pill) {
+        pill.className = 'text-[10px] font-mono font-bold text-emerald-500 dark:text-emerald-400';
+        pill.textContent = 'Reading Tablet Cadence';
+      }
+
+      // Activate tablet-read arm pose
+      setStickmanArmPose('tablet-read');
+      toggleStickmanTalkingLoop(true);
+
+      if (smState.tabletReadingCadenceInterval) clearInterval(smState.tabletReadingCadenceInterval);
+
+      // Start natural cadence:
+      // Alternate between looking down at tablet for 2.8s and looking straight up at audience for 2.8s!
+      let lookingDownAtTablet = true;
+      setStickmanGaze('down');
+
+      smState.tabletReadingCadenceInterval = setInterval(() => {
+        if (!smState.isReadingTablet) return;
+        lookingDownAtTablet = !lookingDownAtTablet;
+        if (lookingDownAtTablet) {
+          setStickmanGaze('down');
+        } else {
+          setStickmanGaze('straight');
+        }
+      }, 2800);
+    };
+
+    window.putDownTabletToDesk = function() {
+      smState.isReadingTablet = false;
+      if (smState.tabletReadingCadenceInterval) {
+        clearInterval(smState.tabletReadingCadenceInterval);
+        smState.tabletReadingCadenceInterval = null;
+      }
+
+      const btnPickup = document.getElementById('btn-tablet-pickup');
+      const btnPutdown = document.getElementById('btn-tablet-putdown');
+      const deskTablet = document.getElementById('sm-desk-tablet');
+      const pill = document.getElementById('sm-tablet-mode-pill');
+
+      if (btnPickup) btnPickup.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
+      if (btnPutdown) btnPutdown.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
+      if (deskTablet) deskTablet.classList.remove('opacity-0');
+      if (pill) {
+        pill.className = 'text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400';
+        pill.textContent = 'Tablet On Desk';
+      }
+
+      // Restore desk rest pose and straight gaze
+      setStickmanGaze('straight');
+      setStickmanArmPose(smState.isBehindDesk ? 'desk-rest' : 'sideway');
+    };
+
+    // 4. STAGE HORIZONTAL X-POSITION
     window.setStickmanStageX = function(val) {
       smState.stageX = parseInt(val, 10);
       updateActorTransform();
@@ -1113,7 +1275,7 @@
       const actorGroup = document.getElementById('sm-actor-group');
       if (!actorGroup) return;
       const facing = smState.motion === 'walk_left' ? -1 : 1;
-      // When walking left, mirror around center X=300
+      // Mirror cleanly around center X=300 without displacing joints
       if (facing === -1) {
         actorGroup.setAttribute('transform', `translate(${smState.stageX}, 0) translate(600, 0) scale(-1, 1)`);
       } else {
@@ -1121,7 +1283,7 @@
       }
     }
 
-    // 4. HEAD GAZE & TILT
+    // 5. HEAD GAZE & TILT (Neck-Locked: Skull base 300px, 140px NEVER separates from spine)
     window.setStickmanGaze = function(gaze) {
       smState.gaze = gaze;
       const headGroup = document.getElementById('sm-head-group');
@@ -1145,45 +1307,51 @@
         gazePill.textContent = gaze.charAt(0).toUpperCase() + gaze.slice(1);
       }
 
-      // Default pupil coordinates: left eye socket is (288, 104), right is (312, 104)
+      // Eyeball coordinates: Left eye is (288, 104), Right eye is (312, 104)
       let plX = 288, plY = 104, prX = 312, prY = 104;
-      let headTransform = '';
+      let rotAngle = 0;
 
+      // Pure native SVG user-space rotation around skull base (300, 140):
+      // Locks the head to the top of the neck line with 100% mechanical precision.
       if (gaze === 'up') {
         plY = 98;
         prY = 98;
-        headTransform = 'translate(0, -3px) rotate(-8deg)';
+        rotAngle = -9;
       } else if (gaze === 'down') {
         plY = 110;
         prY = 110;
-        headTransform = 'translate(0, 4px) rotate(8deg)';
+        rotAngle = 10;
       } else if (gaze === 'left') {
-        plX = 282;
-        prX = 306;
-        headTransform = 'translate(-4px, 0) rotate(-4deg)';
+        plX = 283;
+        prX = 307;
+        rotAngle = -7;
       } else if (gaze === 'right') {
-        plX = 294;
-        prX = 318;
-        headTransform = 'translate(4px, 0) rotate(4deg)';
+        plX = 293;
+        prX = 317;
+        rotAngle = 7;
       } else if (gaze === 'side') {
-        plX = 294;
+        plX = 293;
         prX = 316;
-        headTransform = 'translate(6px, -1px) scale(0.92, 1)';
+        rotAngle = 6;
       } else {
         // straight / camera
         plX = 288;
         plY = 104;
         prX = 312;
         prY = 104;
-        headTransform = 'rotate(0deg)';
+        rotAngle = 0;
       }
 
       if (pupilL) { pupilL.setAttribute('cx', String(plX)); pupilL.setAttribute('cy', String(plY)); }
       if (pupilR) { pupilR.setAttribute('cx', String(prX)); pupilR.setAttribute('cy', String(prY)); }
-      if (headGroup) { headGroup.style.transform = headTransform; }
+      if (headGroup) { 
+        headGroup.style.transformOrigin = '';
+        headGroup.style.transform = '';
+        headGroup.setAttribute('transform', `rotate(${rotAngle}, 300, 140)`); 
+      }
     };
 
-    // 5. HUMAN WALKING & MOTION ENGINE
+    // 6. HUMAN WALKING & MOTION ENGINE (Clean Bipedal Locomotion)
     window.setStickmanMotion = function(motion) {
       smState.motion = motion;
       const btnIdle = document.getElementById('btn-motion-idle');
@@ -1215,14 +1383,16 @@
       }
 
       if (motion === 'idle') {
-        if (legsStand) legsStand.classList.remove('hidden');
+        if (!smState.isBehindDesk) {
+          if (legsStand) legsStand.classList.remove('hidden');
+        }
         if (legsWalk) legsWalk.classList.add('hidden');
         if (walkArmPose) walkArmPose.classList.add('hidden');
         
         // Restore active arm pose
-        setStickmanArmPose(smState.armPose === 'walk' ? 'sideway' : smState.armPose);
+        setStickmanArmPose(smState.armPose === 'walk' ? (smState.isBehindDesk ? 'desk-rest' : 'sideway') : smState.armPose);
       } else {
-        // Walking Active (left or right)
+        // When walking starts, switch to full screen legs if behind desk was on
         if (legsStand) legsStand.classList.add('hidden');
         if (legsWalk) legsWalk.classList.remove('hidden');
 
@@ -1230,7 +1400,6 @@
         document.querySelectorAll('.sm-arm-pose').forEach(el => el.classList.add('hidden'));
         if (walkArmPose) walkArmPose.classList.remove('hidden');
 
-        // Start bipedal gait loop
         startHumanWalkCycle();
       }
     };
@@ -1240,78 +1409,70 @@
       const walkLegR = document.getElementById('sm-walk-leg-r');
       const walkArmL = document.getElementById('sm-walk-arm-l');
       const walkArmR = document.getElementById('sm-walk-arm-r');
-      const headGroup = document.getElementById('sm-head-group');
       const slider = document.getElementById('sm-pos-x-slider');
 
       let tick = 0;
       smState.walkAnimInterval = setInterval(() => {
-        tick += 0.18;
+        tick += 0.16;
         const phase = tick % (Math.PI * 2);
 
-        // Sinusoidal leg and arm positions for human walking kinematics
+        // Sinusoidal stride for natural human gait
         const strideL = Math.sin(phase);
-        const strideR = Math.sin(phase + Math.PI); // Counter-phase
+        const strideR = Math.sin(phase + Math.PI); // 180 deg out of phase
         
-        // Knee flex on passing leg
-        const kneeL = Math.max(0, -strideL) * 22;
-        const kneeR = Math.max(0, -strideR) * 22;
+        // Natural knee flexion on passing leg
+        const kneeL = Math.max(0, -strideL) * 18;
+        const kneeR = Math.max(0, -strideR) * 18;
 
-        // Ankle and foot strike coordinates
-        const footLX = 280 + (strideL * 45);
-        const footLY = 525 - Math.max(0, strideL) * 12;
-        const footRX = 320 + (strideR * 45);
-        const footRY = 525 - Math.max(0, strideR) * 12;
+        // Ground contact coordinates
+        const footLX = 280 + (strideL * 40);
+        const footLY = 525 - Math.max(0, strideL) * 10;
+        const footRX = 320 + (strideR * 40);
+        const footRY = 525 - Math.max(0, strideR) * 10;
 
         if (walkLegL) {
-          walkLegL.setAttribute('d', `M 288 310 L ${284 + strideL * 20} ${420 - kneeL} L ${footLX} ${footLY} L ${footLX - 18} ${footLY + 3}`);
+          walkLegL.setAttribute('d', `M 288 310 L ${284 + strideL * 15} ${420 - kneeL} L ${footLX} ${footLY} L ${footLX - 18} ${footLY + 3}`);
         }
         if (walkLegR) {
-          walkLegR.setAttribute('d', `M 312 310 L ${316 + strideR * 20} ${420 - kneeR} L ${footRX} ${footRY} L ${footRX + 18} ${footRY + 3}`);
+          walkLegR.setAttribute('d', `M 312 310 L ${316 + strideR * 15} ${420 - kneeR} L ${footRX} ${footRY} L ${footRX + 18} ${footRY + 3}`);
         }
 
-        // Arm oppositional swings
-        const armLX = 254 - (strideL * 35);
-        const armLY = 280 + Math.abs(strideL) * 8;
-        const armRX = 346 - (strideR * 35);
-        const armRY = 280 + Math.abs(strideR) * 8;
+        // Oppositional human arm swings (strict shoulder anchors 268 & 332)
+        const armLX = 254 - (strideL * 30);
+        const armLY = 280 + Math.abs(strideL) * 6;
+        const armRX = 346 - (strideR * 30);
+        const armRY = 280 + Math.abs(strideR) * 6;
 
         if (walkArmL) {
-          walkArmL.setAttribute('d', `M 268 170 L ${258 - strideL * 15} 225 L ${armLX} ${armLY}`);
+          walkArmL.setAttribute('d', `M 268 170 L ${258 - strideL * 12} 225 L ${armLX} ${armLY}`);
         }
         if (walkArmR) {
-          walkArmR.setAttribute('d', `M 332 170 L ${342 - strideR * 15} 225 L ${armRX} ${armRY}`);
+          walkArmR.setAttribute('d', `M 332 170 L ${342 - strideR * 12} 225 L ${armRX} ${armRY}`);
         }
 
-        // Torso/head human vertical bobbing (2 bounces per cycle)
-        const bounce = Math.abs(Math.sin(phase * 2)) * 4.5;
-        if (headGroup && smState.gaze === 'straight') {
-          headGroup.style.transform = `translateY(${bounce.toFixed(1)}px)`;
-        }
-
-        // Smoothly advance stage X position
+        // Advance stage position
         if (smState.motion === 'walk_right') {
           smState.stageX = Math.min(160, smState.stageX + 1.2);
           if (slider) slider.value = smState.stageX;
           updateActorTransform();
           if (smState.stageX >= 160) {
-            setStickmanMotion('walk_left'); // turn around seamlessly at boundary
+            setStickmanMotion('walk_left'); // Turn around at boundary
           }
         } else if (smState.motion === 'walk_left') {
           smState.stageX = Math.max(-160, smState.stageX - 1.2);
           if (slider) slider.value = smState.stageX;
           updateActorTransform();
           if (smState.stageX <= -160) {
-            setStickmanMotion('walk_right'); // turn around seamlessly at boundary
+            setStickmanMotion('walk_right'); // Turn around at boundary
           }
         }
 
       }, 40);
     }
 
-    // 6. ARMS & HAND POSES
+    // 7. ARMS & HAND POSES (Shoulders Anchored: 268 & 332)
     window.setStickmanArmPose = function(poseId) {
       if (smState.motion !== 'idle') {
-        // Stop walk if manual arm pose is selected
         setStickmanMotion('idle');
       }
 
@@ -1329,7 +1490,7 @@
       if (targetPoseEl) targetPoseEl.classList.remove('hidden');
 
       // Update button highlights
-      ['sideway', 'point-left', 'point-right', 'desk-rest', 'gesture', 'wave'].forEach(p => {
+      ['sideway', 'point-left', 'point-right', 'desk-rest', 'gesture', 'wave', 'tablet-read'].forEach(p => {
         const btn = document.getElementById('btn-arm-' + p);
         if (btn) {
           if (p === poseId) {
@@ -1341,7 +1502,7 @@
       });
     };
 
-    // 7. FACIAL EXPRESSIONS & BLINK
+    // 8. FACIAL EXPRESSIONS & BLINK
     window.setStickmanExpression = function(expr) {
       smState.expression = expr;
       const exprPill = document.getElementById('sm-expr-pill');
@@ -1412,7 +1573,7 @@
       }
     }, 4500);
 
-    // 8. TALKING ANIMATION & PHONEMES
+    // 9. TALKING ANIMATION & PHONEMES
     window.toggleStickmanTalkingLoop = function(force) {
       const willTalk = typeof force === 'boolean' ? force : !smState.isTalking;
       smState.isTalking = willTalk;
@@ -1433,7 +1594,6 @@
       }
 
       if (!willTalk) {
-        // Reset mouth to active expression
         setStickmanExpression(smState.expression);
         return;
       }
@@ -1448,14 +1608,14 @@
         if (pEl) pEl.classList.remove('hidden');
         idx++;
 
-        // Random subtle audio bar bounce
+        // Random audio bar bounce
         document.querySelectorAll('.sm-wave-bar').forEach(b => {
           b.style.height = `${(4 + Math.random() * 8).toFixed(0)}px`;
         });
       }, 130);
     };
 
-    // 9. BROADCAST SCRIPT & HEADLINE
+    // 10. BROADCAST SCRIPT & HEADLINE
     window.updateStickmanHeadline = function(text) {
       const strap = document.getElementById('sm-strap-headline');
       if (strap) strap.textContent = text || 'Stickman Anchor Live On Air';
@@ -1501,7 +1661,7 @@
       if (scriptInput) { scriptInput.value = p.script; handleStickmanScriptInput(p.script); }
     };
 
-    // 10. TIMELINE & SPEECH SYNTHESIS PLAYBACK
+    // 11. TIMELINE & SPEECH SYNTHESIS PLAYBACK
     window.toggleStickmanPlay = function() {
       if (smState.isPlaying) {
         stopStickmanMotion();
@@ -1523,10 +1683,8 @@
         badgeStatus.textContent = 'ON AIR';
       }
 
-      // Activate talking
       toggleStickmanTalkingLoop(true);
 
-      // Trigger Web Speech Synthesis if available
       const script = (document.getElementById('sm-input-script')?.value || '').trim();
       if ('speechSynthesis' in window && script) {
         window.speechSynthesis.cancel();
@@ -1540,7 +1698,6 @@
         setTimeout(() => window.speechSynthesis.speak(utter), 40);
       }
 
-      // Timeline timer tick
       const startTime = Date.now() - smState.currentTimeMs;
       if (smState.timelineInterval) clearInterval(smState.timelineInterval);
 
@@ -1563,6 +1720,10 @@
 
       if (smState.timelineInterval) clearInterval(smState.timelineInterval);
       if (smState.talkingInterval) clearInterval(smState.talkingInterval);
+      if (smState.tabletReadingCadenceInterval) {
+        clearInterval(smState.tabletReadingCadenceInterval);
+        smState.tabletReadingCadenceInterval = null;
+      }
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
       toggleStickmanTalkingLoop(false);
@@ -1615,7 +1776,7 @@
       return `${String(m).padStart(2, '0')}:${String(remS).padStart(2, '0')}.${dec}`;
     }
 
-    // 11. CHOREOGRAPHED 10s SCENE
+    // 12. CHOREOGRAPHED 10s SCENE
     window.playChoreographedNewsScene = function() {
       stopStickmanMotion();
       // Step 1: Start seated behind desk looking down at notes
@@ -1634,24 +1795,24 @@
       }, 1500);
 
       setTimeout(() => {
-        // Step 3 (4.0s): Look right, point right arm towards story charts
+        // Step 3 (3.8s): Pick up tablet to read news
+        startTabletReadingCadence();
+      }, 3800);
+
+      setTimeout(() => {
+        // Step 4 (7.0s): Put tablet back down and point right arm towards story charts
+        putDownTabletToDesk();
         setStickmanGaze('right');
         setStickmanArmPose('point-right');
         setStickmanExpression('happy');
-      }, 4000);
+      }, 7000);
 
       setTimeout(() => {
-        // Step 4 (6.5s): Look left, point left
-        setStickmanGaze('left');
-        setStickmanArmPose('point-left');
-      }, 6500);
-
-      setTimeout(() => {
-        // Step 5 (8.5s): Look straight, hands back on desk, wrap up
+        // Step 5 (8.8s): Look straight, hands back on desk, wrap up
         setStickmanGaze('straight');
         setStickmanArmPose('desk-rest');
         setStickmanExpression('happy');
-      }, 8500);
+      }, 8800);
 
       setTimeout(() => {
         // Step 6 (10s): Finished scene
@@ -1659,7 +1820,7 @@
       }, 10000);
     };
 
-    // 12. CANVAS THEME TOGGLE (Dark vs Light Stage)
+    // 13. CANVAS THEME TOGGLE (Dark vs Light Stage)
     window.toggleStickmanStudioTheme = function() {
       smState.isDarkStage = !smState.isDarkStage;
       const frame = document.getElementById('sm-monitor-frame');
@@ -1683,19 +1844,14 @@
       }
     };
 
-    // 13. EXPORT HELPERS
-    window.copyStickmanWorkflowCommand = function(evt) {
+    // 14. EXPORT HELPERS
+    window.copyStickmanWorkflowCommand = function() {
       const headline = (document.getElementById('sm-input-headline')?.value || 'Breaking News').replace(/"/g, '\\"');
       const script = (document.getElementById('sm-input-script')?.value || '').replace(/"/g, '\\"');
       const cmd = `gh workflow run generate-broadcast-video.yml -f presenter_id="presenter_stickman" -f headline="${headline}" -f custom_script="${script}" -f desk_mode="${smState.isBehindDesk}"`;
 
       navigator.clipboard.writeText(cmd).then(() => {
-        const btn = (evt && (evt.currentTarget || (evt instanceof HTMLElement ? evt : null))) || null;
-        if (btn) {
-          const original = btn.innerHTML;
-          btn.innerHTML = '<span>✅ Copied to Clipboard!</span>';
-          setTimeout(() => { btn.innerHTML = original; }, 2500);
-        }
+        alert('Copied GitHub CLI Dispatch Command to clipboard:\n' + cmd);
       }).catch(() => {
         prompt('Copy GitHub CLI Dispatch Command:', cmd);
       });
@@ -1712,6 +1868,7 @@
         zoom: smState.zoomPercent,
         gaze: smState.gaze,
         armPose: smState.armPose,
+        isReadingTablet: smState.isReadingTablet,
         expression: smState.expression,
         motion: smState.motion,
         headline,
@@ -1728,6 +1885,20 @@
       a.click();
       URL.revokeObjectURL(url);
     };
+
+    // Initialize framing on load & re-evaluate when tab becomes active
+    setTimeout(() => {
+      setStickmanDeskMode(true);
+      setStickmanFraming('medium');
+      setStickmanGaze('straight');
+    }, 100);
+
+    window.addEventListener('resize', applyCameraFraming);
+    document.addEventListener('click', (e) => {
+      if (e.target && (e.target.closest?.('#tab-btn-presenters') || e.target.id === 'tab-btn-presenters')) {
+        setTimeout(applyCameraFraming, 120);
+      }
+    });
 
   })();
 </script>

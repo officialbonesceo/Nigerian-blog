@@ -182,6 +182,9 @@ const initialCalcDisplay = Math.round(100 * initialUsdRate).toLocaleString('en-U
     const sourceEl = document.getElementById('market-rates-source');
 
     const calcAmount = document.getElementById('calc-input-amount');
+    const calcCurrency = document.getElementById('calc-select-currency');
+    const calcResult = document.getElementById('calc-result-naira');
+
     var currentRates = {
       usd: 1332.00,
       gbp: 1765.00,
@@ -273,7 +276,10 @@ const initialCalcDisplay = Math.round(100 * initialUsdRate).toLocaleString('en-U
       });
     }
 
-    // Auto-sync on load
+    // Auto-sync on load and background auto-update every 60 seconds
     fetchAndApplyRates(false);
+    setInterval(function () {
+      fetchAndApplyRates(false);
+    }, 60000);
   })();
 </script>

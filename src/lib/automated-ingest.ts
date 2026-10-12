@@ -17,7 +17,6 @@ import {
 } from './editorial-pipeline';
 import {
   createArticle,
-  getArticleBySlug,
   invalidateCache,
   recordRejectedArticle,
   getSources,
@@ -502,11 +501,35 @@ export async function runIngestionPipeline(
       result.fetched += feedRes.items.length;
 
       for (const item of feedRes.items.slice(0, limit)) {
-        // Dedup check: slug or original link
-        const baseSlug = generateBaseSlug(item.title);
-        const existing = await getArticleBySlug(db, baseSlug).catch(() => null);
-        if (existing) {
-          continue; // Already processed
+        const cleanLink = (item.link || '').trim();
+        const cleanTitle = (item.title || '').trim();
+        const baseSlug = generateBaseSlug(cleanTitle);
+
+        // Multi-vector Deduplication Check:
+        // 1. Direct match on source original URL
+        if (cleanLink) {
+          const matchUrl = await db.prepare('SELECT id FROM articles WHERE source_original_url = ? LIMIT 1').bind(cleanLink).first<{ id: string }>().catch(() => null);
+          if (matchUrl) {
+            continue; // Already processed from this source link
+          }
+          const matchRej = await db.prepare('SELECT id FROM rejected_articles WHERE original_url = ? LIMIT 1').bind(cleanLink).first<{ id: string }>().catch(() => null);
+          if (matchRej) {
+            continue; // Already processed and rejected previously
+          }
+        }
+
+        // 2. Exact match on title
+        if (cleanTitle) {
+          const matchTitle = await db.prepare('SELECT id FROM articles WHERE LOWER(title) = LOWER(?) LIMIT 1').bind(cleanTitle).first<{ id: string }>().catch(() => null);
+          if (matchTitle) {
+            continue; // Exact title already in database
+          }
+        }
+
+        // 3. Match on slug prefix (since published slugs use baseSlug-xxxxx)
+        const matchSlug = await db.prepare('SELECT id FROM articles WHERE slug = ? OR slug LIKE ? LIMIT 1').bind(baseSlug, `${baseSlug}-%`).first<{ id: string }>().catch(() => null);
+        if (matchSlug) {
+          continue; // Story already published
         }
 
         // Rewrite with Gemini & fail-closed validation
