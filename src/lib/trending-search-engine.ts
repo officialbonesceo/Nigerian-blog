@@ -211,16 +211,27 @@ export async function compileTrendingBriefingBundle(trend: TrendingSearchItem): 
 }
 
 /**
- * Checks how many articles have been published today in the database.
- * Used to enforce the daily 2 to 3 article editorial limit.
+ * Checks how many articles have been published today (UTC calendar day).
+ * Aligns with content-worker daily quota window.
  */
 export function checkTodayPublishedCount(db: any): { count: number; canPublishMore: boolean; maxAllowed: number } {
-  const maxAllowed = 3;
+  // Soft global cap: 2 per category × 4 categories
+  const maxAllowed = 8;
   try {
-    const todayStart = new Date().toISOString().split('T')[0] + ' 00:00:00';
+    const now = new Date();
+    const dayStart = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      0, 0, 0, 0
+    ));
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+
     const row = db.prepare(
-      `SELECT COUNT(*) as cnt FROM articles WHERE published_at >= ? AND (status = 'published' OR status IS NULL)`
-    ).get(todayStart) as { cnt: number };
+      `SELECT COUNT(*) as cnt FROM articles
+       WHERE published_at >= ? AND published_at < ?
+         AND (status = 'published' OR status IS NULL)`
+    ).get(dayStart.toISOString(), dayEnd.toISOString()) as { cnt: number };
 
     const count = row ? row.cnt : 0;
     return {
@@ -235,12 +246,12 @@ export function checkTodayPublishedCount(db: any): { count: number; canPublishMo
 
 function decodeHtmlEntities(str: string): string {
   return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'");
+    .replace(/'/g, "'");
 }
 
 function getCuratedTrendingFallback(): TrendingSearchItem[] {
