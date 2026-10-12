@@ -1,0 +1,25 @@
+og('================================================================\n');
+}
+
+function slugify(text: string): string {
+  const decoded = text
+    .replace(/&#8217;|&#8216;|&rsquo;|&lsquo;/gi, "'")
+    .replace(/&#8211;|&ndash;/gi, '-')
+    .replace(/&#8212;|&mdash;/gi, '-')
+    .replace(/&#8220;|&#8221;|&ldquo;|&rdquo;|"/gi, '')
+    .replace(/&/gi, 'and')
+    .replace(/&#39;/gi, "'")
+    .replace(/&[a-z0-9#]+;/gi, '')
+    .replace(/['’']/g, '');
+  return decoded
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/--+/g, '-')
+    .slice(0, 85);
+}
+
+main().catch((err) => {
+  console.error('💥 Fatal error in ingestion pipeline:', err);
+  process.exit(1);
+});
