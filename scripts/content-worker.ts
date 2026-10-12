@@ -8,7 +8,8 @@ import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 
 const dir = dirname(fileURLToPath(import.meta.url));
-const b64 = [0,1,2,3,4,5].map(i => {
+const ids = [0, 1, 2, 3, 4, 5, 6];
+const b64 = ids.map(i => {
   try { return readFileSync(join(dir, `cw-b64-${i}.txt`), 'utf8').trim(); } catch { return ''; }
 }).join('');
 if (!b64 || b64.length < 1000) {
