@@ -1,6 +1,6 @@
 ---
 /**
- * Hero carousel: latest published article per category, then one ad slide.
+ * Hero carousel: latest published article per category, then Adsterra ad slide.
  * News slides: 4.5s | Ad slide: 7s | loops from the start.
  */
 import type { Article } from '../lib/types';
@@ -8,20 +8,33 @@ import { DEFAULT_FALLBACK_IMAGE_URL } from '../lib/fallback-image';
 
 interface Props {
   slides: Article[];
-  adHref?: string;
-  adTitle?: string;
-  adTeaser?: string;
+  adsterraContainerId?: string;
+  adsterraScriptUrl?: string;
+  smartLinkUrl?: string;
 }
 
 const {
   slides,
-  adHref = '/contact',
-  adTitle = 'Advertise on 9jaBeacon',
-  adTeaser = 'Reach Nigerians who read verified news every day. Partner with our desk for sponsored features and campaigns.',
+  adsterraContainerId = 'container-hero-4e5de78ab786afbf822590e03b1b657e',
+  adsterraScriptUrl = 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js',
+  smartLinkUrl = 'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead',
 } = Astro.props;
 
 const newsCount = slides.length;
-const total = newsCount + 1; // + ad
+const total = newsCount + 1;
+
+const FALLBACK_CARDS = [
+  {
+    title: 'Remote Tech Work & USD Payouts for Nigerians',
+    image: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80',
+    badge: 'Sponsored',
+  },
+  {
+    title: 'Virtual Dollar Cards & Fast FX Settlement',
+    image: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=800&q=80',
+    badge: 'Sponsored',
+  },
+];
 ---
 
 <section
@@ -65,11 +78,9 @@ const total = newsCount + 1; // + ad
                 <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
                 {article.category_name || 'Top Story'}
               </span>
-              {article.category_slug && (
-                <span class="px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur-xs text-slate-300 text-[10px] font-bold uppercase tracking-wider border border-slate-700/50 truncate max-w-[140px]">
-                  Latest in desk
-                </span>
-              )}
+              <span class="px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur-xs text-slate-300 text-[10px] font-bold uppercase tracking-wider border border-slate-700/50">
+                Latest in desk
+              </span>
             </div>
             <div class="space-y-2 overflow-hidden">
               <h2 class="text-base sm:text-2xl font-extrabold text-white leading-snug group-hover:text-emerald-300 transition-colors line-clamp-3 break-words">
@@ -91,42 +102,48 @@ const total = newsCount + 1; // + ad
       );
     })}
 
-    <!-- Ad slide (last) -->
-    <a
-      href={adHref}
-      class={`hero-slide absolute inset-0 block group transition-opacity duration-500 opacity-0 z-0 pointer-events-none`}
+    <!-- Adsterra ad slide (last) -->
+    <div
+      class={`hero-slide absolute inset-0 transition-opacity duration-500 opacity-0 z-0 pointer-events-none`}
       data-index={String(newsCount)}
       data-kind="ad"
       aria-hidden="true"
-      rel="noopener sponsored"
+      role="group"
+      aria-label="Sponsored"
     >
-      <div class="w-full h-full bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 flex flex-col justify-between p-4 sm:p-6">
-        <div class="flex items-center justify-between gap-2">
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500 text-slate-950 text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+      <div class="w-full h-full bg-slate-950 flex flex-col p-3 sm:p-4 overflow-auto">
+        <div class="flex items-center justify-between gap-2 mb-2 shrink-0">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500 text-slate-950 text-[10px] font-extrabold uppercase tracking-wider">
             Sponsored
           </span>
-          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">9jaBeacon Partners</span>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Adsterra</span>
         </div>
-        <div class="space-y-2 max-w-xl">
-          <h2 class="text-base sm:text-2xl font-extrabold text-white leading-snug group-hover:text-emerald-300 transition-colors">
-            {adTitle}
-          </h2>
-          <p class="text-xs sm:text-sm text-slate-300 line-clamp-2">{adTeaser}</p>
-          <span class="inline-flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold">
-            Get in touch <span aria-hidden="true">&rarr;</span>
-          </span>
+        <div class="flex-1 min-h-0 relative flex items-center justify-center">
+          <div id={adsterraContainerId} class="w-full max-h-full overflow-auto flex justify-center items-center"></div>
+          <div id={`${adsterraContainerId}-fallback`} class="w-full grid grid-cols-1 sm:grid-cols-2 gap-2 absolute inset-0 sm:relative sm:inset-auto">
+            {FALLBACK_CARDS.map((card) => (
+              <a
+                href={smartLinkUrl}
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                class="relative rounded-xl overflow-hidden border border-slate-700/80 group min-h-[100px]"
+              >
+                <img src={card.image} alt="" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+                <div class="relative p-3 flex flex-col justify-end h-full min-h-[100px]">
+                  <span class="text-[9px] font-bold text-amber-400 uppercase mb-1">{card.badge}</span>
+                  <p class="text-xs font-bold text-white line-clamp-2">{card.title}</p>
+                </div>
+              </a>
+            ))}
+          </div>
         </div>
       </div>
-    </a>
+    </div>
   </div>
 
-  <!-- Controls -->
   <div class="absolute bottom-3 left-0 right-0 z-20 flex items-center justify-between px-3 sm:px-4 pointer-events-none">
-    <button
-      type="button"
-      class="hero-prev pointer-events-auto w-8 h-8 rounded-full bg-slate-950/70 border border-slate-600/60 text-white flex items-center justify-center hover:bg-slate-900 transition"
-      aria-label="Previous slide"
-    >
+    <button type="button" class="hero-prev pointer-events-auto w-8 h-8 rounded-full bg-slate-950/70 border border-slate-600/60 text-white flex items-center justify-center hover:bg-slate-900 transition" aria-label="Previous slide">
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
     </button>
     <div class="hero-dots flex items-center gap-1.5 pointer-events-auto" role="tablist" aria-label="Slides">
@@ -140,15 +157,28 @@ const total = newsCount + 1; // + ad
         />
       ))}
     </div>
-    <button
-      type="button"
-      class="hero-next pointer-events-auto w-8 h-8 rounded-full bg-slate-950/70 border border-slate-600/60 text-white flex items-center justify-center hover:bg-slate-900 transition"
-      aria-label="Next slide"
-    >
+    <button type="button" class="hero-next pointer-events-auto w-8 h-8 rounded-full bg-slate-950/70 border border-slate-600/60 text-white flex items-center justify-center hover:bg-slate-900 transition" aria-label="Next slide">
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
     </button>
   </div>
 </section>
+
+{adsterraScriptUrl && (
+  <script is:inline async="async" data-cfasync="false" src={adsterraScriptUrl}></script>
+)}
+
+<script is:inline define:vars={{ adsterraContainerId }}>
+  (function () {
+    var target = document.getElementById(adsterraContainerId);
+    var fallback = document.getElementById(adsterraContainerId + '-fallback');
+    if (target && fallback) {
+      var observer = new MutationObserver(function () {
+        if (target.children.length > 0) fallback.style.display = 'none';
+      });
+      observer.observe(target, { childList: true, subtree: true });
+    }
+  })();
+</script>
 
 <script is:inline>
   (function () {
@@ -195,9 +225,7 @@ const total = newsCount + 1; // + ad
         var el = slides[idx];
         var kind = el && el.getAttribute('data-kind');
         var wait = kind === 'ad' ? adMs : newsMs;
-        timer = setTimeout(function () {
-          show(idx + 1);
-        }, wait);
+        timer = setTimeout(function () { show(idx + 1); }, wait);
       }
 
       var prev = root.querySelector('.hero-prev');
@@ -206,8 +234,7 @@ const total = newsCount + 1; // + ad
       if (next) next.addEventListener('click', function (e) { e.preventDefault(); show(idx + 1); });
       dots.forEach(function (d) {
         d.addEventListener('click', function () {
-          var i = parseInt(d.getAttribute('data-index') || '0', 10);
-          show(i);
+          show(parseInt(d.getAttribute('data-index') || '0', 10));
         });
       });
 
@@ -219,11 +246,8 @@ const total = newsCount + 1; // + ad
       show(0);
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initHero);
-    } else {
-      initHero();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initHero);
+    else initHero();
     document.addEventListener('astro:page-load', initHero);
   })();
 </script>
