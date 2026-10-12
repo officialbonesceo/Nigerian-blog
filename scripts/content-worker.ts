@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import { gunzipSync } from 'node:zlib';
 
 const dir = dirname(fileURLToPath(import.meta.url));
-const b64 = [0, 1, 2].map(i => {
+const b64 = [0,1,2,3,4,5].map(i => {
   try { return readFileSync(join(dir, `cw-gz-${i}.txt`), 'utf8').trim(); } catch { return ''; }
 }).join('');
 if (!b64 || b64.length < 500) {
