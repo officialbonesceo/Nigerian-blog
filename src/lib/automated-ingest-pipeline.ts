@@ -26,7 +26,6 @@ import { fetchRss } from './automated-ingest-fetch';
 import { rewriteWithEditorialQuality } from './automated-ingest-rewrite';
 import { generateBaseSlug } from './automated-ingest-helpers';
 import type { IngestionPipelineResult, EditorialRewriteResult } from './automated-ingest-types';
-import { synthesizeNewsArticle } from './ai-engine';
 
 /** Map multi-tier synthesizeNewsArticle result into EditorialRewriteResult shape. */
 async function rewriteWithFallback(input: {
@@ -37,14 +36,14 @@ async function rewriteWithFallback(input: {
   categoryDefault?: string;
   sourceName?: string;
 }): Promise<EditorialRewriteResult> {
-  // Tier 0: structured Gemini rewrite
   const primary = await rewriteWithEditorialQuality(input);
   if (primary.success && primary.title && primary.content) {
     return primary;
   }
 
-  // Tiers 1–4: Cloudflare / OpenRouter / Local / Pollinations
   try {
+    // Dynamic import avoids static cycle: ai-engine → automated-ingest barrel → pipeline
+    const { synthesizeNewsArticle } = await import('./ai-engine');
     const multi = await synthesizeNewsArticle(
       {
         title: input.title,
@@ -88,13 +87,11 @@ async function rewriteWithFallback(input: {
       };
     }
 
-    const multiErr = multi.error || (multi.traceLogs || []).slice(-3).join('; ') || 'Multi-tier synthesis failed';
+    const multiErr =
+      multi.error || (multi.traceLogs || []).slice(-3).join('; ') || 'Multi-tier synthesis failed';
     return {
       success: false,
-      reasons: [
-        ...(primary.reasons || ['Gemini rewrite failed']),
-        `Fallback AI: ${multiErr}`,
-      ],
+      reasons: [...(primary.reasons || ['Gemini rewrite failed']), `Fallback AI: ${multiErr}`],
       rawError: multiErr,
     };
   } catch (fbErr: any) {
@@ -162,7 +159,6 @@ export async function runIngestionPipeline(
     for (const source of sources) {
       if (!source || !source.feed_url) continue;
 
-      // Soft-skip known-dead Reuters Africa style feeds without burning the whole run
       const feedUrlLower = String(source.feed_url || '').toLowerCase();
       if (
         feedUrlLower.includes('reuters.com') &&
@@ -175,7 +171,6 @@ export async function runIngestionPipeline(
       const feedRes = await fetchRss(source.feed_url);
       if (!feedRes.success || !feedRes.items.length) {
         const errMsg = feedRes.error || 'No items';
-        // Auto-disable pattern for hard 404s so cron stays healthy
         if (/404|not found/i.test(errMsg)) {
           result.errors.push(`Source ${source.name}: dead feed (${errMsg}) — disable in admin`);
         } else {
