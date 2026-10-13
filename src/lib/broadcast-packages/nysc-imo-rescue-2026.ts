@@ -1,22 +1,19 @@
 /**
  * 9JA BEACON — Production Broadcast Package
  * Episode: NYSC Imo Rescue (Desk Brief)
- * Format: 60s horizontal + 9:16 vertical alternate
- * Excludes: street interview / citizen reaction segment
+ * Excludes: street interview / citizen reaction
  */
 
 export const BROADCAST_VOICE = {
   engine: 'edge-tts',
-  /** Primary anchor voice — clear, formal Nigerian English */
   voice: 'en-NG-EzinneNeural',
-  /** Fallback if NG neural unavailable on runner */
   voiceFallback: 'en-GB-SoniaNeural',
   rate: '+0%',
   pitch: '+0Hz',
   volume: '+0%',
   style: 'newscast-formal',
   notes:
-    'Edge TTS en-NG-EzinneNeural is the locked channel voice for Desk Briefs until Kokoro/cloned voice is approved. Do not mix voices within one episode.',
+    'Edge TTS en-NG-EzinneNeural is the locked channel voice for Desk Briefs until Kokoro/cloned voice is approved.',
 } as const;
 
 export const BROADCAST_STUDIO = {
@@ -62,7 +59,6 @@ export interface BroadcastSegment {
     dataCards?: { label: string; value: string }[];
     mapCaption?: string;
   };
-  /** Exact words for TTS — speak this only */
   voiceover: string;
 }
 
@@ -102,19 +98,9 @@ export const NYSC_IMO_RESCUE_PACKAGE = {
       title: '1. Intro / Logo Animation',
       startSec: 0,
       endSec: 4,
-      stage: 'logo',
-      stickman: {
-        desk: false,
-        motion: 'idle',
-        armPose: 'sideway',
-        expression: 'neutral',
-        gaze: 'straight',
-        talking: false,
-      },
-      graphics: {
-        headline: '9JA BEACON',
-        subhead: 'REAL NEWS · REAL TIME · FOR YOU',
-      },
+      stage: 'logo' as const,
+      stickman: { desk: false, motion: 'idle' as const, armPose: 'sideway', expression: 'neutral', gaze: 'straight', talking: false },
+      graphics: { headline: '9JA BEACON', subhead: 'REAL NEWS · REAL TIME · FOR YOU' },
       voiceover: '',
     },
     {
@@ -123,15 +109,8 @@ export const NYSC_IMO_RESCUE_PACKAGE = {
       title: '2. Anchor Introduction',
       startSec: 4,
       endSec: 14,
-      stage: 'studio',
-      stickman: {
-        desk: true,
-        motion: 'idle',
-        armPose: 'desk-rest',
-        expression: 'serious',
-        gaze: 'straight',
-        talking: true,
-      },
+      stage: 'studio' as const,
+      stickman: { desk: true, motion: 'idle' as const, armPose: 'desk-rest', expression: 'serious', gaze: 'straight', talking: true },
       graphics: {
         breakingBar: 'BREAKING NEWS',
         headline: 'NYSC MEMBERS RESCUED IN IMO',
@@ -146,15 +125,8 @@ export const NYSC_IMO_RESCUE_PACKAGE = {
       title: '3. News Visual / Context',
       startSec: 14,
       endSec: 26,
-      stage: 'b_roll',
-      stickman: {
-        desk: true,
-        motion: 'idle',
-        armPose: 'desk-rest',
-        expression: 'serious',
-        gaze: 'straight',
-        talking: true,
-      },
+      stage: 'b_roll' as const,
+      stickman: { desk: true, motion: 'idle' as const, armPose: 'desk-rest', expression: 'serious', gaze: 'straight', talking: true },
       graphics: {
         breakingBar: 'BREAKING NEWS',
         headline: 'WEEK-LONG ORDEAL ENDS IN FREEDOM',
@@ -169,15 +141,8 @@ export const NYSC_IMO_RESCUE_PACKAGE = {
       title: '4. Explanation / Key Figures',
       startSec: 26,
       endSec: 38,
-      stage: 'data',
-      stickman: {
-        desk: true,
-        motion: 'idle',
-        armPose: 'gesture',
-        expression: 'serious',
-        gaze: 'straight',
-        talking: true,
-      },
+      stage: 'data' as const,
+      stickman: { desk: true, motion: 'idle' as const, armPose: 'gesture', expression: 'serious', gaze: 'straight', talking: true },
       graphics: {
         breakingBar: 'KEY FIGURES',
         headline: 'WHAT WE KNOW',
@@ -197,15 +162,8 @@ export const NYSC_IMO_RESCUE_PACKAGE = {
       title: '5. Map / Route Context',
       startSec: 38,
       endSec: 48,
-      stage: 'map',
-      stickman: {
-        desk: true,
-        motion: 'idle',
-        armPose: 'point-right',
-        expression: 'concerned',
-        gaze: 'side',
-        talking: true,
-      },
+      stage: 'map' as const,
+      stickman: { desk: true, motion: 'idle' as const, armPose: 'point-right', expression: 'concerned', gaze: 'side', talking: true },
       graphics: {
         breakingBar: 'SECURITY WATCH',
         headline: 'SOUTHEAST TRAVEL RISK',
@@ -221,15 +179,8 @@ export const NYSC_IMO_RESCUE_PACKAGE = {
       title: '6. Anchor Summary',
       startSec: 48,
       endSec: 56,
-      stage: 'studio',
-      stickman: {
-        desk: true,
-        motion: 'idle',
-        armPose: 'desk-rest',
-        expression: 'serious',
-        gaze: 'straight',
-        talking: true,
-      },
+      stage: 'studio' as const,
+      stickman: { desk: true, motion: 'idle' as const, armPose: 'desk-rest', expression: 'serious', gaze: 'straight', talking: true },
       graphics: {
         breakingBar: 'BREAKING NEWS',
         headline: 'FAMILIES REUNITED — QUESTIONS REMAIN',
@@ -248,29 +199,12 @@ export const NYSC_IMO_RESCUE_PACKAGE = {
       title: '7. Outro / Subscribe',
       startSec: 56,
       endSec: 60,
-      stage: 'outro',
-      stickman: {
-        desk: true,
-        motion: 'idle',
-        armPose: 'wave',
-        expression: 'happy',
-        gaze: 'straight',
-        talking: true,
-      },
-      graphics: {
-        headline: '9JA BEACON',
-        subhead: 'REAL NEWS · REAL TIME · FOR YOU',
-      },
+      stage: 'outro' as const,
+      stickman: { desk: true, motion: 'idle' as const, armPose: 'wave', expression: 'happy', gaze: 'straight', talking: true },
+      graphics: { headline: '9JA BEACON', subhead: 'REAL NEWS · REAL TIME · FOR YOU' },
       voiceover: 'This is 9jaBeacon. Stay informed. Subscribe for more.',
     },
-  ] as BroadcastSegment[],
-  /** Full VO concatenated for one-shot TTS (segments with speech only) */
-  get fullVoiceoverScript(): string {
-    return this.segments
-      .map((s) => s.voiceover.trim())
-      .filter(Boolean)
-      .join(' ');
-  },
+  ] satisfies BroadcastSegment[],
 };
 
 export type BroadcastPackage = typeof NYSC_IMO_RESCUE_PACKAGE;
