@@ -1,0 +1,78 @@
+name: Restore StickmanStudio
+on:
+  workflow_dispatch:
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore StickmanStudio from last good commit
+        run: |
+          git show 6c04d9199a24f0597ba746cd79da940bad1267b3:src/components/StickmanStudio.astro > /tmp/sm.astro
+          python3 << 'PY'
+          text=open('/tmp/sm.astro').read()
+          text=text.replace("walkAnimInterval: null,", "walkAnimInterval: null,\n      walkBob: 0,\n      preferDeskAfterWalk: false,", 1)
+          old_t='''    function updateActorTransform() {
+      const actorGroup = document.getElementById('sm-actor-group');
+      if (!actorGroup) return;
+      const facing = smState.motion === 'walk_left' ? -1 : 1;
+      // Mirror cleanly around center X=300 without displacing joints
+      if (facing === -1) {
+        actorGroup.setAttribute('transform', `translate(${smState.stageX}, 0) translate(600, 0) scale(-1, 1)`);
+      } else {
+        actorGroup.setAttribute('transform', `translate(${smState.stageX}, 0)`);
+      }
+    }'''
+          new_t='''    function updateActorTransform() {
+      const actorGroup = document.getElementById('sm-actor-group');
+      if (!actorGroup) return;
+      const facing = smState.motion === 'walk_left' ? -1 : 1;
+      const bob = (typeof smState.walkBob === 'number') ? smState.walkBob : 0;
+      if (facing === -1) {
+        actorGroup.setAttribute('transform', `translate(${smState.stageX}, ${bob}) translate(600, 0) scale(-1, 1)`);
+      } else {
+        actorGroup.setAttribute('transform', `translate(${smState.stageX}, ${bob})`);
+      }
+    }'''
+          if old_t in text: text=text.replace(old_t, new_t)
+          old_w='''      } else {
+        // When walking starts, switch to full screen legs if behind desk was on
+        if (legsStand) legsStand.classList.add('hidden');
+        if (legsWalk) legsWalk.classList.remove('hidden');
+
+        // Hide other arm poses and activate dynamic walking arms
+        document.querySelectorAll('.sm-arm-pose').forEach(el => el.classList.add('hidden'));
+        if (walkArmPose) walkArmPose.classList.remove('hidden');
+
+        startHumanWalkCycle();
+      }
+    };'''
+          new_w='''      } else {
+        const legsSeated = document.getElementById('sm-legs-seated');
+        if (smState.isBehindDesk) {
+          smState.preferDeskAfterWalk = true;
+          setStickmanDeskMode(false);
+        }
+        if (legsStand) legsStand.classList.add('hidden');
+        if (legsSeated) legsSeated.classList.add('hidden');
+        if (legsWalk) legsWalk.classList.remove('hidden');
+        document.querySelectorAll('.sm-arm-pose').forEach(el => el.classList.add('hidden'));
+        if (walkArmPose) walkArmPose.classList.remove('hidden');
+        startHumanWalkCycle();
+      }
+    };'''
+          if old_w in text: text=text.replace(old_w, new_w)
+          open('src/components/StickmanStudio.astro','w').write(text)
+          print('patched', len(text))
+          PY
+      - name: Commit restored StickmanStudio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/components/StickmanStudio.astro
+          git diff --cached --quiet || git commit -m "fix(stickman): restore + auto-stand on walk + gait bob"
+          git push
