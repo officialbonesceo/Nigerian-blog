@@ -3,34 +3,29 @@ name: Restore StickmanStudio
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   restore:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Restore and patch StickmanStudio
+      - name: Restore StickmanStudio from good commit and apply walk patches
         run: |
-          set -e
+          set -eux
           git show 6c04d9199a24f0597ba746cd79da940bad1267b3:src/components/StickmanStudio.astro > src/components/StickmanStudio.astro
-          python3 -c "
-          text=open('src/components/StickmanStudio.astro').read()
-          text=text.replace('walkAnimInterval: null,', 'walkAnimInterval: null,\\n      walkBob: 0,\\n      preferDeskAfterWalk: false,', 1)
-          open('src/components/StickmanStudio.astro','w').write(text)
-          print(len(text))
-          "
-
-      - name: Apply walk/chair JS patches
-        run: |
-          python3 << 'PY'
+          python3 - <<'PY'
           path = 'src/components/StickmanStudio.astro'
           text = open(path).read()
+          text = text.replace(
+              'walkAnimInterval: null,',
+              'walkAnimInterval: null,\n      walkBob: 0,\n      preferDeskAfterWalk: false,',
+              1,
+          )
           old_t = """    function updateActorTransform() {
       const actorGroup = document.getElementById('sm-actor-group');
       if (!actorGroup) return;
@@ -54,8 +49,8 @@ jobs:
       }
     }"""
           if old_t in text:
-            text = text.replace(old_t, new_t)
-            print('patched transform')
+              text = text.replace(old_t, new_t)
+              print('patched transform')
           old_w = """      } else {
         // When walking starts, switch to full screen legs if behind desk was on
         if (legsStand) legsStand.classList.add('hidden');
@@ -83,10 +78,10 @@ jobs:
       }
     };"""
           if old_w in text:
-            text = text.replace(old_w, new_w)
-            print('patched walk branch')
+              text = text.replace(old_w, new_w)
+              print('patched walk')
           open(path, 'w').write(text)
-          print('final', len(text))
+          print('bytes', len(text))
           PY
 
       - name: Commit and push
@@ -94,9 +89,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/components/StickmanStudio.astro
-          if git diff --cached --quiet; then
-            echo 'No changes'
-          else
-            git commit -m "fix(stickman): restore full studio + auto-stand on walk + gait bob"
-            git push
-          fi
+          git status
+          git diff --cached --stat
+          git commit -m "fix(stickman): restore full studio + auto-stand on walk + gait bob" || echo 'nothing to commit'
+          git push origin HEAD:main
