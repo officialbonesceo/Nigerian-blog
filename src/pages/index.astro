@@ -8,7 +8,7 @@ import MostReadSection from '../components/MostReadSection.astro';
 import FAQSection from '../components/FAQSection.astro';
 import AdSlot from '../components/AdSlot.astro';
 import AdsterraNativeBanner from '../components/AdsterraNativeBanner.astro';
-import MarketRatesTicker from '../components/MarketRatesTicker.astro';
+import CurrencyMiniStrip from '../components/CurrencyMiniStrip.astro';
 import {
   getD1,
   getTopStory,
@@ -71,7 +71,6 @@ try {
 }
 
 const hasNextPage = latestArticles.length > pageSize;
-// Always show full page of stories in the list (including ones also in the carousel)
 const currentFeed = latestArticles.slice(0, pageSize);
 
 const rawSiteBase = (siteSettings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
@@ -234,8 +233,8 @@ const smartLink =
     <MostReadSection articles={mostRead} />
   )}
 
-  {/* Full FX wire: official + parallel + live calculator */}
-  {page === 1 && <MarketRatesTicker />}
+  {/* Compact FX reference → full desk at /market-rates */}
+  {page === 1 && <CurrencyMiniStrip />}
 
   <FAQSection />
 
