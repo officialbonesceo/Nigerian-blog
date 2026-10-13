@@ -5,11 +5,11 @@ export const prerender = false;
 
 function escapeXml(unsafe: string): string {
   return (unsafe || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
+    .replace(/'/g, ''');
 }
 
 export const GET: APIRoute = async ({ url, locals, request }) => {
@@ -29,44 +29,62 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
       }
     } catch {}
   }
-  if (!siteBase || siteBase.includes('localhost') || siteBase === 'null' || siteBase === 'https://9jabeacon.name.ng') {
+  if (
+    !siteBase ||
+    siteBase.includes('localhost') ||
+    siteBase === 'null' ||
+    siteBase === 'https://9jabeacon.name.ng'
+  ) {
     siteBase = 'https://www.9jabeacon.name.ng';
   }
   siteBase = siteBase.replace(/\/+$/, '');
 
   const siteName = settings.site_name || '9jaBeacon';
   const now = new Date();
-  const twoDaysAgoMs = now.getTime() - (48 * 60 * 60 * 1000);
+  const twoDaysAgoMs = now.getTime() - 48 * 60 * 60 * 1000;
 
-  // Google News guidelines: Only include articles published within the last 48 hours
+  // Google News: prefer last 48 hours
   let eligibleArticles = articles.filter((a) => {
     const pub = new Date(a.published_at || a.created_at || '');
     return !isNaN(pub.getTime()) && pub.getTime() >= twoDaysAgoMs;
   });
 
-  // Safe fallback: if fewer than 3 in last 48 hours, use the most recent 15 articles
-  // so the Google News sitemap is never empty or rejected with 0 items
+  // Never leave Google News sitemap empty
   if (eligibleArticles.length === 0) {
-    eligibleArticles = articles.slice(0, 15);
+    eligibleArticles = articles.slice(0, 20);
+  } else if (eligibleArticles.length < 5) {
+    // Pad with a few recent items so the feed stays useful during quiet hours
+    const extra = articles
+      .filter((a) => !eligibleArticles.some((e) => e.id === a.id))
+      .slice(0, 5 - eligibleArticles.length);
+    eligibleArticles = [...eligibleArticles, ...extra];
   }
 
-  const newsEntries = eligibleArticles.map((a) => {
-    const pubDate = new Date(a.published_at || a.created_at || now.toISOString());
-    const isoDate = !isNaN(pubDate.getTime()) ? pubDate.toISOString() : now.toISOString();
-    const titleEsc = escapeXml(a.title);
+  // Cap at 1000 (GNews soft practical limit for this site)
+  eligibleArticles = eligibleArticles.slice(0, 1000);
 
-    return `  <url>
+  const newsEntries = eligibleArticles
+    .map((a) => {
+      const pubDate = new Date(a.published_at || a.created_at || now.toISOString());
+      const isoDate = !isNaN(pubDate.getTime()) ? pubDate.toISOString() : now.toISOString();
+      const modDate = new Date(a.updated_at || a.published_at || isoDate);
+      const lastmod = !isNaN(modDate.getTime()) ? modDate.toISOString() : isoDate;
+      const titleEsc = escapeXml(a.title);
+
+      return `  <url>
     <loc>${siteBase}/news/${escapeXml(a.slug)}</loc>
+    <lastmod>${lastmod}</lastmod>
     <news:news>
       <news:publication>
         <news:name>${escapeXml(siteName)}</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
       <news:publication_date>${isoDate}</news:publication_date>
       <news:title>${titleEsc}</news:title>
     </news:news>
   </url>`;
-  }).join('\n');
+    })
+    .join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -77,7 +95,7 @@ ${newsEntries}
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=900, s-maxage=1800, stale-while-revalidate=86400',
+      'Cache-Control': 'public, max-age=600, s-maxage=900, stale-while-revalidate=86400',
     },
   });
 };
