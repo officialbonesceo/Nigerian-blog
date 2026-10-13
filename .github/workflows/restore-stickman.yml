@@ -1,22 +1,37 @@
 name: Restore StickmanStudio
+
 on:
   workflow_dispatch:
+
 jobs:
   restore:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Restore StickmanStudio from last good commit
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore and patch StickmanStudio
         run: |
-          git show 6c04d9199a24f0597ba746cd79da940bad1267b3:src/components/StickmanStudio.astro > /tmp/sm.astro
+          set -e
+          git show 6c04d9199a24f0597ba746cd79da940bad1267b3:src/components/StickmanStudio.astro > src/components/StickmanStudio.astro
+          python3 -c "
+          text=open('src/components/StickmanStudio.astro').read()
+          text=text.replace('walkAnimInterval: null,', 'walkAnimInterval: null,\\n      walkBob: 0,\\n      preferDeskAfterWalk: false,', 1)
+          open('src/components/StickmanStudio.astro','w').write(text)
+          print(len(text))
+          "
+
+      - name: Apply walk/chair JS patches
+        run: |
           python3 << 'PY'
-          text=open('/tmp/sm.astro').read()
-          text=text.replace("walkAnimInterval: null,", "walkAnimInterval: null,\n      walkBob: 0,\n      preferDeskAfterWalk: false,", 1)
-          old_t='''    function updateActorTransform() {
+          path = 'src/components/StickmanStudio.astro'
+          text = open(path).read()
+          old_t = """    function updateActorTransform() {
       const actorGroup = document.getElementById('sm-actor-group');
       if (!actorGroup) return;
       const facing = smState.motion === 'walk_left' ? -1 : 1;
@@ -26,8 +41,8 @@ jobs:
       } else {
         actorGroup.setAttribute('transform', `translate(${smState.stageX}, 0)`);
       }
-    }'''
-          new_t='''    function updateActorTransform() {
+    }"""
+          new_t = """    function updateActorTransform() {
       const actorGroup = document.getElementById('sm-actor-group');
       if (!actorGroup) return;
       const facing = smState.motion === 'walk_left' ? -1 : 1;
@@ -37,9 +52,11 @@ jobs:
       } else {
         actorGroup.setAttribute('transform', `translate(${smState.stageX}, ${bob})`);
       }
-    }'''
-          if old_t in text: text=text.replace(old_t, new_t)
-          old_w='''      } else {
+    }"""
+          if old_t in text:
+            text = text.replace(old_t, new_t)
+            print('patched transform')
+          old_w = """      } else {
         // When walking starts, switch to full screen legs if behind desk was on
         if (legsStand) legsStand.classList.add('hidden');
         if (legsWalk) legsWalk.classList.remove('hidden');
@@ -50,8 +67,8 @@ jobs:
 
         startHumanWalkCycle();
       }
-    };'''
-          new_w='''      } else {
+    };"""
+          new_w = """      } else {
         const legsSeated = document.getElementById('sm-legs-seated');
         if (smState.isBehindDesk) {
           smState.preferDeskAfterWalk = true;
@@ -64,15 +81,22 @@ jobs:
         if (walkArmPose) walkArmPose.classList.remove('hidden');
         startHumanWalkCycle();
       }
-    };'''
-          if old_w in text: text=text.replace(old_w, new_w)
-          open('src/components/StickmanStudio.astro','w').write(text)
-          print('patched', len(text))
+    };"""
+          if old_w in text:
+            text = text.replace(old_w, new_w)
+            print('patched walk branch')
+          open(path, 'w').write(text)
+          print('final', len(text))
           PY
-      - name: Commit restored StickmanStudio
+
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/components/StickmanStudio.astro
-          git diff --cached --quiet || git commit -m "fix(stickman): restore + auto-stand on walk + gait bob"
-          git push
+          if git diff --cached --quiet; then
+            echo 'No changes'
+          else
+            git commit -m "fix(stickman): restore full studio + auto-stand on walk + gait bob"
+            git push
+          fi
