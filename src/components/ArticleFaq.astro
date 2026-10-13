@@ -1,1 +1,67 @@
-PLACEHOLDER
+---
+import type { ArticleFaqItem } from '../lib/article-faq';
+
+interface Props {
+  items: ArticleFaqItem[];
+}
+
+const { items } = Astro.props;
+const faq = (items || []).filter(
+  (i) => i?.question && i?.answer && i.question.length >= 8 && i.answer.length >= 20
+).slice(0, 4);
+
+if (faq.length < 2) {
+  // nothing to render
+}
+
+const faqSchema =
+  faq.length >= 2
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faq.map((item) => ({
+          '@type': 'Question',
+          name: item.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: item.answer,
+          },
+        })),
+      }
+    : null;
+---
+
+{faq.length >= 2 && (
+  <section class="article-faq-block my-8 not-prose" data-article-faq="1" aria-label="Article FAQ">
+    {faqSchema && (
+      <script is:inline type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+    )}
+    <div class="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 shadow-xs overflow-hidden">
+      <div class="p-4 sm:p-5 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </div>
+        <div>
+          <h2 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">Reader FAQ</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Quick answers grounded in this report</p>
+        </div>
+      </div>
+      <div class="p-4 sm:p-5 space-y-3">
+        {faq.map((item, i) => (
+          <details class="group rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 overflow-hidden">
+            <summary class="flex items-center justify-between gap-3 p-3.5 cursor-pointer list-none select-none">
+              <span class="flex items-center gap-2.5 text-left">
+                <span class="w-5 h-5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold flex items-center justify-center shrink-0 font-mono">{i + 1}</span>
+                <span class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 leading-snug">{item.question}</span>
+              </span>
+              <svg class="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <div class="px-4 pb-4 pt-1 text-xs sm:text-sm leading-relaxed text-slate-600 dark:text-slate-300 border-t border-slate-200/60 dark:border-slate-700/60">
+              <p>{item.answer}</p>
+            </div>
+          </details>
+        ))}
+      </div>
+    </div>
+  </section>
+)}
