@@ -1,1 +1,1908 @@
-SEE_LOCAL_FILE_TOO_LARGE_USE_CHUNKS
+---
+// src/components/StickmanStudio.astro
+// Single Articulated Vector Stickman Presenter Studio
+// Enhanced Kinematics: Fixed neck & shoulder joints, tall opaque broadcast desk,
+// pick-up tablet reading mode with audience cadence, head-centered face/tie zoom,
+// and bipedal human walking locomotion.
+---
+
+<div class="space-y-6 select-none" id="stickman-studio-wrapper">
+  <!-- Studio Header Banner -->
+  <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 transition-colors">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 text-xs font-bold uppercase tracking-wider font-mono mb-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+          Vector Broadcast Presenter &bull; Single Stickman Studio
+        </div>
+        <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+          <span>9jaBeacon Stickman Motion & Animation Workbench</span>
+        </h2>
+        <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-3xl leading-relaxed">
+          Vector stickman with bold red tie &bull; Fixed neck-hinge & shoulder articulation, executive anchor desk, interactive tablet reading (alternating audience & notes gaze), face-centered camera zoom, and live lip-sync.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+        <span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white">
+          1 Vector Anchor
+        </span>
+        <span class="px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/30 font-bold text-red-600 dark:text-red-400">
+          Bold Red Tie
+        </span>
+        <button
+          id="btn-toggle-studio-theme"
+          onclick="toggleStickmanStudioTheme()"
+          class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium transition cursor-pointer flex items-center gap-1.5"
+          title="Toggle Canvas Light/Dark Background"
+        >
+          <span id="theme-toggle-icon">🌙</span>
+          <span id="theme-toggle-label">Dark Stage</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN WORKBENCH GRID -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    
+    <!-- LEFT: LIVE STAGE & MONITOR (Col 7) -->
+    <div class="lg:col-span-7 flex flex-col space-y-4">
+      
+      <!-- Stage Monitor Frame -->
+      <div 
+        id="sm-monitor-frame"
+        class="relative w-full aspect-video rounded-2xl bg-slate-950 border-2 border-slate-800 overflow-hidden shadow-2xl flex flex-col justify-between p-3.5 sm:p-5 group select-none transition-colors duration-300"
+      >
+        <!-- Canvas Ambient Vignette -->
+        <div id="sm-stage-vignette" class="absolute inset-0 bg-radial from-slate-900/50 via-slate-950 to-slate-950 pointer-events-none transition-opacity"></div>
+        
+        <!-- Subtle Stage Floor Horizon Line -->
+        <div id="sm-stage-horizon" class="absolute bottom-16 left-0 right-0 h-px bg-slate-800/60 pointer-events-none"></div>
+
+        <!-- TOP BAR: Status & Metadata Overlays -->
+        <div class="relative z-20 flex items-center justify-between gap-2">
+          <!-- Broadcast Bug / Watermark -->
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-red-500 animate-ping"></div>
+            <span class="text-[11px] font-black tracking-widest text-white/90 font-mono">9JA BEACON LIVE</span>
+          </div>
+
+          <!-- Active State Badges -->
+          <div class="flex items-center gap-2">
+            <span id="sm-badge-mode" class="px-2 py-0.5 rounded-md bg-slate-800/90 border border-slate-700 text-slate-300 text-[10px] font-mono font-bold">
+              BEHIND DESK
+            </span>
+            <span id="sm-badge-motion" class="px-2 py-0.5 rounded-md bg-slate-800/90 border border-slate-700 text-slate-300 text-[10px] font-mono font-bold">
+              IDLE
+            </span>
+            <span id="sm-badge-status" class="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold">
+              STANDBY
+            </span>
+          </div>
+        </div>
+
+        <!-- CENTER STAGE CANVAS: Procedural SVG Stickman Presenter -->
+        <div class="relative z-10 flex-1 flex items-center justify-center my-auto min-h-0 overflow-hidden">
+          <div 
+            id="sm-camera-viewport"
+            class="relative w-full h-full flex items-center justify-center transition-transform duration-300 ease-out"
+            style="transform-origin: 300px 115px; transform: scale(0.95) translateY(0px);"
+          >
+            <!-- STICKMAN SVG (600x600 coordinate space) -->
+            <svg 
+              id="sm-svg" 
+              viewBox="0 0 600 600" 
+              class="w-full h-full max-h-[460px] drop-shadow-lg select-none"
+              style="overflow: visible;"
+            >
+              <defs>
+                <!-- Red Tie Gradient for extra crisp vibrancy -->
+                <linearGradient id="smTieGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ef4444" />
+                  <stop offset="60%" stop-color="#dc2626" />
+                  <stop offset="100%" stop-color="#b91c1c" />
+                </linearGradient>
+
+                <!-- Tie Subtle Drop Shadow -->
+                <filter id="smTieShadow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.4"/>
+                </filter>
+
+                <!-- Floor Shadow Gradient -->
+                <radialGradient id="smFloorShadow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#000000" stop-opacity="0.5" />
+                  <stop offset="70%" stop-color="#000000" stop-opacity="0.2" />
+                  <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+                </radialGradient>
+
+                <!-- Digital Tablet Screen Glow -->
+                <linearGradient id="smTabletGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9" />
+                  <stop offset="100%" stop-color="#0284c7" stop-opacity="0.95" />
+                </linearGradient>
+              </defs>
+
+              <!-- EXECUTIVE STUDIO CHAIR (Visible when presenter is seated behind desk) -->
+              <g id="sm-studio-chair" class="transition-opacity duration-300">
+                <!-- High Ergonomic Backrest -->
+                <rect x="240" y="145" width="120" height="150" rx="16" fill="#0b0f19" stroke="currentColor" stroke-width="2.5" class="sm-stroke" />
+                <!-- Studio Headrest -->
+                <rect x="265" y="112" width="70" height="28" rx="8" fill="#1e293b" stroke="currentColor" stroke-width="2" class="sm-stroke" />
+                <!-- Left Armrest -->
+                <rect x="220" y="240" width="20" height="42" rx="6" fill="#1e293b" stroke="currentColor" stroke-width="1.5" class="sm-stroke" />
+                <!-- Right Armrest -->
+                <rect x="360" y="240" width="20" height="42" rx="6" fill="#1e293b" stroke="currentColor" stroke-width="1.5" class="sm-stroke" />
+                <!-- Chair Swivel Column (Under desk) -->
+                <line x1="300" y1="295" x2="300" y2="480" stroke="#334155" stroke-width="12" stroke-linecap="round" />
+                <!-- Chair 5-Star Caster Base -->
+                <path d="M 230 520 L 300 480 L 370 520 M 260 535 L 300 480 L 340 535" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
+              </g>
+
+              <!-- ROOT STAGE ACTOR GROUP: Controls horizontal X-position & facing direction -->
+              <g id="sm-actor-group" transform="translate(0, 0)">
+                
+                <!-- Floor Contact Shadow (Hidden when seated behind desk) -->
+                <ellipse 
+                  id="sm-floor-shadow" 
+                  cx="300" 
+                  cy="535" 
+                  rx="65" 
+                  ry="12" 
+                  fill="url(#smFloorShadow)"
+                  class="transition-opacity duration-200"
+                />
+
+                <!-- ============================================== -->
+                <!-- FULL BODY: LEGS & LOWER BODY (STANDING / WALKING) -->
+                <!-- ============================================== -->
+                <g id="sm-legs-layer" class="transition-opacity duration-300">
+                  <!-- Standing Pose Legs -->
+                  <g id="sm-legs-stand" class="transition-opacity duration-200">
+                    <!-- Left Leg -->
+                    <line x1="288" y1="310" x2="284" y2="420" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
+                    <line x1="284" y1="420" x2="280" y2="525" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
+                    <!-- Left Foot -->
+                    <line x1="280" y1="525" x2="256" y2="528" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
+                    
+                    <!-- Right Leg -->
+                    <line x1="312" y1="310" x2="316" y2="420" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
+                    <line x1="316" y1="420" x2="320" y2="525" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
+                    <!-- Right Foot -->
+                    <line x1="320" y1="525" x2="344" y2="528" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
+                  </g>
+
+                  <!-- Dynamic Walking Gait Legs (Active only when walking) -->
+                  <g id="sm-legs-walk" class="hidden">
+                    <!-- Left Leg Dynamic -->
+                    <path id="sm-walk-leg-l" d="M 288 310 L 275 420 L 265 525 L 245 528" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <!-- Right Leg Dynamic -->
+                    <path id="sm-walk-leg-r" d="M 312 310 L 325 420 L 335 525 L 355 528" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                  </g>
+
+                  <!-- Seated Pose: Zero legs visible outside desk boundary -->
+                  <g id="sm-legs-seated" class="hidden">
+                    <line x1="288" y1="310" x2="282" y2="350" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke opacity-20" />
+                    <line x1="312" y1="310" x2="318" y2="350" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke opacity-20" />
+                  </g>
+                </g>
+
+                <!-- Pelvis Bar -->
+                <line x1="285" y1="310" x2="315" y2="310" stroke="currentColor" stroke-width="8" stroke-linecap="round" class="sm-stroke" />
+
+                <!-- ============================================== -->
+                <!-- TORSO, SPINE, COLLAR & BOLD RED TIE -->
+                <!-- ============================================== -->
+                <g id="sm-torso-group">
+                  <!-- Main Spine (from neck base at 150 to pelvis at 310) -->
+                  <line id="sm-spine" x1="300" y1="150" x2="300" y2="310" stroke="currentColor" stroke-width="7.5" stroke-linecap="round" class="sm-stroke" />
+                  
+                  <!-- Shoulder Crossbar (Anchored strictly at 268 and 332) -->
+                  <line x1="268" y1="170" x2="332" y2="170" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
+
+                  <!-- Crisp Shirt Collar (Minimalist white flap at neck base) -->
+                  <polygon points="291,146 309,146 305,158 295,158" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" />
+
+                  <!-- BOLD RED TIE (Iconic anchor tie) -->
+                  <g id="sm-bold-red-tie" filter="url(#smTieShadow)">
+                    <!-- Tie Knot -->
+                    <polygon points="294,148 306,148 304,162 296,162" fill="#dc2626" stroke="#991b1b" stroke-width="1.5" />
+                    <!-- Tie Body -->
+                    <polygon points="296,162 304,162 308,245 300,268 292,245" fill="url(#smTieGradient)" stroke="#991b1b" stroke-width="1.5" />
+                    <!-- Tie Center Fold Line -->
+                    <line x1="300" y1="162" x2="300" y2="265" stroke="#fca5a5" stroke-width="1.5" stroke-linecap="round" opacity="0.6" />
+                  </g>
+                </g>
+
+                <!-- ============================================== -->
+                <!-- ARMS & HANDS (ARTICULATED KINEMATICS) -->
+                <!-- Shoulders rigidly anchored at (268, 170) & (332, 170) -->
+                <!-- ============================================== -->
+                <g id="sm-arms-group">
+                  
+                  <!-- POSE 1: Hands Sideway (Relaxed Natural Human Stand) -->
+                  <g id="sm-arm-pose-sideway" class="sm-arm-pose">
+                    <!-- Left Arm: Shoulder (268,170) -> Elbow (258,230) -> Wrist (254,290) -->
+                    <path d="M 268 170 L 258 230 L 254 290" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="254" cy="292" r="4.5" fill="currentColor" class="sm-fill" />
+                    
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (342,230) -> Wrist (346,290) -->
+                    <path d="M 332 170 L 342 230 L 346 290" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="346" cy="292" r="4.5" fill="currentColor" class="sm-fill" />
+                  </g>
+
+                  <!-- POSE 2: Point Left (Left Arm Pointing, Right Arm Sideway) -->
+                  <g id="sm-arm-pose-point-left" class="sm-arm-pose hidden">
+                    <!-- Left Arm: Shoulder (268,170) -> Elbow (200,170) -> Hand (138,170) -->
+                    <path d="M 268 170 L 200 170 L 138 170" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <!-- Left Hand Pointing -->
+                    <polygon points="138,166 122,170 138,174" fill="currentColor" class="sm-fill" />
+                    <line x1="138" y1="170" x2="118" y2="170" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" class="sm-stroke" />
+                    
+                    <!-- Right Arm: Sideway -->
+                    <path d="M 332 170 L 342 230 L 346 290" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="346" cy="292" r="4.5" fill="currentColor" class="sm-fill" />
+                  </g>
+
+                  <!-- POSE 3: Point Right (Right Arm Pointing, Left Arm Sideway) -->
+                  <g id="sm-arm-pose-point-right" class="sm-arm-pose hidden">
+                    <!-- Left Arm: Sideway -->
+                    <path d="M 268 170 L 258 230 L 254 290" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="254" cy="292" r="4.5" fill="currentColor" class="sm-fill" />
+                    
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (400,170) -> Hand (462,170) -->
+                    <path d="M 332 170 L 400 170 L 462 170" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <!-- Right Hand Pointing -->
+                    <polygon points="462,166 478,170 462,174" fill="currentColor" class="sm-fill" />
+                    <line x1="462" y1="170" x2="482" y2="170" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" class="sm-stroke" />
+                  </g>
+
+                  <!-- POSE 4: Desk Rest (Both arms resting on anchor desk) -->
+                  <g id="sm-arm-pose-desk-rest" class="sm-arm-pose hidden">
+                    <!-- Left Arm: Shoulder (268,170) -> Elbow (245,230) -> Hand (265,275) -->
+                    <path d="M 268 170 L 245 230 L 265 275" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="265" cy="275" r="5" fill="currentColor" class="sm-fill" />
+                    
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (355,230) -> Hand (335,275) -->
+                    <path d="M 332 170 L 355 230 L 335 275" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="335" cy="275" r="5" fill="currentColor" class="sm-fill" />
+                  </g>
+
+                  <!-- POSE 5: Expressive Gesture (Speaking & Presenting with palms) -->
+                  <g id="sm-arm-pose-gesture" class="sm-arm-pose hidden">
+                    <!-- Left Arm: Shoulder (268,170) -> Elbow (240,215) -> Hand (225,200) -->
+                    <path d="M 268 170 L 240 215 L 225 200" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="225" cy="200" r="5" fill="currentColor" class="sm-fill" />
+                    
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (360,215) -> Hand (375,200) -->
+                    <path d="M 332 170 L 360 215 L 375 200" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="375" cy="200" r="5" fill="currentColor" class="sm-fill" />
+                  </g>
+
+                  <!-- POSE 6: Friendly Wave -->
+                  <g id="sm-arm-pose-wave" class="sm-arm-pose hidden">
+                    <!-- Left Arm: Sideway -->
+                    <path d="M 268 170 L 258 230 L 254 290" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="254" cy="292" r="4.5" fill="currentColor" class="sm-fill" />
+                    
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (370,140) -> Hand (390,105) -->
+                    <path d="M 332 170 L 370 140 L 390 105" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="390" cy="105" r="6" fill="currentColor" class="sm-fill" />
+                  </g>
+
+                  <!-- POSE 7: Picked-Up Tablet & Reading Mode (User Requested) -->
+                  <g id="sm-arm-pose-tablet-read" class="sm-arm-pose hidden">
+                    <!-- Left Arm: Shoulder (268,170) -> Elbow (252,225) -> Hand holding tablet edge (272,250) -->
+                    <path d="M 268 170 L 252 225 L 272 250" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="272" cy="250" r="5" fill="currentColor" class="sm-fill" />
+
+                    <!-- Right Arm: Shoulder (332,170) -> Elbow (348,225) -> Hand holding tablet edge (328,250) -->
+                    <path d="M 332 170 L 348 225 L 328 250" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <circle cx="328" cy="250" r="5" fill="currentColor" class="sm-fill" />
+
+                    <!-- Digital Tablet in Hands (Tilted slightly towards presenter) -->
+                    <g transform="rotate(-3 300 248)">
+                      <!-- Tablet Bezel -->
+                      <rect x="256" y="226" width="88" height="54" rx="6" fill="#090d16" stroke="currentColor" stroke-width="2.5" class="sm-stroke" />
+                      <!-- Glowing News Screen -->
+                      <rect x="261" y="231" width="78" height="44" rx="4" fill="url(#smTabletGlow)" />
+                      <!-- News Lines on Tablet -->
+                      <line x1="266" y1="239" x2="310" y2="239" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+                      <line x1="266" y1="246" x2="330" y2="246" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" opacity="0.9" />
+                      <line x1="266" y1="252" x2="324" y2="252" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" opacity="0.9" />
+                      <line x1="266" y1="258" x2="298" y2="258" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" opacity="0.7" />
+                      <!-- Live Signal Dot -->
+                      <circle cx="330" cy="239" r="2.5" fill="#ef4444" class="animate-pulse" />
+                    </g>
+                  </g>
+
+                  <!-- Dynamic Walking Arm Swing (Used during active walk cycle) -->
+                  <g id="sm-arm-pose-walk" class="sm-arm-pose hidden">
+                    <path id="sm-walk-arm-l" d="M 268 170 L 258 225 L 252 280" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                    <path id="sm-walk-arm-r" d="M 332 170 L 342 225 L 348 280" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" class="sm-stroke" />
+                  </g>
+                </g>
+
+                <!-- ============================================== -->
+                <!-- FIXED NECK ANCHOR (NEVER DETACHES) -->
+                <!-- Connects skull base (300, 140) to spine/torso (300, 150) -->
+                <!-- ============================================== -->
+                <line x1="300" y1="140" x2="300" y2="150" stroke="currentColor" stroke-width="7" stroke-linecap="round" class="sm-stroke" />
+
+                <!-- ============================================== -->
+                <!-- ARTICULATED HEAD, GAZE & FACIAL EXPRESSIONS -->
+                <!-- Rotates strictly around skull base (300px 140px) -->
+                <!-- ============================================== -->
+                <g 
+                  id="sm-head-group" 
+                  class="transition-transform duration-200 ease-out origin-[300px_140px]"
+                  style="transform-origin: 300px 140px;"
+                >
+                  <!-- Head Contour (Clean Vector Circle centered at 300, 105) -->
+                  <circle 
+                    id="sm-head-circle" 
+                    cx="300" 
+                    cy="105" 
+                    r="35" 
+                    fill="#090d16" 
+                    stroke="currentColor" 
+                    stroke-width="6.5" 
+                    class="sm-head-base" 
+                  />
+
+                  <!-- Dynamic Eyebrows -->
+                  <g id="sm-eyebrows-group">
+                    <!-- Left Eyebrow -->
+                    <path id="sm-brow-left" d="M 280 93 Q 288 91 294 93" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="sm-stroke transition-all duration-200" />
+                    <!-- Right Eyebrow -->
+                    <path id="sm-brow-right" d="M 306 93 Q 312 91 320 93" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="sm-stroke transition-all duration-200" />
+                  </g>
+
+                  <!-- Dynamic Eye Sockets & Moving Pupils (Gaze Controls) -->
+                  <g id="sm-eyes-group">
+                    <!-- Left Eye Socket -->
+                    <circle cx="288" cy="104" r="5" fill="none" stroke="currentColor" stroke-width="1.8" class="sm-stroke" />
+                    <!-- Left Pupil (Moves on gaze) -->
+                    <circle id="sm-pupil-left" cx="288" cy="104" r="3.2" fill="currentColor" class="sm-fill transition-all duration-150" />
+
+                    <!-- Right Eye Socket -->
+                    <circle cx="312" cy="104" r="5" fill="none" stroke="currentColor" stroke-width="1.8" class="sm-stroke" />
+                    <!-- Right Pupil (Moves on gaze) -->
+                    <circle id="sm-pupil-right" cx="312" cy="104" r="3.2" fill="currentColor" class="sm-fill transition-all duration-150" />
+
+                    <!-- Dynamic Blink Eyelids (Slides down to blink) -->
+                    <g id="sm-blink-eyelids" class="opacity-0 transition-opacity duration-75">
+                      <line x1="282" y1="104" x2="294" y2="104" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" class="sm-stroke" />
+                      <line x1="306" y1="104" x2="318" y2="104" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" class="sm-stroke" />
+                    </g>
+                  </g>
+
+                  <!-- Dynamic Mouth Shapes (Talking / Expressions) -->
+                  <g id="sm-mouth-group">
+                    <!-- 1. Neutral Closed Mouth -->
+                    <path id="sm-mouth-neutral" d="M 292 125 Q 300 126 308 125" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="sm-stroke sm-mouth-shape" />
+
+                    <!-- 2. Smile Mouth -->
+                    <path id="sm-mouth-smile" d="M 290 123 Q 300 133 310 123" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="sm-stroke sm-mouth-shape hidden" />
+
+                    <!-- 3. Serious Straight Mouth -->
+                    <line id="sm-mouth-serious" x1="291" y1="126" x2="309" y2="126" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="sm-stroke sm-mouth-shape hidden" />
+
+                    <!-- 4. Surprised Open Mouth (Round O) -->
+                    <ellipse id="sm-mouth-surprised" cx="300" cy="126" rx="5.5" ry="7" fill="none" stroke="currentColor" stroke-width="2.8" class="sm-stroke sm-mouth-shape hidden" />
+
+                    <!-- 5. Talking Phoneme: Open Ah -->
+                    <path id="sm-mouth-talk-open" d="M 291 123 Q 300 134 309 123 Q 300 126 291 123" fill="currentColor" stroke="currentColor" stroke-width="1.5" class="sm-fill sm-stroke sm-mouth-shape hidden" />
+
+                    <!-- 6. Talking Phoneme: Semi-Open Eh -->
+                    <path id="sm-mouth-talk-semi" d="M 292 124 Q 300 130 308 124 Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" class="sm-fill sm-stroke sm-mouth-shape hidden" />
+
+                    <!-- 7. Talking Phoneme: Round Oh -->
+                    <circle id="sm-mouth-talk-round" cx="300" cy="126" r="4.5" fill="currentColor" stroke="currentColor" stroke-width="1.5" class="sm-fill sm-stroke sm-mouth-shape hidden" />
+                  </g>
+                </g>
+
+              </g>
+
+              <!-- ============================================== -->
+              <!-- NEWS ANCHOR DESK (STAGE FOREGROUND LAYER) -->
+              <!-- Placed in fixed stage coordinates outside actor group -->
+              <!-- Solid executive barrier from Y=275 down to floor Y=535 -->
+              <!-- ============================================== -->
+              <g id="sm-desk-layer" class="transition-opacity duration-300">
+                <!-- Wide Desk Floor Shadow -->
+                <ellipse cx="300" cy="535" rx="240" ry="16" fill="url(#smFloorShadow)" />
+
+                <!-- Solid Executive Modesty Panel (Completely covers lower body from waist Y=256 down to floor Y=535) -->
+                <polygon 
+                  points="60,256 540,256 515,535 85,535" 
+                  fill="#090d16" 
+                  stroke="currentColor" 
+                  stroke-width="3.5" 
+                  class="sm-desk-body"
+                />
+                
+                <!-- Executive Center Accent Panel -->
+                <polygon 
+                  points="120,285 480,285 460,510 140,510" 
+                  fill="#0f172a" 
+                  stroke="currentColor" 
+                  stroke-width="2" 
+                  class="sm-desk-panel"
+                />
+
+                <!-- High-Luster Beveled Desktop Surface (Y=246 to 258, perfectly covering waist/hips) -->
+                <polygon 
+                  points="45,246 555,246 540,258 60,258" 
+                  fill="#1e293b" 
+                  stroke="currentColor" 
+                  stroke-width="2.2" 
+                  class="sm-desk-top"
+                />
+                <!-- Cyan Accent Horizon Neon Trim -->
+                <line x1="45" y1="246" x2="555" y2="246" stroke="#38bdf8" stroke-width="2.5" opacity="0.9" />
+
+                <!-- Anchor Studio Gooseneck Microphone -->
+                <path d="M 445 246 Q 430 205 408 195" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="sm-stroke" />
+                <rect x="400" y="185" width="16" height="14" rx="4" fill="#334155" stroke="currentColor" stroke-width="1.5" class="sm-stroke" />
+                <circle cx="408" cy="192" r="3" fill="#ef4444" class="animate-pulse" />
+
+                <!-- Desktop Resting Tablet (Hidden when picked up into hands) -->
+                <g id="sm-desk-tablet" class="transition-opacity duration-200">
+                  <polygon points="175,248 235,247 230,255 170,256" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" />
+                  <polygon points="180,249 230,248 227,254 177,255" fill="#38bdf8" opacity="0.5" />
+                </g>
+
+                <!-- Broadcast Digital News Emblem -->
+                <rect x="210" y="315" width="180" height="32" rx="8" fill="#020617" stroke="currentColor" stroke-width="2" class="sm-desk-badge" />
+                <text 
+                  x="300" 
+                  y="336" 
+                  text-anchor="middle" 
+                  font-family="monospace" 
+                  font-size="13" 
+                  font-weight="900" 
+                  letter-spacing="2.5" 
+                  fill="#f8fafc" 
+                  class="sm-badge-text"
+                >
+                  9JABEACON DESK
+                </text>
+              </g>
+
+            </svg>
+          </div>
+        </div>
+
+        <!-- BOTTOM STAGE OVERLAY: Audio Waveform & Headline Strap -->
+        <div class="relative z-20 space-y-2 mt-2">
+          <!-- Audio Waveform Visualizer Bar -->
+          <div id="sm-waveform-bar" class="flex items-center gap-1 h-3 opacity-30 transition-opacity">
+            <span class="w-1 bg-red-500 rounded-full h-1 sm-wave-bar"></span>
+            <span class="w-1 bg-red-500 rounded-full h-2 sm-wave-bar"></span>
+            <span class="w-1 bg-red-500 rounded-full h-3 sm-wave-bar"></span>
+            <span class="w-1 bg-red-500 rounded-full h-1 sm-wave-bar"></span>
+            <span class="w-1 bg-red-500 rounded-full h-2.5 sm-wave-bar"></span>
+            <span class="w-1 bg-red-500 rounded-full h-1.5 sm-wave-bar"></span>
+            <span class="w-1 bg-red-500 rounded-full h-3 sm-wave-bar"></span>
+            <span class="w-1 bg-red-500 rounded-full h-2 sm-wave-bar"></span>
+            <span class="text-[9px] font-mono text-slate-400 ml-1.5" id="sm-waveform-label">Speech Audio Inactive</span>
+          </div>
+
+          <!-- Broadcast Lower-Third Headline Strap -->
+          <div class="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 border border-slate-700/80 shadow-lg flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 overflow-hidden">
+              <span class="px-2 py-0.5 rounded bg-red-600 text-white font-mono font-black text-[10px] tracking-wider uppercase shrink-0">
+                HEADLINE
+              </span>
+              <span id="sm-strap-headline" class="text-xs font-bold text-white truncate">
+                Stickman Anchor Live On Air Across Nigeria
+              </span>
+            </div>
+            <div class="shrink-0 text-[10px] font-mono text-slate-400">
+              <span id="sm-time-code">00:00.0</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- PLAYBACK & TIMELINE SCRUBBER -->
+      <div class="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 transition-colors">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <!-- Play / Pause Speech & Animation -->
+            <button
+              id="btn-sm-play"
+              onclick="toggleStickmanPlay()"
+              class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-600/20"
+            >
+              <svg id="sm-play-icon" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <span id="sm-play-label">Play Speech & Motion</span>
+            </button>
+
+            <!-- Reset / Stop -->
+            <button
+              onclick="stopStickmanMotion()"
+              class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs border border-slate-300 dark:border-slate-700 transition cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
+
+          <!-- 1-Click Choreographed 10s Scene -->
+          <button
+            onclick="playChoreographedNewsScene()"
+            class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md"
+          >
+            <span>▶️ Run 10s Live Scene Choreography</span>
+          </button>
+        </div>
+
+        <!-- Scrubber Slider -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400">
+            <span id="sm-scrubber-current">00:00.000</span>
+            <span id="sm-scrubber-total">00:12.000</span>
+          </div>
+          <input 
+            type="range" 
+            id="sm-timeline-slider" 
+            min="0" 
+            max="100" 
+            value="0" 
+            step="0.5" 
+            oninput="handleTimelineScrub(this.value)"
+            class="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-red-600"
+          />
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: INTERACTIVE CONTROL WORKBENCH (Col 5) -->
+    <div class="lg:col-span-5 flex flex-col space-y-4">
+      
+      <!-- CONTROLS CONTAINER -->
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5 transition-colors">
+        
+        <!-- SECTION 1: DESK & FRAMING (Enhanced: Tall Desk + Face-Centered Zoom) -->
+        <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>🪑 1. Desk Mode & Face-Centered Zoom</span>
+            </h3>
+            <span id="sm-desk-status-pill" class="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">Desk Active</span>
+          </div>
+
+          <!-- Desk Toggle Buttons -->
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              id="btn-desk-on"
+              onclick="setStickmanDeskMode(true)"
+              class="p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm"
+            >
+              <span>🪑 Sit Behind Desk</span>
+            </button>
+            <button
+              id="btn-desk-off"
+              onclick="setStickmanDeskMode(false)"
+              class="p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+            >
+              <span>🧍 Full Screen (No Desk)</span>
+            </button>
+          </div>
+
+          <!-- Distance & Framing Presets (Calibrated for Face & Bold Red Tie) -->
+          <div class="space-y-2 pt-1">
+            <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              Camera Framing (Anchored at Head & Tie):
+            </label>
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                id="btn-frame-full"
+                onclick="setStickmanFraming('full')"
+                class="px-2.5 py-1.5 rounded-lg border font-semibold text-[11px] text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+              >
+                Full Body
+              </button>
+              <button
+                id="btn-frame-medium"
+                onclick="setStickmanFraming('medium')"
+                class="px-2.5 py-1.5 rounded-lg border font-semibold text-[11px] text-center transition cursor-pointer bg-red-600 border-red-500 text-white"
+              >
+                Medium Shot
+              </button>
+              <button
+                id="btn-frame-close"
+                onclick="setStickmanFraming('close')"
+                class="px-2.5 py-1.5 rounded-lg border font-semibold text-[11px] text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+              >
+                Face Close-Up
+              </button>
+            </div>
+            
+            <!-- Zoom Slider (Zooms directly into Head/Face/Tie) -->
+            <div class="flex items-center gap-3 pt-1">
+              <span class="text-[10px] font-mono text-slate-500">Zoom:</span>
+              <input 
+                type="range" 
+                id="sm-zoom-slider" 
+                min="65" 
+                max="160" 
+                value="105" 
+                oninput="setStickmanCustomZoom(this.value)"
+                class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-red-600"
+              />
+              <span id="sm-zoom-val" class="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 w-9">105%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: TABLET READING & AUDIENCE CADENCE (User Requested) -->
+        <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>📖 2. Pick Up Tablet & News Reading</span>
+            </h3>
+            <span id="sm-tablet-mode-pill" class="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">Tablet On Desk</span>
+          </div>
+
+          <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
+            Picks up digital tablet from the desk into hands and alternates gaze naturally (looking down at notes, then glancing up at audience):
+          </p>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              id="btn-tablet-pickup"
+              onclick="startTabletReadingCadence()"
+              class="p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-emerald-600 border-emerald-500 text-white shadow-sm"
+            >
+              <span>📖 Pick Up Tablet & Read</span>
+            </button>
+            <button
+              id="btn-tablet-putdown"
+              onclick="putDownTabletToDesk()"
+              class="p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+            >
+              <span>🪑 Put Tablet On Desk</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION 3: HEAD & GAZE (Anchored Neck Joint: No Hinging Off Body) -->
+        <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>👤 3. Head Tilt & Gaze Direction</span>
+            </h3>
+            <span id="sm-gaze-pill" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">Straight</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <!-- Up -->
+            <button
+              id="btn-gaze-up"
+              onclick="setStickmanGaze('up')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>⬆️ Look Up</span>
+            </button>
+            <!-- Straight / Camera -->
+            <button
+              id="btn-gaze-straight"
+              onclick="setStickmanGaze('straight')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm flex items-center justify-center gap-1"
+            >
+              <span>👁️ Straight</span>
+            </button>
+            <!-- Down -->
+            <button
+              id="btn-gaze-down"
+              onclick="setStickmanGaze('down')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>⬇️ Look Down</span>
+            </button>
+            <!-- Left -->
+            <button
+              id="btn-gaze-left"
+              onclick="setStickmanGaze('left')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>⬅️ Look Left</span>
+            </button>
+            <!-- Right -->
+            <button
+              id="btn-gaze-right"
+              onclick="setStickmanGaze('right')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>➡️ Look Right</span>
+            </button>
+            <!-- Side Profile -->
+            <button
+              id="btn-gaze-side"
+              onclick="setStickmanGaze('side')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>📐 Side Profile</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION 4: ARMS & HAND POSES (Anchored Shoulders: Never Go Off Body) -->
+        <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>✋ 4. Arms & Hand Poses</span>
+            </h3>
+            <span id="sm-arm-pill" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">Desk Rest</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <!-- Hands Sideway -->
+            <button
+              id="btn-arm-sideway"
+              onclick="setStickmanArmPose('sideway')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>👇 Hands Sideway</span>
+            </button>
+            <!-- Point Left -->
+            <button
+              id="btn-arm-point-left"
+              onclick="setStickmanArmPose('point-left')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>👈 Point Left</span>
+            </button>
+            <!-- Point Right -->
+            <button
+              id="btn-arm-point-right"
+              onclick="setStickmanArmPose('point-right')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>👉 Point Right</span>
+            </button>
+            <!-- Desk Rest -->
+            <button
+              id="btn-arm-desk-rest"
+              onclick="setStickmanArmPose('desk-rest')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm flex items-center justify-center gap-1"
+            >
+              <span>🪑 Desk Rest</span>
+            </button>
+            <!-- Gesture / Explain -->
+            <button
+              id="btn-arm-gesture"
+              onclick="setStickmanArmPose('gesture')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>👐 Present Palms</span>
+            </button>
+            <!-- Wave -->
+            <button
+              id="btn-arm-wave"
+              onclick="setStickmanArmPose('wave')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>👋 Wave</span>
+            </button>
+            <!-- Read Tablet -->
+            <button
+              id="btn-arm-tablet-read"
+              onclick="startTabletReadingCadence()"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1 col-span-3 sm:col-span-1"
+            >
+              <span>📰 Read Tablet</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION 5: HUMAN WALKING & MOTION -->
+        <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>🚶 5. Human Locomotion & Walking</span>
+            </h3>
+            <span id="sm-loco-pill" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">Standing</span>
+          </div>
+
+          <!-- Gait Actions -->
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              id="btn-motion-idle"
+              onclick="setStickmanMotion('idle')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm flex items-center justify-center gap-1"
+            >
+              <span>🧍 Stand Idle</span>
+            </button>
+            <button
+              id="btn-motion-walk-left"
+              onclick="setStickmanMotion('walk_left')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>🚶 Walk Left</span>
+            </button>
+            <button
+              id="btn-motion-walk-right"
+              onclick="setStickmanMotion('walk_right')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>🚶 Walk Right</span>
+            </button>
+          </div>
+
+          <!-- Stage Position X & Trajectory -->
+          <div class="space-y-1.5 pt-1">
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="font-bold text-slate-700 dark:text-slate-300">Stage Horizontal X-Position:</span>
+              <button 
+                onclick="centerStickmanPosition()" 
+                class="text-[10px] font-mono text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+              >
+                Center Stage (0px)
+              </button>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-[10px] font-mono text-slate-500">-160px</span>
+              <input 
+                type="range" 
+                id="sm-pos-x-slider" 
+                min="-160" 
+                max="160" 
+                value="0" 
+                oninput="setStickmanStageX(this.value)"
+                class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-red-600"
+              />
+              <span class="text-[10px] font-mono text-slate-500">+160px</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 6: FACIAL EXPRESSIONS & BLINK -->
+        <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>😊 6. Facial Expressions & Eyes</span>
+            </h3>
+            <span id="sm-expr-pill" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">Neutral</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <!-- Neutral -->
+            <button
+              id="btn-expr-neutral"
+              onclick="setStickmanExpression('neutral')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm flex items-center justify-center gap-1"
+            >
+              <span>😐 Neutral</span>
+            </button>
+            <!-- Happy / Smile -->
+            <button
+              id="btn-expr-happy"
+              onclick="setStickmanExpression('happy')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>😊 Happy</span>
+            </button>
+            <!-- Serious -->
+            <button
+              id="btn-expr-serious"
+              onclick="setStickmanExpression('serious')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>🧐 Serious</span>
+            </button>
+            <!-- Surprised -->
+            <button
+              id="btn-expr-surprised"
+              onclick="setStickmanExpression('surprised')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>😲 Surprised</span>
+            </button>
+            <!-- Concerned -->
+            <button
+              id="btn-expr-concerned"
+              onclick="setStickmanExpression('concerned')"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>🥺 Concerned</span>
+            </button>
+            <!-- Trigger Blink -->
+            <button
+              onclick="triggerStickmanBlink()"
+              class="px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1"
+            >
+              <span>😉 Blink Eye</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION 7: TALKING ANIMATION & SCRIPT -->
+        <div class="space-y-3 pb-2">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>🎙️ 7. Talking Lip-Sync & Speech Script</span>
+            </h3>
+            <button
+              id="btn-toggle-talking"
+              onclick="toggleStickmanTalkingLoop()"
+              class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-bold transition cursor-pointer flex items-center gap-1"
+            >
+              <span id="sm-talking-pill-icon">▶️</span>
+              <span id="sm-talking-pill-text">Toggle Talking Loop</span>
+            </button>
+          </div>
+
+          <!-- Headline Input -->
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Broadcast Lower-Third Headline:
+            </label>
+            <input 
+              type="text" 
+              id="sm-input-headline" 
+              value="Stickman Anchor Live On Air Across Nigeria" 
+              oninput="updateStickmanHeadline(this.value)"
+              class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-500 font-semibold"
+            />
+          </div>
+
+          <!-- Script Textarea -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                Anchor Speech Script:
+              </label>
+              <span id="sm-word-counter" class="text-[10px] font-mono text-slate-500">28 words • ~12s</span>
+            </div>
+            <textarea 
+              id="sm-input-script" 
+              rows="3" 
+              oninput="handleStickmanScriptInput(this.value)"
+              class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-500 leading-relaxed font-sans"
+            >Good evening Nigeria. This is the 9jaBeacon Newsroom with your Chief Stickman Anchor. Delivering verified national breaking news, economic breakdowns, and live alerts directly to your feed.</textarea>
+          </div>
+
+          <!-- Quick Script Presets -->
+          <div class="flex flex-wrap items-center gap-1.5 pt-1">
+            <span class="text-[10px] font-mono text-slate-500">Presets:</span>
+            <button onclick="loadStickmanPreset('breaking')" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-semibold transition cursor-pointer">Breaking</button>
+            <button onclick="loadStickmanPreset('economy')" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-semibold transition cursor-pointer">Economy</button>
+            <button onclick="loadStickmanPreset('tech')" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-semibold transition cursor-pointer">Technology</button>
+            <button onclick="loadStickmanPreset('sports')" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-semibold transition cursor-pointer">Sports</button>
+          </div>
+
+          <!-- Export & Workflow Buttons -->
+          <div class="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-2">
+            <button
+              onclick="copyStickmanWorkflowCommand()"
+              class="flex-1 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>📋 Copy GitHub CLI Dispatch</span>
+            </button>
+            <button
+              onclick="exportStickmanTimelineJson()"
+              class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+              title="Download Timeline JSON"
+            >
+              <span>💾 JSON</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<style>
+  /* Clean high-contrast vector styling for Stickman Presenter */
+  .sm-stroke {
+    transition: stroke 0.2s ease;
+  }
+  .sm-fill {
+    transition: fill 0.2s ease;
+  }
+
+  /* Dark Theme Default Canvas */
+  #sm-svg {
+    color: #f8fafc; /* Crisp white line on dark canvas */
+  }
+  .sm-head-base {
+    fill: #090d16;
+  }
+  .sm-desk-body {
+    fill: #090d16;
+  }
+  .sm-desk-panel {
+    fill: #0f172a;
+  }
+  .sm-desk-top {
+    fill: #1e293b;
+  }
+
+  /* Light Theme Canvas Overrides */
+  .sm-stage-light #sm-svg {
+    color: #0f172a; /* Deep black line on light canvas */
+  }
+  .sm-stage-light .sm-head-base {
+    fill: #ffffff;
+  }
+  .sm-stage-light .sm-desk-body {
+    fill: #e2e8f0;
+  }
+  .sm-stage-light .sm-desk-panel {
+    fill: #cbd5e1;
+  }
+  .sm-stage-light .sm-desk-top {
+    fill: #94a3b8;
+  }
+  .sm-stage-light .sm-badge-text {
+    fill: #0f172a;
+  }
+  .sm-stage-light .sm-desk-badge {
+    fill: #ffffff;
+    stroke: #94a3b8;
+  }
+
+  /* Wave animation for wave pose */
+  @keyframes smHandWave {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(-18deg);
+    }
+  }
+  #sm-arm-pose-wave {
+    transform-origin: 332px 170px;
+    animation: smHandWave 0.8s ease-in-out infinite;
+  }
+</style>
+
+<script is:inline>
+  // ==============================================================
+  // SINGLE ARTICULATED STICKMAN PRESENTER CONTROLLER ENGINE
+  // ==============================================================
+  (function initStickmanEngine() {
+    window.smState = {
+      isBehindDesk: true,
+      framing: 'medium', // 'full' | 'medium' | 'close'
+      zoomPercent: 105,
+      stageX: 0,
+      gaze: 'straight', // 'up' | 'down' | 'left' | 'right' | 'straight' | 'side'
+      motion: 'idle', // 'idle' | 'walk_left' | 'walk_right'
+      armPose: 'desk-rest', // 'sideway' | 'point-left' | 'point-right' | 'desk-rest' | 'gesture' | 'wave' | 'tablet-read' | 'walk'
+      expression: 'neutral', // 'neutral' | 'happy' | 'serious' | 'surprised' | 'concerned'
+      isTalking: false,
+      isReadingTablet: false,
+      tabletReadingCadenceInterval: null,
+      talkingInterval: null,
+      walkAnimInterval: null,
+      walkBob: 0,
+      preferDeskAfterWalk: false,
+      isPlaying: false,
+      timelineInterval: null,
+      currentTimeMs: 0,
+      totalDurationMs: 12000,
+      speechUtterance: null,
+      isDarkStage: true
+    };
+
+    // 1. DESK TOGGLE (Behind Desk vs Full Screen)
+    window.setStickmanDeskMode = function(isBehindDesk) {
+      smState.isBehindDesk = isBehindDesk;
+      const deskLayer = document.getElementById('sm-desk-layer');
+      const chairLayer = document.getElementById('sm-studio-chair');
+      const legsStand = document.getElementById('sm-legs-stand');
+      const legsSeated = document.getElementById('sm-legs-seated');
+      const floorShadow = document.getElementById('sm-floor-shadow');
+      const deskStatusPill = document.getElementById('sm-desk-status-pill');
+      const badgeMode = document.getElementById('sm-badge-mode');
+      const btnOn = document.getElementById('btn-desk-on');
+      const btnOff = document.getElementById('btn-desk-off');
+
+      if (isBehindDesk) {
+        if (deskLayer) deskLayer.classList.remove('opacity-0', 'pointer-events-none');
+        if (chairLayer) chairLayer.classList.remove('opacity-0');
+        // Behind desk: Completely hide standing legs! Modesty panel covers everything down to floor.
+        if (legsStand) legsStand.classList.add('hidden');
+        if (legsSeated) legsSeated.classList.remove('hidden');
+        if (floorShadow) floorShadow.classList.add('opacity-0');
+        if (deskStatusPill) deskStatusPill.textContent = 'Desk Active (Seated)';
+        if (badgeMode) badgeMode.textContent = 'BEHIND DESK';
+        
+        if (btnOn) btnOn.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
+        if (btnOff) btnOff.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
+        
+        if (smState.armPose === 'sideway' && !smState.isReadingTablet) {
+          setStickmanArmPose('desk-rest');
+        }
+      } else {
+        // Full screen / full body standing view without desk
+        if (deskLayer) deskLayer.classList.add('opacity-0', 'pointer-events-none');
+        if (chairLayer) chairLayer.classList.add('opacity-0');
+        if (legsStand) legsStand.classList.remove('hidden');
+        if (legsSeated) legsSeated.classList.add('hidden');
+        if (floorShadow) floorShadow.classList.remove('opacity-0');
+        if (deskStatusPill) deskStatusPill.textContent = 'Full Screen (Standing)';
+        if (badgeMode) badgeMode.textContent = 'FULL BODY';
+
+        if (btnOff) btnOff.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
+        if (btnOn) btnOn.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
+
+        if (smState.armPose === 'desk-rest' && !smState.isReadingTablet) {
+          setStickmanArmPose('sideway');
+        }
+      }
+      applyCameraFraming();
+    };
+
+    // 2. CAMERA FRAMING & DISTANCE (Anchored directly at Face & Tie: 300px, 125px)
+    window.setStickmanFraming = function(mode) {
+      smState.framing = mode;
+      const btnFull = document.getElementById('btn-frame-full');
+      const btnMed = document.getElementById('btn-frame-medium');
+      const btnClose = document.getElementById('btn-frame-close');
+      const zoomSlider = document.getElementById('sm-zoom-slider');
+
+      const inactive = 'px-2.5 py-1.5 rounded-lg border font-semibold text-[11px] text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
+      const active = 'px-2.5 py-1.5 rounded-lg border font-semibold text-[11px] text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
+
+      if (btnFull) btnFull.className = mode === 'full' ? active : inactive;
+      if (btnMed) btnMed.className = mode === 'medium' ? active : inactive;
+      if (btnClose) btnClose.className = mode === 'close' ? active : inactive;
+
+      if (mode === 'full') {
+        smState.zoomPercent = 85;
+      } else if (mode === 'medium') {
+        smState.zoomPercent = 110;
+      } else if (mode === 'close') {
+        smState.zoomPercent = 160;
+      }
+
+      if (zoomSlider) zoomSlider.value = smState.zoomPercent;
+      setStickmanCustomZoom(smState.zoomPercent);
+    };
+
+    window.setStickmanCustomZoom = function(val) {
+      smState.zoomPercent = parseInt(val, 10);
+      const zoomVal = document.getElementById('sm-zoom-val');
+      if (zoomVal) zoomVal.textContent = `${smState.zoomPercent}%`;
+      applyCameraFraming();
+    };
+
+    function applyCameraFraming() {
+      const svg = document.getElementById('sm-svg');
+      const viewport = document.getElementById('sm-camera-viewport');
+      if (!svg) return;
+      if (viewport) {
+        viewport.style.transform = 'none';
+        viewport.style.transformOrigin = 'center center';
+      }
+      const zoom = Math.max(60, Math.min(220, smState.zoomPercent || 100));
+      const scale = zoom / 100;
+      const w = 600 / scale;
+      const h = 600 / scale;
+      // Focus strictly on face (Y=105) and bold red tie (Y=160 to 240)
+      const targetFocusY = smState.isBehindDesk ? 135 : (scale > 1.25 ? 120 : 255);
+      const minX = 300 - w / 2;
+      const minY = targetFocusY - h * (scale > 1.25 ? 0.32 : 0.42);
+      svg.setAttribute('viewBox', `${minX.toFixed(1)} ${minY.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`);
+    }
+
+    // 3. TABLET READING CADENCE (User Requested)
+    window.startTabletReadingCadence = function() {
+      smState.isReadingTablet = true;
+      const btnPickup = document.getElementById('btn-tablet-pickup');
+      const btnPutdown = document.getElementById('btn-tablet-putdown');
+      const deskTablet = document.getElementById('sm-desk-tablet');
+      const pill = document.getElementById('sm-tablet-mode-pill');
+
+      if (btnPickup) btnPickup.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
+      if (btnPutdown) btnPutdown.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
+      if (deskTablet) deskTablet.classList.add('opacity-0');
+      if (pill) {
+        pill.className = 'text-[10px] font-mono font-bold text-emerald-500 dark:text-emerald-400';
+        pill.textContent = 'Reading Tablet Cadence';
+      }
+
+      // Activate tablet-read arm pose
+      setStickmanArmPose('tablet-read');
+      toggleStickmanTalkingLoop(true);
+
+      if (smState.tabletReadingCadenceInterval) clearInterval(smState.tabletReadingCadenceInterval);
+
+      // Start natural cadence:
+      // Alternate between looking down at tablet for 2.8s and looking straight up at audience for 2.8s!
+      let lookingDownAtTablet = true;
+      setStickmanGaze('down');
+
+      smState.tabletReadingCadenceInterval = setInterval(() => {
+        if (!smState.isReadingTablet) return;
+        lookingDownAtTablet = !lookingDownAtTablet;
+        if (lookingDownAtTablet) {
+          setStickmanGaze('down');
+        } else {
+          setStickmanGaze('straight');
+        }
+      }, 2800);
+    };
+
+    window.putDownTabletToDesk = function() {
+      smState.isReadingTablet = false;
+      if (smState.tabletReadingCadenceInterval) {
+        clearInterval(smState.tabletReadingCadenceInterval);
+        smState.tabletReadingCadenceInterval = null;
+      }
+
+      const btnPickup = document.getElementById('btn-tablet-pickup');
+      const btnPutdown = document.getElementById('btn-tablet-putdown');
+      const deskTablet = document.getElementById('sm-desk-tablet');
+      const pill = document.getElementById('sm-tablet-mode-pill');
+
+      if (btnPickup) btnPickup.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400';
+      if (btnPutdown) btnPutdown.className = 'p-2.5 rounded-xl border text-center transition flex items-center justify-center gap-2 font-bold text-xs cursor-pointer bg-red-600 border-red-500 text-white shadow-sm';
+      if (deskTablet) deskTablet.classList.remove('opacity-0');
+      if (pill) {
+        pill.className = 'text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400';
+        pill.textContent = 'Tablet On Desk';
+      }
+
+      // Restore desk rest pose and straight gaze
+      setStickmanGaze('straight');
+      setStickmanArmPose(smState.isBehindDesk ? 'desk-rest' : 'sideway');
+    };
+
+    // 4. STAGE HORIZONTAL X-POSITION
+    window.setStickmanStageX = function(val) {
+      smState.stageX = parseInt(val, 10);
+      updateActorTransform();
+    };
+
+    window.centerStickmanPosition = function() {
+      const slider = document.getElementById('sm-pos-x-slider');
+      if (slider) slider.value = 0;
+      smState.stageX = 0;
+      updateActorTransform();
+    };
+
+    function updateActorTransform() {
+      const actorGroup = document.getElementById('sm-actor-group');
+      if (!actorGroup) return;
+      const facing = smState.motion === 'walk_left' ? -1 : 1;
+      const bob = (typeof smState.walkBob === 'number') ? smState.walkBob : 0;
+      if (facing === -1) {
+        actorGroup.setAttribute('transform', `translate(${smState.stageX}, ${bob}) translate(600, 0) scale(-1, 1)`);
+      } else {
+        actorGroup.setAttribute('transform', `translate(${smState.stageX}, ${bob})`);
+      }
+    }
+
+    // 5. HEAD GAZE & TILT (Neck-Locked: Skull base 300px, 140px NEVER separates from spine)
+    window.setStickmanGaze = function(gaze) {
+      smState.gaze = gaze;
+      const headGroup = document.getElementById('sm-head-group');
+      const pupilL = document.getElementById('sm-pupil-left');
+      const pupilR = document.getElementById('sm-pupil-right');
+      const gazePill = document.getElementById('sm-gaze-pill');
+
+      // Update button highlights
+      ['up', 'down', 'left', 'right', 'straight', 'side'].forEach(g => {
+        const btn = document.getElementById('btn-gaze-' + g);
+        if (btn) {
+          if (g === gaze) {
+            btn.className = 'px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm flex items-center justify-center gap-1';
+          } else {
+            btn.className = 'px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1';
+          }
+        }
+      });
+
+      if (gazePill) {
+        gazePill.textContent = gaze.charAt(0).toUpperCase() + gaze.slice(1);
+      }
+
+      // Eyeball coordinates: Left eye is (288, 104), Right eye is (312, 104)
+      let plX = 288, plY = 104, prX = 312, prY = 104;
+      let rotAngle = 0;
+
+      // Pure native SVG user-space rotation around skull base (300, 140):
+      // Locks the head to the top of the neck line with 100% mechanical precision.
+      if (gaze === 'up') {
+        plY = 98;
+        prY = 98;
+        rotAngle = -9;
+      } else if (gaze === 'down') {
+        plY = 110;
+        prY = 110;
+        rotAngle = 10;
+      } else if (gaze === 'left') {
+        plX = 283;
+        prX = 307;
+        rotAngle = -7;
+      } else if (gaze === 'right') {
+        plX = 293;
+        prX = 317;
+        rotAngle = 7;
+      } else if (gaze === 'side') {
+        plX = 293;
+        prX = 316;
+        rotAngle = 6;
+      } else {
+        // straight / camera
+        plX = 288;
+        plY = 104;
+        prX = 312;
+        prY = 104;
+        rotAngle = 0;
+      }
+
+      if (pupilL) { pupilL.setAttribute('cx', String(plX)); pupilL.setAttribute('cy', String(plY)); }
+      if (pupilR) { pupilR.setAttribute('cx', String(prX)); pupilR.setAttribute('cy', String(prY)); }
+      if (headGroup) { 
+        headGroup.style.transformOrigin = '';
+        headGroup.style.transform = '';
+        headGroup.setAttribute('transform', `rotate(${rotAngle}, 300, 140)`); 
+      }
+    };
+
+    // 6. HUMAN WALKING & MOTION ENGINE (Clean Bipedal Locomotion)
+    window.setStickmanMotion = function(motion) {
+      smState.motion = motion;
+      const btnIdle = document.getElementById('btn-motion-idle');
+      const btnLeft = document.getElementById('btn-motion-walk-left');
+      const btnRight = document.getElementById('btn-motion-walk-right');
+      const badgeMotion = document.getElementById('sm-badge-motion');
+      const locoPill = document.getElementById('sm-loco-pill');
+
+      const inactive = 'px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1';
+      const active = 'px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm flex items-center justify-center gap-1';
+
+      if (btnIdle) btnIdle.className = motion === 'idle' ? active : inactive;
+      if (btnLeft) btnLeft.className = motion === 'walk_left' ? active : inactive;
+      if (btnRight) btnRight.className = motion === 'walk_right' ? active : inactive;
+
+      if (badgeMotion) badgeMotion.textContent = motion.toUpperCase().replace('_', ' ');
+      if (locoPill) locoPill.textContent = motion === 'idle' ? 'Standing' : motion === 'walk_left' ? 'Walking Left' : 'Walking Right';
+
+      // Update facing and actor orientation
+      updateActorTransform();
+
+      const legsStand = document.getElementById('sm-legs-stand');
+      const legsWalk = document.getElementById('sm-legs-walk');
+      const walkArmPose = document.getElementById('sm-arm-pose-walk');
+
+      if (smState.walkAnimInterval) {
+        clearInterval(smState.walkAnimInterval);
+        smState.walkAnimInterval = null;
+      }
+
+      if (motion === 'idle') {
+        if (!smState.isBehindDesk) {
+          if (legsStand) legsStand.classList.remove('hidden');
+        }
+        if (legsWalk) legsWalk.classList.add('hidden');
+        if (walkArmPose) walkArmPose.classList.add('hidden');
+        
+        // Restore active arm pose
+        setStickmanArmPose(smState.armPose === 'walk' ? (smState.isBehindDesk ? 'desk-rest' : 'sideway') : smState.armPose);
+      } else {
+        const legsSeated = document.getElementById('sm-legs-seated');
+        if (smState.isBehindDesk) {
+          smState.preferDeskAfterWalk = true;
+          setStickmanDeskMode(false);
+        }
+        if (legsStand) legsStand.classList.add('hidden');
+        if (legsSeated) legsSeated.classList.add('hidden');
+        if (legsWalk) legsWalk.classList.remove('hidden');
+        document.querySelectorAll('.sm-arm-pose').forEach(el => el.classList.add('hidden'));
+        if (walkArmPose) walkArmPose.classList.remove('hidden');
+        startHumanWalkCycle();
+      }
+    };
+
+    function startHumanWalkCycle() {
+      const walkLegL = document.getElementById('sm-walk-leg-l');
+      const walkLegR = document.getElementById('sm-walk-leg-r');
+      const walkArmL = document.getElementById('sm-walk-arm-l');
+      const walkArmR = document.getElementById('sm-walk-arm-r');
+      const slider = document.getElementById('sm-pos-x-slider');
+
+      let tick = 0;
+      smState.walkAnimInterval = setInterval(() => {
+        tick += 0.16;
+        const phase = tick % (Math.PI * 2);
+
+        // Sinusoidal stride for natural human gait
+        const strideL = Math.sin(phase);
+        const strideR = Math.sin(phase + Math.PI); // 180 deg out of phase
+        
+        // Natural knee flexion on passing leg
+        const kneeL = Math.max(0, -strideL) * 18;
+        const kneeR = Math.max(0, -strideR) * 18;
+
+        // Ground contact coordinates
+        const footLX = 280 + (strideL * 40);
+        const footLY = 525 - Math.max(0, strideL) * 10;
+        const footRX = 320 + (strideR * 40);
+        const footRY = 525 - Math.max(0, strideR) * 10;
+
+        if (walkLegL) {
+          walkLegL.setAttribute('d', `M 288 310 L ${284 + strideL * 15} ${420 - kneeL} L ${footLX} ${footLY} L ${footLX - 18} ${footLY + 3}`);
+        }
+        if (walkLegR) {
+          walkLegR.setAttribute('d', `M 312 310 L ${316 + strideR * 15} ${420 - kneeR} L ${footRX} ${footRY} L ${footRX + 18} ${footRY + 3}`);
+        }
+
+        // Oppositional human arm swings (strict shoulder anchors 268 & 332)
+        const armLX = 254 - (strideL * 30);
+        const armLY = 280 + Math.abs(strideL) * 6;
+        const armRX = 346 - (strideR * 30);
+        const armRY = 280 + Math.abs(strideR) * 6;
+
+        if (walkArmL) {
+          walkArmL.setAttribute('d', `M 268 170 L ${258 - strideL * 12} 225 L ${armLX} ${armLY}`);
+        }
+        if (walkArmR) {
+          walkArmR.setAttribute('d', `M 332 170 L ${342 - strideR * 12} 225 L ${armRX} ${armRY}`);
+        }
+
+        // Advance stage position
+        if (smState.motion === 'walk_right') {
+          smState.stageX = Math.min(160, smState.stageX + 1.2);
+          if (slider) slider.value = smState.stageX;
+          updateActorTransform();
+          if (smState.stageX >= 160) {
+            setStickmanMotion('walk_left'); // Turn around at boundary
+          }
+        } else if (smState.motion === 'walk_left') {
+          smState.stageX = Math.max(-160, smState.stageX - 1.2);
+          if (slider) slider.value = smState.stageX;
+          updateActorTransform();
+          if (smState.stageX <= -160) {
+            setStickmanMotion('walk_right'); // Turn around at boundary
+          }
+        }
+
+      }, 40);
+    }
+
+    // 7. ARMS & HAND POSES (Shoulders Anchored: 268 & 332)
+    window.setStickmanArmPose = function(poseId) {
+      if (smState.motion !== 'idle') {
+        setStickmanMotion('idle');
+      }
+
+      smState.armPose = poseId;
+      const armPill = document.getElementById('sm-arm-pill');
+      if (armPill) {
+        armPill.textContent = poseId.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+      }
+
+      // Hide all arm pose layers
+      document.querySelectorAll('.sm-arm-pose').forEach(el => el.classList.add('hidden'));
+
+      // Show requested pose
+      const targetPoseEl = document.getElementById('sm-arm-pose-' + poseId);
+      if (targetPoseEl) targetPoseEl.classList.remove('hidden');
+
+      // Update button highlights
+      ['sideway', 'point-left', 'point-right', 'desk-rest', 'gesture', 'wave', 'tablet-read'].forEach(p => {
+        const btn = document.getElementById('btn-arm-' + p);
+        if (btn) {
+          if (p === poseId) {
+            btn.className = 'px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm flex items-center justify-center gap-1';
+          } else {
+            btn.className = 'px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1';
+          }
+        }
+      });
+    };
+
+    // 8. FACIAL EXPRESSIONS & BLINK
+    window.setStickmanExpression = function(expr) {
+      smState.expression = expr;
+      const exprPill = document.getElementById('sm-expr-pill');
+      if (exprPill) exprPill.textContent = expr.charAt(0).toUpperCase() + expr.slice(1);
+
+      // Hide mouth shapes
+      document.querySelectorAll('.sm-mouth-shape').forEach(el => el.classList.add('hidden'));
+
+      const browL = document.getElementById('sm-brow-left');
+      const browR = document.getElementById('sm-brow-right');
+
+      if (expr === 'happy') {
+        const m = document.getElementById('sm-mouth-smile');
+        if (m) m.classList.remove('hidden');
+        if (browL) browL.setAttribute('d', 'M 280 90 Q 288 86 294 91');
+        if (browR) browR.setAttribute('d', 'M 306 91 Q 312 86 320 90');
+      } else if (expr === 'serious') {
+        const m = document.getElementById('sm-mouth-serious');
+        if (m) m.classList.remove('hidden');
+        if (browL) browL.setAttribute('d', 'M 280 95 Q 288 93 294 97');
+        if (browR) browR.setAttribute('d', 'M 306 97 Q 312 93 320 95');
+      } else if (expr === 'surprised') {
+        const m = document.getElementById('sm-mouth-surprised');
+        if (m) m.classList.remove('hidden');
+        if (browL) browL.setAttribute('d', 'M 278 88 Q 288 83 294 88');
+        if (browR) browR.setAttribute('d', 'M 306 88 Q 312 83 322 88');
+      } else if (expr === 'concerned') {
+        const m = document.getElementById('sm-mouth-neutral');
+        if (m) m.classList.remove('hidden');
+        if (browL) browL.setAttribute('d', 'M 280 96 Q 288 90 294 92');
+        if (browR) browR.setAttribute('d', 'M 306 92 Q 312 90 320 96');
+      } else {
+        // Neutral
+        const m = document.getElementById('sm-mouth-neutral');
+        if (m) m.classList.remove('hidden');
+        if (browL) browL.setAttribute('d', 'M 280 93 Q 288 91 294 93');
+        if (browR) browR.setAttribute('d', 'M 306 93 Q 312 91 320 93');
+      }
+
+      // Update button highlights
+      ['neutral', 'happy', 'serious', 'surprised', 'concerned'].forEach(e => {
+        const btn = document.getElementById('btn-expr-' + e);
+        if (btn) {
+          if (e === expr) {
+            btn.className = 'px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-red-600 border-red-500 text-white shadow-sm flex items-center justify-center gap-1';
+          } else {
+            btn.className = 'px-2.5 py-2 rounded-xl border font-bold text-xs text-center transition cursor-pointer bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 flex items-center justify-center gap-1';
+          }
+        }
+      });
+    };
+
+    window.triggerStickmanBlink = function() {
+      const blinkEl = document.getElementById('sm-blink-eyelids');
+      if (!blinkEl) return;
+      blinkEl.classList.remove('opacity-0');
+      blinkEl.classList.add('opacity-100');
+      setTimeout(() => {
+        blinkEl.classList.remove('opacity-100');
+        blinkEl.classList.add('opacity-0');
+      }, 160);
+    };
+
+    // Auto natural periodic human blinking every 4-6 seconds
+    setInterval(() => {
+      if (Math.random() < 0.7) {
+        triggerStickmanBlink();
+      }
+    }, 4500);
+
+    // 9. TALKING ANIMATION & PHONEMES
+    window.toggleStickmanTalkingLoop = function(force) {
+      const willTalk = typeof force === 'boolean' ? force : !smState.isTalking;
+      smState.isTalking = willTalk;
+
+      const pillText = document.getElementById('sm-talking-pill-text');
+      const pillIcon = document.getElementById('sm-talking-pill-icon');
+      const waveBar = document.getElementById('sm-waveform-bar');
+      const waveLabel = document.getElementById('sm-waveform-label');
+
+      if (pillText) pillText.textContent = willTalk ? 'Talking (Active)' : 'Toggle Talking Loop';
+      if (pillIcon) pillIcon.textContent = willTalk ? '⏹️' : '▶️';
+      if (waveBar) waveBar.className = willTalk ? 'flex items-center gap-1 h-3 opacity-100 transition-opacity' : 'flex items-center gap-1 h-3 opacity-30 transition-opacity';
+      if (waveLabel) waveLabel.textContent = willTalk ? 'Speech Lip-Sync Running' : 'Speech Audio Inactive';
+
+      if (smState.talkingInterval) {
+        clearInterval(smState.talkingInterval);
+        smState.talkingInterval = null;
+      }
+
+      if (!willTalk) {
+        setStickmanExpression(smState.expression);
+        return;
+      }
+
+      // Cycle speech phonemes smoothly
+      const phonemes = ['sm-mouth-talk-open', 'sm-mouth-talk-semi', 'sm-mouth-talk-round', 'sm-mouth-neutral', 'sm-mouth-smile'];
+      let idx = 0;
+      smState.talkingInterval = setInterval(() => {
+        document.querySelectorAll('.sm-mouth-shape').forEach(el => el.classList.add('hidden'));
+        const activePhoneme = phonemes[idx % phonemes.length];
+        const pEl = document.getElementById(activePhoneme);
+        if (pEl) pEl.classList.remove('hidden');
+        idx++;
+
+        // Random audio bar bounce
+        document.querySelectorAll('.sm-wave-bar').forEach(b => {
+          b.style.height = `${(4 + Math.random() * 8).toFixed(0)}px`;
+        });
+      }, 130);
+    };
+
+    // 10. BROADCAST SCRIPT & HEADLINE
+    window.updateStickmanHeadline = function(text) {
+      const strap = document.getElementById('sm-strap-headline');
+      if (strap) strap.textContent = text || 'Stickman Anchor Live On Air';
+    };
+
+    window.handleStickmanScriptInput = function(text) {
+      const words = (text || '').trim().split(/\s+/).filter(Boolean);
+      const count = words.length;
+      const sec = Math.max(Math.ceil((count / 140) * 60), 3);
+      smState.totalDurationMs = sec * 1000;
+
+      const counter = document.getElementById('sm-word-counter');
+      if (counter) counter.textContent = `${count} words • ~${sec}s`;
+      const scrubTotal = document.getElementById('sm-scrubber-total');
+      if (scrubTotal) scrubTotal.textContent = formatMs(smState.totalDurationMs);
+    };
+
+    window.loadStickmanPreset = function(presetKey) {
+      const presets = {
+        breaking: {
+          headline: 'URGENT: Major Economic Infrastructure Milestone Ratified in Abuja',
+          script: 'Good evening. Breaking news tonight as federal authorities approve a nationwide digital transit roadmap. Early projections confirm substantial economic acceleration across all thirty-six states.'
+        },
+        economy: {
+          headline: 'Forex Reserves Rebound: Naira Demonstrates Strong Stability',
+          script: 'From the 9jaBeacon Business Desk, foreign exchange reserves registered substantial expansion this week, bolstered by non-oil export receipts and diaspora remittances. Central authorities forecast sustainable structural stability.'
+        },
+        tech: {
+          headline: 'Nigeria Tech Frontier: Cloud Datacenters Launch in Lagos Hub',
+          script: 'Artificial intelligence infrastructure and high-speed fiber interlinks have officially gone live across southwest enterprise zones, providing low-latency compute for hundreds of homegrown tech platforms.'
+        },
+        sports: {
+          headline: 'Super Eagles Secure Crucial Continental Championship Berth',
+          script: 'A sensational victory in Uyo tonight as Nigeria delivers an authoritative masterclass on the continental stage. Fans across the nation and the diaspora celebrate an unforgettable performance.'
+        }
+      };
+
+      const p = presets[presetKey] || presets.breaking;
+      const headInput = document.getElementById('sm-input-headline');
+      const scriptInput = document.getElementById('sm-input-script');
+
+      if (headInput) { headInput.value = p.headline; updateStickmanHeadline(p.headline); }
+      if (scriptInput) { scriptInput.value = p.script; handleStickmanScriptInput(p.script); }
+    };
+
+    // 11. TIMELINE & SPEECH SYNTHESIS PLAYBACK
+    window.toggleStickmanPlay = function() {
+      if (smState.isPlaying) {
+        stopStickmanMotion();
+      } else {
+        startStickmanSpeechAndMotion();
+      }
+    };
+
+    window.startStickmanSpeechAndMotion = function() {
+      smState.isPlaying = true;
+      const playLabel = document.getElementById('sm-play-label');
+      const playIcon = document.getElementById('sm-play-icon');
+      const badgeStatus = document.getElementById('sm-badge-status');
+
+      if (playLabel) playLabel.textContent = 'Pause Motion';
+      if (playIcon) playIcon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+      if (badgeStatus) {
+        badgeStatus.className = 'px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-mono font-bold animate-pulse';
+        badgeStatus.textContent = 'ON AIR';
+      }
+
+      toggleStickmanTalkingLoop(true);
+
+      const script = (document.getElementById('sm-input-script')?.value || '').trim();
+      if ('speechSynthesis' in window && script) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(script);
+        utter.rate = 1.0;
+        utter.pitch = 1.0;
+        utter.onend = function() {
+          stopStickmanMotion();
+        };
+        smState.speechUtterance = utter;
+        setTimeout(() => window.speechSynthesis.speak(utter), 40);
+      }
+
+      const startTime = Date.now() - smState.currentTimeMs;
+      if (smState.timelineInterval) clearInterval(smState.timelineInterval);
+
+      smState.timelineInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        smState.currentTimeMs = elapsed;
+
+        if (elapsed >= smState.totalDurationMs) {
+          stopStickmanMotion();
+          return;
+        }
+
+        updateScrubberUI(elapsed);
+      }, 50);
+    };
+
+    window.stopStickmanMotion = function() {
+      smState.isPlaying = false;
+      smState.currentTimeMs = 0;
+
+      if (smState.timelineInterval) clearInterval(smState.timelineInterval);
+      if (smState.talkingInterval) clearInterval(smState.talkingInterval);
+      if (smState.tabletReadingCadenceInterval) {
+        clearInterval(smState.tabletReadingCadenceInterval);
+        smState.tabletReadingCadenceInterval = null;
+      }
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+      toggleStickmanTalkingLoop(false);
+
+      const playLabel = document.getElementById('sm-play-label');
+      const playIcon = document.getElementById('sm-play-icon');
+      const badgeStatus = document.getElementById('sm-badge-status');
+
+      if (playLabel) playLabel.textContent = 'Play Speech & Motion';
+      if (playIcon) playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+      if (badgeStatus) {
+        badgeStatus.className = 'px-2 py-0.5 rounded-md bg-slate-800/90 border border-slate-700 text-slate-300 text-[10px] font-mono font-bold';
+        badgeStatus.textContent = 'STANDBY';
+      }
+
+      updateScrubberUI(0);
+    };
+
+    function updateScrubberUI(currentMs) {
+      const timeCode = document.getElementById('sm-time-code');
+      const scrubCurrent = document.getElementById('sm-scrubber-current');
+      const slider = document.getElementById('sm-timeline-slider');
+
+      if (timeCode) timeCode.textContent = formatMsShort(currentMs);
+      if (scrubCurrent) scrubCurrent.textContent = formatMs(currentMs);
+      if (slider && smState.totalDurationMs > 0) {
+        slider.value = ((currentMs / smState.totalDurationMs) * 100).toFixed(1);
+      }
+    }
+
+    window.handleTimelineScrub = function(pct) {
+      const targetMs = (parseFloat(pct) / 100) * smState.totalDurationMs;
+      smState.currentTimeMs = targetMs;
+      updateScrubberUI(targetMs);
+    };
+
+    function formatMs(ms) {
+      const s = Math.max(0, ms) / 1000;
+      const m = Math.floor(s / 60);
+      const remS = Math.floor(s % 60);
+      const remMs = Math.floor(ms % 1000);
+      return `${String(m).padStart(2, '0')}:${String(remS).padStart(2, '0')}.${String(remMs).padStart(3, '0')}`;
+    }
+
+    function formatMsShort(ms) {
+      const s = Math.max(0, ms) / 1000;
+      const m = Math.floor(s / 60);
+      const remS = Math.floor(s % 60);
+      const dec = Math.floor((ms % 1000) / 100);
+      return `${String(m).padStart(2, '0')}:${String(remS).padStart(2, '0')}.${dec}`;
+    }
+
+    // 12. CHOREOGRAPHED 10s SCENE
+    window.playChoreographedNewsScene = function() {
+      stopStickmanMotion();
+      // Step 1: Start seated behind desk looking down at notes
+      setStickmanDeskMode(true);
+      setStickmanFraming('medium');
+      setStickmanGaze('down');
+      setStickmanArmPose('desk-rest');
+      setStickmanExpression('serious');
+      centerStickmanPosition();
+
+      setTimeout(() => {
+        // Step 2 (1.5s): Look straight up to camera, neutral expression, start talking
+        setStickmanGaze('straight');
+        setStickmanExpression('neutral');
+        toggleStickmanTalkingLoop(true);
+      }, 1500);
+
+      setTimeout(() => {
+        // Step 3 (3.8s): Pick up tablet to read news
+        startTabletReadingCadence();
+      }, 3800);
+
+      setTimeout(() => {
+        // Step 4 (7.0s): Put tablet back down and point right arm towards story charts
+        putDownTabletToDesk();
+        setStickmanGaze('right');
+        setStickmanArmPose('point-right');
+        setStickmanExpression('happy');
+      }, 7000);
+
+      setTimeout(() => {
+        // Step 5 (8.8s): Look straight, hands back on desk, wrap up
+        setStickmanGaze('straight');
+        setStickmanArmPose('desk-rest');
+        setStickmanExpression('happy');
+      }, 8800);
+
+      setTimeout(() => {
+        // Step 6 (10s): Finished scene
+        toggleStickmanTalkingLoop(false);
+      }, 10000);
+    };
+
+    // 13. CANVAS THEME TOGGLE (Dark vs Light Stage)
+    window.toggleStickmanStudioTheme = function() {
+      smState.isDarkStage = !smState.isDarkStage;
+      const frame = document.getElementById('sm-monitor-frame');
+      const icon = document.getElementById('theme-toggle-icon');
+      const label = document.getElementById('theme-toggle-label');
+
+      if (smState.isDarkStage) {
+        if (frame) {
+          frame.classList.remove('bg-slate-100', 'border-slate-300', 'sm-stage-light');
+          frame.classList.add('bg-slate-950', 'border-slate-800');
+        }
+        if (icon) icon.textContent = '🌙';
+        if (label) label.textContent = 'Dark Stage';
+      } else {
+        if (frame) {
+          frame.classList.remove('bg-slate-950', 'border-slate-800');
+          frame.classList.add('bg-slate-100', 'border-slate-300', 'sm-stage-light');
+        }
+        if (icon) icon.textContent = '☀️';
+        if (label) label.textContent = 'Light Stage';
+      }
+    };
+
+    // 14. EXPORT HELPERS
+    window.copyStickmanWorkflowCommand = function() {
+      const headline = (document.getElementById('sm-input-headline')?.value || 'Breaking News').replace(/"/g, '\\"');
+      const script = (document.getElementById('sm-input-script')?.value || '').replace(/"/g, '\\"');
+      const cmd = `gh workflow run generate-broadcast-video.yml -f presenter_id="presenter_stickman" -f headline="${headline}" -f custom_script="${script}" -f desk_mode="${smState.isBehindDesk}"`;
+
+      navigator.clipboard.writeText(cmd).then(() => {
+        alert('Copied GitHub CLI Dispatch Command to clipboard:\n' + cmd);
+      }).catch(() => {
+        prompt('Copy GitHub CLI Dispatch Command:', cmd);
+      });
+    };
+
+    window.exportStickmanTimelineJson = function() {
+      const headline = document.getElementById('sm-input-headline')?.value || '';
+      const script = document.getElementById('sm-input-script')?.value || '';
+      const timelineData = {
+        anchor: 'Beacon Stickman Presenter (Vector)',
+        tie: 'Bold Red Tie',
+        deskMode: smState.isBehindDesk,
+        framing: smState.framing,
+        zoom: smState.zoomPercent,
+        gaze: smState.gaze,
+        armPose: smState.armPose,
+        isReadingTablet: smState.isReadingTablet,
+        expression: smState.expression,
+        motion: smState.motion,
+        headline,
+        script,
+        durationMs: smState.totalDurationMs,
+        exportedAt: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(timelineData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `stickman-presenter-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    // Initialize framing on load & re-evaluate when tab becomes active
+    setTimeout(() => {
+      setStickmanDeskMode(true);
+      setStickmanFraming('medium');
+      setStickmanGaze('straight');
+    }, 100);
+
+    window.addEventListener('resize', applyCameraFraming);
+    document.addEventListener('click', (e) => {
+      if (e.target && (e.target.closest?.('#tab-btn-presenters') || e.target.id === 'tab-btn-presenters')) {
+        setTimeout(applyCameraFraming, 120);
+      }
+    });
+
+  })();
+</script>
