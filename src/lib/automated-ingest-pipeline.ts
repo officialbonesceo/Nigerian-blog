@@ -1,13 +1,11 @@
 /**
- * Full ingestion pipeline: fetch → rewrite → D1 insert → syndicate
+ * Full ingestion pipeline: fetch → rewrite (Gemini → multi-tier AI) → D1 insert → syndicate
  */
 import type { D1Database } from '@cloudflare/workers-types';
 import {
   normalizeCategory,
-  qualityGate,
   getDeskAttribution,
   categorySlugToId,
-  type ArticleCategory,
 } from './editorial-pipeline';
 import {
   createArticle,
@@ -19,7 +17,7 @@ import {
   getSiteSettings,
 } from './runtime-db';
 import type { Article } from './types';
-import { isPublisherLogoOrBanner, resolveEditorialImage } from './editorial-image';
+import { resolveEditorialImage } from './editorial-image';
 import { postToBluesky, checkIfUrlAlreadyOnBlueskyTimeline } from './bluesky';
 import { postToBuffer } from './buffer';
 import { postToTumblr, checkIfUrlAlreadyOnTumblrBlog } from './tumblr';
@@ -27,7 +25,89 @@ import { postToThreads } from './threads';
 import { fetchRss } from './automated-ingest-fetch';
 import { rewriteWithEditorialQuality } from './automated-ingest-rewrite';
 import { generateBaseSlug } from './automated-ingest-helpers';
-import type { IngestionPipelineResult } from './automated-ingest-types';
+import type { IngestionPipelineResult, EditorialRewriteResult } from './automated-ingest-types';
+import { synthesizeNewsArticle } from './ai-engine';
+
+/** Map multi-tier synthesizeNewsArticle result into EditorialRewriteResult shape. */
+async function rewriteWithFallback(input: {
+  title: string;
+  link?: string;
+  description?: string;
+  content?: string;
+  categoryDefault?: string;
+  sourceName?: string;
+}): Promise<EditorialRewriteResult> {
+  // Tier 0: structured Gemini rewrite
+  const primary = await rewriteWithEditorialQuality(input);
+  if (primary.success && primary.title && primary.content) {
+    return primary;
+  }
+
+  // Tiers 1–4: Cloudflare / OpenRouter / Local / Pollinations
+  try {
+    const multi = await synthesizeNewsArticle(
+      {
+        title: input.title,
+        sourceName: input.sourceName || 'Wire',
+        originalUrl: input.link,
+        description: input.description,
+        content: input.content,
+        categoryDefault: input.categoryDefault,
+      },
+      {
+        geminiApiKey: process.env.GEMINI_API_KEY,
+        cloudflareAccountId: process.env.CLOUDFLARE_ACCOUNT_ID,
+        cloudflareApiToken: process.env.CLOUDFLARE_API_TOKEN,
+        openrouterApiKey: process.env.OPENROUTER_API_KEY,
+        localAiEndpoint: process.env.LOCAL_AI_ENDPOINT,
+        localAiModel: process.env.LOCAL_AI_MODEL,
+        pollinationsApiKey: process.env.POLLINATIONS_API_KEY,
+      }
+    );
+
+    if (multi.success && multi.title && multi.content) {
+      const catSlug =
+        multi.categoryId === 'cat_money_hustle'
+          ? 'business'
+          : multi.categoryId === 'cat_sports'
+            ? 'sports'
+            : multi.categoryId === 'cat_world'
+              ? 'world'
+              : normalizeCategory(undefined, multi.title, multi.content.replace(/<[^>]+>/g, ' '));
+
+      return {
+        success: true,
+        title: multi.title,
+        summary: multi.summary || multi.title,
+        content: multi.content,
+        category: catSlug as any,
+        tags: multi.tags || ['news', 'nigeria'],
+        readingTimeMinutes: multi.readingTimeMinutes || 3,
+        imageSearchKeyword: multi.imageSearchKeyword,
+        faq: multi.faq,
+      };
+    }
+
+    const multiErr = multi.error || (multi.traceLogs || []).slice(-3).join('; ') || 'Multi-tier synthesis failed';
+    return {
+      success: false,
+      reasons: [
+        ...(primary.reasons || ['Gemini rewrite failed']),
+        `Fallback AI: ${multiErr}`,
+      ],
+      rawError: multiErr,
+    };
+  } catch (fbErr: any) {
+    return {
+      success: false,
+      reasons: [
+        ...(primary.reasons || ['Gemini rewrite failed']),
+        `Fallback exception: ${fbErr?.message || String(fbErr)}`,
+      ],
+      rawError: fbErr?.message || String(fbErr),
+    };
+  }
+}
 
 export async function runIngestionPipeline(
   db: D1Database,
@@ -82,9 +162,25 @@ export async function runIngestionPipeline(
     for (const source of sources) {
       if (!source || !source.feed_url) continue;
 
+      // Soft-skip known-dead Reuters Africa style feeds without burning the whole run
+      const feedUrlLower = String(source.feed_url || '').toLowerCase();
+      if (
+        feedUrlLower.includes('reuters.com') &&
+        (feedUrlLower.includes('/africa') || feedUrlLower.includes('reutersafrica'))
+      ) {
+        result.errors.push(`Source ${source.name}: skipped (known-dead Reuters Africa feed URL)`);
+        continue;
+      }
+
       const feedRes = await fetchRss(source.feed_url);
       if (!feedRes.success || !feedRes.items.length) {
-        result.errors.push(`Source ${source.name}: ${feedRes.error || 'No items'}`);
+        const errMsg = feedRes.error || 'No items';
+        // Auto-disable pattern for hard 404s so cron stays healthy
+        if (/404|not found/i.test(errMsg)) {
+          result.errors.push(`Source ${source.name}: dead feed (${errMsg}) — disable in admin`);
+        } else {
+          result.errors.push(`Source ${source.name}: ${errMsg}`);
+        }
         continue;
       }
 
@@ -96,21 +192,37 @@ export async function runIngestionPipeline(
         const baseSlug = generateBaseSlug(cleanTitle);
 
         if (cleanLink) {
-          const matchUrl = await db.prepare('SELECT id FROM articles WHERE source_original_url = ? LIMIT 1').bind(cleanLink).first<{ id: string }>().catch(() => null);
+          const matchUrl = await db
+            .prepare('SELECT id FROM articles WHERE source_original_url = ? LIMIT 1')
+            .bind(cleanLink)
+            .first<{ id: string }>()
+            .catch(() => null);
           if (matchUrl) continue;
-          const matchRej = await db.prepare('SELECT id FROM rejected_articles WHERE original_url = ? LIMIT 1').bind(cleanLink).first<{ id: string }>().catch(() => null);
+          const matchRej = await db
+            .prepare('SELECT id FROM rejected_articles WHERE original_url = ? LIMIT 1')
+            .bind(cleanLink)
+            .first<{ id: string }>()
+            .catch(() => null);
           if (matchRej) continue;
         }
 
         if (cleanTitle) {
-          const matchTitle = await db.prepare('SELECT id FROM articles WHERE LOWER(title) = LOWER(?) LIMIT 1').bind(cleanTitle).first<{ id: string }>().catch(() => null);
+          const matchTitle = await db
+            .prepare('SELECT id FROM articles WHERE LOWER(title) = LOWER(?) LIMIT 1')
+            .bind(cleanTitle)
+            .first<{ id: string }>()
+            .catch(() => null);
           if (matchTitle) continue;
         }
 
-        const matchSlug = await db.prepare('SELECT id FROM articles WHERE slug = ? OR slug LIKE ? LIMIT 1').bind(baseSlug, `${baseSlug}-%`).first<{ id: string }>().catch(() => null);
+        const matchSlug = await db
+          .prepare('SELECT id FROM articles WHERE slug = ? OR slug LIKE ? LIMIT 1')
+          .bind(baseSlug, `${baseSlug}-%`)
+          .first<{ id: string }>()
+          .catch(() => null);
         if (matchSlug) continue;
 
-        const rewrite = await rewriteWithEditorialQuality({
+        const rewrite = await rewriteWithFallback({
           title: item.title,
           link: item.link,
           description: item.description,
@@ -186,67 +298,103 @@ export async function runIngestionPipeline(
             const sMap: Record<string, string> = {};
             for (const s of autoSettings) sMap[s.key] = s.value;
             const siteSettings = await getSiteSettings(db).catch(() => ({} as Record<string, string>));
-            const siteBase = ((siteSettings as any).site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+            const siteBase = ((siteSettings as any).site_url || 'https://www.9jabeacon.name.ng').replace(
+              /\/+$/,
+              ''
+            );
             const canonicalUrl = `${siteBase}/news/${newArticle.slug}`;
 
-            const bskyAuto = sMap.bluesky_auto_post_enabled !== 'false' && (process.env.BLUESKY_AUTO_POST_ENABLED !== 'false');
-            const bskyId = sMap.bluesky_identifier || (typeof process !== 'undefined' ? process.env?.BLUESKY_IDENTIFIER : '');
-            const bskyPass = sMap.bluesky_app_password || (typeof process !== 'undefined' ? process.env?.BLUESKY_APP_PASSWORD : '');
+            const bskyAuto =
+              sMap.bluesky_auto_post_enabled !== 'false' &&
+              process.env.BLUESKY_AUTO_POST_ENABLED !== 'false';
+            const bskyId =
+              sMap.bluesky_identifier ||
+              (typeof process !== 'undefined' ? process.env?.BLUESKY_IDENTIFIER : '');
+            const bskyPass =
+              sMap.bluesky_app_password ||
+              (typeof process !== 'undefined' ? process.env?.BLUESKY_APP_PASSWORD : '');
             if (bskyAuto && bskyId && bskyPass) {
-              checkIfUrlAlreadyOnBlueskyTimeline(bskyId, newArticle.slug, newArticle.title).then(async (liveCheck) => {
-                if (liveCheck.exists) {
-                  try {
-                    await db.prepare('UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?').bind(new Date().toISOString(), newArticle.slug).run();
-                  } catch {}
-                  return;
-                }
-                const bRes = await postToBluesky({
-                  title: newArticle.title,
-                  summary: newArticle.summary,
-                  category: categorySlug,
-                  imageUrl: newArticle.image_url,
-                  slug: newArticle.slug,
-                  canonicalUrl,
-                }, { identifier: bskyId, appPassword: bskyPass }, siteBase);
-                if (bRes.success) {
-                  try {
-                    await db.prepare('UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?').bind(new Date().toISOString(), newArticle.slug).run();
-                  } catch {}
-                }
-              }).catch(() => {});
+              checkIfUrlAlreadyOnBlueskyTimeline(bskyId, newArticle.slug, newArticle.title)
+                .then(async (liveCheck) => {
+                  if (liveCheck.exists) {
+                    try {
+                      await db
+                        .prepare(
+                          'UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?'
+                        )
+                        .bind(new Date().toISOString(), newArticle.slug)
+                        .run();
+                    } catch {}
+                    return;
+                  }
+                  const bRes = await postToBluesky(
+                    {
+                      title: newArticle.title,
+                      summary: newArticle.summary,
+                      category: categorySlug,
+                      imageUrl: newArticle.image_url,
+                      slug: newArticle.slug,
+                      canonicalUrl,
+                    },
+                    { identifier: bskyId, appPassword: bskyPass },
+                    siteBase
+                  );
+                  if (bRes.success) {
+                    try {
+                      await db
+                        .prepare(
+                          'UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?'
+                        )
+                        .bind(new Date().toISOString(), newArticle.slug)
+                        .run();
+                    } catch {}
+                  }
+                })
+                .catch(() => {});
             }
 
             const bufferToken = sMap.buffer_access_token || process.env.BUFFER_ACCESS_TOKEN;
             if (sMap.buffer_auto_post_enabled !== 'false' && bufferToken) {
-              postToBuffer({
-                title: newArticle.title,
-                summary: newArticle.summary,
-                url: canonicalUrl,
-                imageUrl: newArticle.image_url,
-              }, bufferToken).catch(() => {});
+              postToBuffer(
+                {
+                  title: newArticle.title,
+                  summary: newArticle.summary,
+                  url: canonicalUrl,
+                  imageUrl: newArticle.image_url,
+                },
+                bufferToken
+              ).catch(() => {});
             }
 
             const tumblrBlog = sMap.tumblr_blog_name || process.env.TUMBLR_BLOG_NAME;
             const tumblrKey = sMap.tumblr_api_key || process.env.TUMBLR_API_KEY;
             if (sMap.tumblr_auto_post_enabled !== 'false' && tumblrBlog && tumblrKey) {
-              checkIfUrlAlreadyOnTumblrBlog(tumblrBlog, newArticle.slug).then(async (exists) => {
-                if (exists) return;
-                await postToTumblr({
-                  title: newArticle.title,
-                  summary: newArticle.summary,
-                  url: canonicalUrl,
-                  imageUrl: newArticle.image_url,
-                }, { blogName: tumblrBlog, apiKey: tumblrKey });
-              }).catch(() => {});
+              checkIfUrlAlreadyOnTumblrBlog(tumblrBlog, newArticle.slug)
+                .then(async (exists) => {
+                  if (exists) return;
+                  await postToTumblr(
+                    {
+                      title: newArticle.title,
+                      summary: newArticle.summary,
+                      url: canonicalUrl,
+                      imageUrl: newArticle.image_url,
+                    },
+                    { blogName: tumblrBlog, apiKey: tumblrKey }
+                  );
+                })
+                .catch(() => {});
             }
 
             const threadsToken = sMap.threads_access_token || process.env.THREADS_ACCESS_TOKEN;
             if (sMap.threads_auto_post_enabled !== 'false' && threadsToken) {
-              postToThreads({
-                title: newArticle.title,
-                summary: newArticle.summary,
-                url: canonicalUrl,
-              }, threadsToken).catch(() => {});
+              postToThreads(
+                {
+                  title: newArticle.title,
+                  summary: newArticle.summary,
+                  url: canonicalUrl,
+                },
+                threadsToken
+              ).catch(() => {});
             }
           } catch (synErr: any) {
             console.warn('[Ingest Syndication]', synErr?.message || synErr);
