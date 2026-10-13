@@ -1,3 +1,117 @@
 ---
-// PLACEHOLDER - will fix
+/**
+ * Article page — FAQ extract before partition so Reader FAQ + FAQPage schema render.
+ * Full page body restored from local artifacts/news-slug.astro in follow-up if needed.
+ */
+import Layout from '../../layouts/Layout.astro';
+import { getArticleBySlug, getRelatedArticles, incrementViewCount } from '../../lib/runtime-db';
+import { cleanAndFormatArticleHtml, partitionArticleForAds } from '../../lib/content-formatter';
+import { extractArticleFaq, stripArticleFaq } from '../../lib/article-faq';
+import ArticleFaq from '../../components/ArticleFaq.astro';
+import ShareBar from '../../components/ShareBar.astro';
+import ArticleComments from '../../components/ArticleComments.astro';
+import BookmarkButton from '../../components/BookmarkButton.astro';
+import AdSlot from '../../components/AdSlot.astro';
+
+const { slug } = Astro.params;
+if (!slug) {
+  return Astro.redirect('/404');
+}
+
+const article = await getArticleBySlug(Astro.locals.runtime?.env?.DB, slug);
+if (!article) {
+  return Astro.redirect('/404');
+}
+
+// Per-article FAQ (embedded at end of content during ingest) — extract before clean so partition does not drop it
+const articleFaqItems = extractArticleFaq(article.content);
+const contentWithoutFaq = stripArticleFaq(article.content);
+
+const formattedHtml = cleanAndFormatArticleHtml(contentWithoutFaq || '');
+const { before, after } = partitionArticleForAds(formattedHtml);
+
+try {
+  await incrementViewCount(Astro.locals.runtime?.env?.DB, article.id);
+} catch {}
+
+const related = await getRelatedArticles(Astro.locals.runtime?.env?.DB, article.id, article.category_id, 4).catch(() => []);
+const pageUrl = new URL(`/news/${slug}`, Astro.site || 'https://9jabeacon.com').href;
+const pageTitle = article.title || '9jaBeacon News';
+const pageDescription = article.summary || article.title || '';
 ---
+
+<Layout title={pageTitle} description={pageDescription}>
+  <article class="max-w-3xl mx-auto px-4 py-6">
+    <header class="mb-6">
+      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white leading-tight">{article.title}</h1>
+      {article.summary && (
+        <p class="mt-3 text-slate-600 dark:text-slate-300 text-base leading-relaxed">{article.summary}</p>
+      )}
+      <div class="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+        {article.source_name && <span>{article.source_name}</span>}
+        {article.reading_time_minutes && <span>{article.reading_time_minutes} min read</span>}
+        <BookmarkButton articleId={article.id} />
+      </div>
+    </header>
+
+    {article.image_url && (
+      <figure class="mb-6 rounded-xl overflow-hidden">
+        <img src={article.image_url} alt={article.title} class="w-full h-auto object-cover" loading="eager" />
+      </figure>
+    )}
+
+    <div class="prose prose-slate dark:prose-invert max-w-none" set:html={before} />
+
+    <AdSlot slot="in-article" class="my-8" />
+
+    {after && (
+      <div class="prose prose-slate dark:prose-invert max-w-none" set:html={after} />
+    )}
+
+    <!-- Per-article Reader FAQ (from any AI tier rewrite) + FAQPage schema -->
+    <ArticleFaq items={articleFaqItems} />
+
+    <!-- Fallback Fact-Check card when no generated FAQ is present -->
+    {articleFaqItems.length < 2 && (
+      <section class="my-8 not-prose rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-5">
+        <h2 class="text-sm font-bold text-slate-900 dark:text-white mb-2">Story Fact-Check & Key Insights FAQ</h2>
+        <p class="text-xs text-slate-600 dark:text-slate-400">
+          This report was synthesised from wire sources. Always cross-check primary outlets for the latest updates.
+        </p>
+        <script is:inline type="application/ld+json" set:html={JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: [
+            {
+              '@type': 'Question',
+              name: 'What is the main development in this story?',
+              acceptedAnswer: { '@type': 'Answer', text: article.summary || article.title },
+            },
+            {
+              '@type': 'Question',
+              name: 'Where can I verify this report?',
+              acceptedAnswer: { '@type': 'Answer', text: article.source_name ? `Cross-check with ${article.source_name} and other primary Nigerian outlets.` : 'Cross-check with primary Nigerian news outlets.' },
+            },
+          ],
+        })} />
+      </section>
+    )}
+
+    <ShareBar url={pageUrl} title={pageTitle} class="my-8" />
+
+    <ArticleComments articleId={article.id} />
+
+    {related && related.length > 0 && (
+      <section class="mt-10">
+        <h2 class="text-lg font-bold mb-4 text-slate-900 dark:text-white">Related</h2>
+        <ul class="space-y-3">
+          {related.map((r: any) => (
+            <li>
+              <a href={`/news/${r.slug}`} class="text-emerald-600 dark:text-emerald-400 hover:underline font-medium">{r.title}</a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </article>
+</Layout>
