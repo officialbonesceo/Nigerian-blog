@@ -1,0 +1,284 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import StickmanStudio from '../../../components/StickmanStudio.astro';
+import { getD1, getSiteSettings } from '../../../lib/runtime-db';
+import { verifyAdminToken, getEnvSecret } from '../../../lib/auth';
+import { NYSC_IMO_RESCUE_PACKAGE, BROADCAST_VOICE, BROADCAST_STUDIO } from '../../../lib/broadcast-packages/nysc-imo-rescue-2026';
+
+export const prerender = false;
+
+const db = getD1(Astro.locals);
+const cookie = Astro.request.headers.get('cookie') || '';
+const authHeader = Astro.request.headers.get('authorization') || '';
+const url = new URL(Astro.request.url);
+const queryToken = url.searchParams.get('token') || '';
+
+let token = '';
+const match = cookie.match(/bonesceo_session=([^;]+)/);
+if (match) token = match[1];
+else if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7).trim();
+else if (queryToken) token = queryToken;
+
+const siteSettings = await getSiteSettings(db);
+const secretKey =
+  getEnvSecret(Astro.locals, 'ADMIN_SECRET_KEY', 'admin_secret_key', 'SECRET_KEY') ||
+  siteSettings.admin_secret_key ||
+  '9jaBeacon_bonesceo_secret_key_2026_super_secure';
+
+const tokenVerification = token ? verifyAdminToken(token, secretKey) : { valid: false };
+if (!tokenVerification.valid && !cookie.includes('bonesceo_session=') && !queryToken) {
+  return Astro.redirect('/bonesceo/admin/login', 302);
+}
+
+if (queryToken && tokenVerification.valid) {
+  const isHttps =
+    Astro.request.url.startsWith('https://') ||
+    Astro.request.headers.get('x-forwarded-proto') === 'https';
+  Astro.response.headers.set(
+    'Set-Cookie',
+    `bonesceo_session=${queryToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`
+  );
+}
+
+const pkg = NYSC_IMO_RESCUE_PACKAGE;
+const fullScript = pkg.segments.map((s) => s.voiceover).filter(Boolean).join(' ');
+---
+
+<Layout title="Broadcast Desk — 9jaBeacon" activeNav="menu" isWideLayout={true}>
+  <div class="max-w-7xl mx-auto space-y-6 pb-20">
+    <!-- Header -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-500 text-[10px] font-black uppercase tracking-widest font-mono mb-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+          Production Package · Ready to Render
+        </div>
+        <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+          Broadcast Desk — Episode Package
+        </h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+          Full 60s desk brief matching channel package format (logo → anchor → visual → data → map → summary → outro).
+          <span class="text-amber-600 dark:text-amber-400 font-semibold">Interview / street segment excluded</span> by design.
+        </p>
+      </div>
+      <a
+        href="/bonesceo/admin"
+        class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline shrink-0"
+      >
+        &larr; Command Hub
+      </a>
+    </div>
+
+    <!-- Episode meta strip -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div class="p-4 rounded-2xl bg-slate-950 text-white border border-slate-800">
+        <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Story</div>
+        <div class="text-sm font-bold mt-1 leading-snug">{pkg.article.title}</div>
+        <a href={pkg.article.url} target="_blank" rel="noopener" class="text-[10px] text-sky-400 hover:underline mt-2 inline-block">Open article →</a>
+      </div>
+      <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Voice (locked)</div>
+        <div class="text-sm font-black text-slate-900 dark:text-white mt-1 font-mono">{BROADCAST_VOICE.voice}</div>
+        <div class="text-[11px] text-slate-500 mt-1">Edge TTS · {BROADCAST_VOICE.style}</div>
+        <div class="text-[10px] text-slate-400 mt-1">Fallback: {BROADCAST_VOICE.voiceFallback}</div>
+      </div>
+      <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Studio look</div>
+        <div class="text-sm font-bold text-slate-900 dark:text-white mt-1">{BROADCAST_STUDIO.look}</div>
+        <div class="flex gap-1.5 mt-2">
+          <span class="w-4 h-4 rounded" style={`background:${BROADCAST_STUDIO.palette.bg}`}></span>
+          <span class="w-4 h-4 rounded" style={`background:${BROADCAST_STUDIO.palette.accent}`}></span>
+          <span class="w-4 h-4 rounded" style={`background:${BROADCAST_STUDIO.palette.lowerThirdBlue}`}></span>
+          <span class="w-4 h-4 rounded bg-red-600"></span>
+        </div>
+      </div>
+      <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Duration / Format</div>
+        <div class="text-sm font-black text-slate-900 dark:text-white mt-1">{pkg.totalDurationSec}s · {pkg.format}</div>
+        <div class="text-[11px] text-slate-500 mt-1">16:9 master + 9:16 shorts crop</div>
+      </div>
+    </div>
+
+    <!-- Storyboard grid (screenshot-style, no interview) -->
+    <div>
+      <h2 class="text-sm font-black text-slate-900 dark:text-white mb-3 uppercase tracking-wide">
+        Storyboard · {pkg.segments.length} segments
+      </h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {pkg.segments.map((seg) => (
+          <div class="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 text-white shadow-lg flex flex-col">
+            <div class="px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-2">
+              <span class="text-[11px] font-bold text-sky-300">{seg.title}</span>
+              <span class="text-[10px] font-mono text-slate-400">{seg.startSec}–{seg.endSec}s</span>
+            </div>
+            <div class="relative aspect-video bg-gradient-to-br from-slate-900 via-blue-950 to-slate-950 p-3 flex flex-col justify-between">
+              <div class="flex justify-between items-start">
+                <span class="text-[9px] font-black tracking-widest text-white/80">9JA BEACON</span>
+                {seg.stage !== 'logo' && seg.stage !== 'outro' && (
+                  <span class="px-1.5 py-0.5 rounded text-[8px] font-black bg-red-600 text-white">LIVE</span>
+                )}
+              </div>
+              <div class="flex-1 flex items-center justify-center">
+                {seg.stage === 'logo' || seg.stage === 'outro' ? (
+                  <div class="text-center">
+                    <div class="text-2xl font-black tracking-tight">
+                      9JA<span class="bg-red-600 px-1.5 ml-0.5 rounded-sm">BEACON</span>
+                    </div>
+                    <div class="text-[9px] text-slate-400 mt-1 tracking-widest">REAL NEWS · REAL TIME · FOR YOU</div>
+                  </div>
+                ) : seg.stage === 'data' && seg.graphics.dataCards ? (
+                  <div class="grid grid-cols-2 gap-1.5 w-full max-w-[220px]">
+                    {seg.graphics.dataCards.map((c) => (
+                      <div class="bg-slate-900/90 border border-slate-700 rounded-lg p-2 text-center">
+                        <div class="text-sm font-black text-sky-300">{c.value}</div>
+                        <div class="text-[8px] text-slate-400 uppercase">{c.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : seg.stage === 'map' ? (
+                  <div class="text-center space-y-1">
+                    <div class="text-[10px] font-bold text-sky-200">IMO → IBADAN</div>
+                    <div class="text-[9px] text-slate-400">{seg.graphics.mapCaption}</div>
+                  </div>
+                ) : (
+                  <div class="text-[10px] text-slate-500 font-mono">STICKMAN · {seg.stickman.armPose}</div>
+                )}
+              </div>
+              {(seg.graphics.breakingBar || seg.graphics.headline) && (
+                <div class="space-y-0.5">
+                  {seg.graphics.breakingBar && (
+                    <div class="inline-block px-2 py-0.5 bg-red-600 text-[9px] font-black uppercase">{seg.graphics.breakingBar}</div>
+                  )}
+                  {seg.graphics.headline && (
+                    <div class="bg-blue-900/95 px-2 py-1 text-[10px] font-bold leading-tight">{seg.graphics.headline}</div>
+                  )}
+                  {seg.graphics.subhead && (
+                    <div class="bg-slate-900/90 px-2 py-0.5 text-[8px] text-slate-300">{seg.graphics.subhead}</div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div class="p-3 border-t border-slate-800 space-y-2 flex-1">
+              <div class="flex flex-wrap gap-1">
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-[9px] font-mono">desk:{seg.stickman.desk ? 'on' : 'off'}</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-[9px] font-mono">{seg.stickman.armPose}</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-[9px] font-mono">{seg.stickman.expression}</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-[9px] font-mono">{seg.stickman.gaze}</span>
+              </div>
+              {seg.voiceover ? (
+                <p class="text-[11px] text-slate-300 leading-relaxed">"{seg.voiceover}"</p>
+              ) : (
+                <p class="text-[11px] text-slate-500 italic">Music / logo sting — no VO</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Full script + TTS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+        <h2 class="text-sm font-black text-slate-900 dark:text-white">Full voiceover script</h2>
+        <p class="text-[11px] text-slate-500">
+          Exact words for <span class="font-mono text-red-600">{BROADCAST_VOICE.voice}</span>. Copy into edge-tts or the render job.
+        </p>
+        <textarea
+          id="full-vo-script"
+          readonly
+          class="w-full h-48 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-xs leading-relaxed font-medium text-slate-800 dark:text-slate-200"
+        >{fullScript}</textarea>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            id="btn-copy-script"
+            class="px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold"
+          >
+            Copy script
+          </button>
+          <button
+            type="button"
+            id="btn-preview-tts"
+            class="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold"
+          >
+            Preview VO (browser TTS)
+          </button>
+          <span class="text-[10px] text-slate-500 self-center">Browser preview ≠ Edge neural; production uses {BROADCAST_VOICE.voice}</span>
+        </div>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+        <h2 class="text-sm font-black text-slate-900 dark:text-white">YouTube metadata</h2>
+        <div class="space-y-2 text-xs">
+          <div>
+            <div class="text-[10px] font-bold text-slate-500 uppercase">Title</div>
+            <div class="font-semibold text-slate-900 dark:text-white">{pkg.youtube.title}</div>
+          </div>
+          <div>
+            <div class="text-[10px] font-bold text-slate-500 uppercase">Shorts title</div>
+            <div class="font-semibold text-slate-900 dark:text-white">{pkg.youtube.shortsTitle}</div>
+          </div>
+          <div>
+            <div class="text-[10px] font-bold text-slate-500 uppercase">Description</div>
+            <pre class="mt-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 text-[11px] whitespace-pre-wrap text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">{pkg.youtube.description}</pre>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            {pkg.youtube.tags.map((t) => (
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-medium">{t}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stickman workbench for live pose check -->
+    <div class="space-y-3">
+      <h2 class="text-sm font-black text-slate-900 dark:text-white">Stickman stage (live workbench)</h2>
+      <p class="text-[11px] text-slate-500">
+        Use desk-rest, gesture, point-right, wave to match the storyboard cues above. Production render will drive these from the package timeline.
+      </p>
+      <StickmanStudio />
+    </div>
+
+    <!-- Edge TTS CLI hint -->
+    <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+      <div class="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-2">Production TTS command (Edge)</div>
+      <pre class="text-[11px] font-mono overflow-x-auto text-slate-800 dark:text-slate-200">{`edge-tts --voice ${BROADCAST_VOICE.voice} --rate=${BROADCAST_VOICE.rate} --write-media nysc-imo-rescue.mp3 --text "${fullScript.slice(0, 80)}…"`}</pre>
+    </div>
+  </div>
+</Layout>
+
+<script is:inline>
+  document.getElementById('btn-copy-script')?.addEventListener('click', function () {
+    var ta = document.getElementById('full-vo-script');
+    if (!ta) return;
+    navigator.clipboard.writeText(ta.value).then(function () {
+      var b = document.getElementById('btn-copy-script');
+      if (b) {
+        b.textContent = 'Copied';
+        setTimeout(function () {
+          b.textContent = 'Copy script';
+        }, 1500);
+      }
+    });
+  });
+
+  document.getElementById('btn-preview-tts')?.addEventListener('click', function () {
+    var ta = document.getElementById('full-vo-script');
+    if (!ta || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(ta.value);
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    var voices = window.speechSynthesis.getVoices();
+    var ng = voices.find(function (v) {
+      return /en-NG|Nigeria|Ezinne/i.test(v.name + v.lang);
+    });
+    var gb = voices.find(function (v) {
+      return /en-GB|British/i.test(v.lang) && /female|female|samantha|susan|siri/i.test(v.name);
+    });
+    if (ng) u.voice = ng;
+    else if (gb) u.voice = gb;
+    window.speechSynthesis.speak(u);
+  });
+</script>
