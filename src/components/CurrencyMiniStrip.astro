@@ -1,13 +1,14 @@
 ---
 /**
- * Low-Profile Compact Daily Currency Trends Strip
- * Placed in the bottom section of the homepage.
- * Features verified live rates with automatic client-side updates.
+ * Compact Naira FX strip for homepage.
+ * Client refreshes from /api/market-rates; full desk lives at /market-rates.
  */
 import { getVerifiedMarketRates } from '../lib/market-rates';
 
 const marketData = await getVerifiedMarketRates();
-const primaryRates = marketData.rates.slice(0, 4); // USD, GBP, EUR, USDT
+const primaryRates = marketData.rates.filter((r) =>
+  ['usd', 'gbp', 'eur', 'usdt'].includes(r.id)
+);
 const nowStr = new Date().toLocaleTimeString('en-NG', {
   hour: '2-digit',
   minute: '2-digit',
@@ -18,45 +19,50 @@ const nowStr = new Date().toLocaleTimeString('en-NG', {
 
 <section
   id="currency-mini-strip"
-  aria-label="Daily Naira Exchange Rates & Currency Trends"
-  itemscope
-  itemtype="https://schema.org/FinancialService"
-  class="my-6 p-3 sm:p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs transition-colors"
+  aria-label="Daily Naira Exchange Rates"
+  class="my-4 p-2.5 sm:p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs"
 >
-  <meta itemprop="name" content="9jaBeacon Daily Naira FX & Currency Trends" />
-  <meta itemprop="currenciesAccepted" content="NGN, USD, GBP, EUR, USDT, CAD" />
-
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-    <!-- Left: Title & Quick Rate Pills -->
-    <div class="flex items-center gap-2.5 flex-wrap">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+    <div class="flex items-center gap-2 flex-wrap min-w-0">
       <div class="flex items-center gap-1.5 shrink-0">
-        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span class="text-xs font-black text-slate-900 dark:text-white font-mono tracking-tight">
-          Naira FX Trends
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[11px] font-black text-slate-900 dark:text-white font-mono tracking-tight">
+          Naira FX
         </span>
-        <span id="mini-strip-time" class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono">
+        <span
+          id="mini-strip-time"
+          class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono"
+        >
           {nowStr} WAT
         </span>
       </div>
 
-      <!-- Compact Rate Badges -->
       <div id="mini-strip-rates" class="flex items-center gap-1.5 flex-wrap">
         {primaryRates.map((r) => (
-          <div data-rate-code={r.id} class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-[11px] font-mono">
-            <span class="text-xs">{r.flag}</span>
-            <span class="font-bold text-slate-700 dark:text-slate-300">{r.id.toUpperCase()}:</span>
-            <span class="rate-val font-extrabold text-slate-900 dark:text-white">₦{Math.round(r.officialSell).toLocaleString()}</span>
+          <div
+            data-rate-code={r.id}
+            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-50 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-[10px] sm:text-[11px] font-mono"
+          >
+            <span class="text-[10px]" aria-hidden="true">{r.flag}</span>
+            <span class="font-bold text-slate-600 dark:text-slate-400">{r.id.toUpperCase()}</span>
+            <span class="rate-val font-extrabold text-slate-900 dark:text-white">
+              ₦{Math.round(r.officialSell).toLocaleString('en-US')}
+            </span>
+            {r.parallelSell != null && (
+              <span class="rate-par text-[9px] text-amber-600 dark:text-amber-400 font-semibold hidden sm:inline">
+                · ₦{Math.round(r.parallelSell).toLocaleString('en-US')}
+              </span>
+            )}
           </div>
         ))}
       </div>
     </div>
 
-    <!-- Right: High-Converting Button to Full Wire Page -->
     <a
       href="/market-rates"
-      class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs whitespace-nowrap active:scale-95 shrink-0"
+      class="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition shadow-xs whitespace-nowrap shrink-0 active:scale-95"
     >
-      <span>Explore All FX Rates</span>
+      <span>Full rates</span>
       <span aria-hidden="true">&rarr;</span>
     </a>
   </div>
@@ -64,34 +70,78 @@ const nowStr = new Date().toLocaleTimeString('en-NG', {
 
 <script is:inline>
   (function () {
-    function refreshMiniStrip() {
-      var strip = document.getElementById('currency-mini-strip');
-      if (!strip) return;
+    var REFRESH_MS = 45000;
+    var bound = false;
 
-      fetch('/api/market-rates', { cache: 'no-store' })
+    function fmt(n) {
+      return '₦' + Math.round(Number(n)).toLocaleString('en-US');
+    }
+
+    function lagosTime() {
+      try {
+        return (
+          new Date().toLocaleTimeString('en-NG', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Africa/Lagos',
+            hour12: true,
+          }) + ' WAT'
+        );
+      } catch (e) {
+        return new Date().toLocaleTimeString() + ' WAT';
+      }
+    }
+
+    function applyRates(data) {
+      var strip = document.getElementById('currency-mini-strip');
+      if (!strip || !data || !Array.isArray(data.rates)) return;
+
+      data.rates.forEach(function (r) {
+        var badge = strip.querySelector('[data-rate-code="' + r.id + '"]');
+        if (!badge) return;
+        var valEl = badge.querySelector('.rate-val');
+        if (valEl && r.officialSell != null) valEl.textContent = fmt(r.officialSell);
+        var parEl = badge.querySelector('.rate-par');
+        if (parEl && r.parallelSell != null) {
+          parEl.textContent = '· ' + fmt(r.parallelSell);
+        }
+      });
+
+      var timeEl = document.getElementById('mini-strip-time');
+      if (timeEl) timeEl.textContent = lagosTime();
+    }
+
+    function refreshMiniStrip() {
+      fetch('/api/market-rates', {
+        method: 'GET',
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+      })
         .then(function (res) {
-          return res.ok ? res.json() : null;
+          if (!res.ok) throw new Error('rates ' + res.status);
+          return res.json();
         })
         .then(function (data) {
-          if (!data || !data.success || !Array.isArray(data.rates)) return;
-          data.rates.forEach(function (r) {
-            var badge = strip.querySelector('[data-rate-code="' + r.id + '"]');
-            if (badge) {
-              var valEl = badge.querySelector('.rate-val');
-              if (valEl && r.officialSell) {
-                valEl.textContent = '₦' + Math.round(r.officialSell).toLocaleString();
-              }
-            }
-          });
+          if (data && data.success) applyRates(data);
         })
         .catch(function () {});
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', refreshMiniStrip);
-    } else {
+    function boot() {
+      if (!document.getElementById('currency-mini-strip')) return;
       refreshMiniStrip();
+      if (!bound) {
+        bound = true;
+        setInterval(refreshMiniStrip, REFRESH_MS);
+      }
     }
-    document.addEventListener('astro:page-load', refreshMiniStrip);
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', boot);
+    } else {
+      boot();
+    }
+    document.addEventListener('astro:page-load', boot);
   })();
 </script>
