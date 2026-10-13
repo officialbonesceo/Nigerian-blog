@@ -18,6 +18,7 @@ export function generateBaseSlug(title: string): string {
 
   if (clean.length <= 80) return clean;
 
+  // Section 7: Clean cutoff at word boundary without truncated words or hanging hyphens
   const sub = clean.slice(0, 85);
   const lastHyphen = sub.lastIndexOf('-');
   if (lastHyphen > 35) {
