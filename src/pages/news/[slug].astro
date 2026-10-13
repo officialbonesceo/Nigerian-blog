@@ -56,7 +56,6 @@ const displayReadingTime = article.reading_time_minutes && article.reading_time_
   : readingMinutes(estimatedWordCount);
 
 const matchedTopics = detectTopicsForArticle(article.title, formattedArticleContent, article.summary || '');
-const publisher = findPublisherByName(article.source_name || '');
 
 const structuredData = [
   {
@@ -103,8 +102,16 @@ const structuredData = [
       <span class="text-slate-700 dark:text-slate-300 truncate max-w-[180px] sm:max-w-xs">{article.title}</span>
     </div>
     <div class="flex items-center gap-2">
-      <BookmarkButton articleId={article.id} />
-      <BotVerifiedBadge />
+      <BookmarkButton article={{
+        id: article.id,
+        slug: article.slug,
+        title: article.title,
+        category_name: article.category_name,
+        image_url: imageUrl,
+        published_at: article.published_at,
+        reading_time_minutes: displayReadingTime,
+      }} />
+      <BotVerifiedBadge size="xs" />
     </div>
   </nav>
 
@@ -113,12 +120,17 @@ const structuredData = [
       {article.category_name && (
         <a href={`/category/${article.category_slug === 'money-hustle' ? 'business' : (article.category_slug || 'naija-news')}`} class="inline-block text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">{article.category_name}</a>
       )}
-      <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white leading-tight tracking-tight">{article.title}</h1>
+      <h1 class="article-headline text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white leading-tight tracking-tight">{article.title}</h1>
       {article.summary && (
-        <p class="mt-3 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">{article.summary}</p>
+        <p class="article-summary mt-3 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">{article.summary}</p>
       )}
       <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400">
-        {article.author_name && <span class="font-medium text-slate-700 dark:text-slate-300">{article.author_name}</span>}
+        {article.author_name && (
+          <span class="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+            {article.author_name}
+            <BotVerifiedBadge size="xs" />
+          </span>
+        )}
         {article.source_name && <span>via {article.source_name}</span>}
         {displayReadingTime && <span>{displayReadingTime} min read</span>}
         {article.published_at && <time datetime={article.published_at}>{new Date(article.published_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' })}</time>}
@@ -136,20 +148,24 @@ const structuredData = [
       </figure>
     )}
 
-    <ArticleAudioReader title={article.title} content={plainTextArticle} />
+    <ArticleAudioReader
+      title={article.title}
+      summary={article.summary || ''}
+      readingTimeMinutes={displayReadingTime}
+    />
 
     <div class="mt-6">
       {articleParts.lead && (
         <div id="article-content-body-lead" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]" set:html={articleParts.lead} />
       )}
 
-      {estimatedWordCount >= 200 && <AdSlot format="banner-300x250" />}
+      {estimatedWordCount >= 200 && <AdSlot format="banner-300x250" index={0} />}
 
       {articleParts.middle1 && (
         <div id="article-content-body-middle1" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4" set:html={articleParts.middle1} />
       )}
 
-      {estimatedWordCount > 450 && <AdSlot format="banner-300x250" />}
+      {estimatedWordCount > 450 && <AdSlot format="banner-300x250" index={1} />}
 
       {articleParts.middle2 && (
         <div id="article-content-body-middle2" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4" set:html={articleParts.middle2} />
@@ -169,7 +185,9 @@ const structuredData = [
       </section>
     )}
 
-    <ShareBar url={canonicalUrl} title={article.title} class="my-8" />
+    <div class="my-8">
+      <ShareBar title={article.title} url={canonicalUrl} summary={article.summary || ''} imageUrl={imageUrl} />
+    </div>
 
     {matchedTopics && matchedTopics.length > 0 && (
       <div class="flex flex-wrap gap-2 my-6">
@@ -179,7 +197,7 @@ const structuredData = [
       </div>
     )}
 
-    <ArticleComments articleId={article.id} />
+    <ArticleComments articleSlug={article.slug} articleTitle={article.title} />
 
     {relatedArticles && relatedArticles.length > 0 && (
       <section class="mt-10 pt-8 border-t border-slate-200 dark:border-slate-800">
