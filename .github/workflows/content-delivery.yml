@@ -10,83 +10,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  restore-stickman:
-    name: Restore StickmanStudio
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Restore from good commit + walk patches
-        run: |
-          set -eux
-          git show 6c04d9199a24f0597ba746cd79da940bad1267b3:src/components/StickmanStudio.astro > src/components/StickmanStudio.astro
-          python3 -c "
-          path='src/components/StickmanStudio.astro'
-          text=open(path).read()
-          text=text.replace('walkAnimInterval: null,','walkAnimInterval: null,\\n      walkBob: 0,\\n      preferDeskAfterWalk: false,',1)
-          old=\"\"\"      } else {
-        // When walking starts, switch to full screen legs if behind desk was on
-        if (legsStand) legsStand.classList.add('hidden');
-        if (legsWalk) legsWalk.classList.remove('hidden');
-
-        // Hide other arm poses and activate dynamic walking arms
-        document.querySelectorAll('.sm-arm-pose').forEach(el => el.classList.add('hidden'));
-        if (walkArmPose) walkArmPose.classList.remove('hidden');
-
-        startHumanWalkCycle();
-      }
-    };\"\"\"
-          new=\"\"\"      } else {
-        const legsSeated = document.getElementById('sm-legs-seated');
-        if (smState.isBehindDesk) {
-          smState.preferDeskAfterWalk = true;
-          setStickmanDeskMode(false);
-        }
-        if (legsStand) legsStand.classList.add('hidden');
-        if (legsSeated) legsSeated.classList.add('hidden');
-        if (legsWalk) legsWalk.classList.remove('hidden');
-        document.querySelectorAll('.sm-arm-pose').forEach(el => el.classList.add('hidden'));
-        if (walkArmPose) walkArmPose.classList.remove('hidden');
-        startHumanWalkCycle();
-      }
-    };\"\"\"
-          if old in text:
-            text=text.replace(old,new)
-            print('walk patched')
-          open(path,'w').write(text)
-          print(len(text))
-          "
-      - name: Commit restored StickmanStudio
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/components/StickmanStudio.astro
-          if git diff --cached --quiet; then echo 'no changes'; else
-            git commit -m "fix(stickman): restore full studio + auto-stand on walk"
-            git push
-          fi
-
   content-sync:
     name: Content Delivery & Upstream Sync
     runs-on: ubuntu-latest
     if: github.event_name != 'push'
     permissions:
       contents: read
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
       - name: Setup Node.js Runtime
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          check-latest: false
+
       - name: Install Runtime Packages
         run: npm install --no-audit --no-fund
+
       - name: Verify Upstream Credentials
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -99,8 +44,10 @@ jobs:
           test -n "$TOKEN" || { echo 'Missing Cloudflare API Token'; exit 1; }
           test -n "$CLOUDFLARE_D1_DATABASE_ID" || { echo 'Missing CLOUDFLARE_D1_DATABASE_ID'; exit 1; }
           echo 'Credentials verified.'
+
       - name: Prepare Execution Context
         run: npx tsx scripts/prepare-env.ts
+
       - name: Synchronize Local Cache with Upstream
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -111,6 +58,7 @@ jobs:
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'
         run: npx tsx scripts/sync-cache.ts
+
       - name: Execute Scheduled Content Worker
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -156,6 +104,7 @@ jobs:
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'
         run: npx tsx scripts/content-worker.ts
+
       - name: Push Processed Updates to Upstream Datastore
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -165,6 +114,7 @@ jobs:
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'
         run: npx tsx scripts/sync-upstream.ts
+
       - name: Verify Workspace Cleanliness
         run: |
           if git ls-files --error-unmatch 9jabeacon.db >/dev/null 2>&1; then
