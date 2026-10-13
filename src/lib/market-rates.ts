@@ -1,16 +1,14 @@
 /**
  * 9jaBeacon Daily Currency & Market Rates Engine
- * 
- * Tracks recurring high-volume Nigerian search trends:
- * 1. USD/NGN (Official NAFEM & Parallel Market)
- * 2. GBP/NGN (British Pound)
- * 3. EUR/NGN (Euro)
- * 4. CAD/NGN (Canadian Dollar)
- * 5. USDT/NGN (Crypto P2P Dollar)
- * 6. PMS Petrol (₦/Litre)
- * 7. Gold (₦/Gram)
- * 
- * Provides live client-side verification without page redirection.
+ *
+ * Multi-source live FX:
+ * 1. open.er-api.com (no key)
+ * 2. api.exchangerate-api.com (no key)
+ * 3. fawazahmed0 currency-api via jsDelivr CDN (no key, includes USDT)
+ *
+ * Official = median of successful interbank feeds.
+ * Parallel = official + street premium (BDC/Aboki-style spread).
+ * USDT = live from fawazahmed0 when available.
  */
 
 export interface CurrencyRateItem {
@@ -23,7 +21,7 @@ export interface CurrencyRateItem {
   officialSell: number;
   parallelBuy?: number;
   parallelSell?: number;
-  change24h: number; // percentage, e.g. +0.45 or -0.80
+  change24h: number;
   unit: string;
   trend: 'up' | 'down' | 'stable';
   searchVolumeRank: number;
@@ -38,7 +36,7 @@ export interface MarketRatesResponse {
   rates: CurrencyRateItem[];
 }
 
-// Current benchmark rates aligned with official CBN autonomous window & market surveys
+/** Fallback only when every live feed fails (kept near current market). */
 export const DEFAULT_MARKET_RATES: CurrencyRateItem[] = [
   {
     id: 'usd',
@@ -46,15 +44,15 @@ export const DEFAULT_MARKET_RATES: CurrencyRateItem[] = [
     name: 'US Dollar',
     symbol: '$',
     flag: '🇺🇸',
-    officialBuy: 1326.50,
-    officialSell: 1332.00,
-    parallelBuy: 1375.00,
-    parallelSell: 1390.00,
-    change24h: -0.25,
+    officialBuy: 1325,
+    officialSell: 1332,
+    parallelBuy: 1405,
+    parallelSell: 1425,
+    change24h: -0.15,
     unit: '₦/USD',
     trend: 'down',
     searchVolumeRank: 1,
-    notes: 'Official NAFEM Autonomous Rate & BDC Street Index',
+    notes: 'Official interbank / NAFEM-style wire & BDC street index',
   },
   {
     id: 'gbp',
@@ -62,15 +60,15 @@ export const DEFAULT_MARKET_RATES: CurrencyRateItem[] = [
     name: 'British Pound',
     symbol: '£',
     flag: '🇬🇧',
-    officialBuy: 1750.00,
-    officialSell: 1765.00,
-    parallelBuy: 1810.00,
-    parallelSell: 1830.00,
-    change24h: +0.20,
+    officialBuy: 1750,
+    officialSell: 1765,
+    parallelBuy: 1850,
+    parallelSell: 1880,
+    change24h: 0.1,
     unit: '₦/GBP',
     trend: 'up',
     searchVolumeRank: 2,
-    notes: 'UK Education, Visa Inflows & Commercial Transfers',
+    notes: 'UK education, visa & commercial transfers',
   },
   {
     id: 'eur',
@@ -78,15 +76,15 @@ export const DEFAULT_MARKET_RATES: CurrencyRateItem[] = [
     name: 'Euro',
     symbol: '€',
     flag: '🇪🇺',
-    officialBuy: 1482.00,
-    officialSell: 1494.00,
-    parallelBuy: 1530.00,
-    parallelSell: 1550.00,
-    change24h: -0.15,
+    officialBuy: 1480,
+    officialSell: 1495,
+    parallelBuy: 1565,
+    parallelSell: 1590,
+    change24h: -0.1,
     unit: '₦/EUR',
     trend: 'down',
     searchVolumeRank: 3,
-    notes: 'Schengen Corporate Settlement & European Trade',
+    notes: 'Schengen settlement & European trade',
   },
   {
     id: 'cad',
@@ -94,31 +92,31 @@ export const DEFAULT_MARKET_RATES: CurrencyRateItem[] = [
     name: 'Canadian Dollar',
     symbol: 'C$',
     flag: '🇨🇦',
-    officialBuy: 930.00,
-    officialSell: 942.00,
-    parallelBuy: 980.00,
-    parallelSell: 998.00,
-    change24h: +0.40,
+    officialBuy: 925,
+    officialSell: 940,
+    parallelBuy: 990,
+    parallelSell: 1010,
+    change24h: 0.2,
     unit: '₦/CAD',
     trend: 'up',
     searchVolumeRank: 4,
-    notes: 'Immigration & International Study Transfers',
+    notes: 'Immigration & study transfers',
   },
   {
     id: 'usdt',
     pair: 'USDT / NGN',
-    name: 'Tether Crypto Dollar',
+    name: 'Tether (P2P Dollar)',
     symbol: '₮',
     flag: '🌐',
-    officialBuy: 1378.00,
-    officialSell: 1385.00,
-    parallelBuy: 1380.00,
-    parallelSell: 1392.00,
-    change24h: +0.10,
+    officialBuy: 1400,
+    officialSell: 1415,
+    parallelBuy: 1405,
+    parallelSell: 1425,
+    change24h: 0.05,
     unit: '₦/USDT',
     trend: 'stable',
     searchVolumeRank: 5,
-    notes: 'Peer-to-Peer (P2P) Digital Remittance Benchmark',
+    notes: 'P2P digital remittance benchmark',
   },
   {
     id: 'fuel',
@@ -126,13 +124,13 @@ export const DEFAULT_MARKET_RATES: CurrencyRateItem[] = [
     name: 'Premium Motor Spirit (Petrol)',
     symbol: '⛽',
     flag: '🇳🇬',
-    officialBuy: 998.00,
-    officialSell: 1030.00,
-    change24h: 0.00,
+    officialBuy: 998,
+    officialSell: 1030,
+    change24h: 0,
     unit: '₦/Litre',
     trend: 'stable',
     searchVolumeRank: 6,
-    notes: 'Average Retail Station Pump Benchmark (Lagos/Abuja)',
+    notes: 'Average retail pump (Lagos/Abuja)',
   },
   {
     id: 'gold',
@@ -140,138 +138,186 @@ export const DEFAULT_MARKET_RATES: CurrencyRateItem[] = [
     name: 'Fine Gold (24K)',
     symbol: '🪙',
     flag: '✨',
-    officialBuy: 128500.00,
-    officialSell: 131200.00,
-    change24h: +0.85,
+    officialBuy: 128500,
+    officialSell: 131200,
+    change24h: 0.5,
     unit: '₦/Gram',
     trend: 'up',
     searchVolumeRank: 7,
-    notes: 'Physical Bullion & Inflation Hedge Asset Benchmark',
+    notes: 'Physical bullion benchmark',
   },
 ];
 
+function median(nums: number[]): number | undefined {
+  const clean = nums.filter((n) => typeof n === 'number' && isFinite(n) && n > 0).sort((a, b) => a - b);
+  if (!clean.length) return undefined;
+  const mid = Math.floor(clean.length / 2);
+  return clean.length % 2 ? clean[mid] : (clean[mid - 1] + clean[mid]) / 2;
+}
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+async function fetchJson(url: string, timeoutMs = 4000): Promise<any | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': '9jaBeacon-Rates/1.0' },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Fetches verified market rates with live FX rate verification.
+ * Live multi-source FX verification. Client strip polls /api/market-rates every 45s.
  */
 export async function getVerifiedMarketRates(): Promise<MarketRatesResponse> {
-  let liveRates = [...DEFAULT_MARKET_RATES];
-  let liveSource = 'Central Bank of Nigeria (NAFEM) & Autonomous Wire';
+  let liveRates = DEFAULT_MARKET_RATES.map((r) => ({ ...r }));
+  const sourceTags: string[] = [];
 
-  try {
-    let ngnRate: number | undefined;
-    let gbpRate: number | undefined;
-    let eurRate: number | undefined;
-    let cadRate: number | undefined;
+  const ngnSamples: number[] = [];
+  let gbpPerUsd: number | undefined;
+  let eurPerUsd: number | undefined;
+  let cadPerUsd: number | undefined;
+  let usdtNgn: number | undefined;
 
-    // 1. Primary Live Feed: Open Exchange Rates public mirror
-    try {
-      const res = await fetch('https://open.er-api.com/v6/latest/USD', {
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(3500),
-      });
+  // Parallel fetches for speed
+  const [erApi, exchangerateApi, fawazUsd, fawazUsdt] = await Promise.all([
+    fetchJson('https://open.er-api.com/v6/latest/USD'),
+    fetchJson('https://api.exchangerate-api.com/v4/latest/USD'),
+    fetchJson('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json'),
+    fetchJson('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usdt.json'),
+  ]);
 
-      if (res.ok) {
-        const data: any = await res.json();
-        ngnRate = data?.rates?.NGN;
-        gbpRate = data?.rates?.GBP;
-        eurRate = data?.rates?.EUR;
-        cadRate = data?.rates?.CAD;
+  if (erApi?.rates?.NGN && erApi.rates.NGN > 500) {
+    ngnSamples.push(Number(erApi.rates.NGN));
+    sourceTags.push('open.er-api');
+    if (erApi.rates.GBP) gbpPerUsd = Number(erApi.rates.GBP);
+    if (erApi.rates.EUR) eurPerUsd = Number(erApi.rates.EUR);
+    if (erApi.rates.CAD) cadPerUsd = Number(erApi.rates.CAD);
+  }
+
+  if (exchangerateApi?.rates?.NGN && exchangerateApi.rates.NGN > 500) {
+    ngnSamples.push(Number(exchangerateApi.rates.NGN));
+    sourceTags.push('exchangerate-api');
+    if (!gbpPerUsd && exchangerateApi.rates.GBP) gbpPerUsd = Number(exchangerateApi.rates.GBP);
+    if (!eurPerUsd && exchangerateApi.rates.EUR) eurPerUsd = Number(exchangerateApi.rates.EUR);
+    if (!cadPerUsd && exchangerateApi.rates.CAD) cadPerUsd = Number(exchangerateApi.rates.CAD);
+  }
+
+  const fawazNgn = fawazUsd?.usd?.ngn;
+  if (typeof fawazNgn === 'number' && fawazNgn > 500) {
+    ngnSamples.push(fawazNgn);
+    sourceTags.push('fawazahmed0');
+    if (!gbpPerUsd && fawazUsd.usd.gbp) gbpPerUsd = Number(fawazUsd.usd.gbp);
+    if (!eurPerUsd && fawazUsd.usd.eur) eurPerUsd = Number(fawazUsd.usd.eur);
+    if (!cadPerUsd && fawazUsd.usd.cad) cadPerUsd = Number(fawazUsd.usd.cad);
+  }
+
+  const fUsdtNgn = fawazUsdt?.usdt?.ngn;
+  if (typeof fUsdtNgn === 'number' && fUsdtNgn > 500) {
+    usdtNgn = fUsdtNgn;
+    if (!sourceTags.includes('fawazahmed0')) sourceTags.push('fawazahmed0');
+  }
+
+  const ngnRate = median(ngnSamples);
+
+  // Street/BDC parallel typically trades at a premium over interbank wire
+  const PARALLEL_BUY_PREMIUM = 75;
+  const PARALLEL_SELL_PREMIUM = 95;
+
+  if (typeof ngnRate === 'number' && ngnRate > 500) {
+    const roundedNgn = round1(ngnRate);
+
+    liveRates = liveRates.map((item) => {
+      if (item.id === 'usd') {
+        return {
+          ...item,
+          officialBuy: Math.round(roundedNgn - 4),
+          officialSell: Math.round(roundedNgn + 2),
+          parallelBuy: Math.round(roundedNgn + PARALLEL_BUY_PREMIUM),
+          parallelSell: Math.round(roundedNgn + PARALLEL_SELL_PREMIUM),
+        };
       }
-    } catch {}
-
-    // 2. High-availability Fallback: ExchangeRate-API
-    if (!ngnRate) {
-      try {
-        const res2 = await fetch('https://api.exchangerate-api.com/v4/latest/USD', {
-          headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(3500),
-        });
-        if (res2.ok) {
-          const data2: any = await res2.json();
-          ngnRate = data2?.rates?.NGN;
-          gbpRate = data2?.rates?.GBP;
-          eurRate = data2?.rates?.EUR;
-          cadRate = data2?.rates?.CAD;
-        }
-      } catch {}
-    }
-
-    if (typeof ngnRate === 'number' && ngnRate > 1000) {
-      liveSource = 'CBN NAFEM Interbank Wire & Verified Autonomous FX Feeds';
-      const roundedNgn = Math.round(ngnRate * 10) / 10;
-      
-      // Parallel market street premium (~45 to 60 Naira over interbank)
-      const streetPremiumBuy = 45;
-      const streetPremiumSell = 59;
-      
-      liveRates = liveRates.map((item) => {
-        if (item.id === 'usd') {
-          return {
+      if (item.id === 'gbp' && gbpPerUsd && gbpPerUsd > 0) {
+        const calculated = round1(ngnRate / gbpPerUsd);
+        return {
+          ...item,
+          officialBuy: Math.round(calculated - 8),
+          officialSell: Math.round(calculated + 5),
+          parallelBuy: Math.round(calculated + PARALLEL_BUY_PREMIUM),
+          parallelSell: Math.round(calculated + PARALLEL_SELL_PREMIUM + 10),
+        };
+      }
+      if (item.id === 'eur' && eurPerUsd && eurPerUsd > 0) {
+        const calculated = round1(ngnRate / eurPerUsd);
+        return {
+          ...item,
+          officialBuy: Math.round(calculated - 6),
+          officialSell: Math.round(calculated + 4),
+          parallelBuy: Math.round(calculated + PARALLEL_BUY_PREMIUM - 5),
+          parallelSell: Math.round(calculated + PARALLEL_SELL_PREMIUM),
+        };
+      }
+      if (item.id === 'cad' && cadPerUsd && cadPerUsd > 0) {
+        const calculated = round1(ngnRate / cadPerUsd);
+        return {
+          ...item,
+          officialBuy: Math.round(calculated - 5),
+          officialSell: Math.round(calculated + 4),
+          parallelBuy: Math.round(calculated + PARALLEL_BUY_PREMIUM - 10),
+          parallelSell: Math.round(calculated + PARALLEL_SELL_PREMIUM - 5),
+        };
+      }
+      if (item.id === 'usdt') {
+        const base = typeof usdtNgn === 'number' ? usdtNgn : roundedNgn + PARALLEL_BUY_PREMIUM;
+        return {
+          ...item,
+          officialBuy: Math.round(base - 5),
+          officialSell: Math.round(base + 5),
+          parallelBuy: Math.round(base),
+          parallelSell: Math.round(base + 12),
+        };
+      }
+      return item;
+    });
+  } else if (typeof usdtNgn === 'number') {
+    // Partial: only USDT live
+    liveRates = liveRates.map((item) =>
+      item.id === 'usdt'
+        ? {
             ...item,
-            officialBuy: Math.round(roundedNgn - 4),
-            officialSell: Math.round(roundedNgn + 2),
-            parallelBuy: Math.round(roundedNgn + streetPremiumBuy),
-            parallelSell: Math.round(roundedNgn + streetPremiumSell),
-          };
-        }
-        if (item.id === 'gbp' && gbpRate) {
-          const calculatedGbp = Math.round((ngnRate / gbpRate) * 10) / 10;
-          return {
-            ...item,
-            officialBuy: Math.round(calculatedGbp - 8),
-            officialSell: Math.round(calculatedGbp + 5),
-            parallelBuy: Math.round(calculatedGbp + 45),
-            parallelSell: Math.round(calculatedGbp + 65),
-          };
-        }
-        if (item.id === 'eur' && eurRate) {
-          const calculatedEur = Math.round((ngnRate / eurRate) * 10) / 10;
-          return {
-            ...item,
-            officialBuy: Math.round(calculatedEur - 6),
-            officialSell: Math.round(calculatedEur + 4),
-            parallelBuy: Math.round(calculatedEur + 36),
-            parallelSell: Math.round(calculatedEur + 55),
-          };
-        }
-        if (item.id === 'cad' && cadRate) {
-          const calculatedCad = Math.round((ngnRate / cadRate) * 10) / 10;
-          return {
-            ...item,
-            officialBuy: Math.round(calculatedCad - 5),
-            officialSell: Math.round(calculatedCad + 4),
-            parallelBuy: Math.round(calculatedCad + 35),
-            parallelSell: Math.round(calculatedCad + 50),
-          };
-        }
-        if (item.id === 'usdt') {
-          return {
-            ...item,
-            officialBuy: Math.round(roundedNgn + streetPremiumBuy - 3),
-            officialSell: Math.round(roundedNgn + streetPremiumSell - 2),
-            parallelBuy: Math.round(roundedNgn + streetPremiumBuy),
-            parallelSell: Math.round(roundedNgn + streetPremiumSell + 2),
-          };
-        }
-        return item;
-      });
-    }
-  } catch {
-    // If public API is slow or throttled, default to verified robust benchmarks
+            officialBuy: Math.round(usdtNgn - 5),
+            officialSell: Math.round(usdtNgn + 5),
+            parallelBuy: Math.round(usdtNgn),
+            parallelSell: Math.round(usdtNgn + 12),
+          }
+        : item
+    );
   }
 
   const now = new Date();
-  const timeFormatted = now.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Africa/Lagos',
-  }) + ' WAT';
+  const timeFormatted =
+    now.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Africa/Lagos',
+    }) + ' WAT';
+
+  const liveSource =
+    sourceTags.length > 0
+      ? `Live multi-source FX (${sourceTags.join(' + ')}) · parallel = interbank + BDC premium`
+      : 'Cached benchmark (live FX feeds unreachable)';
 
   return {
     timestamp: now.toISOString(),
     timestampFormatted: `${now.toISOString().split('T')[0]} at ${timeFormatted}`,
     source: liveSource,
-    updateFrequency: 'Updated 4x Daily (Morning Open, Mid-Day, Closing Fix, Night Wire)',
+    updateFrequency: 'Client refresh every 45s · server multi-source median',
     rates: liveRates,
   };
 }
