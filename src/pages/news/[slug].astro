@@ -1,116 +1,194 @@
 ---
-/**
- * Article page — FAQ extract before partition so Reader FAQ + FAQPage schema render.
- * Full page body restored from local artifacts/news-slug.astro in follow-up if needed.
- */
 import Layout from '../../layouts/Layout.astro';
-import { getArticleBySlug, getRelatedArticles, incrementViewCount } from '../../lib/runtime-db';
+import ArticleCard from '../../components/ArticleCard.astro';
+import BookmarkButton from '../../components/BookmarkButton.astro';
+import ShareBar from '../../components/ShareBar.astro';
+import AdSlot from '../../components/AdSlot.astro';
+import ArticleComments from '../../components/ArticleComments.astro';
+import ArticleAudioReader from '../../components/ArticleAudioReader.astro';
+import BotVerifiedBadge from '../../components/BotVerifiedBadge.astro';
+import { getD1, getArticleBySlug, getRelatedArticles, getSiteSettings } from '../../lib/runtime-db';
+import { DEFAULT_FALLBACK_IMAGE_URL } from '../../lib/fallback-image';
 import { cleanAndFormatArticleHtml, partitionArticleForAds } from '../../lib/content-formatter';
+import { readingMinutes } from '../../lib/editorial-pipeline';
+import { detectTopicsForArticle } from '../../lib/topics-data';
+import { findPublisherByName } from '../../lib/publishers-data';
 import { extractArticleFaq, stripArticleFaq } from '../../lib/article-faq';
 import ArticleFaq from '../../components/ArticleFaq.astro';
-import ShareBar from '../../components/ShareBar.astro';
-import ArticleComments from '../../components/ArticleComments.astro';
-import BookmarkButton from '../../components/BookmarkButton.astro';
-import AdSlot from '../../components/AdSlot.astro';
+
+export const prerender = false;
 
 const { slug } = Astro.params;
-if (!slug) {
-  return Astro.redirect('/404');
-}
+if (!slug) return Astro.redirect('/');
 
-const article = await getArticleBySlug(Astro.locals.runtime?.env?.DB, slug);
+const d1 = getD1(Astro.locals);
+const article = await getArticleBySlug(d1, slug);
 if (!article) {
-  return Astro.redirect('/404');
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"/><title>Story Not Found - 9jaBeacon</title><meta name="robots" content="noindex, follow"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" type="image/svg+xml" href="/favicon.svg"/></head><body style="background:#020617;color:#f8fafc;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;text-align:center;"><div style="max-width:440px;"><h1 style="font-size:22px;">Story Not Found</h1><p style="color:#94a3b8;font-size:14px;">The news report you requested may have moved or expired.</p><a href="/" style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:14px;">Return to Homepage</a></div></body></html>`, {
+    status: 404,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
 }
 
-// Per-article FAQ (embedded at end of content during ingest) — extract before clean so partition does not drop it
+if (article.slug && article.slug !== slug) {
+  return Astro.redirect(`/news/${article.slug}`, 301);
+}
+
+const [relatedArticles, siteSettings] = await Promise.all([
+  getRelatedArticles(d1, article.id, article.category_id, 5),
+  getSiteSettings(d1)
+]);
+
+const rawSiteUrl = (siteSettings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+const siteUrl = rawSiteUrl.startsWith('http') ? rawSiteUrl : `https://${rawSiteUrl}`;
+const canonicalUrl = `${siteUrl}/news/${article.slug}`;
+const imageUrl = article.image_url || DEFAULT_FALLBACK_IMAGE_URL;
+
 const articleFaqItems = extractArticleFaq(article.content);
 const contentWithoutFaq = stripArticleFaq(article.content);
+const formattedArticleContent = cleanAndFormatArticleHtml(contentWithoutFaq);
+const articleParts = partitionArticleForAds(formattedArticleContent);
 
-const formattedHtml = cleanAndFormatArticleHtml(contentWithoutFaq || '');
-const { before, after } = partitionArticleForAds(formattedHtml);
+const plainTextArticle = formattedArticleContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+const estimatedWordCount = plainTextArticle ? plainTextArticle.split(/\s+/).filter(Boolean).length : 300;
+const displayReadingTime = article.reading_time_minutes && article.reading_time_minutes > 0
+  ? article.reading_time_minutes
+  : readingMinutes(estimatedWordCount);
 
-try {
-  await incrementViewCount(Astro.locals.runtime?.env?.DB, article.id);
-} catch {}
+const matchedTopics = detectTopicsForArticle(article.title, formattedArticleContent, article.summary || '');
+const publisher = findPublisherByName(article.source_name || '');
 
-const related = await getRelatedArticles(Astro.locals.runtime?.env?.DB, article.id, article.category_id, 4).catch(() => []);
-const pageUrl = new URL(`/news/${slug}`, Astro.site || 'https://9jabeacon.com').href;
-const pageTitle = article.title || '9jaBeacon News';
-const pageDescription = article.summary || article.title || '';
+const structuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "headline": article.title,
+    "description": article.summary || article.title,
+    "image": imageUrl ? [imageUrl] : undefined,
+    "datePublished": article.published_at,
+    "dateModified": article.updated_at || article.published_at,
+    "author": { "@type": "Person", "name": article.author_name || "9jaBeacon Editorial" },
+    "publisher": {
+      "@type": "NewsMediaOrganization",
+      "name": siteSettings.site_name || "9jaBeacon",
+      "url": siteUrl,
+      "logo": { "@type": "ImageObject", "url": `${siteUrl}/favicon.svg` }
+    },
+    "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalUrl }
+  }
+];
 ---
 
-<Layout title={pageTitle} description={pageDescription}>
-  <article class="max-w-3xl mx-auto px-4 py-6">
+<Layout
+  title={`${article.title} - 9jaBeacon`}
+  description={article.summary || article.title}
+  image={imageUrl}
+  canonicalUrl={canonicalUrl}
+  article={{
+    publishedTime: article.published_at,
+    modifiedTime: article.updated_at,
+    author: article.author_name,
+    section: article.category_name,
+  }}
+  activeNav="home"
+>
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+
+  <nav class="flex flex-wrap items-center justify-between gap-2 py-2.5 mb-4 border-b border-slate-200 dark:border-slate-800 text-xs">
+    <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 overflow-x-auto whitespace-nowrap max-w-full">
+      <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400">Home</a>
+      <span>/</span>
+      <a href={`/category/${article.category_slug === 'money-hustle' ? 'business' : (article.category_slug || 'naija-news')}`} class="hover:text-emerald-600 dark:hover:text-emerald-400">{article.category_name || 'News'}</a>
+      <span>/</span>
+      <span class="text-slate-700 dark:text-slate-300 truncate max-w-[180px] sm:max-w-xs">{article.title}</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <BookmarkButton articleId={article.id} />
+      <BotVerifiedBadge />
+    </div>
+  </nav>
+
+  <article class="max-w-3xl mx-auto">
     <header class="mb-6">
-      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white leading-tight">{article.title}</h1>
-      {article.summary && (
-        <p class="mt-3 text-slate-600 dark:text-slate-300 text-base leading-relaxed">{article.summary}</p>
+      {article.category_name && (
+        <a href={`/category/${article.category_slug === 'money-hustle' ? 'business' : (article.category_slug || 'naija-news')}`} class="inline-block text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">{article.category_name}</a>
       )}
-      <div class="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-        {article.source_name && <span>{article.source_name}</span>}
-        {article.reading_time_minutes && <span>{article.reading_time_minutes} min read</span>}
-        <BookmarkButton articleId={article.id} />
+      <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white leading-tight tracking-tight">{article.title}</h1>
+      {article.summary && (
+        <p class="mt-3 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">{article.summary}</p>
+      )}
+      <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+        {article.author_name && <span class="font-medium text-slate-700 dark:text-slate-300">{article.author_name}</span>}
+        {article.source_name && <span>via {article.source_name}</span>}
+        {displayReadingTime && <span>{displayReadingTime} min read</span>}
+        {article.published_at && <time datetime={article.published_at}>{new Date(article.published_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' })}</time>}
       </div>
     </header>
 
-    {article.image_url && (
-      <figure class="mb-6 rounded-xl overflow-hidden">
-        <img src={article.image_url} alt={article.title} class="w-full h-auto object-cover" loading="eager" />
+    {imageUrl && (
+      <figure class="mb-6 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+        <img src={imageUrl} alt={article.title} class="w-full h-auto object-cover max-h-[420px]" loading="eager" />
+        {(article.image_caption || article.image_credit) && (
+          <figcaption class="px-3 py-2 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50">
+            {article.image_caption}{article.image_credit ? ` — ${article.image_credit}` : ''}
+          </figcaption>
+        )}
       </figure>
     )}
 
-    <div class="prose prose-slate dark:prose-invert max-w-none" set:html={before} />
+    <ArticleAudioReader title={article.title} content={plainTextArticle} />
 
-    <AdSlot slot="in-article" class="my-8" />
+    <div class="mt-6">
+      {articleParts.lead && (
+        <div id="article-content-body-lead" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]" set:html={articleParts.lead} />
+      )}
 
-    {after && (
-      <div class="prose prose-slate dark:prose-invert max-w-none" set:html={after} />
-    )}
+      {estimatedWordCount >= 200 && <AdSlot format="banner-300x250" />}
 
-    <!-- Per-article Reader FAQ (from any AI tier rewrite) + FAQPage schema -->
+      {articleParts.middle1 && (
+        <div id="article-content-body-middle1" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4" set:html={articleParts.middle1} />
+      )}
+
+      {estimatedWordCount > 450 && <AdSlot format="banner-300x250" />}
+
+      {articleParts.middle2 && (
+        <div id="article-content-body-middle2" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4" set:html={articleParts.middle2} />
+      )}
+
+      {articleParts.middle3 && (
+        <div id="article-content-body-middle3" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4" set:html={articleParts.middle3} />
+      )}
+    </div>
+
     <ArticleFaq items={articleFaqItems} />
 
-    <!-- Fallback Fact-Check card when no generated FAQ is present -->
     {articleFaqItems.length < 2 && (
       <section class="my-8 not-prose rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-5">
-        <h2 class="text-sm font-bold text-slate-900 dark:text-white mb-2">Story Fact-Check & Key Insights FAQ</h2>
-        <p class="text-xs text-slate-600 dark:text-slate-400">
-          This report was synthesised from wire sources. Always cross-check primary outlets for the latest updates.
-        </p>
-        <script is:inline type="application/ld+json" set:html={JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'FAQPage',
-          mainEntity: [
-            {
-              '@type': 'Question',
-              name: 'What is the main development in this story?',
-              acceptedAnswer: { '@type': 'Answer', text: article.summary || article.title },
-            },
-            {
-              '@type': 'Question',
-              name: 'Where can I verify this report?',
-              acceptedAnswer: { '@type': 'Answer', text: article.source_name ? `Cross-check with ${article.source_name} and other primary Nigerian outlets.` : 'Cross-check with primary Nigerian news outlets.' },
-            },
-          ],
-        })} />
+        <h2 class="text-sm font-bold text-slate-900 dark:text-white mb-2">Story Fact-Check & Key Insights</h2>
+        <p class="text-xs text-slate-600 dark:text-slate-400">This report was synthesised from wire sources. Always cross-check primary outlets for the latest updates.</p>
       </section>
     )}
 
-    <ShareBar url={pageUrl} title={pageTitle} class="my-8" />
+    <ShareBar url={canonicalUrl} title={article.title} class="my-8" />
+
+    {matchedTopics && matchedTopics.length > 0 && (
+      <div class="flex flex-wrap gap-2 my-6">
+        {matchedTopics.slice(0, 6).map((t: any) => (
+          <a href={`/topic/${t.slug}`} class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium hover:bg-emerald-500/20">{t.name}</a>
+        ))}
+      </div>
+    )}
 
     <ArticleComments articleId={article.id} />
 
-    {related && related.length > 0 && (
-      <section class="mt-10">
-        <h2 class="text-lg font-bold mb-4 text-slate-900 dark:text-white">Related</h2>
-        <ul class="space-y-3">
-          {related.map((r: any) => (
-            <li>
-              <a href={`/news/${r.slug}`} class="text-emerald-600 dark:text-emerald-400 hover:underline font-medium">{r.title}</a>
-            </li>
+    {relatedArticles && relatedArticles.length > 0 && (
+      <section class="mt-10 pt-8 border-t border-slate-200 dark:border-slate-800">
+        <h2 class="text-lg font-bold mb-4 text-slate-900 dark:text-white">Related Stories</h2>
+        <div class="grid gap-4 sm:grid-cols-2">
+          {relatedArticles.map((r: any) => (
+            <ArticleCard article={r} />
           ))}
-        </ul>
+        </div>
       </section>
     )}
   </article>
