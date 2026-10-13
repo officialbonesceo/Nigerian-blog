@@ -12,7 +12,6 @@ import { DEFAULT_FALLBACK_IMAGE_URL } from '../../lib/fallback-image';
 import { cleanAndFormatArticleHtml, partitionArticleForAds } from '../../lib/content-formatter';
 import { readingMinutes } from '../../lib/editorial-pipeline';
 import { detectTopicsForArticle } from '../../lib/topics-data';
-import { findPublisherByName } from '../../lib/publishers-data';
 import { extractArticleFaq, stripArticleFaq } from '../../lib/article-faq';
 import ArticleFaq from '../../components/ArticleFaq.astro';
 
@@ -35,8 +34,8 @@ if (article.slug && article.slug !== slug) {
 }
 
 const [relatedArticles, siteSettings] = await Promise.all([
-  getRelatedArticles(d1, article.id, article.category_id, 5),
-  getSiteSettings(d1)
+  getRelatedArticles(d1, article.id, article.category_id, 6),
+  getSiteSettings(d1),
 ]);
 
 const rawSiteUrl = (siteSettings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
@@ -51,30 +50,93 @@ const articleParts = partitionArticleForAds(formattedArticleContent);
 
 const plainTextArticle = formattedArticleContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 const estimatedWordCount = plainTextArticle ? plainTextArticle.split(/\s+/).filter(Boolean).length : 300;
-const displayReadingTime = article.reading_time_minutes && article.reading_time_minutes > 0
-  ? article.reading_time_minutes
-  : readingMinutes(estimatedWordCount);
+const displayReadingTime =
+  article.reading_time_minutes && article.reading_time_minutes > 0
+    ? article.reading_time_minutes
+    : readingMinutes(estimatedWordCount);
 
-const matchedTopics = detectTopicsForArticle(article.title, formattedArticleContent, article.summary || '');
+const matchedTopics = detectTopicsForArticle(
+  article.title,
+  formattedArticleContent,
+  article.summary || ''
+);
+
+const categoryHref = `/category/${
+  article.category_slug === 'money-hustle' ? 'business' : article.category_slug || 'naija-news'
+}`;
+const categoryLabel = article.category_name || 'News';
+const publishedIso = article.published_at || new Date().toISOString();
+const modifiedIso = article.updated_at || publishedIso;
+const publishedLabel = new Date(publishedIso).toLocaleDateString('en-NG', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Africa/Lagos',
+});
+
+// Pull first 3–4 h3 sections as key takeaways for denser chrome
+const takeawayMatches = [...formattedArticleContent.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)]
+  .map((m) => m[1].replace(/<[^>]+>/g, '').trim())
+  .filter(Boolean)
+  .slice(0, 4);
 
 const structuredData = [
   {
-    "@context": "https://schema.org",
-    "@type": "NewsArticle",
-    "headline": article.title,
-    "description": article.summary || article.title,
-    "image": imageUrl ? [imageUrl] : undefined,
-    "datePublished": article.published_at,
-    "dateModified": article.updated_at || article.published_at,
-    "author": { "@type": "Person", "name": article.author_name || "9jaBeacon Editorial" },
-    "publisher": {
-      "@type": "NewsMediaOrganization",
-      "name": siteSettings.site_name || "9jaBeacon",
-      "url": siteUrl,
-      "logo": { "@type": "ImageObject", "url": `${siteUrl}/favicon.svg` }
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: article.title,
+    description: article.summary || article.title,
+    image: imageUrl ? [imageUrl] : undefined,
+    datePublished: publishedIso,
+    dateModified: modifiedIso,
+    author: {
+      '@type': 'Person',
+      name: article.author_name || '9jaBeacon Editorial',
     },
-    "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalUrl }
-  }
+    publisher: {
+      '@type': 'NewsMediaOrganization',
+      name: siteSettings.site_name || '9jaBeacon',
+      url: siteUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl}/favicon.svg`,
+      },
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': canonicalUrl,
+    },
+    articleSection: categoryLabel,
+    wordCount: estimatedWordCount,
+    inLanguage: 'en-NG',
+    isAccessibleForFree: true,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: siteUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: categoryLabel,
+        item: `${siteUrl}${categoryHref}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: article.title,
+        item: canonicalUrl,
+      },
+    ],
+  },
 ];
 ---
 
@@ -84,68 +146,167 @@ const structuredData = [
   image={imageUrl}
   canonicalUrl={canonicalUrl}
   article={{
-    publishedTime: article.published_at,
-    modifiedTime: article.updated_at,
+    publishedTime: publishedIso,
+    modifiedTime: modifiedIso,
     author: article.author_name,
-    section: article.category_name,
+    section: categoryLabel,
   }}
   activeNav="home"
 >
   <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />
 
-  <nav class="flex flex-wrap items-center justify-between gap-2 py-2.5 mb-4 border-b border-slate-200 dark:border-slate-800 text-xs">
+  <!-- Breadcrumb + tools -->
+  <nav
+    class="flex flex-wrap items-center justify-between gap-2 py-2.5 mb-3 border-b border-slate-200 dark:border-slate-800 text-xs"
+    aria-label="Breadcrumb"
+  >
     <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 overflow-x-auto whitespace-nowrap max-w-full">
       <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400">Home</a>
-      <span>/</span>
-      <a href={`/category/${article.category_slug === 'money-hustle' ? 'business' : (article.category_slug || 'naija-news')}`} class="hover:text-emerald-600 dark:hover:text-emerald-400">{article.category_name || 'News'}</a>
-      <span>/</span>
-      <span class="text-slate-700 dark:text-slate-300 truncate max-w-[180px] sm:max-w-xs">{article.title}</span>
+      <span aria-hidden="true">/</span>
+      <a href={categoryHref} class="hover:text-emerald-600 dark:hover:text-emerald-400">{categoryLabel}</a>
+      <span aria-hidden="true">/</span>
+      <span class="text-slate-700 dark:text-slate-300 truncate max-w-[160px] sm:max-w-xs">{article.title}</span>
     </div>
-    <div class="flex items-center gap-2">
-      <BookmarkButton article={{
-        id: article.id,
-        slug: article.slug,
-        title: article.title,
-        category_name: article.category_name,
-        image_url: imageUrl,
-        published_at: article.published_at,
-        reading_time_minutes: displayReadingTime,
-      }} />
+    <div class="flex items-center gap-2 shrink-0">
+      <BookmarkButton
+        article={{
+          id: article.id,
+          slug: article.slug,
+          title: article.title,
+          category_name: categoryLabel,
+          image_url: imageUrl,
+          published_at: publishedIso,
+          reading_time_minutes: displayReadingTime,
+        }}
+      />
       <BotVerifiedBadge size="xs" />
     </div>
   </nav>
 
-  <article class="max-w-3xl mx-auto">
-    <header class="mb-6">
-      {article.category_name && (
-        <a href={`/category/${article.category_slug === 'money-hustle' ? 'business' : (article.category_slug || 'naija-news')}`} class="inline-block text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">{article.category_name}</a>
-      )}
-      <h1 class="article-headline text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white leading-tight tracking-tight">{article.title}</h1>
+  <article class="max-w-3xl mx-auto" itemscope itemtype="https://schema.org/NewsArticle">
+    <meta itemprop="headline" content={article.title} />
+    <meta itemprop="datePublished" content={publishedIso} />
+    <meta itemprop="dateModified" content={modifiedIso} />
+    {imageUrl && <meta itemprop="image" content={imageUrl} />}
+
+    <header class="mb-5">
+      <div class="flex flex-wrap items-center gap-2 mb-2">
+        <a
+          href={categoryHref}
+          class="inline-block text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md bg-emerald-500/10"
+        >
+          {categoryLabel}
+        </a>
+        {article.is_breaking ? (
+          <span class="text-[10px] font-black uppercase tracking-wide text-red-600 dark:text-red-400 px-2 py-0.5 rounded bg-red-500/10"
+            >Breaking</span
+          >
+        ) : null}
+        {article.is_top_story ? (
+          <span class="text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded bg-amber-500/10"
+            >Top Story</span
+          >
+        ) : null}
+      </div>
+
+      <h1
+        class="article-headline text-2xl sm:text-3xl lg:text-[2.15rem] font-bold text-slate-900 dark:text-white leading-tight tracking-tight"
+        itemprop="name"
+      >
+        {article.title}
+      </h1>
+
       {article.summary && (
-        <p class="article-summary mt-3 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">{article.summary}</p>
+        <p
+          class="article-summary mt-3 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed border-l-2 border-emerald-500/40 pl-3"
+          itemprop="description"
+        >
+          {article.summary}
+        </p>
       )}
-      <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+
+      <!-- Dense meta row -->
+      <div
+        class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500 dark:text-slate-400"
+      >
         {article.author_name && (
-          <span class="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
-            {article.author_name}
+          <span
+            class="inline-flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200"
+            itemprop="author"
+            itemscope
+            itemtype="https://schema.org/Person"
+          >
+            <span
+              class="w-7 h-7 rounded-full bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 flex items-center justify-center text-[11px] font-black"
+              aria-hidden="true"
+            >
+              {String(article.author_name).slice(0, 1).toUpperCase()}
+            </span>
+            <span itemprop="name">{article.author_name}</span>
+            {article.author_role && (
+              <span class="font-normal text-slate-400 dark:text-slate-500">· {article.author_role}</span>
+            )}
             <BotVerifiedBadge size="xs" />
           </span>
         )}
-        {article.source_name && <span>via {article.source_name}</span>}
-        {displayReadingTime && <span>{displayReadingTime} min read</span>}
-        {article.published_at && <time datetime={article.published_at}>{new Date(article.published_at).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' })}</time>}
+        {article.source_name && (
+          <span class="inline-flex items-center gap-1">
+            <span class="text-slate-400">via</span>
+            <span class="font-medium text-slate-700 dark:text-slate-300">{article.source_name}</span>
+          </span>
+        )}
+        <span class="inline-flex items-center gap-1">
+          <span aria-hidden="true">⏱</span>
+          {displayReadingTime} min read
+        </span>
+        <time datetime={publishedIso} itemprop="datePublished">
+          {publishedLabel} WAT
+        </time>
+        {estimatedWordCount > 0 && (
+          <span class="hidden sm:inline text-slate-400">{estimatedWordCount.toLocaleString()} words</span>
+        )}
       </div>
     </header>
 
     {imageUrl && (
-      <figure class="mb-6 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
-        <img src={imageUrl} alt={article.title} class="w-full h-auto object-cover max-h-[420px]" loading="eager" />
+      <figure class="mb-5 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+        <img
+          src={imageUrl}
+          alt={article.image_caption || article.title}
+          class="w-full h-auto object-cover max-h-[440px]"
+          loading="eager"
+          decoding="async"
+          width="1200"
+          height="630"
+          itemprop="image"
+        />
         {(article.image_caption || article.image_credit) && (
           <figcaption class="px-3 py-2 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50">
-            {article.image_caption}{article.image_credit ? ` — ${article.image_credit}` : ''}
+            {article.image_caption}
+            {article.image_credit ? ` — ${article.image_credit}` : ''}
           </figcaption>
         )}
       </figure>
+    )}
+
+    <!-- Key takeaways strip -->
+    {takeawayMatches.length >= 2 && (
+      <aside
+        class="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 p-4"
+        aria-label="Key points"
+      >
+        <h2 class="text-[11px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-2">
+          Key points
+        </h2>
+        <ul class="space-y-1.5">
+          {takeawayMatches.map((t) => (
+            <li class="flex gap-2 text-sm text-slate-800 dark:text-slate-200 leading-snug">
+              <span class="text-emerald-600 dark:text-emerald-400 font-bold shrink-0" aria-hidden="true">▸</span>
+              <span>{t}</span>
+            </li>
+          ))}
+        </ul>
+      </aside>
     )}
 
     <ArticleAudioReader
@@ -154,25 +315,49 @@ const structuredData = [
       readingTimeMinutes={displayReadingTime}
     />
 
-    <div class="mt-6">
+    <div class="mt-5" itemprop="articleBody">
       {articleParts.lead && (
-        <div id="article-content-body-lead" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]" set:html={articleParts.lead} />
+        <div
+          id="article-content-body-lead"
+          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere]"
+          set:html={articleParts.lead}
+        />
       )}
 
       {estimatedWordCount >= 200 && <AdSlot format="banner-300x250" index={0} />}
 
       {articleParts.middle1 && (
-        <div id="article-content-body-middle1" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4" set:html={articleParts.middle1} />
+        <div
+          id="article-content-body-middle1"
+          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4"
+          set:html={articleParts.middle1}
+        />
       )}
 
       {estimatedWordCount > 450 && <AdSlot format="banner-300x250" index={1} />}
 
       {articleParts.middle2 && (
-        <div id="article-content-body-middle2" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4" set:html={articleParts.middle2} />
+        <div
+          id="article-content-body-middle2"
+          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4"
+          set:html={articleParts.middle2}
+        />
       )}
 
       {articleParts.middle3 && (
-        <div id="article-content-body-middle3" class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4" set:html={articleParts.middle3} />
+        <div
+          id="article-content-body-middle3"
+          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4"
+          set:html={articleParts.middle3}
+        />
+      )}
+
+      {articleParts.conclusion && (
+        <div
+          id="article-content-body-conclusion"
+          class="prose prose-slate dark:prose-invert prose-emerald max-w-none text-base sm:text-lg leading-relaxed space-y-4 text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] mt-4"
+          set:html={articleParts.conclusion}
+        />
       )}
     </div>
 
@@ -181,18 +366,53 @@ const structuredData = [
     {articleFaqItems.length < 2 && (
       <section class="my-8 not-prose rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-5">
         <h2 class="text-sm font-bold text-slate-900 dark:text-white mb-2">Story Fact-Check & Key Insights</h2>
-        <p class="text-xs text-slate-600 dark:text-slate-400">This report was synthesised from wire sources. Always cross-check primary outlets for the latest updates.</p>
+        <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+          This report was synthesised from wire sources for Nigerian readers. Cross-check primary outlets for the
+          latest official updates. 9jaBeacon prioritises attribution and fact-lock editorial rules.
+        </p>
       </section>
     )}
 
+    <!-- Source attribution box -->
+    {(article.source_name || article.source_original_url) && (
+      <aside class="my-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/40 px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
+        <span class="font-semibold text-slate-800 dark:text-slate-200">Source desk:</span>
+        {' '}
+        {article.source_name || 'Wire'}
+        {article.source_original_url && (
+          <>
+            {' · '}
+            <a
+              href={article.source_original_url}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              class="text-emerald-700 dark:text-emerald-400 hover:underline"
+            >
+              Original report
+            </a>
+          </>
+        )}
+      </aside>
+    )}
+
     <div class="my-8">
-      <ShareBar title={article.title} url={canonicalUrl} summary={article.summary || ''} imageUrl={imageUrl} />
+      <ShareBar
+        title={article.title}
+        url={canonicalUrl}
+        summary={article.summary || ''}
+        imageUrl={imageUrl}
+      />
     </div>
 
     {matchedTopics && matchedTopics.length > 0 && (
-      <div class="flex flex-wrap gap-2 my-6">
-        {matchedTopics.slice(0, 6).map((t: any) => (
-          <a href={`/topic/${t.slug}`} class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium hover:bg-emerald-500/20">{t.name}</a>
+      <div class="flex flex-wrap gap-2 my-6" aria-label="Related topics">
+        {matchedTopics.slice(0, 8).map((t: any) => (
+          <a
+            href={`/topic/${t.slug}`}
+            class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium hover:bg-emerald-500/20 transition"
+          >
+            {t.name}
+          </a>
         ))}
       </div>
     )}
