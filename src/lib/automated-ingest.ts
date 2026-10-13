@@ -1,1 +1,4 @@
-RESTORE_SEE_ARTIFACTS_FILE
+/**
+ * SEE LOCAL ARTIFACTS - will fix in next call
+ */
+export {};
