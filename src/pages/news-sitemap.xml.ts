@@ -53,14 +53,12 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
   if (eligibleArticles.length === 0) {
     eligibleArticles = articles.slice(0, 20);
   } else if (eligibleArticles.length < 5) {
-    // Pad with a few recent items so the feed stays useful during quiet hours
     const extra = articles
       .filter((a) => !eligibleArticles.some((e) => e.id === a.id))
       .slice(0, 5 - eligibleArticles.length);
     eligibleArticles = [...eligibleArticles, ...extra];
   }
 
-  // Cap at 1000 (GNews soft practical limit for this site)
   eligibleArticles = eligibleArticles.slice(0, 1000);
 
   const newsEntries = eligibleArticles
@@ -71,26 +69,11 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
       const lastmod = !isNaN(modDate.getTime()) ? modDate.toISOString() : isoDate;
       const titleEsc = escapeXml(a.title);
 
-      return `  <url>
-    <loc>${siteBase}/news/${escapeXml(a.slug)}</loc>
-    <lastmod>${lastmod}</lastmod>
-    <news:news>
-      <news:publication>
-        <news:name>${escapeXml(siteName)}</news:name>
-        <news:language>en-NG</news:language>
-      </news:publication>
-      <news:publication_date>${isoDate}</news:publication_date>
-      <news:title>${titleEsc}</news:title>
-    </news:news>
-  </url>`;
+      return `  <url>\n    <loc>${siteBase}/news/${escapeXml(a.slug)}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <news:news>\n      <news:publication>\n        <news:name>${escapeXml(siteName)}</news:name>\n        <news:language>en-NG</news:language>\n      </news:publication>\n      <news:publication_date>${isoDate}</news:publication_date>\n      <news:title>${titleEsc}</news:title>\n    </news:news>\n  </url>`;
     })
     .join('\n');
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
-${newsEntries}
-</urlset>`.trim();
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">\n${newsEntries}\n</urlset>`.trim();
 
   return new Response(xml, {
     headers: {
