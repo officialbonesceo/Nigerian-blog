@@ -1,0 +1,86 @@
+name: Render Desk Brief MP4
+
+# Isolated from Content Delivery & Cloudflare Pages.
+# Manual only — never runs on push/schedule.
+on:
+  workflow_dispatch:
+    inputs:
+      headline:
+        description: 'Lower-third headline'
+        required: true
+        default: 'NYSC MEMBERS RESCUED AFTER WEEK IN CAPTIVITY'
+        type: string
+      script:
+        description: 'Full voiceover script (leave blank for NYSC package default)'
+        required: false
+        default: ''
+        type: string
+      voice:
+        description: 'Edge TTS voice'
+        required: true
+        default: 'en-NG-EzinneNeural'
+        type: choice
+        options:
+          - en-NG-EzinneNeural
+          - en-GB-SoniaNeural
+          - en-US-JennyNeural
+          - en-GB-RyanNeural
+      output_format:
+        description: 'Aspect ratio'
+        required: true
+        default: 'landscape'
+        type: choice
+        options:
+          - landscape
+          - vertical
+
+concurrency:
+  group: desk-brief-mp4
+  cancel-in-progress: false
+
+jobs:
+  render:
+    name: Render desk-brief.mp4
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install ffmpeg + espeak + edge-tts
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg espeak-ng python3-pip fonts-dejavu-core
+          pip3 install --user -q edge-tts
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          edge-tts --list-voices | head -5 || true
+
+      - name: Render desk brief MP4
+        env:
+          HEADLINE: ${{ inputs.headline }}
+          SCRIPT: ${{ inputs.script }}
+          VOICE: ${{ inputs.voice }}
+          OUTPUT_FORMAT: ${{ inputs.output_format }}
+        run: node scripts/render-desk-brief.cjs
+
+      - name: Upload MP4 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desk-brief-${{ github.run_number }}
+          path: |
+            output/desk-brief.mp4
+            output/desk-brief-thumb.jpg
+            output/desk-brief-meta.json
+          retention-days: 30
+          if-no-files-found: error
