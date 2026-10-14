@@ -3,13 +3,15 @@ import { getD1, getArticles, getSiteSettings } from '../lib/runtime-db';
 
 export const prerender = false;
 
+/** Build XML entities without embedding &entity; literals (tooling can strip them). */
 function escapeXml(unsafe: string): string {
+  const a = String.fromCharCode(38); // &
   return (unsafe || '')
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, ''');
+    .replace(/&/g, a + 'amp;')
+    .replace(/</g, a + 'lt;')
+    .replace(/>/g, a + 'gt;')
+    .replace(/"/g, a + 'quot;')
+    .replace(/'/g, a + 'apos;');
 }
 
 export const GET: APIRoute = async ({ url, locals, request }) => {
@@ -43,13 +45,11 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
   const now = new Date();
   const twoDaysAgoMs = now.getTime() - 48 * 60 * 60 * 1000;
 
-  // Google News: prefer last 48 hours
   let eligibleArticles = articles.filter((a) => {
     const pub = new Date(a.published_at || a.created_at || '');
     return !isNaN(pub.getTime()) && pub.getTime() >= twoDaysAgoMs;
   });
 
-  // Never leave Google News sitemap empty
   if (eligibleArticles.length === 0) {
     eligibleArticles = articles.slice(0, 20);
   } else if (eligibleArticles.length < 5) {
@@ -69,11 +69,30 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
       const lastmod = !isNaN(modDate.getTime()) ? modDate.toISOString() : isoDate;
       const titleEsc = escapeXml(a.title);
 
-      return `  <url>\n    <loc>${siteBase}/news/${escapeXml(a.slug)}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <news:news>\n      <news:publication>\n        <news:name>${escapeXml(siteName)}</news:name>\n        <news:language>en-NG</news:language>\n      </news:publication>\n      <news:publication_date>${isoDate}</news:publication_date>\n      <news:title>${titleEsc}</news:title>\n    </news:news>\n  </url>`;
+      return [
+        '  <url>',
+        '    <loc>' + siteBase + '/news/' + escapeXml(a.slug) + '</loc>',
+        '    <lastmod>' + lastmod + '</lastmod>',
+        '    <news:news>',
+        '      <news:publication>',
+        '        <news:name>' + escapeXml(siteName) + '</news:name>',
+        '        <news:language>en-NG</news:language>',
+        '      </news:publication>',
+        '      <news:publication_date>' + isoDate + '</news:publication_date>',
+        '      <news:title>' + titleEsc + '</news:title>',
+        '    </news:news>',
+        '  </url>',
+      ].join('\n');
     })
     .join('\n');
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">\n${newsEntries}\n</urlset>`.trim();
+  const xml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
+    '        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
+    newsEntries,
+    '</urlset>',
+  ].join('\n');
 
   return new Response(xml, {
     headers: {
