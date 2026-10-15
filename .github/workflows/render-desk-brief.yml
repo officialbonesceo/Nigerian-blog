@@ -58,13 +58,14 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install ffmpeg + espeak + edge-tts
+      - name: Install ffmpeg + rsvg + espeak + edge-tts
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y ffmpeg espeak-ng python3-pip fonts-dejavu-core
+          sudo apt-get install -y ffmpeg espeak-ng python3-pip fonts-dejavu-core librsvg2-bin
           pip3 install --user -q edge-tts
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           edge-tts --list-voices | head -5 || true
+          rsvg-convert --version || true
 
       - name: Render desk brief MP4
         env:
