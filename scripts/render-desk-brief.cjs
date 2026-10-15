@@ -1,9 +1,9 @@
 /**
- * 9jaBeacon Desk Brief MP4 — admin B&W stickman
+ * 9jaBeacon Desk Brief MP4 — B&W admin stickman with gesture timeline
  * Isolated from site + content-delivery.
  *
- * Uses bw_*.svg (black stickman, light stage, red tie, desk).
- * Fits FULL figure into 16:9 with pad (no center-crop zoom that hides face).
+ * Poses: idle, speaking (open hands + mouth), look-left, look-right, blink
+ * Motion: mouth flicker, periodic blinks, left/right glance+point windows
  */
 const fs = require('fs');
 const path = require('path');
@@ -47,39 +47,15 @@ function truncateHeadline(s, max) {
 function svgToPng(svgPath, pngPath, size) {
   const rsvg = which('rsvg-convert');
   if (rsvg) {
-    run(
-      '"' +
-        rsvg +
-        '" -w ' +
-        size +
-        ' -h ' +
-        size +
-        ' -o "' +
-        pngPath +
-        '" "' +
-        svgPath +
-        '"'
-    );
+    run('"' + rsvg + '" -w ' + size + ' -h ' + size + ' -o "' + pngPath + '" "' + svgPath + '"');
     return;
   }
   const convert = which('convert') || which('magick');
   if (convert) {
-    run(
-      '"' +
-        convert +
-        '" -background none -resize ' +
-        size +
-        'x' +
-        size +
-        ' "' +
-        svgPath +
-        '" "' +
-        pngPath +
-        '"'
-    );
+    run('"' + convert + '" -background none -resize ' + size + 'x' + size + ' "' + svgPath + '" "' + pngPath + '"');
     return;
   }
-  throw new Error('Need rsvg-convert or ImageMagick to rasterize B&W stickman SVG');
+  throw new Error('Need rsvg-convert or ImageMagick');
 }
 
 function main() {
@@ -102,24 +78,25 @@ function main() {
   fs.mkdirSync(tmpDir, { recursive: true });
 
   const stickDir = path.join(process.cwd(), 'public', 'presenters', 'stickman');
-  const svgIdle = path.join(stickDir, 'bw_idle.svg');
-  const svgSpeak = path.join(stickDir, 'bw_speaking.svg');
-  const svgPoint = path.join(stickDir, 'bw_point.svg');
-
-  if (!fs.existsSync(svgIdle) || !fs.existsSync(svgSpeak)) {
-    console.error('Missing B&W stickman SVGs in', stickDir);
-    process.exit(1);
+  const names = ['bw_idle', 'bw_speaking', 'bw_look_left', 'bw_look_right', 'bw_blink'];
+  const pngs = {};
+  for (const n of names) {
+    const svg = path.join(stickDir, n + '.svg');
+    if (!fs.existsSync(svg)) {
+      if (n === 'bw_idle' || n === 'bw_speaking') {
+        console.error('Missing required', svg);
+        process.exit(1);
+      }
+      continue;
+    }
+    const png = path.join(tmpDir, n + '.png');
+    svgToPng(svg, png, 1080);
+    pngs[n] = png;
   }
 
-  const poseIdle = path.join(tmpDir, 'bw_idle.png');
-  const poseSpeak = path.join(tmpDir, 'bw_speaking.png');
-  const posePoint = path.join(tmpDir, 'bw_point.png');
-
-  console.log('Rasterizing B&W stickman SVGs (admin style)...');
-  svgToPng(svgIdle, poseIdle, 1080);
-  svgToPng(svgSpeak, poseSpeak, 1080);
-  const hasPoint = fs.existsSync(svgPoint);
-  if (hasPoint) svgToPng(svgPoint, posePoint, 1080);
+  const hasLeft = !!pngs.bw_look_left;
+  const hasRight = !!pngs.bw_look_right;
+  const hasBlink = !!pngs.bw_blink;
 
   const narrationMp3 = path.join(tmpDir, 'narration.mp3');
   const narrationWav = path.join(tmpDir, 'narration.wav');
@@ -127,10 +104,9 @@ function main() {
   const thumbOut = path.join(outDir, 'desk-brief-thumb.jpg');
   const metaOut = path.join(outDir, 'desk-brief-meta.json');
 
-  console.log('=== 9jaBeacon Desk Brief (B&W admin stickman, full body) ===');
+  console.log('=== 9jaBeacon Desk Brief (gestures + eyes) ===');
   console.log('Headline:', headline);
-  console.log('Voice:', voice);
-  console.log('Format:', format, width + 'x' + height);
+  console.log('Poses:', Object.keys(pngs).join(', '));
 
   try {
     run('pip3 install --user -q edge-tts');
@@ -144,15 +120,7 @@ function main() {
   for (const v of [voice, voiceFallback, 'en-US-JennyNeural']) {
     try {
       run(
-        '"' +
-          edgeBin +
-          '" --voice "' +
-          v +
-          '" --rate=+0% --file "' +
-          scriptFile +
-          '" --write-media "' +
-          narrationMp3 +
-          '"'
+        '"' + edgeBin + '" --voice "' + v + '" --rate=+0% --file "' + scriptFile + '" --write-media "' + narrationMp3 + '"'
       );
       if (fs.existsSync(narrationMp3) && fs.statSync(narrationMp3).size > 1000) {
         ttsOk = true;
@@ -166,32 +134,15 @@ function main() {
 
   let audioPath;
   if (ttsOk) {
-    run(
-      'ffmpeg -y -v error -i "' +
-        narrationMp3 +
-        '" -ar 44100 -ac 1 "' +
-        narrationWav +
-        '"'
-    );
+    run('ffmpeg -y -v error -i "' + narrationMp3 + '" -ar 44100 -ac 1 "' + narrationWav + '"');
     audioPath = narrationWav;
   } else {
     const es = which('espeak-ng') || which('espeak');
     if (es) {
-      run(
-        es +
-          ' -v en-gb -s 140 -w "' +
-          narrationWav +
-          '" "' +
-          script.replace(/"/g, '') +
-          '"'
-      );
+      run(es + ' -v en-gb -s 140 -w "' + narrationWav + '" "' + script.replace(/"/g, '') + '"');
       audioPath = narrationWav;
     } else {
-      run(
-        'ffmpeg -y -v error -f lavfi -i anullsrc=r=44100:cl=mono -t 45 -c:a pcm_s16le "' +
-          narrationWav +
-          '"'
-      );
+      run('ffmpeg -y -v error -f lavfi -i anullsrc=r=44100:cl=mono -t 45 -c:a pcm_s16le "' + narrationWav + '"');
       audioPath = narrationWav;
     }
   }
@@ -199,9 +150,7 @@ function main() {
   let durationSec = 45;
   try {
     const probe = execSync(
-      'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "' +
-        audioPath +
-        '"',
+      'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "' + audioPath + '"',
       { encoding: 'utf8' }
     ).trim();
     durationSec = Math.max(12, Math.ceil(parseFloat(probe) + 0.4));
@@ -211,66 +160,189 @@ function main() {
   console.log('Duration:', durationSec, 's');
 
   const t = durationSec;
-  const tPoint0 = (t * 0.45).toFixed(2);
-  const tPoint1 = (t * 0.58).toFixed(2);
+  // Gesture windows (seconds)
+  const gL0 = (t * 0.22).toFixed(2);
+  const gL1 = (t * 0.32).toFixed(2);
+  const gR0 = (t * 0.55).toFixed(2);
+  const gR1 = (t * 0.68).toFixed(2);
 
   const ltTop = height - 150;
   const ltHeadH = 70;
   const ltTickH = 40;
 
-  // FULL body visible: scale DOWN to fit, then pad (never center-crop zoom)
   const fit =
-    `scale=${width}:${height}:force_original_aspect_ratio=decrease,` +
-    `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=0xf8fafc,format=rgba`;
+    'scale=' +
+    width +
+    ':' +
+    height +
+    ':force_original_aspect_ratio=decrease,' +
+    'pad=' +
+    width +
+    ':' +
+    height +
+    ':(ow-iw)/2:(oh-ih)/2:color=0xf8fafc,format=rgba';
 
-  let fc =
-    `[1:v]${fit}[idle];` + `[2:v]${fit}[speak];`;
+  // Input index map after base color [0]
+  // 1 idle, 2 speak, then optional left, right, blink, then audio
+  let idx = 1;
+  const idIdle = idx++;
+  const idSpeak = idx++;
+  let idLeft = -1,
+    idRight = -1,
+    idBlink = -1;
+  if (hasLeft) idLeft = idx++;
+  if (hasRight) idRight = idx++;
+  if (hasBlink) idBlink = idx++;
+  const idAudio = idx; // last
 
-  if (hasPoint) {
-    fc += `[3:v]${fit}[point];`;
-  }
+  let fc = '';
+  fc += '[' + idIdle + ':v]' + fit + '[idle];';
+  fc += '[' + idSpeak + ':v]' + fit + '[speak];';
+  if (hasLeft) fc += '[' + idLeft + ':v]' + fit + '[lookL];';
+  if (hasRight) fc += '[' + idRight + ':v]' + fit + '[lookR];';
+  if (hasBlink) fc += '[' + idBlink + ':v]' + fit + '[blink];';
 
+  // Layer stack:
+  // base = idle always
+  // + speaking mouth/hands flicker most of the time (not during look windows)
+  // + look left / look right timed
+  // + blink short pulses every ~3.2s for 0.12s
+  fc += '[0:v][idle]overlay=0:0[base];';
+
+  // speaking when not in left/right glance windows
+  const notGlance =
+    hasLeft || hasRight
+      ? "*not(between(t\\," +
+        gL0 +
+        "\\," +
+        gL1 +
+        "))*not(between(t\\," +
+        gR0 +
+        "\\," +
+        gR1 +
+        "))"
+      : '';
   fc +=
-    `[0:v][idle]overlay=0:0[base];` +
-    `[base][speak]overlay=0:0:enable='lt(mod(t*5\\,1)\\,0.55)'[talk];`;
+    '[base][speak]overlay=0:0:enable=\'lt(mod(t*4.2\\,1)\\,0.58)' +
+    notGlance +
+    "'[talk];";
 
-  if (hasPoint) {
+  let cur = 'talk';
+  if (hasLeft) {
     fc +=
-      `[talk][point]overlay=0:0:enable='between(t\\,${tPoint0}\\,${tPoint1})'[stage];`;
+      '[' +
+      cur +
+      '][lookL]overlay=0:0:enable=\'between(t\\,' +
+      gL0 +
+      '\\,' +
+      gL1 +
+      ")'[g1];";
+    cur = 'g1';
+  }
+  if (hasRight) {
+    fc +=
+      '[' +
+      cur +
+      '][lookR]overlay=0:0:enable=\'between(t\\,' +
+      gR0 +
+      '\\,' +
+      gR1 +
+      ")'[g2];";
+    cur = 'g2';
+  }
+  if (hasBlink) {
+    // blink every ~3.2s for 0.15s, avoid first 1s
+    fc +=
+      '[' +
+      cur +
+      "][blink]overlay=0:0:enable='gte(t\\,1)*lt(mod(t\\,3.2)\\,0.15)'[stage];";
+    cur = 'stage';
   } else {
-    fc += `[talk]copy[stage];`;
+    fc += '[' + cur + ']copy[stage];';
+    cur = 'stage';
   }
 
   fc +=
-    `[stage]` +
-    `drawbox=x=0:y=${ltTop}:w=${width}:h=${ltHeadH}:color=0x7f1d1d:t=fill,` +
-    `drawbox=x=0:y=${ltTop}:w=8:h=${ltHeadH}:color=0xfca5a5:t=fill,` +
-    `drawtext=fontfile=${font}:text='${headline}':fontcolor=white:fontsize=32:x=28:y=${ltTop + 20},` +
-    `drawbox=x=0:y=${ltTop + ltHeadH}:w=${width}:h=${ltTickH}:color=0x991b1b:t=fill,` +
-    `drawtext=fontfile=${fontReg}:text='${ticker}   ${ticker}':fontcolor=0xfef2f2:fontsize=18:x='w-mod(t*70\\,w+tw)':y=${ltTop + ltHeadH + 10},` +
-    `format=yuv420p[vout]`;
+    '[stage]' +
+    'drawbox=x=0:y=' +
+    ltTop +
+    ':w=' +
+    width +
+    ':h=' +
+    ltHeadH +
+    ':color=0x7f1d1d:t=fill,' +
+    'drawbox=x=0:y=' +
+    ltTop +
+    ':w=8:h=' +
+    ltHeadH +
+    ':color=0xfca5a5:t=fill,' +
+    "drawtext=fontfile=" +
+    font +
+    ":text='" +
+    headline +
+    "':fontcolor=white:fontsize=32:x=28:y=" +
+    (ltTop + 20) +
+    ',' +
+    'drawbox=x=0:y=' +
+    (ltTop + ltHeadH) +
+    ':w=' +
+    width +
+    ':h=' +
+    ltTickH +
+    ':color=0x991b1b:t=fill,' +
+    "drawtext=fontfile=" +
+    fontReg +
+    ":text='" +
+    ticker +
+    '   ' +
+    ticker +
+    "':fontcolor=0xfef2f2:fontsize=18:x='w-mod(t*70\\,w+tw)':y=" +
+    (ltTop + ltHeadH + 10) +
+    ',format=yuv420p[vout]';
 
   const fcFile = path.join(tmpDir, 'fc.txt');
   fs.writeFileSync(fcFile, fc, 'utf8');
 
   let inputArgs =
-    `-f lavfi -i color=c=0xf8fafc:s=${width}x${height}:d=${durationSec} ` +
-    `-loop 1 -t ${durationSec} -i "${poseIdle}" ` +
-    `-loop 1 -t ${durationSec} -i "${poseSpeak}" `;
-  if (hasPoint) inputArgs += `-loop 1 -t ${durationSec} -i "${posePoint}" `;
-  inputArgs += `-i "${audioPath}" `;
-
-  const audioMapIndex = hasPoint ? 4 : 3;
+    '-f lavfi -i color=c=0xf8fafc:s=' +
+    width +
+    'x' +
+    height +
+    ':d=' +
+    durationSec +
+    ' ' +
+    '-loop 1 -t ' +
+    durationSec +
+    ' -i "' +
+    pngs.bw_idle +
+    '" ' +
+    '-loop 1 -t ' +
+    durationSec +
+    ' -i "' +
+    pngs.bw_speaking +
+    '" ';
+  if (hasLeft) inputArgs += '-loop 1 -t ' + durationSec + ' -i "' + pngs.bw_look_left + '" ';
+  if (hasRight) inputArgs += '-loop 1 -t ' + durationSec + ' -i "' + pngs.bw_look_right + '" ';
+  if (hasBlink) inputArgs += '-loop 1 -t ' + durationSec + ' -i "' + pngs.bw_blink + '" ';
+  inputArgs += '-i "' + audioPath + '" ';
 
   run(
     'ffmpeg -y -v warning ' +
       inputArgs +
-      `-filter_complex_script "${fcFile}" ` +
-      `-map "[vout]" -map ${audioMapIndex}:a ` +
-      `-t ${durationSec} ` +
-      `-c:v libx264 -pix_fmt yuv420p -preset veryfast -crf 22 ` +
-      `-c:a aac -b:a 160k -shortest ` +
-      `"${videoOut}"`
+      '-filter_complex_script "' +
+      fcFile +
+      '" ' +
+      '-map "[vout]" -map ' +
+      idAudio +
+      ':a ' +
+      '-t ' +
+      durationSec +
+      ' ' +
+      '-c:v libx264 -pix_fmt yuv420p -preset veryfast -crf 22 ' +
+      '-c:a aac -b:a 160k -shortest ' +
+      '"' +
+      videoOut +
+      '"'
   );
 
   if (!fs.existsSync(videoOut) || fs.statSync(videoOut).size < 1000) {
@@ -293,12 +365,11 @@ function main() {
     JSON.stringify(
       {
         headline: headlineRaw,
-        headline_on_screen: headline,
         voice,
         format,
         durationSec,
-        studio: 'bw_admin_stickman_fullbody',
-        motion: 'idle_speak_mouth_flicker_point',
+        motion: 'mouth_flicker_blink_look_left_right_explain_hands',
+        poses: Object.keys(pngs),
         video: 'output/desk-brief.mp4',
         generated_at: new Date().toISOString(),
       },
