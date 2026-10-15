@@ -1,6 +1,6 @@
 /**
  * 9jaBeacon Pro Desk Brief MP4
- * Stickman + glass boards + dynamic camera + ticker lower-third
+ * Stickman + glass boards + scale/crop camera + ticker lower-third
  * Isolated from content-delivery / CF Pages.
  */
 const fs = require('fs');
@@ -165,23 +165,15 @@ function main() {
   console.log('Duration:', durationSec, 's');
 
   const t = durationSec;
-  const fps = 25;
   const tWide = (t * 0.08).toFixed(2);
   const tPointR = (t * 0.42).toFixed(2);
+  const tZoomR0 = (t * 0.48).toFixed(2);
+  const tZoomR1 = (t * 0.58).toFixed(2);
   const tBack = (t * 0.64).toFixed(2);
   const tPointL = (t * 0.72).toFixed(2);
+  const tZoomL0 = (t * 0.78).toFixed(2);
+  const tZoomL1 = (t * 0.88).toFixed(2);
   const tOutro = (t * 0.94).toFixed(2);
-
-  // Frame windows for camera (on = frame index at 25fps)
-  const f = (frac) => Math.floor(t * frac * fps);
-  const fDesk0 = f(0.18);
-  const fDesk1 = f(0.32);
-  const fFace0 = f(0.32);
-  const fFace1 = f(0.42);
-  const fZoomR0 = f(0.48);
-  const fZoomR1 = f(0.58);
-  const fZoomL0 = f(0.78);
-  const fZoomL1 = f(0.88);
 
   const smH = Math.floor(height * 0.72);
   const smY = Math.floor(height * 0.08);
@@ -203,47 +195,43 @@ function main() {
   const ltHeadH = 70;
   const ltTickH = 40;
 
-  // Balanced nested if() — each if has matching close
-  // z: 4 nested ifs + sin() => five closing parens after on/40
+  // Camera without zoompan: upscale then crop with timed bias (left/right board, face drift)
+  // between(t,a,b) is 1 inside window — safe in scale/crop exprs
   const cam =
-    "zoompan=" +
-    "z='if(between(on\\," +
-    fZoomR0 +
-    "\\," +
-    fZoomR1 +
-    "),2.1,if(between(on\\," +
-    fZoomL0 +
-    "\\," +
-    fZoomL1 +
-    "),2.1,if(between(on\\," +
-    fDesk0 +
-    "\\," +
-    fDesk1 +
-    "),1.35,if(between(on\\," +
-    fFace0 +
-    "\\," +
-    fFace1 +
-    "),1.55,1.0+0.08*sin(on/40)))))':" +
-    "x='if(between(on\\," +
-    fZoomR0 +
-    "\\," +
-    fZoomR1 +
-    "),iw*0.55,if(between(on\\," +
-    fZoomL0 +
-    "\\," +
-    fZoomL1 +
-    "),iw*0.02,(iw-iw/zoom)/2))':" +
-    "y='if(between(on\\," +
-    fFace0 +
-    "\\," +
-    fFace1 +
-    "),ih*0.05,(ih-ih/zoom)/2)':" +
-    "d=1:s=" +
+    'scale=w=' +
     width +
-    "x" +
+    "*(1.0+0.25*between(t\\," +
+    tZoomR0 +
+    "\\," +
+    tZoomR1 +
+    ")+0.25*between(t\\," +
+    tZoomL0 +
+    "\\," +
+    tZoomL1 +
+    ")+0.12*between(t\\," +
+    (t * 0.18).toFixed(2) +
+    "\\," +
+    tPointR +
+    ')):h=-2,' +
+    'crop=' +
+    width +
+    ':' +
     height +
-    ":fps=" +
-    fps;
+    ':' +
+    "x='(in_w-out_w)*(0.5+0.42*between(t\\," +
+    tZoomR0 +
+    "\\," +
+    tZoomR1 +
+    ")-0.42*between(t\\," +
+    tZoomL0 +
+    "\\," +
+    tZoomL1 +
+    ")+0.04*sin(t/4))':" +
+    "y='(in_h-out_h)*(0.35+0.15*between(t\\," +
+    (t * 0.32).toFixed(2) +
+    "\\," +
+    tPointR +
+    ")+0.03*sin(t/5))'";
 
   const parts = [];
 
@@ -534,8 +522,11 @@ function main() {
       (deskY + 18) +
       ':w=' +
       Math.floor(width * 0.3) +
-      ':h=10:color=0x0f172a:t=fill[desk]'
+      ':h=10:color=0x0x0f172a:t=fill[desk]'
   );
+
+  // fix typo 0x0x0f172a -> 0x0f172a
+  parts[parts.length - 1] = parts[parts.length - 1].replace('0x0x0f172a', '0x0f172a');
 
   parts.push(
     '[desk]' +
@@ -668,7 +659,7 @@ function main() {
         voice,
         format,
         durationSec,
-        camera: 'pro_dynamic_zoom_side_screens',
+        camera: 'scale_crop_timed_bias',
         studio: 'white_glass_boards_desk_stickman',
         video: 'output/desk-brief.mp4',
         generated_at: new Date().toISOString(),
