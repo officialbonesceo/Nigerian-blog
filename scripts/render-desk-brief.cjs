@@ -1,11 +1,7 @@
 /**
  * 9jaBeacon Pro Desk Brief MP4
- * - Stickman seated behind desk (legs covered)
- * - 3 glassmorphism boards (L / back / R) with logo pulse
- * - Dynamic camera: wide / desk / face / zoom-to-side-screen
- * - Lower-third: headline + scrolling ticker (no LIVE badge)
- * - Edge TTS voiceover (unchanged quality path)
- * Isolated from content-delivery / CF Pages deploy.
+ * Stickman + glass boards + dynamic camera + ticker lower-third
+ * Isolated from content-delivery / CF Pages.
  */
 const fs = require('fs');
 const path = require('path');
@@ -90,7 +86,6 @@ function main() {
   console.log('Voice:', voice);
   console.log('Format:', format, width + 'x' + height);
 
-  // --- TTS (same path that sounded good) ---
   try {
     run('pip3 install --user -q edge-tts');
   } catch (_) {}
@@ -169,26 +164,29 @@ function main() {
   }
   console.log('Duration:', durationSec, 's');
 
-  // Timeline fractions for camera + pose (pro mode)
   const t = durationSec;
+  const fps = 25;
   const tWide = (t * 0.08).toFixed(2);
-  const tDesk = (t * 0.18).toFixed(2);
-  const tFace = (t * 0.32).toFixed(2);
   const tPointR = (t * 0.42).toFixed(2);
-  const tZoomR = (t * 0.48).toFixed(2);
-  const tHoldR = (t * 0.58).toFixed(2);
   const tBack = (t * 0.64).toFixed(2);
   const tPointL = (t * 0.72).toFixed(2);
-  const tZoomL = (t * 0.78).toFixed(2);
-  const tHoldL = (t * 0.88).toFixed(2);
   const tOutro = (t * 0.94).toFixed(2);
 
-  // Stickman size — seated, desk will cover lower third of figure
+  // Frame windows for camera (on = frame index at 25fps)
+  const f = (frac) => Math.floor(t * frac * fps);
+  const fDesk0 = f(0.18);
+  const fDesk1 = f(0.32);
+  const fFace0 = f(0.32);
+  const fFace1 = f(0.42);
+  const fZoomR0 = f(0.48);
+  const fZoomR1 = f(0.58);
+  const fZoomL0 = f(0.78);
+  const fZoomL1 = f(0.88);
+
   const smH = Math.floor(height * 0.72);
   const smY = Math.floor(height * 0.08);
   const smX = '(W-w)/2';
 
-  // Glass boards geometry (behind / sides of presenter)
   const boardW = Math.floor(width * 0.22);
   const boardH = Math.floor(height * 0.42);
   const boardY = Math.floor(height * 0.12);
@@ -199,158 +197,456 @@ function main() {
   const midY = Math.floor(height * 0.06);
   const midH = Math.floor(height * 0.28);
 
-  // Desk covers legs
   const deskY = Math.floor(height * 0.58);
   const deskH = Math.floor(height * 0.22);
-
-  // Lower third
   const ltTop = height - 150;
   const ltHeadH = 70;
   const ltTickH = 40;
 
-  // Camera crop expressions (pro moves) — applied at end on full composite
-  // zoom factor oscillates; side zoom focuses left/right board region
+  // Balanced nested if() — each if has matching close
+  // z: 4 nested ifs + sin() => five closing parens after on/40
   const cam =
-    `zoompan=` +
-    `z='if(between(on\,${Math.floor(t * 0.48 * 25)}\,${Math.floor(t * 0.58 * 25)})\,2.1\,` +
-    `if(between(on\,${Math.floor(t * 0.78 * 25)}\,${Math.floor(t * 0.88 * 25)})\,2.1\,` +
-    `if(between(on\,${Math.floor(t * 0.18 * 25)}\,${Math.floor(t * 0.32 * 25)})\,1.35\,` +
-    `if(between(on\,${Math.floor(t * 0.32 * 25)}\,${Math.floor(t * 0.42 * 25)})\,1.55\,` +
-    `1.0+0.08*sin(on/40))))':` +
-    `x='if(between(on\,${Math.floor(t * 0.48 * 25)}\,${Math.floor(t * 0.58 * 25)})\,iw*0.55\,` +
-    `if(between(on\,${Math.floor(t * 0.78 * 25)}\,${Math.floor(t * 0.88 * 25)})\,iw*0.02\,` +
-    `(iw-iw/zoom)/2))':` +
-    `y='if(between(on\,${Math.floor(t * 0.32 * 25)}\,${Math.floor(t * 0.42 * 25)})\,ih*0.05\,` +
-    `(ih-ih/zoom)/2)':` +
-    `d=1:s=${width}x${height}:fps=25`;
+    "zoompan=" +
+    "z='if(between(on\\," +
+    fZoomR0 +
+    "\\," +
+    fZoomR1 +
+    "),2.1,if(between(on\\," +
+    fZoomL0 +
+    "\\," +
+    fZoomL1 +
+    "),2.1,if(between(on\\," +
+    fDesk0 +
+    "\\," +
+    fDesk1 +
+    "),1.35,if(between(on\\," +
+    fFace0 +
+    "\\," +
+    fFace1 +
+    "),1.55,1.0+0.08*sin(on/40)))))':" +
+    "x='if(between(on\\," +
+    fZoomR0 +
+    "\\," +
+    fZoomR1 +
+    "),iw*0.55,if(between(on\\," +
+    fZoomL0 +
+    "\\," +
+    fZoomL1 +
+    "),iw*0.02,(iw-iw/zoom)/2))':" +
+    "y='if(between(on\\," +
+    fFace0 +
+    "\\," +
+    fFace1 +
+    "),ih*0.05,(ih-ih/zoom)/2)':" +
+    "d=1:s=" +
+    width +
+    "x" +
+    height +
+    ":fps=" +
+    fps;
 
-  // Build filter graph
-  // Inputs: 0 color bg, 1-6 stickman poses, 7 audio
   const parts = [];
 
-  // Soft white studio floor + cool wash
   parts.push(
-    `[0:v]drawbox=x=0:y=0:w=${width}:h=${height}:color=0xf1f5f9:t=fill,` +
-      `drawbox=x=0:y=0:w=${width}:h=${Math.floor(height * 0.55)}:color=0xe2e8f0@0.85:t=fill,` +
-      `drawbox=x=0:y=${Math.floor(height * 0.55)}:w=${width}:h=${Math.floor(height * 0.45)}:color=0xcbd5e1@0.9:t=fill[base]`
+    '[0:v]drawbox=x=0:y=0:w=' +
+      width +
+      ':h=' +
+      height +
+      ':color=0xf1f5f9:t=fill,' +
+      'drawbox=x=0:y=0:w=' +
+      width +
+      ':h=' +
+      Math.floor(height * 0.55) +
+      ':color=0xe2e8f0@0.85:t=fill,' +
+      'drawbox=x=0:y=' +
+      Math.floor(height * 0.55) +
+      ':w=' +
+      width +
+      ':h=' +
+      Math.floor(height * 0.45) +
+      ':color=0xcbd5e1@0.9:t=fill[base]'
   );
 
-  // Glass boards (frosted panels + border glow)
   parts.push(
-    `[base]` +
-      `drawbox=x=${leftX}:y=${boardY}:w=${boardW}:h=${boardH}:color=0xffffff@0.35:t=fill,` +
-      `drawbox=x=${leftX}:y=${boardY}:w=${boardW}:h=${boardH}:color=0x94a3b8@0.55:t=3,` +
-      `drawbox=x=${rightX}:y=${boardY}:w=${boardW}:h=${boardH}:color=0xffffff@0.35:t=fill,` +
-      `drawbox=x=${rightX}:y=${boardY}:w=${boardW}:h=${boardH}:color=0x94a3b8@0.55:t=3,` +
-      `drawbox=x=${midX}:y=${midY}:w=${midW}:h=${midH}:color=0xffffff@0.28:t=fill,` +
-      `drawbox=x=${midX}:y=${midY}:w=${midW}:h=${midH}:color=0x64748b@0.45:t=2[boards]`
+    '[base]' +
+      'drawbox=x=' +
+      leftX +
+      ':y=' +
+      boardY +
+      ':w=' +
+      boardW +
+      ':h=' +
+      boardH +
+      ':color=0xffffff@0.35:t=fill,' +
+      'drawbox=x=' +
+      leftX +
+      ':y=' +
+      boardY +
+      ':w=' +
+      boardW +
+      ':h=' +
+      boardH +
+      ':color=0x94a3b8@0.55:t=3,' +
+      'drawbox=x=' +
+      rightX +
+      ':y=' +
+      boardY +
+      ':w=' +
+      boardW +
+      ':h=' +
+      boardH +
+      ':color=0xffffff@0.35:t=fill,' +
+      'drawbox=x=' +
+      rightX +
+      ':y=' +
+      boardY +
+      ':w=' +
+      boardW +
+      ':h=' +
+      boardH +
+      ':color=0x94a3b8@0.55:t=3,' +
+      'drawbox=x=' +
+      midX +
+      ':y=' +
+      midY +
+      ':w=' +
+      midW +
+      ':h=' +
+      midH +
+      ':color=0xffffff@0.28:t=fill,' +
+      'drawbox=x=' +
+      midX +
+      ':y=' +
+      midY +
+      ':w=' +
+      midW +
+      ':h=' +
+      midH +
+      ':color=0x64748b@0.45:t=2[boards]'
   );
 
-  // Logo / brand on boards (pulsing opacity via enable windows approximating animation)
   parts.push(
-    `[boards]` +
-      `drawtext=fontfile=${font}:text='9JA':fontcolor=0x0f172a@0.55:fontsize=42:x=${leftX + 24}:y=${boardY + 40},` +
-      `drawtext=fontfile=${font}:text='BEACON':fontcolor=0xdc2626@0.7:fontsize=28:x=${leftX + 24}:y=${boardY + 90},` +
-      `drawtext=fontfile=${font}:text='9JA':fontcolor=0x0f172a@0.55:fontsize=42:x=${rightX + 24}:y=${boardY + 40},` +
-      `drawtext=fontfile=${font}:text='BEACON':fontcolor=0xdc2626@0.7:fontsize=28:x=${rightX + 24}:y=${boardY + 90},` +
-      `drawtext=fontfile=${font}:text='9JA BEACON':fontcolor=0x0f172a@0.4:fontsize=36:x=${midX + 40}:y=${midY + Math.floor(midH / 2) - 18}[branded]`
+    '[boards]' +
+      'drawtext=fontfile=' +
+      font +
+      ":text='9JA':fontcolor=0x0f172a@0.55:fontsize=42:x=" +
+      (leftX + 24) +
+      ':y=' +
+      (boardY + 40) +
+      ',' +
+      'drawtext=fontfile=' +
+      font +
+      ":text='BEACON':fontcolor=0xdc2626@0.7:fontsize=28:x=" +
+      (leftX + 24) +
+      ':y=' +
+      (boardY + 90) +
+      ',' +
+      'drawtext=fontfile=' +
+      font +
+      ":text='9JA':fontcolor=0x0f172a@0.55:fontsize=42:x=" +
+      (rightX + 24) +
+      ':y=' +
+      (boardY + 40) +
+      ',' +
+      'drawtext=fontfile=' +
+      font +
+      ":text='BEACON':fontcolor=0xdc2626@0.7:fontsize=28:x=" +
+      (rightX + 24) +
+      ':y=' +
+      (boardY + 90) +
+      ',' +
+      'drawtext=fontfile=' +
+      font +
+      ":text='9JA BEACON':fontcolor=0x0f172a@0.4:fontsize=36:x=" +
+      (midX + 40) +
+      ':y=' +
+      (midY + Math.floor(midH / 2) - 18) +
+      '[branded]'
   );
 
-  // Side-screen content plates (what camera zooms into)
   parts.push(
-    `[branded]` +
-      `drawbox=x=${leftX + 12}:y=${boardY + 140}:w=${boardW - 24}:h=${boardH - 160}:color=0x0f172a@0.12:t=fill,` +
-      `drawtext=fontfile=${fontReg}:text='KEY FACTS':fontcolor=0x334155:fontsize=18:x=${leftX + 28}:y=${boardY + 160},` +
-      `drawtext=fontfile=${fontReg}:text='20 rescued':fontcolor=0x0f172a:fontsize=22:x=${leftX + 28}:y=${boardY + 200},` +
-      `drawtext=fontfile=${fontReg}:text='7 days':fontcolor=0x0f172a:fontsize=22:x=${leftX + 28}:y=${boardY + 240},` +
-      `drawtext=fontfile=${fontReg}:text='Imo to Ibadan':fontcolor=0x0f172a:fontsize=20:x=${leftX + 28}:y=${boardY + 280},` +
-      `drawbox=x=${rightX + 12}:y=${boardY + 140}:w=${boardW - 24}:h=${boardH - 160}:color=0x0f172a@0.12:t=fill,` +
-      `drawtext=fontfile=${fontReg}:text='CONTEXT':fontcolor=0x334155:fontsize=18:x=${rightX + 28}:y=${boardY + 160},` +
-      `drawtext=fontfile=${fontReg}:text='Southeast routes':fontcolor=0x0f172a:fontsize=20:x=${rightX + 28}:y=${boardY + 200},` +
-      `drawtext=fontfile=${fontReg}:text='NYSC safety':fontcolor=0x0f172a:fontsize=20:x=${rightX + 28}:y=${boardY + 240}[screens]`
+    '[branded]' +
+      'drawbox=x=' +
+      (leftX + 12) +
+      ':y=' +
+      (boardY + 140) +
+      ':w=' +
+      (boardW - 24) +
+      ':h=' +
+      (boardH - 160) +
+      ':color=0x0f172a@0.12:t=fill,' +
+      'drawtext=fontfile=' +
+      fontReg +
+      ":text='KEY FACTS':fontcolor=0x334155:fontsize=18:x=" +
+      (leftX + 28) +
+      ':y=' +
+      (boardY + 160) +
+      ',' +
+      'drawtext=fontfile=' +
+      fontReg +
+      ":text='20 rescued':fontcolor=0x0f172a:fontsize=22:x=" +
+      (leftX + 28) +
+      ':y=' +
+      (boardY + 200) +
+      ',' +
+      'drawtext=fontfile=' +
+      fontReg +
+      ":text='7 days':fontcolor=0x0f172a:fontsize=22:x=" +
+      (leftX + 28) +
+      ':y=' +
+      (boardY + 240) +
+      ',' +
+      'drawtext=fontfile=' +
+      fontReg +
+      ":text='Imo to Ibadan':fontcolor=0x0f172a:fontsize=20:x=" +
+      (leftX + 28) +
+      ':y=' +
+      (boardY + 280) +
+      ',' +
+      'drawbox=x=' +
+      (rightX + 12) +
+      ':y=' +
+      (boardY + 140) +
+      ':w=' +
+      (boardW - 24) +
+      ':h=' +
+      (boardH - 160) +
+      ':color=0x0f172a@0.12:t=fill,' +
+      'drawtext=fontfile=' +
+      fontReg +
+      ":text='CONTEXT':fontcolor=0x334155:fontsize=18:x=" +
+      (rightX + 28) +
+      ':y=' +
+      (boardY + 160) +
+      ',' +
+      'drawtext=fontfile=' +
+      fontReg +
+      ":text='Southeast routes':fontcolor=0x0f172a:fontsize=20:x=" +
+      (rightX + 28) +
+      ':y=' +
+      (boardY + 200) +
+      ',' +
+      'drawtext=fontfile=' +
+      fontReg +
+      ":text='NYSC safety':fontcolor=0x0f172a:fontsize=20:x=" +
+      (rightX + 28) +
+      ':y=' +
+      (boardY + 240) +
+      '[screens]'
   );
 
-  // Scale stickman poses
-  parts.push(`[1:v]scale=-1:${smH}[p_idle]`);
-  parts.push(`[2:v]scale=-1:${smH}[p_speak]`);
-  parts.push(`[3:v]scale=-1:${smH}[p_pr]`);
-  parts.push(`[4:v]scale=-1:${smH}[p_pl]`);
-  parts.push(`[5:v]scale=-1:${smH}[p_brk]`);
-  parts.push(`[6:v]scale=-1:${smH}[p_sign]`);
+  parts.push('[1:v]scale=-1:' + smH + '[p_idle]');
+  parts.push('[2:v]scale=-1:' + smH + '[p_speak]');
+  parts.push('[3:v]scale=-1:' + smH + '[p_pr]');
+  parts.push('[4:v]scale=-1:' + smH + '[p_pl]');
+  parts.push('[5:v]scale=-1:' + smH + '[p_brk]');
+  parts.push('[6:v]scale=-1:' + smH + '[p_sign]');
 
-  // Overlay stickman with timed poses (speaking lip rhythm approx by alternating idle/speak)
   parts.push(
-    `[screens][p_idle]overlay=x=${smX}:y=${smY}:enable='lt(t\,${tWide})'[s1]`
+    '[screens][p_idle]overlay=x=' + smX + ':y=' + smY + ":enable='lt(t\\," + tWide + ")'[s1]"
   );
   parts.push(
-    `[s1][p_speak]overlay=x=${smX}:y=${smY}:enable='between(t\,${tWide}\,${tPointR})*lt(mod(t*3.5\,1)\,0.55)'[s2]`
+    '[s1][p_speak]overlay=x=' +
+      smX +
+      ':y=' +
+      smY +
+      ":enable='between(t\\," +
+      tWide +
+      "\\," +
+      tPointR +
+      ")*lt(mod(t*3.5\\,1)\\,0.55)'[s2]"
   );
   parts.push(
-    `[s2][p_idle]overlay=x=${smX}:y=${smY}:enable='between(t\,${tWide}\,${tPointR})*gte(mod(t*3.5\,1)\,0.55)'[s3]`
+    '[s2][p_idle]overlay=x=' +
+      smX +
+      ':y=' +
+      smY +
+      ":enable='between(t\\," +
+      tWide +
+      "\\," +
+      tPointR +
+      ")*gte(mod(t*3.5\\,1)\\,0.55)'[s3]"
   );
   parts.push(
-    `[s3][p_pr]overlay=x=${smX}:y=${smY}:enable='between(t\,${tPointR}\,${tBack})'[s4]`
+    '[s3][p_pr]overlay=x=' +
+      smX +
+      ':y=' +
+      smY +
+      ":enable='between(t\\," +
+      tPointR +
+      "\\," +
+      tBack +
+      ")'[s4]"
   );
   parts.push(
-    `[s4][p_speak]overlay=x=${smX}:y=${smY}:enable='between(t\,${tBack}\,${tPointL})'[s5]`
+    '[s4][p_speak]overlay=x=' +
+      smX +
+      ':y=' +
+      smY +
+      ":enable='between(t\\," +
+      tBack +
+      "\\," +
+      tPointL +
+      ")'[s5]"
   );
   parts.push(
-    `[s5][p_pl]overlay=x=${smX}:y=${smY}:enable='between(t\,${tPointL}\,${tOutro})'[s6]`
+    '[s5][p_pl]overlay=x=' +
+      smX +
+      ':y=' +
+      smY +
+      ":enable='between(t\\," +
+      tPointL +
+      "\\," +
+      tOutro +
+      ")'[s6]"
   );
   parts.push(
-    `[s6][p_sign]overlay=x=${smX}:y=${smY}:enable='gte(t\,${tOutro})'[anchor]`
+    '[s6][p_sign]overlay=x=' +
+      smX +
+      ':y=' +
+      smY +
+      ":enable='gte(t\\," +
+      tOutro +
+      ")'[anchor]"
   );
 
-  // Desk in front of legs (solid dark slate with top edge)
   parts.push(
-    `[anchor]` +
-      `drawbox=x=${Math.floor(width * 0.12)}:y=${deskY}:w=${Math.floor(width * 0.76)}:h=${deskH}:color=0x1e293b:t=fill,` +
-      `drawbox=x=${Math.floor(width * 0.12)}:y=${deskY}:w=${Math.floor(width * 0.76)}:h=6:color=0x334155:t=fill,` +
-      `drawbox=x=${Math.floor(width * 0.35)}:y=${deskY + 18}:w=${Math.floor(width * 0.3)}:h=10:color=0x0f172a:t=fill[desk]`
+    '[anchor]' +
+      'drawbox=x=' +
+      Math.floor(width * 0.12) +
+      ':y=' +
+      deskY +
+      ':w=' +
+      Math.floor(width * 0.76) +
+      ':h=' +
+      deskH +
+      ':color=0x1e293b:t=fill,' +
+      'drawbox=x=' +
+      Math.floor(width * 0.12) +
+      ':y=' +
+      deskY +
+      ':w=' +
+      Math.floor(width * 0.76) +
+      ':h=6:color=0x334155:t=fill,' +
+      'drawbox=x=' +
+      Math.floor(width * 0.35) +
+      ':y=' +
+      (deskY + 18) +
+      ':w=' +
+      Math.floor(width * 0.3) +
+      ':h=10:color=0x0f172a:t=fill[desk]'
   );
 
-  // Lower third — split red system (no LIVE)
-  // Top band: deep red headline
-  // Bottom band: brighter red ticker strip
   parts.push(
-    `[desk]` +
-      `drawbox=x=0:y=${ltTop}:w=${width}:h=${ltHeadH}:color=0x7f1d1d:t=fill,` +
-      `drawbox=x=0:y=${ltTop}:w=8:h=${ltHeadH}:color=0xfca5a5:t=fill,` +
-      `drawtext=fontfile=${font}:text='${headline}':fontcolor=white:fontsize=32:x=28:y=${ltTop + 20},` +
-      `drawbox=x=0:y=${ltTop + ltHeadH}:w=${width}:h=${ltTickH}:color=0x991b1b:t=fill,` +
-      `drawtext=fontfile=${fontReg}:text='${ticker}     ${ticker}':fontcolor=0xfef2f2:fontsize=18:` +
-      `x='w-mod(t*80\,w+tw)':y=${ltTop + ltHeadH + 10}[lt]`
+    '[desk]' +
+      'drawbox=x=0:y=' +
+      ltTop +
+      ':w=' +
+      width +
+      ':h=' +
+      ltHeadH +
+      ':color=0x7f1d1d:t=fill,' +
+      'drawbox=x=0:y=' +
+      ltTop +
+      ':w=8:h=' +
+      ltHeadH +
+      ':color=0xfca5a5:t=fill,' +
+      'drawtext=fontfile=' +
+      font +
+      ":text='" +
+      headline +
+      "':fontcolor=white:fontsize=32:x=28:y=" +
+      (ltTop + 20) +
+      ',' +
+      'drawbox=x=0:y=' +
+      (ltTop + ltHeadH) +
+      ':w=' +
+      width +
+      ':h=' +
+      ltTickH +
+      ':color=0x991b1b:t=fill,' +
+      'drawtext=fontfile=' +
+      fontReg +
+      ":text='" +
+      ticker +
+      '     ' +
+      ticker +
+      "':fontcolor=0xfef2f2:fontsize=18:x='w-mod(t*80\\,w+tw)':y=" +
+      (ltTop + ltHeadH + 10) +
+      '[lt]'
   );
 
-  // Subtle top brand mark (not LIVE)
   parts.push(
-    `[lt]` +
-      `drawbox=x=${width - 200}:y=24:w=176:h=36:color=0x0f172a@0.75:t=fill,` +
-      `drawtext=fontfile=${font}:text='9JA BEACON':fontcolor=white:fontsize=16:x=${width - 188}:y=32[comp]`
+    '[lt]' +
+      'drawbox=x=' +
+      (width - 200) +
+      ':y=24:w=176:h=36:color=0x0f172a@0.75:t=fill,' +
+      'drawtext=fontfile=' +
+      font +
+      ":text='9JA BEACON':fontcolor=white:fontsize=16:x=" +
+      (width - 188) +
+      ':y=32[comp]'
   );
 
-  // Camera pro moves
-  parts.push(`[comp]${cam}[vout]`);
+  parts.push('[comp]' + cam + '[vout]');
 
   const fcFile = path.join(tmpDir, 'fc.txt');
-  fs.writeFileSync(fcFile, parts.join(';' + '\n'));
+  fs.writeFileSync(fcFile, parts.join(';\n'));
 
   run(
     'ffmpeg -y -v error ' +
-      `-f lavfi -i color=c=0xf8fafc:s=${width}x${height}:d=${durationSec} ` +
-      `-loop 1 -i "${poseIdle}" ` +
-      `-loop 1 -i "${poseSpeak}" ` +
-      `-loop 1 -i "${posePointR}" ` +
-      `-loop 1 -i "${posePointL}" ` +
-      `-loop 1 -i "${poseBreak}" ` +
-      `-loop 1 -i "${poseSign}" ` +
-      `-i "${audioPath}" ` +
-      `-filter_complex_script "${fcFile}" ` +
-      `-map "[vout]" -map 7:a ` +
-      `-t ${durationSec} ` +
-      `-c:v libx264 -pix_fmt yuv420p -preset fast -crf 20 ` +
-      `-c:a aac -b:a 192k -shortest ` +
-      `"${videoOut}"`
+      '-f lavfi -i color=c=0xf8fafc:s=' +
+      width +
+      'x' +
+      height +
+      ':d=' +
+      durationSec +
+      ' ' +
+      '-loop 1 -t ' +
+      durationSec +
+      ' -i "' +
+      poseIdle +
+      '" ' +
+      '-loop 1 -t ' +
+      durationSec +
+      ' -i "' +
+      poseSpeak +
+      '" ' +
+      '-loop 1 -t ' +
+      durationSec +
+      ' -i "' +
+      posePointR +
+      '" ' +
+      '-loop 1 -t ' +
+      durationSec +
+      ' -i "' +
+      posePointL +
+      '" ' +
+      '-loop 1 -t ' +
+      durationSec +
+      ' -i "' +
+      poseBreak +
+      '" ' +
+      '-loop 1 -t ' +
+      durationSec +
+      ' -i "' +
+      poseSign +
+      '" ' +
+      '-i "' +
+      audioPath +
+      '" ' +
+      '-filter_complex_script "' +
+      fcFile +
+      '" ' +
+      '-map "[vout]" -map 7:a ' +
+      '-t ' +
+      durationSec +
+      ' ' +
+      '-c:v libx264 -pix_fmt yuv420p -preset fast -crf 20 ' +
+      '-c:a aac -b:a 192k -shortest ' +
+      '"' +
+      videoOut +
+      '"'
   );
 
   run(
