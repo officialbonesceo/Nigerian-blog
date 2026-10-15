@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <rect width="600" height="600" fill="#f8fafc"/>
+  <rect y="320" width="600" height="280" fill="#e2e8f0"/>
+  <line x1="0" y1="320" x2="600" y2="320" stroke="#94a3b8" stroke-width="2"/>
+  <rect x="240" y="150" width="120" height="140" rx="14" fill="#cbd5e1" stroke="#0f172a" stroke-width="2.5"/>
+  <rect x="265" y="120" width="70" height="26" rx="8" fill="#94a3b8" stroke="#0f172a" stroke-width="2"/>
+  <line x1="300" y1="155" x2="300" y2="300" stroke="#0f172a" stroke-width="8" stroke-linecap="round"/>
+  <line x1="268" y1="175" x2="332" y2="175" stroke="#0f172a" stroke-width="7" stroke-linecap="round"/>
+  <polygon points="291,150 309,150 305,162 295,162" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+  <polygon points="294,152 306,152 304,166 296,166" fill="#dc2626"/>
+  <polygon points="296,166 304,166 308,245 300,268 292,245" fill="#ef4444" stroke="#991b1b" stroke-width="1"/>
+  <!-- Left arm rest, right arm point -->
+  <path d="M268 175 L240 250 L210 305" fill="none" stroke="#0f172a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="210" cy="308" r="6" fill="#0f172a"/>
+  <path d="M332 175 L400 165 L470 150" fill="none" stroke="#0f172a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="470" cy="150" r="7" fill="#0f172a"/>
+  <line x1="470" y1="150" x2="495" y2="145" stroke="#0f172a" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="300" cy="115" r="42" fill="#ffffff" stroke="#0f172a" stroke-width="7"/>
+  <ellipse cx="285" cy="110" rx="5" ry="6.5" fill="#0f172a"/>
+  <ellipse cx="315" cy="110" rx="5" ry="6.5" fill="#0f172a"/>
+  <path d="M286 132 Q300 140 314 132" stroke="#0f172a" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M255 110 Q300 70 345 110" fill="none" stroke="#64748b" stroke-width="3.5" stroke-linecap="round"/>
+  <rect x="250" y="102" width="9" height="20" rx="3" fill="#334155"/>
+  <rect x="341" y="102" width="9" height="20" rx="3" fill="#334155"/>
+  <path d="M255 118 Q275 145 295 140" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="296" cy="140" r="3.5" fill="#ef4444"/>
+  <path d="M40 320 Q300 290 560 320 L540 560 Q300 530 60 560 Z" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+  <path d="M30 320 Q300 285 570 320 L575 335 Q300 300 25 335 Z" fill="#334155"/>
+  <rect x="235" y="400" width="130" height="36" rx="6" fill="#0f172a" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="300" y="423" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="900" letter-spacing="1.5" fill="#f8fafc">9JA BEACON</text>
+</svg>
