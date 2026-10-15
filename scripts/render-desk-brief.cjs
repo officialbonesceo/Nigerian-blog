@@ -2,8 +2,8 @@
  * 9jaBeacon Desk Brief MP4 — admin B&W stickman
  * Isolated from site + content-delivery.
  *
- * Uses bw_*.svg (black stickman, light stage, red tie, desk) matching
- * StickmanStudio currentColor style — NOT the golden error assets.
+ * Uses bw_*.svg (black stickman, light stage, red tie, desk).
+ * Fits FULL figure into 16:9 with pad (no center-crop zoom that hides face).
  */
 const fs = require('fs');
 const path = require('path');
@@ -44,7 +44,6 @@ function truncateHeadline(s, max) {
   return t.slice(0, max - 3).trimEnd() + '...';
 }
 
-/** Convert SVG → PNG via rsvg-convert (preferred) or ImageMagick */
 function svgToPng(svgPath, pngPath, size) {
   const rsvg = which('rsvg-convert');
   if (rsvg) {
@@ -103,8 +102,6 @@ function main() {
   fs.mkdirSync(tmpDir, { recursive: true });
 
   const stickDir = path.join(process.cwd(), 'public', 'presenters', 'stickman');
-
-  // Prefer B&W admin-style SVGs (not golden error PNGs)
   const svgIdle = path.join(stickDir, 'bw_idle.svg');
   const svgSpeak = path.join(stickDir, 'bw_speaking.svg');
   const svgPoint = path.join(stickDir, 'bw_point.svg');
@@ -130,7 +127,7 @@ function main() {
   const thumbOut = path.join(outDir, 'desk-brief-thumb.jpg');
   const metaOut = path.join(outDir, 'desk-brief-meta.json');
 
-  console.log('=== 9jaBeacon Desk Brief (B&W admin stickman) ===');
+  console.log('=== 9jaBeacon Desk Brief (B&W admin stickman, full body) ===');
   console.log('Headline:', headline);
   console.log('Voice:', voice);
   console.log('Format:', format, width + 'x' + height);
@@ -221,17 +218,18 @@ function main() {
   const ltHeadH = 70;
   const ltTickH = 40;
 
-  // Light underlay matches B&W stage
+  // FULL body visible: scale DOWN to fit, then pad (never center-crop zoom)
+  const fit =
+    `scale=${width}:${height}:force_original_aspect_ratio=decrease,` +
+    `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=0xf8fafc,format=rgba`;
+
   let fc =
-    `[1:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[idle];` +
-    `[2:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[speak];`;
+    `[1:v]${fit}[idle];` + `[2:v]${fit}[speak];`;
 
   if (hasPoint) {
-    fc +=
-      `[3:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[point];`;
+    fc += `[3:v]${fit}[point];`;
   }
 
-  // Mouth flicker: speaking over idle; point mid-script
   fc +=
     `[0:v][idle]overlay=0:0[base];` +
     `[base][speak]overlay=0:0:enable='lt(mod(t*5\\,1)\\,0.55)'[talk];`;
@@ -299,7 +297,7 @@ function main() {
         voice,
         format,
         durationSec,
-        studio: 'bw_admin_stickman',
+        studio: 'bw_admin_stickman_fullbody',
         motion: 'idle_speak_mouth_flicker_point',
         video: 'output/desk-brief.mp4',
         generated_at: new Date().toISOString(),
