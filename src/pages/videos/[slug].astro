@@ -26,22 +26,15 @@ const secretKey =
   '9jaBeacon_bonesceo_secret_key_2026_super_secure';
 const isAdmin = token ? verifyAdminToken(token, secretKey).valid : false;
 
-// Videos are currently disabled site-wide
-// Videos are currently disabled site-wide or missing
+// Missing or disabled videos → permanent redirect so GSC drops 404s cleanly
 if (!videosEnabled || !slug) {
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"/><title>Video Not Available - 9jaBeacon</title><meta name="robots" content="noindex, follow"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" type="image/svg+xml" href="/favicon.svg"/></head><body style="background:#020617;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;text-align:center;"><div style="max-width:440px;"><div style="width:64px;height:64px;border-radius:16px;background:rgba(6,78,59,0.5);border:1px solid rgba(16,185,129,0.3);color:#34d399;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;font-weight:900;">404</div><h1 style="font-size:22px;margin:0 0 8px;">Video Broadcast Unavailable</h1><p style="color:#94a3b8;font-size:14px;margin:0 0 24px;">The video broadcast you requested is currently unavailable or has expired.</p><a href="/" style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:14px;">Return to Homepage</a></div></body></html>`, {
-    status: 404,
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
-  });
+  return Astro.redirect('/videos', 301);
 }
 
 const video = await getVideoArticleBySlug(db, slug);
 
 if (!video) {
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"/><title>Video Not Found - 9jaBeacon</title><meta name="robots" content="noindex, follow"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" type="image/svg+xml" href="/favicon.svg"/></head><body style="background:#020617;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;text-align:center;"><div style="max-width:440px;"><div style="width:64px;height:64px;border-radius:16px;background:rgba(6,78,59,0.5);border:1px solid rgba(16,185,129,0.3);color:#34d399;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;font-weight:900;">404</div><h1 style="font-size:22px;margin:0 0 8px;">Video Broadcast Not Found</h1><p style="color:#94a3b8;font-size:14px;margin:0 0 24px;">The video broadcast you requested could not be found.</p><a href="/" style="display:inline-block;background:#059669;color:#fff;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:bold;font-size:14px;">Return to Homepage</a></div></body></html>`, {
-    status: 404,
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
-  });
+  return Astro.redirect('/videos', 301);
 }
 
 // Track real view count
@@ -171,13 +164,11 @@ const videoJsonLd = {
         {video.title}
       </h1>
 
-      <!-- Social Share Strip -->
       <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
         <span class="text-xs font-bold text-slate-600 dark:text-slate-400 font-mono uppercase tracking-wider">
           Share Broadcast
         </span>
         <div class="flex items-center gap-2">
-          <!-- WhatsApp -->
           <a
             href={`https://api.whatsapp.com/send?text=${encodeURIComponent(video.title + ' ' + currentUrl)}`}
             target="_blank"
@@ -188,8 +179,6 @@ const videoJsonLd = {
           >
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.697c1.004.57 2.083.87 3.206.87 3.181 0 5.767-2.587 5.767-5.766.001-3.182-2.585-5.768-5.767-5.768zm0 10.428c-.961 0-1.895-.262-2.709-.757l-.194-.118-2.012.528.537-1.961-.128-.204c-.544-.865-.83-1.874-.83-2.916 0-2.906 2.364-5.27 5.27-5.27 2.905 0 5.27 2.364 5.27 5.27s-2.365 5.27-5.27 5.27z"/></svg>
           </a>
-
-          <!-- Twitter / X -->
           <a
             href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(video.title)}&url=${encodeURIComponent(currentUrl)}&via=9jaBeacon`}
             target="_blank"
@@ -200,8 +189,6 @@ const videoJsonLd = {
           >
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </a>
-
-          <!-- Copy Link -->
           <button
             type="button"
             onclick={`navigator.clipboard.writeText('${currentUrl}'); alert('Link copied to clipboard!');`}
@@ -216,7 +203,6 @@ const videoJsonLd = {
         </div>
       </div>
 
-      <!-- Video Summary & Editorial Notes -->
       <div class="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-3">
         <h3 class="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
           Report Overview & Key Context
@@ -234,7 +220,6 @@ const videoJsonLd = {
       </div>
     </div>
 
-    <!-- Related Videos Section -->
     {relatedVideos.length > 0 && (
       <div class="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
         <div class="flex items-center justify-between">
