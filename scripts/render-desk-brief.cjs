@@ -1,7 +1,8 @@
 /**
  * 9jaBeacon Pro Desk Brief MP4
- * Stickman + glass boards + scale/crop camera + ticker lower-third
- * Isolated from content-delivery / CF Pages.
+ * Stickman + glass boards + desk + ticker
+ * Camera: fixed upscale + crop eval=frame (sin drift) — no t in scale
+ * Side "zoom": full-frame board overlays timed with point gestures
  */
 const fs = require('fs');
 const path = require('path');
@@ -195,43 +196,19 @@ function main() {
   const ltHeadH = 70;
   const ltTickH = 40;
 
-  // Camera without zoompan: upscale then crop with timed bias (left/right board, face drift)
-  // between(t,a,b) is 1 inside window — safe in scale/crop exprs
+  // Fixed scale (NO t) then crop with eval=frame + sin drift = non-static camera
+  const upW = Math.round(width * 1.12);
+  const upH = Math.round(height * 1.12);
   const cam =
-    'scale=w=' +
-    width +
-    "*(1.0+0.25*between(t\\," +
-    tZoomR0 +
-    "\\," +
-    tZoomR1 +
-    ")+0.25*between(t\\," +
-    tZoomL0 +
-    "\\," +
-    tZoomL1 +
-    ")+0.12*between(t\\," +
-    (t * 0.18).toFixed(2) +
-    "\\," +
-    tPointR +
-    ')):h=-2,' +
-    'crop=' +
+    'scale=' +
+    upW +
+    ':' +
+    upH +
+    ',crop=' +
     width +
     ':' +
     height +
-    ':' +
-    "x='(in_w-out_w)*(0.5+0.42*between(t\\," +
-    tZoomR0 +
-    "\\," +
-    tZoomR1 +
-    ")-0.42*between(t\\," +
-    tZoomL0 +
-    "\\," +
-    tZoomL1 +
-    ")+0.04*sin(t/4))':" +
-    "y='(in_h-out_h)*(0.35+0.15*between(t\\," +
-    (t * 0.32).toFixed(2) +
-    "\\," +
-    tPointR +
-    ")+0.03*sin(t/5))'";
+    ":'(in_w-out_w)/2+45*sin(t/4.5)':'(in_h-out_h)/2+22*sin(t/6)':eval=frame";
 
   const parts = [];
 
@@ -431,7 +408,13 @@ function main() {
   parts.push('[6:v]scale=-1:' + smH + '[p_sign]');
 
   parts.push(
-    '[screens][p_idle]overlay=x=' + smX + ':y=' + smY + ":enable='lt(t\\," + tWide + ")'[s1]"
+    '[screens][p_idle]overlay=x=' +
+      smX +
+      ':y=' +
+      smY +
+      ":enable='lt(t\\," +
+      tWide +
+      ")'[s1]"
   );
   parts.push(
     '[s1][p_speak]overlay=x=' +
@@ -522,11 +505,8 @@ function main() {
       (deskY + 18) +
       ':w=' +
       Math.floor(width * 0.3) +
-      ':h=10:color=0x0x0f172a:t=fill[desk]'
+      ':h=10:color=0x0f172a:t=fill[desk]'
   );
-
-  // fix typo 0x0x0f172a -> 0x0f172a
-  parts[parts.length - 1] = parts[parts.length - 1].replace('0x0x0f172a', '0x0f172a');
 
   parts.push(
     '[desk]' +
@@ -579,66 +559,192 @@ function main() {
       ':y=32[comp]'
   );
 
-  parts.push('[comp]' + cam + '[vout]');
-
-  const fcFile = path.join(tmpDir, 'fc.txt');
-  fs.writeFileSync(fcFile, parts.join(';\n'));
-
-  run(
-    'ffmpeg -y -v error ' +
-      '-f lavfi -i color=c=0xf8fafc:s=' +
+  // Full-frame board plates ("camera fills screen") during zoom windows
+  parts.push(
+    'color=c=0x0f172a:s=' +
       width +
       'x' +
       height +
       ':d=' +
       durationSec +
-      ' ' +
-      '-loop 1 -t ' +
-      durationSec +
-      ' -i "' +
-      poseIdle +
-      '" ' +
-      '-loop 1 -t ' +
-      durationSec +
-      ' -i "' +
-      poseSpeak +
-      '" ' +
-      '-loop 1 -t ' +
-      durationSec +
-      ' -i "' +
-      posePointR +
-      '" ' +
-      '-loop 1 -t ' +
-      durationSec +
-      ' -i "' +
-      posePointL +
-      '" ' +
-      '-loop 1 -t ' +
-      durationSec +
-      ' -i "' +
-      poseBreak +
-      '" ' +
-      '-loop 1 -t ' +
-      durationSec +
-      ' -i "' +
-      poseSign +
-      '" ' +
-      '-i "' +
-      audioPath +
-      '" ' +
-      '-filter_complex_script "' +
-      fcFile +
-      '" ' +
-      '-map "[vout]" -map 7:a ' +
-      '-t ' +
-      durationSec +
-      ' ' +
-      '-c:v libx264 -pix_fmt yuv420p -preset fast -crf 20 ' +
-      '-c:a aac -b:a 192k -shortest ' +
-      '"' +
-      videoOut +
-      '"'
+      ',drawtext=fontfile=' +
+      font +
+      ":text='KEY FACTS':fontcolor=0x94a3b8:fontsize=36:x=80:y=120," +
+      'drawtext=fontfile=' +
+      font +
+      ":text='20 rescued':fontcolor=white:fontsize=48:x=80:y=220," +
+      'drawtext=fontfile=' +
+      font +
+      ":text='7 days in captivity':fontcolor=white:fontsize=42:x=80:y=300," +
+      'drawtext=fontfile=' +
+      font +
+      ":text='Imo to Ibadan':fontcolor=0xe2e8f0:fontsize=40:x=80:y=380," +
+      'drawtext=fontfile=' +
+      fontReg +
+      ":text='9jaBeacon verified':fontcolor=0x34d399:fontsize=28:x=80:y=500[fillL]"
   );
+  parts.push(
+    'color=c=0x0f172a:s=' +
+      width +
+      'x' +
+      height +
+      ':d=' +
+      durationSec +
+      ',drawtext=fontfile=' +
+      font +
+      ":text='CONTEXT':fontcolor=0x94a3b8:fontsize=36:x=80:y=120," +
+      'drawtext=fontfile=' +
+      font +
+      ":text='Southeast routes':fontcolor=white:fontsize=44:x=80:y=220," +
+      'drawtext=fontfile=' +
+      font +
+      ":text='NYSC travel safety':fontcolor=white:fontsize=42:x=80:y=300," +
+      'drawtext=fontfile=' +
+      fontReg +
+      ":text='www.9jabeacon.name.ng':fontcolor=0x34d399:fontsize=28:x=80:y=500[fillR]"
+  );
+
+  parts.push(
+    '[comp][fillR]overlay=0:0:enable=' +
+      "'between(t\\," +
+      tZoomR0 +
+      "\\," +
+      tZoomR1 +
+      ")'[c1]"
+  );
+  parts.push(
+    '[c1][fillL]overlay=0:0:enable=' +
+      "'between(t\\," +
+      tZoomL0 +
+      "\\," +
+      tZoomL1 +
+      ")'[c2]"
+  );
+
+  parts.push('[c2]' + cam + '[vout]');
+
+  const fcFile = path.join(tmpDir, 'fc.txt');
+  fs.writeFileSync(fcFile, parts.join(';\n'));
+
+  // Primary render; fallback without camera if crop eval fails
+  try {
+    run(
+      'ffmpeg -y -v error ' +
+        '-f lavfi -i color=c=0xf8fafc:s=' +
+        width +
+        'x' +
+        height +
+        ':d=' +
+        durationSec +
+        ' ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        poseIdle +
+        '" ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        poseSpeak +
+        '" ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        posePointR +
+        '" ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        posePointL +
+        '" ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        poseBreak +
+        '" ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        poseSign +
+        '" ' +
+        '-i "' +
+        audioPath +
+        '" ' +
+        '-filter_complex_script "' +
+        fcFile +
+        '" ' +
+        '-map "[vout]" -map 7:a ' +
+        '-t ' +
+        durationSec +
+        ' ' +
+        '-c:v libx264 -pix_fmt yuv420p -preset fast -crf 20 ' +
+        '-c:a aac -b:a 192k -shortest ' +
+        '"' +
+        videoOut +
+        '"'
+    );
+  } catch (e1) {
+    console.warn('Primary camera path failed, retrying without crop drift...');
+    const partsFb = parts.slice(0, -1);
+    partsFb.push('[c2]format=yuv420p[vout]');
+    const fcFb = path.join(tmpDir, 'fc_fb.txt');
+    fs.writeFileSync(fcFb, partsFb.join(';\n'));
+    run(
+      'ffmpeg -y -v error ' +
+        '-f lavfi -i color=c=0xf8fafc:s=' +
+        width +
+        'x' +
+        height +
+        ':d=' +
+        durationSec +
+        ' ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        poseIdle +
+        '" ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        poseSpeak +
+        '" ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        posePointR +
+        '" ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        posePointL +
+        '" ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        poseBreak +
+        '" ' +
+        '-loop 1 -t ' +
+        durationSec +
+        ' -i "' +
+        poseSign +
+        '" ' +
+        '-i "' +
+        audioPath +
+        '" ' +
+        '-filter_complex_script "' +
+        fcFb +
+        '" ' +
+        '-map "[vout]" -map 7:a ' +
+        '-t ' +
+        durationSec +
+        ' ' +
+        '-c:v libx264 -pix_fmt yuv420p -preset fast -crf 20 ' +
+        '-c:a aac -b:a 192k -shortest ' +
+        '"' +
+        videoOut +
+        '"'
+    );
+  }
 
   run(
     'ffmpeg -y -v error -ss ' +
@@ -659,7 +765,7 @@ function main() {
         voice,
         format,
         durationSec,
-        camera: 'scale_crop_timed_bias',
+        camera: 'fixed_scale_crop_eval_frame_plus_screen_fill',
         studio: 'white_glass_boards_desk_stickman',
         video: 'output/desk-brief.mp4',
         generated_at: new Date().toISOString(),
