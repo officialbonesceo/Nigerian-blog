@@ -1,12 +1,9 @@
 /**
- * 9jaBeacon Desk Brief MP4
+ * 9jaBeacon Desk Brief MP4 — admin B&W stickman
  * Isolated from site + content-delivery.
  *
- * Stickman PNGs already contain the dark newsroom, curved desk, ON AIR,
- * gold stickman + headset. We scale those full-frame and only composite:
- *  - idle ↔ speaking flicker (mouth motion)
- *  - optional point poses mid-script
- *  - red headline bar + scrolling ticker (the bits you liked)
+ * Uses bw_*.svg (black stickman, light stage, red tie, desk) matching
+ * StickmanStudio currentColor style — NOT the golden error assets.
  */
 const fs = require('fs');
 const path = require('path');
@@ -47,6 +44,45 @@ function truncateHeadline(s, max) {
   return t.slice(0, max - 3).trimEnd() + '...';
 }
 
+/** Convert SVG → PNG via rsvg-convert (preferred) or ImageMagick */
+function svgToPng(svgPath, pngPath, size) {
+  const rsvg = which('rsvg-convert');
+  if (rsvg) {
+    run(
+      '"' +
+        rsvg +
+        '" -w ' +
+        size +
+        ' -h ' +
+        size +
+        ' -o "' +
+        pngPath +
+        '" "' +
+        svgPath +
+        '"'
+    );
+    return;
+  }
+  const convert = which('convert') || which('magick');
+  if (convert) {
+    run(
+      '"' +
+        convert +
+        '" -background none -resize ' +
+        size +
+        'x' +
+        size +
+        ' "' +
+        svgPath +
+        '" "' +
+        pngPath +
+        '"'
+    );
+    return;
+  }
+  throw new Error('Need rsvg-convert or ImageMagick to rasterize B&W stickman SVG');
+}
+
 function main() {
   const script =
     (process.env.SCRIPT || DEFAULT_SCRIPT).replace(/\s+/g, ' ').trim() || DEFAULT_SCRIPT;
@@ -67,19 +103,26 @@ function main() {
   fs.mkdirSync(tmpDir, { recursive: true });
 
   const stickDir = path.join(process.cwd(), 'public', 'presenters', 'stickman');
-  const poseIdle = path.join(stickDir, 'stickman_anchor_idle.png');
-  const poseSpeak = path.join(stickDir, 'stickman_anchor_speaking.png');
-  const posePoint = path.join(stickDir, 'stickman_anchor_pointing_screen.png');
-  const poseSign = path.join(stickDir, 'stickman_anchor_signing_off.png');
 
-  for (const p of [poseIdle, poseSpeak]) {
-    if (!fs.existsSync(p)) {
-      console.error('Missing required pose:', p);
-      process.exit(1);
-    }
+  // Prefer B&W admin-style SVGs (not golden error PNGs)
+  const svgIdle = path.join(stickDir, 'bw_idle.svg');
+  const svgSpeak = path.join(stickDir, 'bw_speaking.svg');
+  const svgPoint = path.join(stickDir, 'bw_point.svg');
+
+  if (!fs.existsSync(svgIdle) || !fs.existsSync(svgSpeak)) {
+    console.error('Missing B&W stickman SVGs in', stickDir);
+    process.exit(1);
   }
-  const hasPoint = fs.existsSync(posePoint);
-  const hasSign = fs.existsSync(poseSign);
+
+  const poseIdle = path.join(tmpDir, 'bw_idle.png');
+  const poseSpeak = path.join(tmpDir, 'bw_speaking.png');
+  const posePoint = path.join(tmpDir, 'bw_point.png');
+
+  console.log('Rasterizing B&W stickman SVGs (admin style)...');
+  svgToPng(svgIdle, poseIdle, 1080);
+  svgToPng(svgSpeak, poseSpeak, 1080);
+  const hasPoint = fs.existsSync(svgPoint);
+  if (hasPoint) svgToPng(svgPoint, posePoint, 1080);
 
   const narrationMp3 = path.join(tmpDir, 'narration.mp3');
   const narrationWav = path.join(tmpDir, 'narration.wav');
@@ -87,7 +130,7 @@ function main() {
   const thumbOut = path.join(outDir, 'desk-brief-thumb.jpg');
   const metaOut = path.join(outDir, 'desk-brief-meta.json');
 
-  console.log('=== 9jaBeacon Desk Brief (full-frame stickman studio) ===');
+  console.log('=== 9jaBeacon Desk Brief (B&W admin stickman) ===');
   console.log('Headline:', headline);
   console.log('Voice:', voice);
   console.log('Format:', format, width + 'x' + height);
@@ -171,56 +214,35 @@ function main() {
   console.log('Duration:', durationSec, 's');
 
   const t = durationSec;
-  // Timeline: talk most of the way, brief point mid, sign-off at end
   const tPoint0 = (t * 0.45).toFixed(2);
   const tPoint1 = (t * 0.58).toFixed(2);
-  const tSign = (t * 0.92).toFixed(2);
 
   const ltTop = height - 150;
   const ltHeadH = 70;
   const ltTickH = 40;
 
-  // Full-frame poses: scale+pad to cover 1920x1080 (PNG is square studio)
-  // Mouth motion: speaking over idle with enable on mod(t)
-  // Point / sign when assets exist
+  // Light underlay matches B&W stage
   let fc =
     `[1:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[idle];` +
     `[2:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[speak];`;
 
-  let nextIn = 3;
   if (hasPoint) {
     fc +=
-      `[${nextIn}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[point];`;
-    nextIn++;
-  }
-  if (hasSign) {
-    fc +=
-      `[${nextIn}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[sign];`;
-    nextIn++;
+      `[3:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[point];`;
   }
 
-  // Base = idle full duration
-  // Speaking flickers on top during talk windows (mouth open/closed)
-  // Point mid-script; sign-off at end
+  // Mouth flicker: speaking over idle; point mid-script
   fc +=
     `[0:v][idle]overlay=0:0[base];` +
-    `[base][speak]overlay=0:0:enable='lt(t\\,${tPoint0})*lt(mod(t*5\\,1)\\,0.55)+between(t\\,${tPoint1}\\,${tSign})*lt(mod(t*5\\,1)\\,0.55)'[talk];`;
+    `[base][speak]overlay=0:0:enable='lt(mod(t*5\\,1)\\,0.55)'[talk];`;
 
   if (hasPoint) {
     fc +=
-      `[talk][point]overlay=0:0:enable='between(t\\,${tPoint0}\\,${tPoint1})'[posed];`;
+      `[talk][point]overlay=0:0:enable='between(t\\,${tPoint0}\\,${tPoint1})'[stage];`;
   } else {
-    fc += `[talk]copy[posed];`;
+    fc += `[talk]copy[stage];`;
   }
 
-  if (hasSign) {
-    fc +=
-      `[posed][sign]overlay=0:0:enable='gte(t\\,${tSign})'[stage];`;
-  } else {
-    fc += `[posed]copy[stage];`;
-  }
-
-  // Lower-third only (keep what you liked)
   fc +=
     `[stage]` +
     `drawbox=x=0:y=${ltTop}:w=${width}:h=${ltHeadH}:color=0x7f1d1d:t=fill,` +
@@ -233,16 +255,14 @@ function main() {
   const fcFile = path.join(tmpDir, 'fc.txt');
   fs.writeFileSync(fcFile, fc, 'utf8');
 
-  // Inputs: 0 = dark studio color (fallback underlay), 1 idle, 2 speak, [3 point], [4 sign], last = audio
   let inputArgs =
-    `-f lavfi -i color=c=0x030712:s=${width}x${height}:d=${durationSec} ` +
+    `-f lavfi -i color=c=0xf8fafc:s=${width}x${height}:d=${durationSec} ` +
     `-loop 1 -t ${durationSec} -i "${poseIdle}" ` +
     `-loop 1 -t ${durationSec} -i "${poseSpeak}" `;
   if (hasPoint) inputArgs += `-loop 1 -t ${durationSec} -i "${posePoint}" `;
-  if (hasSign) inputArgs += `-loop 1 -t ${durationSec} -i "${poseSign}" `;
   inputArgs += `-i "${audioPath}" `;
 
-  const audioMapIndex = 3 + (hasPoint ? 1 : 0) + (hasSign ? 1 : 0);
+  const audioMapIndex = hasPoint ? 4 : 3;
 
   run(
     'ffmpeg -y -v warning ' +
@@ -279,8 +299,8 @@ function main() {
         voice,
         format,
         durationSec,
-        studio: 'full_frame_stickman_png',
-        motion: 'idle_speak_flicker_point_sign',
+        studio: 'bw_admin_stickman',
+        motion: 'idle_speak_mouth_flicker_point',
         video: 'output/desk-brief.mp4',
         generated_at: new Date().toISOString(),
       },
