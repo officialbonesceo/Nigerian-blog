@@ -1,12 +1,12 @@
 /**
- * 9jaBeacon Desk Brief MP4 — minimal reliable renderer
- * Isolated workflow only. Does not touch site, D1, or content-delivery.
+ * 9jaBeacon Desk Brief MP4
+ * Isolated from site + content-delivery.
  *
- * Approach that works on GHA ffmpeg:
- * - One stickman pose (no timed enable chain)
- * - Inline -filter_complex (no filter_complex_script)
- * - Simple drawbox/drawtext lower-third + boards
- * - Edge TTS voiceover
+ * Stickman PNGs already contain the dark newsroom, curved desk, ON AIR,
+ * gold stickman + headset. We scale those full-frame and only composite:
+ *  - idle ↔ speaking flicker (mouth motion)
+ *  - optional point poses mid-script
+ *  - red headline bar + scrolling ticker (the bits you liked)
  */
 const fs = require('fs');
 const path = require('path');
@@ -48,7 +48,8 @@ function truncateHeadline(s, max) {
 }
 
 function main() {
-  const script = (process.env.SCRIPT || DEFAULT_SCRIPT).replace(/\s+/g, ' ').trim() || DEFAULT_SCRIPT;
+  const script =
+    (process.env.SCRIPT || DEFAULT_SCRIPT).replace(/\s+/g, ' ').trim() || DEFAULT_SCRIPT;
   const headlineRaw = process.env.HEADLINE || DEFAULT_HEADLINE;
   const headline = cleanDraw(truncateHeadline(headlineRaw, 58), 58);
   const ticker = cleanDraw(process.env.TICKER || DEFAULT_TICKER, 180);
@@ -65,17 +66,20 @@ function main() {
   fs.mkdirSync(outDir, { recursive: true });
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  // Prefer speaking pose; fall back to idle
   const stickDir = path.join(process.cwd(), 'public', 'presenters', 'stickman');
-  const poseSpeak = path.join(stickDir, 'stickman_anchor_speaking.png');
   const poseIdle = path.join(stickDir, 'stickman_anchor_idle.png');
-  const pose =
-    fs.existsSync(poseSpeak) ? poseSpeak : fs.existsSync(poseIdle) ? poseIdle : '';
-  if (!pose) {
-    console.error('No stickman pose found in', stickDir);
-    process.exit(1);
+  const poseSpeak = path.join(stickDir, 'stickman_anchor_speaking.png');
+  const posePoint = path.join(stickDir, 'stickman_anchor_pointing_screen.png');
+  const poseSign = path.join(stickDir, 'stickman_anchor_signing_off.png');
+
+  for (const p of [poseIdle, poseSpeak]) {
+    if (!fs.existsSync(p)) {
+      console.error('Missing required pose:', p);
+      process.exit(1);
+    }
   }
-  console.log('Pose:', path.basename(pose));
+  const hasPoint = fs.existsSync(posePoint);
+  const hasSign = fs.existsSync(poseSign);
 
   const narrationMp3 = path.join(tmpDir, 'narration.mp3');
   const narrationWav = path.join(tmpDir, 'narration.wav');
@@ -83,7 +87,7 @@ function main() {
   const thumbOut = path.join(outDir, 'desk-brief-thumb.jpg');
   const metaOut = path.join(outDir, 'desk-brief-meta.json');
 
-  console.log('=== 9jaBeacon Desk Brief (minimal) ===');
+  console.log('=== 9jaBeacon Desk Brief (full-frame stickman studio) ===');
   console.log('Headline:', headline);
   console.log('Voice:', voice);
   console.log('Format:', format, width + 'x' + height);
@@ -166,79 +170,85 @@ function main() {
   }
   console.log('Duration:', durationSec, 's');
 
-  const smH = Math.floor(height * 0.7);
-  const smY = Math.floor(height * 0.08);
-  const boardW = Math.floor(width * 0.22);
-  const boardH = Math.floor(height * 0.4);
-  const boardY = Math.floor(height * 0.12);
-  const leftX = Math.floor(width * 0.04);
-  const rightX = width - boardW - Math.floor(width * 0.04);
-  const midW = Math.floor(width * 0.28);
-  const midX = Math.floor((width - midW) / 2);
-  const midY = Math.floor(height * 0.06);
-  const midH = Math.floor(height * 0.26);
-  const deskY = Math.floor(height * 0.58);
-  const deskH = Math.floor(height * 0.22);
-  const ltTop = height - 150;
+  const t = durationSec;
+  // Timeline: talk most of the way, brief point mid, sign-off at end
+  const tPoint0 = (t * 0.45).toFixed(2);
+  const tPoint1 = (t * 0.58).toFixed(2);
+  const tSign = (t * 0.92).toFixed(2);
 
-  // Single-line filter_complex — no script file, no enable(), no zoompan
-  // Escaping: for shell double-quotes, escape $ ` \ and use \, for ffmpeg commas in expressions
-  const fc =
-    // stickman
-    `[1:v]scale=-1:${smH},format=rgba[sm];` +
-    // base + boards
-    `[0:v]` +
-    `drawbox=x=0:y=0:w=${width}:h=${height}:color=0xf1f5f9:t=fill,` +
-    `drawbox=x=0:y=0:w=${width}:h=${Math.floor(height * 0.55)}:color=0xe2e8f0@0.85:t=fill,` +
-    `drawbox=x=${leftX}:y=${boardY}:w=${boardW}:h=${boardH}:color=0xffffff@0.35:t=fill,` +
-    `drawbox=x=${leftX}:y=${boardY}:w=${boardW}:h=${boardH}:color=0x94a3b8@0.55:t=3,` +
-    `drawbox=x=${rightX}:y=${boardY}:w=${boardW}:h=${boardH}:color=0xffffff@0.35:t=fill,` +
-    `drawbox=x=${rightX}:y=${boardY}:w=${boardW}:h=${boardH}:color=0x94a3b8@0.55:t=3,` +
-    `drawbox=x=${midX}:y=${midY}:w=${midW}:h=${midH}:color=0xffffff@0.28:t=fill,` +
-    `drawbox=x=${midX}:y=${midY}:w=${midW}:h=${midH}:color=0x64748b@0.45:t=2,` +
-    // board labels
-    `drawtext=fontfile=${font}:text='9JA':fontcolor=0x0f172a@0.55:fontsize=42:x=${leftX + 24}:y=${boardY + 40},` +
-    `drawtext=fontfile=${font}:text='BEACON':fontcolor=0xdc2626@0.7:fontsize=28:x=${leftX + 24}:y=${boardY + 90},` +
-    `drawtext=fontfile=${font}:text='9JA':fontcolor=0x0f172a@0.55:fontsize=42:x=${rightX + 24}:y=${boardY + 40},` +
-    `drawtext=fontfile=${font}:text='BEACON':fontcolor=0xdc2626@0.7:fontsize=28:x=${rightX + 24}:y=${boardY + 90},` +
-    `drawtext=fontfile=${font}:text='9JA BEACON':fontcolor=0x0f172a@0.4:fontsize=36:x=${midX + 40}:y=${midY + Math.floor(midH / 2) - 18},` +
-    // key facts / context on boards
-    `drawtext=fontfile=${fontReg}:text='KEY FACTS':fontcolor=0x334155:fontsize=18:x=${leftX + 28}:y=${boardY + 160},` +
-    `drawtext=fontfile=${fontReg}:text='20 rescued':fontcolor=0x0f172a:fontsize=22:x=${leftX + 28}:y=${boardY + 200},` +
-    `drawtext=fontfile=${fontReg}:text='7 days':fontcolor=0x0f172a:fontsize=22:x=${leftX + 28}:y=${boardY + 240},` +
-    `drawtext=fontfile=${fontReg}:text='Imo to Ibadan':fontcolor=0x0f172a:fontsize=20:x=${leftX + 28}:y=${boardY + 280},` +
-    `drawtext=fontfile=${fontReg}:text='CONTEXT':fontcolor=0x334155:fontsize=18:x=${rightX + 28}:y=${boardY + 160},` +
-    `drawtext=fontfile=${fontReg}:text='Southeast routes':fontcolor=0x0f172a:fontsize=20:x=${rightX + 28}:y=${boardY + 200},` +
-    `drawtext=fontfile=${fontReg}:text='NYSC safety':fontcolor=0x0f172a:fontsize=20:x=${rightX + 28}:y=${boardY + 240}[bg];` +
-    // stickman on studio
-    `[bg][sm]overlay=x=(W-w)/2:y=${smY}[anch];` +
-    // desk
-    `[anch]` +
-    `drawbox=x=${Math.floor(width * 0.12)}:y=${deskY}:w=${Math.floor(width * 0.76)}:h=${deskH}:color=0x1e293b:t=fill,` +
-    `drawbox=x=${Math.floor(width * 0.12)}:y=${deskY}:w=${Math.floor(width * 0.76)}:h=6:color=0x334155:t=fill[desk];` +
-    // lower third + brand + ticker (simple x scroll)
-    `[desk]` +
-    `drawbox=x=0:y=${ltTop}:w=${width}:h=70:color=0x7f1d1d:t=fill,` +
-    `drawbox=x=0:y=${ltTop}:w=8:h=70:color=0xfca5a5:t=fill,` +
+  const ltTop = height - 150;
+  const ltHeadH = 70;
+  const ltTickH = 40;
+
+  // Full-frame poses: scale+pad to cover 1920x1080 (PNG is square studio)
+  // Mouth motion: speaking over idle with enable on mod(t)
+  // Point / sign when assets exist
+  let fc =
+    `[1:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[idle];` +
+    `[2:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[speak];`;
+
+  let nextIn = 3;
+  if (hasPoint) {
+    fc +=
+      `[${nextIn}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[point];`;
+    nextIn++;
+  }
+  if (hasSign) {
+    fc +=
+      `[${nextIn}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},format=rgba[sign];`;
+    nextIn++;
+  }
+
+  // Base = idle full duration
+  // Speaking flickers on top during talk windows (mouth open/closed)
+  // Point mid-script; sign-off at end
+  fc +=
+    `[0:v][idle]overlay=0:0[base];` +
+    `[base][speak]overlay=0:0:enable='lt(t\\,${tPoint0})*lt(mod(t*5\\,1)\\,0.55)+between(t\\,${tPoint1}\\,${tSign})*lt(mod(t*5\\,1)\\,0.55)'[talk];`;
+
+  if (hasPoint) {
+    fc +=
+      `[talk][point]overlay=0:0:enable='between(t\\,${tPoint0}\\,${tPoint1})'[posed];`;
+  } else {
+    fc += `[talk]copy[posed];`;
+  }
+
+  if (hasSign) {
+    fc +=
+      `[posed][sign]overlay=0:0:enable='gte(t\\,${tSign})'[stage];`;
+  } else {
+    fc += `[posed]copy[stage];`;
+  }
+
+  // Lower-third only (keep what you liked)
+  fc +=
+    `[stage]` +
+    `drawbox=x=0:y=${ltTop}:w=${width}:h=${ltHeadH}:color=0x7f1d1d:t=fill,` +
+    `drawbox=x=0:y=${ltTop}:w=8:h=${ltHeadH}:color=0xfca5a5:t=fill,` +
     `drawtext=fontfile=${font}:text='${headline}':fontcolor=white:fontsize=32:x=28:y=${ltTop + 20},` +
-    `drawbox=x=0:y=${ltTop + 70}:w=${width}:h=40:color=0x991b1b:t=fill,` +
-    `drawtext=fontfile=${fontReg}:text='${ticker}   ${ticker}':fontcolor=0xfef2f2:fontsize=18:x='w-mod(t*70\,w+tw)':y=${ltTop + 80},` +
-    `drawbox=x=${width - 200}:y=24:w=176:h=36:color=0x0f172a@0.75:t=fill,` +
-    `drawtext=fontfile=${font}:text='9JA BEACON':fontcolor=white:fontsize=16:x=${width - 188}:y=32,` +
+    `drawbox=x=0:y=${ltTop + ltHeadH}:w=${width}:h=${ltTickH}:color=0x991b1b:t=fill,` +
+    `drawtext=fontfile=${fontReg}:text='${ticker}   ${ticker}':fontcolor=0xfef2f2:fontsize=18:x='w-mod(t*70\\,w+tw)':y=${ltTop + ltHeadH + 10},` +
     `format=yuv420p[vout]`;
 
   const fcFile = path.join(tmpDir, 'fc.txt');
   fs.writeFileSync(fcFile, fc, 'utf8');
 
-  // Use script file BUT written as one continuous chain ending in [vout]
-  // Also try -filter_complex from file via @ if needed; stick to -filter_complex_script
+  // Inputs: 0 = dark studio color (fallback underlay), 1 idle, 2 speak, [3 point], [4 sign], last = audio
+  let inputArgs =
+    `-f lavfi -i color=c=0x030712:s=${width}x${height}:d=${durationSec} ` +
+    `-loop 1 -t ${durationSec} -i "${poseIdle}" ` +
+    `-loop 1 -t ${durationSec} -i "${poseSpeak}" `;
+  if (hasPoint) inputArgs += `-loop 1 -t ${durationSec} -i "${posePoint}" `;
+  if (hasSign) inputArgs += `-loop 1 -t ${durationSec} -i "${poseSign}" `;
+  inputArgs += `-i "${audioPath}" `;
+
+  const audioMapIndex = 3 + (hasPoint ? 1 : 0) + (hasSign ? 1 : 0);
+
   run(
     'ffmpeg -y -v warning ' +
-      `-f lavfi -i color=c=0xf8fafc:s=${width}x${height}:d=${durationSec} ` +
-      `-loop 1 -t ${durationSec} -i "${pose}" ` +
-      `-i "${audioPath}" ` +
+      inputArgs +
       `-filter_complex_script "${fcFile}" ` +
-      `-map "[vout]" -map 2:a ` +
+      `-map "[vout]" -map ${audioMapIndex}:a ` +
       `-t ${durationSec} ` +
       `-c:v libx264 -pix_fmt yuv420p -preset veryfast -crf 22 ` +
       `-c:a aac -b:a 160k -shortest ` +
@@ -246,7 +256,7 @@ function main() {
   );
 
   if (!fs.existsSync(videoOut) || fs.statSync(videoOut).size < 1000) {
-    console.error('MP4 missing or tiny — hard fail');
+    console.error('MP4 missing or tiny');
     process.exit(1);
   }
 
@@ -269,9 +279,8 @@ function main() {
         voice,
         format,
         durationSec,
-        camera: 'none',
-        studio: 'minimal_composite_single_pose',
-        pose: path.basename(pose),
+        studio: 'full_frame_stickman_png',
+        motion: 'idle_speak_flicker_point_sign',
         video: 'output/desk-brief.mp4',
         generated_at: new Date().toISOString(),
       },
