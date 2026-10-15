@@ -26,15 +26,21 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
   }
   siteBase = siteBase.replace(/\/+$/, '');
 
+  // Search result URLs are deliberately noindex (thin/dynamic). Keep bots off them.
   const robotsTxt = `
 User-agent: *
 Allow: /
 Disallow: /bonesceo/admin
 Disallow: /admin
 Disallow: /api/admin/
+Disallow: /search?
 
 User-agent: Googlebot
 Allow: /
+Disallow: /bonesceo/admin
+Disallow: /admin
+Disallow: /api/admin/
+Disallow: /search?
 
 User-agent: Googlebot-News
 Allow: /
@@ -44,6 +50,8 @@ Allow: /
 
 User-agent: Bingbot
 Allow: /
+Disallow: /bonesceo/admin
+Disallow: /search?
 
 User-agent: msnbot
 Allow: /
