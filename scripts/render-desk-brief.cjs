@@ -75,7 +75,6 @@ function main() {
   fs.mkdirSync(tmpDir, { recursive: true });
 
   const stickDir = path.join(process.cwd(), 'public', 'presenters', 'stickman');
-  // Landscape 16:9 poses — desk fills lower portion of frame
   const names = ['bw_idle', 'bw_speaking', 'bw_tablet', 'bw_look_right', 'bw_blink'];
   const pngs = {};
   for (const n of names) {
@@ -158,17 +157,12 @@ function main() {
   console.log('Duration:', durationSec, 's');
 
   const t = durationSec;
-  // HUMAN pacing — long holds, rare switches (not twitchy)
-  // tablet glance ~12–22%
   const tab0 = (t * 0.12).toFixed(2);
   const tab1 = (t * 0.22).toFixed(2);
-  // mild speaking hand hold ~30–42%
   const hand0 = (t * 0.3).toFixed(2);
   const hand1 = (t * 0.42).toFixed(2);
-  // look/point right ~58–72%
   const look0 = (t * 0.58).toFixed(2);
   const look1 = (t * 0.72).toFixed(2);
-  // second tablet check near end ~82–90%
   const tab2 = (t * 0.82).toFixed(2);
   const tab3 = (t * 0.9).toFixed(2);
 
@@ -176,8 +170,16 @@ function main() {
   const ltHeadH = 70;
   const ltTickH = 40;
 
-  // Full-bleed landscape frames (already 16:9)
-  const fit = 'scale=' + width + ':' + height + ':force_original_aspect_ratio=decrease,pad=' + width + ':' + height + ':(ow-iw)/2:(oh-ih)/2:color=0xf1f5f9,format=rgba';
+  const fit =
+    'scale=' +
+    width +
+    ':' +
+    height +
+    ':force_original_aspect_ratio=decrease,pad=' +
+    width +
+    ':' +
+    height +
+    ':(ow-iw)/2:(oh-ih)/2:color=0xf1f5f9,format=rgba';
 
   let idx = 1;
   const idIdle = idx++;
@@ -192,47 +194,43 @@ function main() {
 
   let fc = '';
   fc += '[' + idIdle + ':v]' + fit + '[idle];';
-  fc += '[' + idSpeak + ':v]' + fit + '[speak];';
+  // Split speaking so it can be used for mouth flicker AND hand hold
+  fc += '[' + idSpeak + ':v]' + fit + '[speak0];';
+  fc += '[speak0]split=2[speakM][speakH];';
   if (hasTablet) fc += '[' + idTablet + ':v]' + fit + '[tablet];';
   if (hasRight) fc += '[' + idRight + ':v]' + fit + '[lookR];';
   if (hasBlink) fc += '[' + idBlink + ':v]' + fit + '[blink];';
 
-  // Base always idle (hands rest)
   fc += '[0:v][idle]overlay=0:0[base];';
 
-  // Slow mouth-only flicker on idle body most of the time
-  // (speaking pose only during dedicated hand window so hands don't twitch)
-  // Mouth: use speak overlay with SLOW duty cycle outside gesture holds
   const busy =
-    "*not(between(t\\," +
+    '*not(between(t\\,' +
     tab0 +
-    "\\," +
+    '\\,' +
     tab1 +
-    "))*not(between(t\\," +
+    '))*not(between(t\\,' +
     hand0 +
-    "\\," +
+    '\\,' +
     hand1 +
-    "))*not(between(t\\," +
+    '))*not(between(t\\,' +
     look0 +
-    "\\," +
+    '\\,' +
     look1 +
-    "))*not(between(t\\," +
+    '))*not(between(t\\,' +
     tab2 +
-    "\\," +
+    '\\,' +
     tab3 +
-    "))";
+    '))';
 
-  // Mouth open ~0.4s every ~1.1s (slower, human-ish lip cycle)
   fc +=
-    "[base][speak]overlay=0:0:enable='lt(mod(t*1.8\\,1)\\,0.38)" +
+    "[base][speakM]overlay=0:0:enable='lt(mod(t*1.8\\,1)\\,0.38)" +
     busy +
     "'[mouth];";
 
-  // Dedicated hand-raise speaking hold (one continuous 12% of video — not flicker)
   fc +=
-    "[mouth][speak]overlay=0:0:enable='between(t\\," +
+    "[mouth][speakH]overlay=0:0:enable='between(t\\," +
     hand0 +
-    "\\," +
+    '\\,' +
     hand1 +
     ")'[hand];";
 
@@ -243,11 +241,11 @@ function main() {
       cur +
       "][tablet]overlay=0:0:enable='between(t\\," +
       tab0 +
-      "\\," +
+      '\\,' +
       tab1 +
-      ")+between(t\\," +
+      ')+between(t\\,' +
       tab2 +
-      "\\," +
+      '\\,' +
       tab3 +
       ")'[tab];";
     cur = 'tab';
@@ -258,13 +256,12 @@ function main() {
       cur +
       "][lookR]overlay=0:0:enable='between(t\\," +
       look0 +
-      "\\," +
+      '\\,' +
       look1 +
       ")'[look];";
     cur = 'look';
   }
   if (hasBlink) {
-    // Blink ~every 4.5s for 0.12s only
     fc +=
       '[' +
       cur +
