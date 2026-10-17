@@ -1,50 +1,37 @@
 /**
- * content-worker entry: gunzip+decode fixed worker with UTC daily quota.
- * Writes runtime into scripts/ (not /tmp) so Node can resolve project node_modules.
+ * Content worker entry for GitHub Actions.
+ * Uses the clear TypeScript pipeline (rank → full extract → multi-model rewrite).
  */
-import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
-import { gunzipSync } from 'node:zlib';
+import { getD1 } from '../src/lib/runtime-db';
+import { runIngestionPipeline } from '../src/lib/automated-ingest-pipeline';
 
-const dir = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(dir, '..');
+async function main() {
+  const maxArticles = Math.min(
+    Math.max(parseInt(process.env.MAX_ARTICLES_PER_RUN || '3', 10) || 3, 1),
+    5
+  );
 
-const b64 = [0, 1, 2, 3, 4, 5]
-  .map((i) => {
-    try {
-      return readFileSync(join(dir, `cw-gz-${i}.txt`), 'utf8').trim();
-    } catch {
-      return '';
-    }
-  })
-  .join('');
+  console.log('=== 9jaBeacon content worker ===');
+  console.log('MAX_ARTICLES_PER_RUN:', maxArticles);
+  console.log('Mode: rank all RSS → full-text top N → multi-model rewrite (legal fail-closed)');
 
-if (!b64 || b64.length < 500) {
-  console.error('Missing cw-gz parts');
-  process.exit(1);
+  const db = getD1();
+  const result = await runIngestionPipeline(db, {
+    maxArticles,
+    limitPerSource: 8,
+  });
+
+  console.log('=== RESULT ===');
+  console.log(JSON.stringify(result, null, 2));
+
+  // Soft success: pipeline errors on individual feeds should not always fail the job
+  // Hard fail only if nothing could run and we had a pipeline exception
+  if (result.errors.some((e) => e.startsWith('Pipeline exception:'))) {
+    process.exit(1);
+  }
 }
 
-const src = gunzipSync(Buffer.from(b64, 'base64')).toString('utf8');
-if (!src.includes('dayStartIso') || !src.includes('DAILY_QUOTA_PER_CATEGORY')) {
-  console.error('Decoded worker missing UTC quota fix');
+main().catch((err) => {
+  console.error('content-worker failed:', err);
   process.exit(1);
-}
-
-const out = join(dir, `.content-worker-runtime-${process.pid}.ts`);
-writeFileSync(out, src, 'utf8');
-
-const r = spawnSync('npx', ['tsx', out], {
-  stdio: 'inherit',
-  env: process.env,
-  cwd: projectRoot,
 });
-
-try {
-  unlinkSync(out);
-} catch {
-  /* ignore */
-}
-
-process.exit(r.status ?? 1);
