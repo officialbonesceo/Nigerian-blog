@@ -1,5 +1,12 @@
 /**
- * Full ingestion pipeline: fetch → rewrite (Gemini → multi-tier AI) → D1 insert → syndicate
+ * Ingestion pipeline (efficiency + legal posture):
+ * 1) Fetch all enabled RSS feeds (cheap)
+ * 2) Dedup against DB
+ * 3) Rank candidates locally (trend/recency/trust) — NO AI
+ * 4) Take global top N (default 3)
+ * 5) Full-page extract for those N only
+ * 6) Multi-model rewrite only if source text is sufficient
+ * 7) Insert + optional syndicate
  */
 import type { D1Database } from '@cloudflare/workers-types';
 import {
@@ -26,8 +33,12 @@ import { fetchRss } from './automated-ingest-fetch';
 import { rewriteWithEditorialQuality } from './automated-ingest-rewrite';
 import { generateBaseSlug } from './automated-ingest-helpers';
 import type { IngestionPipelineResult, EditorialRewriteResult } from './automated-ingest-types';
+import { rankCandidates, type RankableItem } from './ingest-ranker';
+import { fetchFullArticleText } from './article-full-fetch';
 
-/** Map multi-tier synthesizeNewsArticle result into EditorialRewriteResult shape. */
+/** Minimum plain-source characters before we allow AI rewrite (legal fail-closed). */
+const MIN_SOURCE_CHARS = 280;
+
 async function rewriteWithFallback(input: {
   title: string;
   link?: string;
@@ -42,7 +53,6 @@ async function rewriteWithFallback(input: {
   }
 
   try {
-    // Dynamic import avoids static cycle: ai-engine → automated-ingest barrel → pipeline
     const { synthesizeNewsArticle } = await import('./ai-engine');
     const multi = await synthesizeNewsArticle(
       {
@@ -106,9 +116,45 @@ async function rewriteWithFallback(input: {
   }
 }
 
+async function isDuplicate(
+  db: D1Database,
+  cleanLink: string,
+  cleanTitle: string,
+  baseSlug: string
+): Promise<boolean> {
+  if (cleanLink) {
+    const matchUrl = await db
+      .prepare('SELECT id FROM articles WHERE source_original_url = ? LIMIT 1')
+      .bind(cleanLink)
+      .first<{ id: string }>()
+      .catch(() => null);
+    if (matchUrl) return true;
+    const matchRej = await db
+      .prepare('SELECT id FROM rejected_articles WHERE original_url = ? LIMIT 1')
+      .bind(cleanLink)
+      .first<{ id: string }>()
+      .catch(() => null);
+    if (matchRej) return true;
+  }
+  if (cleanTitle) {
+    const matchTitle = await db
+      .prepare('SELECT id FROM articles WHERE LOWER(title) = LOWER(?) LIMIT 1')
+      .bind(cleanTitle)
+      .first<{ id: string }>()
+      .catch(() => null);
+    if (matchTitle) return true;
+  }
+  const matchSlug = await db
+    .prepare('SELECT id FROM articles WHERE slug = ? OR slug LIKE ? LIMIT 1')
+    .bind(baseSlug, `${baseSlug}-%`)
+    .first<{ id: string }>()
+    .catch(() => null);
+  return !!matchSlug;
+}
+
 export async function runIngestionPipeline(
   db: D1Database,
-  options: { sourceId?: string; categoryId?: string; limitPerSource?: number } = {}
+  options: { sourceId?: string; categoryId?: string; limitPerSource?: number; maxArticles?: number } = {}
 ): Promise<IngestionPipelineResult> {
   const result: IngestionPipelineResult = {
     fetched: 0,
@@ -128,33 +174,16 @@ export async function runIngestionPipeline(
       if (options.categoryId) {
         sources = allEnabled.filter((s: any) => s.category_default_id === options.categoryId);
       } else {
-        const byCategory: Record<string, any[]> = {
-          cat_money_hustle: [],
-          cat_sports: [],
-          cat_world: [],
-          cat_naija_news: [],
-        };
-        for (const s of allEnabled) {
-          const catKey = s.category_default_id || 'cat_naija_news';
-          if (byCategory[catKey]) {
-            byCategory[catKey].push(s);
-          } else {
-            byCategory.cat_naija_news.push(s);
-          }
-        }
-        const interleaved: any[] = [];
-        const keys = ['cat_money_hustle', 'cat_sports', 'cat_world', 'cat_naija_news'];
-        const maxLen = Math.max(...keys.map((k) => byCategory[k].length), 0);
-        for (let i = 0; i < maxLen; i++) {
-          for (const k of keys) {
-            if (byCategory[k][i]) interleaved.push(byCategory[k][i]);
-          }
-        }
-        sources = interleaved.length ? interleaved : allEnabled;
+        sources = allEnabled;
       }
     }
 
-    const limit = Math.min(Math.max(options.limitPerSource || 3, 1), 10);
+    const envMax = parseInt(process.env.MAX_ARTICLES_PER_RUN || '3', 10);
+    const maxArticles = Math.min(Math.max(options.maxArticles || envMax || 3, 1), 5);
+    // Per-feed parse cap (still cheap); ranking picks global winners
+    const perFeedCap = Math.min(Math.max(options.limitPerSource || 8, 3), 15);
+
+    const pool: RankableItem[] = [];
 
     for (const source of sources) {
       if (!source || !source.feed_url) continue;
@@ -181,219 +210,254 @@ export async function runIngestionPipeline(
 
       result.fetched += feedRes.items.length;
 
-      for (const item of feedRes.items.slice(0, limit)) {
+      for (const item of feedRes.items.slice(0, perFeedCap)) {
         const cleanLink = (item.link || '').trim();
         const cleanTitle = (item.title || '').trim();
+        if (!cleanLink || !cleanTitle) continue;
         const baseSlug = generateBaseSlug(cleanTitle);
+        if (await isDuplicate(db, cleanLink, cleanTitle, baseSlug)) continue;
 
-        if (cleanLink) {
-          const matchUrl = await db
-            .prepare('SELECT id FROM articles WHERE source_original_url = ? LIMIT 1')
-            .bind(cleanLink)
-            .first<{ id: string }>()
-            .catch(() => null);
-          if (matchUrl) continue;
-          const matchRej = await db
-            .prepare('SELECT id FROM rejected_articles WHERE original_url = ? LIMIT 1')
-            .bind(cleanLink)
-            .first<{ id: string }>()
-            .catch(() => null);
-          if (matchRej) continue;
-        }
-
-        if (cleanTitle) {
-          const matchTitle = await db
-            .prepare('SELECT id FROM articles WHERE LOWER(title) = LOWER(?) LIMIT 1')
-            .bind(cleanTitle)
-            .first<{ id: string }>()
-            .catch(() => null);
-          if (matchTitle) continue;
-        }
-
-        const matchSlug = await db
-          .prepare('SELECT id FROM articles WHERE slug = ? OR slug LIKE ? LIMIT 1')
-          .bind(baseSlug, `${baseSlug}-%`)
-          .first<{ id: string }>()
-          .catch(() => null);
-        if (matchSlug) continue;
-
-        const rewrite = await rewriteWithFallback({
-          title: item.title,
-          link: item.link,
+        pool.push({
+          title: cleanTitle,
+          link: cleanLink,
           description: item.description,
           content: item.content,
-          categoryDefault: source.category_default_id,
+          pubDate: item.pubDate,
+          imageUrl: item.imageUrl,
+          sourceId: source.id,
           sourceName: source.name,
+          categoryDefaultId: source.category_default_id,
+          trustScore: typeof source.trust_score === 'number' ? source.trust_score : 90,
         });
+      }
+    }
 
-        if (!rewrite.success || !rewrite.title || !rewrite.content) {
-          result.rejected++;
-          const reasonStr = (rewrite.reasons || ['Synthesis failed']).join('; ');
-          await recordRejectedArticle(db, {
-            source_id: source.id,
-            source_name: source.name,
-            original_title: item.title,
-            original_url: item.link,
-            raw_content: item.content || item.description || '',
-            rejection_reason: reasonStr,
-            ai_tier_failures: rewrite.rawError || reasonStr,
-          }).catch(() => {});
-          continue;
-        }
+    const ranked = rankCandidates(pool, maxArticles);
+    console.log(
+      `[ingest] pool=${pool.length} rankedTop=${ranked.length} maxArticles=${maxArticles} fetchedRssItems=${result.fetched}`
+    );
+    for (const r of ranked) {
+      console.log(`  score=${r.score} ${r.reasons.join(',')} | ${r.title.slice(0, 70)}`);
+    }
 
-        result.passed++;
+    for (const item of ranked) {
+      const baseSlug = generateBaseSlug(item.title);
 
-        const categorySlug = rewrite.category || 'naija-news';
-        const categoryId = categorySlugToId(categorySlug);
-        const desk = getDeskAttribution(categorySlug);
-        const uniqueSlug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
+      // Full article extract for shortlist only
+      const full = await fetchFullArticleText(item.link, { timeoutMs: 12000, maxChars: 8000 });
+      const rssExcerpt = `${item.content || item.description || ''}`
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-        const visual = await resolveEditorialImage({
-          title: rewrite.title,
-          content: rewrite.content,
-          category: categorySlug,
-          sourceName: source.name,
-          sourceImageUrl: item.imageUrl,
-          aiKeyword: rewrite.imageSearchKeyword,
-        });
+      let sourceBody = '';
+      if (full.success && full.text.length >= MIN_SOURCE_CHARS) {
+        sourceBody = full.text;
+      } else if (rssExcerpt.length >= MIN_SOURCE_CHARS) {
+        sourceBody = rssExcerpt;
+      } else {
+        // LEGAL FAIL-CLOSED: do not invent a long article from a thin teaser
+        result.rejected++;
+        const reason = `Insufficient source text for safe rewrite (full=${full.wordCount}w rss=${rssExcerpt.length}c err=${full.error || 'n/a'})`;
+        await recordRejectedArticle(db, {
+          source_id: item.sourceId,
+          source_name: item.sourceName,
+          original_title: item.title,
+          original_url: item.link,
+          raw_content: rssExcerpt.slice(0, 1500),
+          rejection_reason: reason,
+          ai_tier_failures: reason,
+        }).catch(() => {});
+        result.errors.push(`${item.sourceName}: ${reason}`);
+        continue;
+      }
 
-        const newArticle: Article = {
-          id: `art_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          slug: uniqueSlug,
-          title: rewrite.title,
-          summary: rewrite.summary || rewrite.title,
-          content: rewrite.content,
-          category_id: categoryId,
-          image_url: visual.imageUrl,
-          image_caption: visual.imageCaption,
-          image_credit: visual.imageCredit,
-          image_license: visual.imageLicense,
-          author_name: desk.authorName,
-          author_role: desk.authorRole,
-          author_avatar: '/editorial/naija-news-team.svg',
-          is_top_story: 0,
-          is_trending: 0,
-          is_breaking: 0,
-          views_count: 0,
-          reading_time_minutes: rewrite.readingTimeMinutes || 3,
-          source_id: source.id,
-          source_name: source.name,
-          source_original_url: item.link,
-          published_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          status: 'published',
-        };
+      // Cap body sent to AI (cost + focus)
+      const aiBody = sourceBody.slice(0, 6000);
 
-        const inserted = await createArticle(db, newArticle as unknown as Record<string, unknown>);
-        if (inserted) {
-          result.inserted++;
+      const rewrite = await rewriteWithFallback({
+        title: item.title,
+        link: item.link,
+        description: rssExcerpt.slice(0, 500),
+        content: aiBody,
+        categoryDefault: item.categoryDefaultId,
+        sourceName: item.sourceName,
+      });
 
-          try {
-            const autoSettings = await getAutomationSettings(db).catch(() => []);
-            const sMap: Record<string, string> = {};
-            for (const s of autoSettings) sMap[s.key] = s.value;
-            const siteSettings = await getSiteSettings(db).catch(() => ({} as Record<string, string>));
-            const siteBase = ((siteSettings as any).site_url || 'https://www.9jabeacon.name.ng').replace(
-              /\/+$/,
-              ''
-            );
-            const canonicalUrl = `${siteBase}/news/${newArticle.slug}`;
+      if (!rewrite.success || !rewrite.title || !rewrite.content) {
+        result.rejected++;
+        const reasonStr = (rewrite.reasons || ['Synthesis failed']).join('; ');
+        await recordRejectedArticle(db, {
+          source_id: item.sourceId,
+          source_name: item.sourceName,
+          original_title: item.title,
+          original_url: item.link,
+          raw_content: aiBody.slice(0, 2000),
+          rejection_reason: reasonStr,
+          ai_tier_failures: rewrite.rawError || reasonStr,
+        }).catch(() => {});
+        continue;
+      }
 
-            const bskyAuto =
-              sMap.bluesky_auto_post_enabled !== 'false' &&
-              process.env.BLUESKY_AUTO_POST_ENABLED !== 'false';
-            const bskyId =
-              sMap.bluesky_identifier ||
-              (typeof process !== 'undefined' ? process.env?.BLUESKY_IDENTIFIER : '');
-            const bskyPass =
-              sMap.bluesky_app_password ||
-              (typeof process !== 'undefined' ? process.env?.BLUESKY_APP_PASSWORD : '');
-            if (bskyAuto && bskyId && bskyPass) {
-              checkIfUrlAlreadyOnBlueskyTimeline(bskyId, newArticle.slug, newArticle.title)
-                .then(async (liveCheck) => {
-                  if (liveCheck.exists) {
-                    try {
-                      await db
-                        .prepare(
-                          'UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?'
-                        )
-                        .bind(new Date().toISOString(), newArticle.slug)
-                        .run();
-                    } catch {}
-                    return;
-                  }
-                  const bRes = await postToBluesky(
-                    {
-                      title: newArticle.title,
-                      summary: newArticle.summary,
-                      category: categorySlug,
-                      imageUrl: newArticle.image_url,
-                      slug: newArticle.slug,
-                      canonicalUrl,
-                    },
-                    { identifier: bskyId, appPassword: bskyPass },
-                    siteBase
-                  );
-                  if (bRes.success) {
-                    try {
-                      await db
-                        .prepare(
-                          'UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?'
-                        )
-                        .bind(new Date().toISOString(), newArticle.slug)
-                        .run();
-                    } catch {}
-                  }
-                })
-                .catch(() => {});
-            }
+      result.passed++;
 
-            const bufferToken = sMap.buffer_access_token || process.env.BUFFER_ACCESS_TOKEN;
-            if (sMap.buffer_auto_post_enabled !== 'false' && bufferToken) {
-              postToBuffer(
-                {
-                  title: newArticle.title,
-                  summary: newArticle.summary,
-                  url: canonicalUrl,
-                  imageUrl: newArticle.image_url,
-                },
-                bufferToken
-              ).catch(() => {});
-            }
+      const categorySlug = rewrite.category || 'naija-news';
+      const categoryId = categorySlugToId(categorySlug);
+      const desk = getDeskAttribution(categorySlug);
+      const uniqueSlug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
 
-            const tumblrBlog = sMap.tumblr_blog_name || process.env.TUMBLR_BLOG_NAME;
-            const tumblrKey = sMap.tumblr_api_key || process.env.TUMBLR_API_KEY;
-            if (sMap.tumblr_auto_post_enabled !== 'false' && tumblrBlog && tumblrKey) {
-              checkIfUrlAlreadyOnTumblrBlog(tumblrBlog, newArticle.slug)
-                .then(async (exists) => {
-                  if (exists) return;
-                  await postToTumblr(
-                    {
-                      title: newArticle.title,
-                      summary: newArticle.summary,
-                      url: canonicalUrl,
-                      imageUrl: newArticle.image_url,
-                    },
-                    { blogName: tumblrBlog, apiKey: tumblrKey }
-                  );
-                })
-                .catch(() => {});
-            }
+      const visual = await resolveEditorialImage({
+        title: rewrite.title,
+        content: rewrite.content,
+        category: categorySlug,
+        sourceName: item.sourceName,
+        sourceImageUrl: item.imageUrl,
+        aiKeyword: rewrite.imageSearchKeyword,
+      });
 
-            const threadsToken = sMap.threads_access_token || process.env.THREADS_ACCESS_TOKEN;
-            if (sMap.threads_auto_post_enabled !== 'false' && threadsToken) {
-              postToThreads(
-                {
-                  title: newArticle.title,
-                  summary: newArticle.summary,
-                  url: canonicalUrl,
-                },
-                threadsToken
-              ).catch(() => {});
-            }
-          } catch (synErr: any) {
-            console.warn('[Ingest Syndication]', synErr?.message || synErr);
+      // Attribution footer (legal transparency)
+      const attrNote = `<p class="source-attr"><em>Reporting based on public reporting from ${item.sourceName}. <a href="${item.link}" rel="noopener noreferrer nofollow" target="_blank">Original source</a>.</em></p>`;
+      let finalContent = rewrite.content;
+      if (!/original source/i.test(finalContent)) {
+        finalContent = `${finalContent}\n${attrNote}`;
+      }
+
+      const newArticle: Article = {
+        id: `art_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        slug: uniqueSlug,
+        title: rewrite.title,
+        summary: rewrite.summary || rewrite.title,
+        content: finalContent,
+        category_id: categoryId,
+        image_url: visual.imageUrl,
+        image_caption: visual.imageCaption,
+        image_credit: visual.imageCredit,
+        image_license: visual.imageLicense,
+        author_name: desk.authorName,
+        author_role: desk.authorRole,
+        author_avatar: '/editorial/naija-news-team.svg',
+        is_top_story: 0,
+        is_trending: 0,
+        is_breaking: 0,
+        views_count: 0,
+        reading_time_minutes: rewrite.readingTimeMinutes || 3,
+        source_id: item.sourceId,
+        source_name: item.sourceName,
+        source_original_url: item.link,
+        published_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        status: 'published',
+      };
+
+      const inserted = await createArticle(db, newArticle as unknown as Record<string, unknown>);
+      if (inserted) {
+        result.inserted++;
+
+        try {
+          const autoSettings = await getAutomationSettings(db).catch(() => []);
+          const sMap: Record<string, string> = {};
+          for (const s of autoSettings) sMap[s.key] = s.value;
+          const siteSettings = await getSiteSettings(db).catch(() => ({} as Record<string, string>));
+          const siteBase = ((siteSettings as any).site_url || 'https://www.9jabeacon.name.ng').replace(
+            /\/+$/,
+            ''
+          );
+          const canonicalUrl = `${siteBase}/news/${newArticle.slug}`;
+
+          const bskyAuto =
+            sMap.bluesky_auto_post_enabled !== 'false' &&
+            process.env.BLUESKY_AUTO_POST_ENABLED !== 'false';
+          const bskyId =
+            sMap.bluesky_identifier ||
+            (typeof process !== 'undefined' ? process.env?.BLUESKY_IDENTIFIER : '');
+          const bskyPass =
+            sMap.bluesky_app_password ||
+            (typeof process !== 'undefined' ? process.env?.BLUESKY_APP_PASSWORD : '');
+          if (bskyAuto && bskyId && bskyPass) {
+            checkIfUrlAlreadyOnBlueskyTimeline(bskyId, newArticle.slug, newArticle.title)
+              .then(async (liveCheck) => {
+                if (liveCheck.exists) {
+                  try {
+                    await db
+                      .prepare(
+                        'UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?'
+                      )
+                      .bind(new Date().toISOString(), newArticle.slug)
+                      .run();
+                  } catch {}
+                  return;
+                }
+                const bRes = await postToBluesky(
+                  {
+                    title: newArticle.title,
+                    summary: newArticle.summary,
+                    category: categorySlug,
+                    imageUrl: newArticle.image_url,
+                    slug: newArticle.slug,
+                    canonicalUrl,
+                  },
+                  { identifier: bskyId, appPassword: bskyPass },
+                  siteBase
+                );
+                if (bRes.success) {
+                  try {
+                    await db
+                      .prepare(
+                        'UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?'
+                      )
+                      .bind(new Date().toISOString(), newArticle.slug)
+                      .run();
+                  } catch {}
+                }
+              })
+              .catch(() => {});
           }
+
+          const bufferToken = sMap.buffer_access_token || process.env.BUFFER_ACCESS_TOKEN;
+          if (sMap.buffer_auto_post_enabled !== 'false' && bufferToken) {
+            postToBuffer(
+              {
+                title: newArticle.title,
+                summary: newArticle.summary,
+                url: canonicalUrl,
+                imageUrl: newArticle.image_url,
+              },
+              bufferToken
+            ).catch(() => {});
+          }
+
+          const tumblrBlog = sMap.tumblr_blog_name || process.env.TUMBLR_BLOG_NAME;
+          const tumblrKey = sMap.tumblr_api_key || process.env.TUMBLR_API_KEY;
+          if (sMap.tumblr_auto_post_enabled !== 'false' && tumblrBlog && tumblrKey) {
+            checkIfUrlAlreadyOnTumblrBlog(tumblrBlog, newArticle.slug)
+              .then(async (exists) => {
+                if (exists) return;
+                await postToTumblr(
+                  {
+                    title: newArticle.title,
+                    summary: newArticle.summary,
+                    url: canonicalUrl,
+                    imageUrl: newArticle.image_url,
+                  },
+                  { blogName: tumblrBlog, apiKey: tumblrKey }
+                );
+              })
+              .catch(() => {});
+          }
+
+          const threadsToken = sMap.threads_access_token || process.env.THREADS_ACCESS_TOKEN;
+          if (sMap.threads_auto_post_enabled !== 'false' && threadsToken) {
+            postToThreads(
+              {
+                title: newArticle.title,
+                summary: newArticle.summary,
+                url: canonicalUrl,
+              },
+              threadsToken
+            ).catch(() => {});
+          }
+        } catch (synErr: any) {
+          console.warn('[Ingest Syndication]', synErr?.message || synErr);
         }
       }
     }
