@@ -48,12 +48,14 @@ function isInfrastructureFailure(reason: string): boolean {
     r.includes('openrouter') ||
     r.includes('all gemini model tiers failed') ||
     r.includes('multi-tier synthesis failed') ||
+    r.includes('all ai synthesis') ||
     r.includes('fallback exception') ||
     r.includes('rate limit') ||
     r.includes('429') ||
     r.includes('quota') ||
     r.includes('timeout') ||
-    r.includes('network')
+    r.includes('network') ||
+    r.includes('gemini skipped')
   );
 }
 
@@ -68,18 +70,24 @@ async function rewriteWithFallback(input: {
   const hasGemini = !!(typeof process !== 'undefined' && process.env?.GEMINI_API_KEY);
   const hasOpenRouter = !!(typeof process !== 'undefined' && process.env?.OPENROUTER_API_KEY);
   if (!hasGemini) {
-    console.warn('[ingest] GEMINI_API_KEY is empty — relying on multi-tier fallback');
+    console.warn('[ingest] GEMINI_API_KEY is empty — using OpenRouter/CF/Groq multi-tier');
   }
   if (!hasOpenRouter && !hasGemini) {
     console.warn('[ingest] No GEMINI or OPENROUTER key visible in env');
   }
 
-  const primary = await rewriteWithEditorialQuality(input);
-  if (primary.success && primary.title && primary.content) {
-    return primary;
+  // Skip Gemini primary when key is missing — go straight to multi-tier (OpenRouter/CF/Groq)
+  let primaryReasons: string[] = [];
+  if (hasGemini) {
+    const primary = await rewriteWithEditorialQuality(input);
+    if (primary.success && primary.title && primary.content) {
+      return primary;
+    }
+    primaryReasons = primary.reasons || ['Gemini rewrite failed'];
+    console.warn('[ingest] primary rewrite failed:', primaryReasons.join('; '));
+  } else {
+    primaryReasons = ['Gemini skipped (no API key)'];
   }
-
-  console.warn('[ingest] primary rewrite failed:', (primary.reasons || []).join('; '));
 
   try {
     const { synthesizeNewsArticle } = await import('./ai-engine');
@@ -104,6 +112,7 @@ async function rewriteWithFallback(input: {
     );
 
     if (multi.success && multi.title && multi.content) {
+      console.log('[ingest] multi-tier success via', multi.provider, multi.modelUsed);
       const catSlug =
         multi.categoryId === 'cat_money_hustle'
           ? 'business'
@@ -127,21 +136,21 @@ async function rewriteWithFallback(input: {
     }
 
     const multiErr =
-      multi.error || (multi.traceLogs || []).slice(-3).join('; ') || 'Multi-tier synthesis failed';
+      multi.error || (multi.traceLogs || []).slice(-5).join('; ') || 'Multi-tier synthesis failed';
     console.warn('[ingest] multi-tier failed:', multiErr);
+    if (multi.traceLogs?.length) {
+      console.warn('[ingest] tier traces:', multi.traceLogs.slice(-8).join(' | '));
+    }
     return {
       success: false,
-      reasons: [...(primary.reasons || ['Gemini rewrite failed']), `Fallback AI: ${multiErr}`],
+      reasons: [...primaryReasons, `Fallback AI: ${multiErr}`],
       rawError: multiErr,
     };
   } catch (fbErr: any) {
     console.warn('[ingest] multi-tier exception:', fbErr?.message || fbErr);
     return {
       success: false,
-      reasons: [
-        ...(primary.reasons || ['Gemini rewrite failed']),
-        `Fallback exception: ${fbErr?.message || String(fbErr)}`,
-      ],
+      reasons: [...primaryReasons, `Fallback exception: ${fbErr?.message || String(fbErr)}`],
       rawError: fbErr?.message || String(fbErr),
     };
   }
@@ -160,8 +169,6 @@ async function isDuplicate(
       .first<{ id: string }>()
       .catch(() => null);
     if (matchUrl) return true;
-    // Do NOT treat rejected_articles as permanent blocks for infrastructure failures;
-    // still skip permanent quality rejects recorded earlier.
     const matchRej = await db
       .prepare(
         "SELECT id, rejection_reason FROM rejected_articles WHERE original_url = ? ORDER BY created_at DESC LIMIT 1"
@@ -171,7 +178,7 @@ async function isDuplicate(
       .catch(() => null);
     if (matchRej) {
       if (isInfrastructureFailure(matchRej.rejection_reason || '')) {
-        return false; // allow retry
+        return false;
       }
       return true;
     }
@@ -330,7 +337,6 @@ export async function runIngestionPipeline(
         console.warn('[ingest] REJECT rewrite:', item.title.slice(0, 60), reasonStr);
         result.errors.push(`REJECT rewrite ${item.sourceName}: ${reasonStr} | ${item.title.slice(0, 80)}`);
 
-        // Permanent reject only for content/quality issues — not missing keys / rate limits
         if (!isInfrastructureFailure(reasonStr)) {
           await recordRejectedArticle(db, {
             source_id: item.sourceId,
