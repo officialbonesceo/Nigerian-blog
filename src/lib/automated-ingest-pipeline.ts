@@ -39,6 +39,24 @@ import { fetchFullArticleText } from './article-full-fetch';
 /** Minimum plain-source characters before we allow AI rewrite (legal fail-closed). */
 const MIN_SOURCE_CHARS = 280;
 
+function isInfrastructureFailure(reason: string): boolean {
+  const r = (reason || '').toLowerCase();
+  return (
+    r.includes('gemini_api_key') ||
+    r.includes('missing gemini') ||
+    r.includes('not configured') ||
+    r.includes('openrouter') ||
+    r.includes('all gemini model tiers failed') ||
+    r.includes('multi-tier synthesis failed') ||
+    r.includes('fallback exception') ||
+    r.includes('rate limit') ||
+    r.includes('429') ||
+    r.includes('quota') ||
+    r.includes('timeout') ||
+    r.includes('network')
+  );
+}
+
 async function rewriteWithFallback(input: {
   title: string;
   link?: string;
@@ -47,10 +65,21 @@ async function rewriteWithFallback(input: {
   categoryDefault?: string;
   sourceName?: string;
 }): Promise<EditorialRewriteResult> {
+  const hasGemini = !!(typeof process !== 'undefined' && process.env?.GEMINI_API_KEY);
+  const hasOpenRouter = !!(typeof process !== 'undefined' && process.env?.OPENROUTER_API_KEY);
+  if (!hasGemini) {
+    console.warn('[ingest] GEMINI_API_KEY is empty — relying on multi-tier fallback');
+  }
+  if (!hasOpenRouter && !hasGemini) {
+    console.warn('[ingest] No GEMINI or OPENROUTER key visible in env');
+  }
+
   const primary = await rewriteWithEditorialQuality(input);
   if (primary.success && primary.title && primary.content) {
     return primary;
   }
+
+  console.warn('[ingest] primary rewrite failed:', (primary.reasons || []).join('; '));
 
   try {
     const { synthesizeNewsArticle } = await import('./ai-engine');
@@ -99,12 +128,14 @@ async function rewriteWithFallback(input: {
 
     const multiErr =
       multi.error || (multi.traceLogs || []).slice(-3).join('; ') || 'Multi-tier synthesis failed';
+    console.warn('[ingest] multi-tier failed:', multiErr);
     return {
       success: false,
       reasons: [...(primary.reasons || ['Gemini rewrite failed']), `Fallback AI: ${multiErr}`],
       rawError: multiErr,
     };
   } catch (fbErr: any) {
+    console.warn('[ingest] multi-tier exception:', fbErr?.message || fbErr);
     return {
       success: false,
       reasons: [
@@ -129,12 +160,21 @@ async function isDuplicate(
       .first<{ id: string }>()
       .catch(() => null);
     if (matchUrl) return true;
+    // Do NOT treat rejected_articles as permanent blocks for infrastructure failures;
+    // still skip permanent quality rejects recorded earlier.
     const matchRej = await db
-      .prepare('SELECT id FROM rejected_articles WHERE original_url = ? LIMIT 1')
+      .prepare(
+        "SELECT id, rejection_reason FROM rejected_articles WHERE original_url = ? ORDER BY created_at DESC LIMIT 1"
+      )
       .bind(cleanLink)
-      .first<{ id: string }>()
+      .first<{ id: string; rejection_reason?: string }>()
       .catch(() => null);
-    if (matchRej) return true;
+    if (matchRej) {
+      if (isInfrastructureFailure(matchRej.rejection_reason || '')) {
+        return false; // allow retry
+      }
+      return true;
+    }
   }
   if (cleanTitle) {
     const matchTitle = await db
@@ -256,6 +296,7 @@ export async function runIngestionPipeline(
       } else {
         result.rejected++;
         const reason = `Insufficient source text for safe rewrite (full=${full.wordCount}w rss=${rssExcerpt.length}c err=${full.error || 'n/a'})`;
+        console.warn('[ingest] REJECT thin source:', item.title.slice(0, 60), reason);
         await recordRejectedArticle(db, {
           source_id: item.sourceId,
           source_name: item.sourceName,
@@ -265,11 +306,14 @@ export async function runIngestionPipeline(
           rejection_reason: reason,
           ai_tier_failures: reason,
         }).catch(() => {});
-        result.errors.push(`${item.sourceName}: ${reason}`);
+        result.errors.push(`REJECT ${item.sourceName}: ${reason} | ${item.title.slice(0, 80)}`);
         continue;
       }
 
       const aiBody = sourceBody.slice(0, 6000);
+      console.log(
+        `[ingest] rewriting: ${item.title.slice(0, 60)} (sourceChars=${aiBody.length} fullOk=${full.success})`
+      );
 
       const rewrite = await rewriteWithFallback({
         title: item.title,
@@ -283,15 +327,23 @@ export async function runIngestionPipeline(
       if (!rewrite.success || !rewrite.title || !rewrite.content) {
         result.rejected++;
         const reasonStr = (rewrite.reasons || ['Synthesis failed']).join('; ');
-        await recordRejectedArticle(db, {
-          source_id: item.sourceId,
-          source_name: item.sourceName,
-          original_title: item.title,
-          original_url: item.link,
-          raw_content: aiBody.slice(0, 2000),
-          rejection_reason: reasonStr,
-          ai_tier_failures: rewrite.rawError || reasonStr,
-        }).catch(() => {});
+        console.warn('[ingest] REJECT rewrite:', item.title.slice(0, 60), reasonStr);
+        result.errors.push(`REJECT rewrite ${item.sourceName}: ${reasonStr} | ${item.title.slice(0, 80)}`);
+
+        // Permanent reject only for content/quality issues — not missing keys / rate limits
+        if (!isInfrastructureFailure(reasonStr)) {
+          await recordRejectedArticle(db, {
+            source_id: item.sourceId,
+            source_name: item.sourceName,
+            original_title: item.title,
+            original_url: item.link,
+            raw_content: aiBody.slice(0, 2000),
+            rejection_reason: reasonStr,
+            ai_tier_failures: rewrite.rawError || reasonStr,
+          }).catch(() => {});
+        } else {
+          console.warn('[ingest] soft-fail (infra) — will retry next run:', reasonStr.slice(0, 120));
+        }
         continue;
       }
 
@@ -352,6 +404,7 @@ export async function runIngestionPipeline(
       const inserted = await createArticle(db, newArticle as unknown as Record<string, unknown>);
       if (inserted) {
         result.inserted++;
+        console.log('[ingest] INSERT', uniqueSlug);
 
         try {
           const autoSettings = await getAutomationSettings(db).catch(() => []);
