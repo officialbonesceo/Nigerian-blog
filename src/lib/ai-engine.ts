@@ -65,11 +65,14 @@ export const CLOUDFLARE_MODELS_CASCADE = [
 ];
 
 export const OPENROUTER_MODELS_CASCADE = [
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'qwen/qwen-2.5-72b-instruct:free',
-  'google/gemma-3-27b-it:free',
-  'deepseek/deepseek-r1:free',
-  'meta-llama/llama-3.1-8b-instruct:free',
+  // Oct 2026 free roster — old llama-3.3/qwen-2.5 free IDs are gone (404)
+  'openrouter/free',
+  'google/gemma-4-31b-it:free',
+  'google/gemma-4-26b-a4b-it:free',
+  'nvidia/nemotron-3.5-lightning:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'qwen/qwen3.8-27b:free',
+  'thinkingmachines/inkling-small:free',
 ];
 
 export const LOCAL_MODELS_CASCADE = [
@@ -84,9 +87,8 @@ export const LOCAL_MODELS_CASCADE = [
 ];
 
 export const POLLINATIONS_MODELS_CASCADE = [
-  'qwen-large',
-  'mistral',
   'openai',
+  'mistral',
   'qwen-coder',
 ];
 
@@ -225,7 +227,7 @@ export async function synthesizeNewsArticle(
       ...(config.workingOpenRouterModels || []),
       ...(config.openrouterModel ? [config.openrouterModel] : []),
       ...OPENROUTER_MODELS_CASCADE,
-    ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 4);
+    ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 5);
 
     for (const modelCandidate of modelsToTry) {
       try {
@@ -247,7 +249,7 @@ export async function synthesizeNewsArticle(
             temperature: 0.2,
             max_tokens: 2800,
           }),
-          signal: AbortSignal.timeout(30000),
+          signal: AbortSignal.timeout(45000),
         });
 
         if (openrouterRes.ok) {
@@ -266,7 +268,7 @@ export async function synthesizeNewsArticle(
                     'X-Title': '9jaBeacon',
                   },
                   body: JSON.stringify({ model: modelCandidate, messages: msgs, temperature: 0.2, max_tokens: 2800 }),
-                  signal: AbortSignal.timeout(30000),
+                  signal: AbortSignal.timeout(45000),
                 });
                 if (!retryRes.ok) return null;
                 const d = (await retryRes.json()) as any;
@@ -274,14 +276,14 @@ export async function synthesizeNewsArticle(
               });
               if (expanded && expanded.wordCount >= 180) parsed = expanded;
               else {
-                errors.push(`Tier 1 (${modelCandidate}): Content too sparse`);
+                errors.push(`Tier 1 (${modelCandidate}): Content too sparse (${parsed.wordCount}w)`);
                 continue;
               }
             }
             traceLogs.push(`Tier 1 Success: OpenRouter (${modelCandidate}) [${parsed.wordCount} words]`);
             return { success: true, provider: 'openrouter_ai', modelUsed: orData?.model || modelCandidate, traceLogs, ...parsed };
           }
-          errors.push(`OpenRouter (${modelCandidate}): JSON parse/quality failed`);
+          errors.push(`OpenRouter (${modelCandidate}): JSON parse/quality failed raw=${String(rawText).slice(0, 120).replace(/\s+/g, ' ')}`);
         } else {
           const errBody = await openrouterRes.text().catch(() => '');
           errors.push(`OpenRouter (${modelCandidate}) HTTP ${openrouterRes.status}: ${errBody.slice(0, 120)}`);
@@ -320,7 +322,7 @@ export async function synthesizeNewsArticle(
               ],
               max_tokens: 2800,
             }),
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(20000),
           }
         );
 
@@ -329,14 +331,14 @@ export async function synthesizeNewsArticle(
           const rawText = cfData?.result?.response || cfData?.response || '';
           let parsed = parseAiJsonResponse(rawText, input);
           if (parsed) {
-            if (parsed.wordCount < 180) {
-              errors.push(`Tier 2 (${modelCandidate}): Word count below 180`);
+            if (parsed.wordCount < 120) {
+              errors.push(`Tier 2 (${modelCandidate}): Word count below 120 (${parsed.wordCount})`);
               continue;
             }
             traceLogs.push(`Tier 2 Success: ${modelCandidate} [${parsed.wordCount} words]`);
             return { success: true, provider: 'cloudflare_workers_ai', modelUsed: modelCandidate, traceLogs, ...parsed };
           }
-          errors.push(`CF (${modelCandidate}): parse failed`);
+          errors.push(`CF (${modelCandidate}): parse failed raw=${String(rawText).slice(0, 160).replace(/\s+/g, ' ')}`);
         } else {
           errors.push(`CF (${modelCandidate}) HTTP ${cfRes.status}`);
         }
