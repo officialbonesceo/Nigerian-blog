@@ -76,7 +76,20 @@ const publishedLabel = new Date(publishedIso).toLocaleDateString('en-NG', {
   timeZone: 'Africa/Lagos',
 });
 
-// Pull first 3–4 h3 sections as key takeaways for denser chrome
+// Meta description: Bing flags under ~70–80 chars; target 120–160
+function buildMetaDescription(summary: string | undefined, title: string, category: string): string {
+  let base = (summary || title || '').replace(/\s+/g, ' ').trim();
+  if (base.length < 120) {
+    const pad = ` Full verified ${category} coverage from 9jaBeacon, Nigeria independent digital newsroom.`;
+    base = (base + pad).replace(/\s+/g, ' ').trim();
+  }
+  if (base.length > 160) {
+    return base.slice(0, 157).trimEnd() + '...';
+  }
+  return base;
+}
+const metaDescription = buildMetaDescription(article.summary, article.title, categoryLabel);
+
 const takeawayMatches = [...formattedArticleContent.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/gi)]
   .map((m) => m[1].replace(/<[^>]+>/g, '').trim())
   .filter(Boolean)
@@ -87,7 +100,7 @@ const structuredData = [
     '@context': 'https://schema.org',
     '@type': 'NewsArticle',
     headline: article.title,
-    description: article.summary || article.title,
+    description: metaDescription,
     image: imageUrl ? [imageUrl] : undefined,
     datePublished: publishedIso,
     dateModified: modifiedIso,
@@ -142,7 +155,7 @@ const structuredData = [
 
 <Layout
   title={`${article.title} - 9jaBeacon`}
-  description={article.summary || article.title}
+  description={metaDescription}
   image={imageUrl}
   canonicalUrl={canonicalUrl}
   article={{
@@ -155,7 +168,6 @@ const structuredData = [
 >
   <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />
 
-  <!-- Breadcrumb + tools -->
   <nav
     class="flex flex-wrap items-center justify-between gap-2 py-2.5 mb-3 border-b border-slate-200 dark:border-slate-800 text-xs"
     aria-label="Breadcrumb"
@@ -225,7 +237,6 @@ const structuredData = [
         </p>
       )}
 
-      <!-- Dense meta row -->
       <div
         class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500 dark:text-slate-400"
       >
@@ -289,7 +300,6 @@ const structuredData = [
       </figure>
     )}
 
-    <!-- Key takeaways strip -->
     {takeawayMatches.length >= 2 && (
       <aside
         class="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 p-4"
@@ -373,7 +383,6 @@ const structuredData = [
       </section>
     )}
 
-    <!-- Source attribution box -->
     {(article.source_name || article.source_original_url) && (
       <aside class="my-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/40 px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
         <span class="font-semibold text-slate-800 dark:text-slate-200">Source desk:</span>
