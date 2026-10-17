@@ -180,7 +180,6 @@ export async function runIngestionPipeline(
 
     const envMax = parseInt(process.env.MAX_ARTICLES_PER_RUN || '3', 10);
     const maxArticles = Math.min(Math.max(options.maxArticles || envMax || 3, 1), 5);
-    // Per-feed parse cap (still cheap); ranking picks global winners
     const perFeedCap = Math.min(Math.max(options.limitPerSource || 8, 3), 15);
 
     const pool: RankableItem[] = [];
@@ -243,7 +242,6 @@ export async function runIngestionPipeline(
     for (const item of ranked) {
       const baseSlug = generateBaseSlug(item.title);
 
-      // Full article extract for shortlist only
       const full = await fetchFullArticleText(item.link, { timeoutMs: 12000, maxChars: 8000 });
       const rssExcerpt = `${item.content || item.description || ''}`
         .replace(/<[^>]+>/g, ' ')
@@ -256,7 +254,6 @@ export async function runIngestionPipeline(
       } else if (rssExcerpt.length >= MIN_SOURCE_CHARS) {
         sourceBody = rssExcerpt;
       } else {
-        // LEGAL FAIL-CLOSED: do not invent a long article from a thin teaser
         result.rejected++;
         const reason = `Insufficient source text for safe rewrite (full=${full.wordCount}w rss=${rssExcerpt.length}c err=${full.error || 'n/a'})`;
         await recordRejectedArticle(db, {
@@ -272,7 +269,6 @@ export async function runIngestionPipeline(
         continue;
       }
 
-      // Cap body sent to AI (cost + focus)
       const aiBody = sourceBody.slice(0, 6000);
 
       const rewrite = await rewriteWithFallback({
@@ -315,11 +311,15 @@ export async function runIngestionPipeline(
         aiKeyword: rewrite.imageSearchKeyword,
       });
 
-      // Attribution footer (legal transparency)
-      const attrNote = `<p class="source-attr"><em>Reporting based on public reporting from ${item.sourceName}. <a href="${item.link}" rel="noopener noreferrer nofollow" target="_blank">Original source</a>.</em></p>`;
+      const attrNote =
+        '<p class="source-attr"><em>Reporting based on public reporting from ' +
+        item.sourceName +
+        '. <a href="' +
+        item.link +
+        '" rel="noopener noreferrer nofollow" target="_blank">Original source</a>.</em></p>';
       let finalContent = rewrite.content;
       if (!/original source/i.test(finalContent)) {
-        finalContent = `${finalContent}\n${attrNote}`;
+        finalContent = finalContent + attrNote;
       }
 
       const newArticle: Article = {
