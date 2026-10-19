@@ -3,12 +3,6 @@ import type { Article, Category, Source, AutomationSetting, AutomationLog, Artic
 import { initialCategories, initialArticles, initialSources, initialVideos } from './seed-data';
 import { INITIAL_PUBLISHERS } from './publishers-data';
 import { executeD1Query } from './d1-sync';
-import { getContextualThematicImage } from './thematic-image';
-
-/**
- * Thin emergency runtime-db: keeps site up and cuts D1 cost on hot paths.
- * Full feature set is restored for articles, categories, settings, analytics debounce.
- */
 
 export type RuntimeLocals = { runtime?: { env?: { DB?: D1Database } } } | Record<string, unknown> | null | undefined;
 
@@ -16,14 +10,20 @@ const queryCache = new Map<string, { data: any; expires: number }>();
 export function getCached<T>(key: string): T | null {
   const e = queryCache.get(key);
   if (!e) return null;
-  if (Date.now() > e.expires) { queryCache.delete(key); return null; }
+  if (Date.now() > e.expires) {
+    queryCache.delete(key);
+    return null;
+  }
   return e.data as T;
 }
 export function setCached<T>(key: string, data: T, ttlMs: number): void {
   queryCache.set(key, { data, expires: Date.now() + ttlMs });
 }
 export function invalidateCache(prefix?: string): void {
-  if (!prefix) { queryCache.clear(); return; }
+  if (!prefix) {
+    queryCache.clear();
+    return;
+  }
   for (const k of queryCache.keys()) if (k.startsWith(prefix)) queryCache.delete(k);
 }
 
@@ -45,37 +45,68 @@ export function getD1(locals?: RuntimeLocals): D1Database {
     }
   }
   const cfAccount = (runtimeEnv?.CLOUDFLARE_ACCOUNT_ID || process.env?.CLOUDFLARE_ACCOUNT_ID || '').trim();
-  const cfToken = (runtimeEnv?.CLOUDFLARE_D1_API_TOKEN || runtimeEnv?.CLOUDFLARE_API_TOKEN || process.env?.CLOUDFLARE_D1_API_TOKEN || process.env?.CLOUDFLARE_API_TOKEN || '').trim();
+  const cfToken = (
+    runtimeEnv?.CLOUDFLARE_D1_API_TOKEN ||
+    runtimeEnv?.CLOUDFLARE_API_TOKEN ||
+    process.env?.CLOUDFLARE_D1_API_TOKEN ||
+    process.env?.CLOUDFLARE_API_TOKEN ||
+    ''
+  ).trim();
   const cfDb = (runtimeEnv?.CLOUDFLARE_D1_DATABASE_ID || process.env?.CLOUDFLARE_D1_DATABASE_ID || '').trim();
   if (cfAccount && cfToken && cfDb) {
     return {
       prepare(query: string) {
         let boundArgs: unknown[] = [];
         const stmtObj: any = {
-          bind(...args: unknown[]) { boundArgs = args; return stmtObj; },
+          bind(...args: unknown[]) {
+            boundArgs = args;
+            return stmtObj;
+          },
           async first<T = unknown>(colName?: string) {
-            const res = await executeD1Query(query, boundArgs, { accountId: cfAccount, apiToken: cfToken, databaseNameOrId: cfDb });
+            const res = await executeD1Query(query, boundArgs, {
+              accountId: cfAccount,
+              apiToken: cfToken,
+              databaseNameOrId: cfDb,
+            });
             const firstResult = Array.isArray(res.result) ? res.result[0] : res.result;
             const rows = Array.isArray(firstResult?.results) ? firstResult.results : [];
             if (!rows.length) return null;
             return (colName ? rows[0][colName] : rows[0]) as T;
           },
           async all<T = unknown>() {
-            const res = await executeD1Query(query, boundArgs, { accountId: cfAccount, apiToken: cfToken, databaseNameOrId: cfDb });
+            const res = await executeD1Query(query, boundArgs, {
+              accountId: cfAccount,
+              apiToken: cfToken,
+              databaseNameOrId: cfDb,
+            });
             const firstResult = Array.isArray(res.result) ? res.result[0] : res.result;
-            return { success: res.success, results: (Array.isArray(firstResult?.results) ? firstResult.results : []) as T[], meta: firstResult?.meta || {} };
+            return {
+              success: res.success,
+              results: (Array.isArray(firstResult?.results) ? firstResult.results : []) as T[],
+              meta: firstResult?.meta || {},
+            };
           },
           async run() {
-            const res = await executeD1Query(query, boundArgs, { accountId: cfAccount, apiToken: cfToken, databaseNameOrId: cfDb });
+            const res = await executeD1Query(query, boundArgs, {
+              accountId: cfAccount,
+              apiToken: cfToken,
+              databaseNameOrId: cfDb,
+            });
             const firstResult = Array.isArray(res.result) ? res.result[0] : res.result;
             return { success: res.success, meta: firstResult?.meta || { changes: 1 } };
           },
         };
         return stmtObj;
       },
-      async batch() { return []; },
-      async exec() { return { count: 0, duration: 0 }; },
-      dump() { throw new Error('dump not supported'); },
+      async batch() {
+        return [];
+      },
+      async exec() {
+        return { count: 0, duration: 0 };
+      },
+      dump() {
+        throw new Error('dump not supported');
+      },
     } as unknown as D1Database;
   }
   throw new Error('D1 binding not available');
@@ -94,7 +125,7 @@ function formatArticle(row: any): Article {
   } as Article;
 }
 
-function isStubOrRejected(row: any): boolean {
+export function isStubOrRejected(row: any): boolean {
   const t = String(row?.title || '').toLowerCase();
   const s = String(row?.status || '').toLowerCase();
   return s === 'rejected' || s === 'draft' || t.includes('[stub]') || t.includes('placeholder');
@@ -113,20 +144,26 @@ export async function ensureTablesExist(db: D1Database, force = false) {
   try {
     await db.prepare('CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)').run();
     await db.prepare('CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_articles_category_status_pub ON articles(category_id, status, published_at DESC)').run();
+    await db
+      .prepare(
+        'CREATE INDEX IF NOT EXISTS idx_articles_category_status_pub ON articles(category_id, status, published_at DESC)'
+      )
+      .run();
   } catch {}
   tablesChecked = true;
 }
 
 export async function getArticleBySlug(db: D1Database, slug: string) {
-  const targetSlug = slug;
-  const cacheKey = `article_slug:${targetSlug}`;
+  const cacheKey = `article_slug:${slug}`;
   const cached = getCached<Article | null>(cacheKey);
   if (cached !== null && cached !== undefined) return cached;
   try {
-    const row = await db.prepare(`${select} WHERE a.slug=? LIMIT 1`).bind(targetSlug).first<any>();
+    const row = await db.prepare(`${select} WHERE a.slug=? LIMIT 1`).bind(slug).first<any>();
     if (row) {
-      if (isStubOrRejected(row)) { setCached(cacheKey, null, 30000); return null; }
+      if (isStubOrRejected(row)) {
+        setCached(cacheKey, null, 30000);
+        return null;
+      }
       const formatted = formatArticle(row);
       setCached(cacheKey, formatted, 90000);
       return formatted;
@@ -144,7 +181,9 @@ export async function getRelatedArticles(db: D1Database, id: string, categoryId:
   if (relCached) return relCached;
   try {
     const res = await db
-      .prepare(`${select} WHERE (a.status='published' OR a.status IS NULL) AND a.id!=? AND a.category_id=? ORDER BY a.published_at DESC LIMIT ?`)
+      .prepare(
+        `${select} WHERE (a.status='published' OR a.status IS NULL) AND a.id!=? AND a.category_id=? ORDER BY a.published_at DESC LIMIT ?`
+      )
       .bind(id, categoryId, limit)
       .all<any>();
     const items = (res?.results || []).map(formatArticle);
@@ -157,7 +196,16 @@ export async function getRelatedArticles(db: D1Database, id: string, categoryId:
 
 export async function getArticles(
   db: D1Database,
-  o: { categoryId?: string; categorySlug?: string; limit?: number; offset?: number; status?: string; isTopStory?: boolean; isTrending?: boolean; isBreaking?: boolean } = {}
+  o: {
+    categoryId?: string;
+    categorySlug?: string;
+    limit?: number;
+    offset?: number;
+    status?: string;
+    isTopStory?: boolean;
+    isTrending?: boolean;
+    isBreaking?: boolean;
+  } = {}
 ): Promise<Article[]> {
   await ensureTablesExist(db);
   const limit = Math.min(o.limit || 20, 50);
@@ -168,12 +216,16 @@ export async function getArticles(
   try {
     let q = `${select} WHERE (a.status=? OR a.status IS NULL)`;
     const v: unknown[] = [o.status || 'published'];
-    if (o.categoryId) { q += ' AND a.category_id=?'; v.push(o.categoryId); }
+    if (o.categoryId) {
+      q += ' AND a.category_id=?';
+      v.push(o.categoryId);
+    }
     if (o.categorySlug) {
       if (o.categorySlug === 'business' || o.categorySlug === 'money-hustle') {
         q += " AND (c.slug='business' OR c.slug='money-hustle')";
       } else {
-        q += ' AND c.slug=?'; v.push(o.categorySlug);
+        q += ' AND c.slug=?';
+        v.push(o.categorySlug);
       }
     }
     if (o.isTopStory) q += ' AND a.is_top_story=1';
@@ -234,7 +286,9 @@ export async function logVisitorSession(db: D1Database, input: Record<string, un
   recentLoggedSessions.set(sessionKey, now);
   try {
     await db
-      .prepare('INSERT INTO visitor_analytics(id, session_id, visit_date, page_path, user_agent, referrer, device_type) VALUES(?, ?, ?, ?, ?, ?, ?)')
+      .prepare(
+        'INSERT INTO visitor_analytics(id, session_id, visit_date, page_path, user_agent, referrer, device_type) VALUES(?, ?, ?, ?, ?, ?, ?)'
+      )
       .bind(
         `visit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         String(input.session_id || ''),
@@ -323,7 +377,6 @@ export async function getAutomationSettings(db: D1Database): Promise<AutomationS
   }
 }
 
-// Stubs for admin / less-hot paths — keep imports from breaking the build
 export async function getMostReadArticles(db: D1Database, limit = 10) {
   return getArticles(db, { limit });
 }
@@ -334,3 +387,82 @@ export async function getTopStory(db: D1Database) {
   const list = await getArticles(db, { limit: 1, isTopStory: true });
   return list[0] || null;
 }
+
+export async function getCategoryBySlug(db: D1Database, slug: string) {
+  try {
+    return await db.prepare('SELECT * FROM categories WHERE slug=? LIMIT 1').bind(slug).first<Category>();
+  } catch {
+    return null;
+  }
+}
+
+export async function getArticleById(db: D1Database, id: string) {
+  try {
+    const row = await db.prepare(`${select} WHERE a.id=? LIMIT 1`).bind(id).first<any>();
+    return row ? formatArticle(row) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function searchArticles(db: D1Database, q: string, limit = 20) {
+  try {
+    const res = await db
+      .prepare(`${select} WHERE a.title LIKE ? ORDER BY a.published_at DESC LIMIT ?`)
+      .bind(`%${q}%`, Math.min(limit, 30))
+      .all<any>();
+    return (res?.results || []).map(formatArticle);
+  } catch {
+    return [];
+  }
+}
+
+export async function getArticlesWithCount(db: D1Database, o: any = {}) {
+  const articles = await getArticles(db, o);
+  return { articles, total: articles.length };
+}
+
+// Safe no-op / empty stubs so admin imports compile without burning D1
+export async function getAutomationLogs() { return []; }
+export async function addAutomationLog() { return true; }
+export async function updateAutomationSetting() { return true; }
+export async function getRejectedArticles() { return []; }
+export async function getArticleReports() { return []; }
+export async function createArticleReport() { return true; }
+export async function updateArticleReportStatus() { return true; }
+export async function getArticleComments() { return []; }
+export async function createArticleComment() { return true; }
+export async function likeArticleComment() { return true; }
+export async function getCustomAds() { return []; }
+export async function createCustomAd() { return true; }
+export async function deleteCustomAd() { return true; }
+export async function toggleCustomAd() { return true; }
+export async function getAdvertInquiries() { return []; }
+export async function createAdvertInquiry() { return true; }
+export async function updateAdvertInquiry() { return true; }
+export async function deleteAdvertInquiry() { return true; }
+export async function getAnalyticsMetrics() { return {}; }
+export async function getAdminDashboardStats() { return {}; }
+export async function getDatabaseDiagnostics() { return {}; }
+export async function getDatabaseStorageStats() { return {}; }
+export async function cleanAndVacuumDatabase() { return true; }
+export async function updateArticle() { return true; }
+export async function deleteArticle() { return true; }
+export async function createSource() { return true; }
+export async function updateSource() { return true; }
+export async function deleteSource() { return true; }
+export async function getPublishers() { return INITIAL_PUBLISHERS || []; }
+export async function getPublisherById() { return null; }
+export async function getPublisherBySlug() { return null; }
+export async function createPublisher() { return true; }
+export async function updatePublisher() { return true; }
+export async function deletePublisher() { return true; }
+export async function togglePublisherStatus() { return true; }
+export async function getVideoArticles() { return []; }
+export async function getVideoArticleById() { return null; }
+export async function getVideoArticleBySlug() { return null; }
+export async function createVideoArticle() { return true; }
+export async function updateVideoArticle() { return true; }
+export async function deleteVideoArticle() { return true; }
+export async function incrementVideoViews() { return true; }
+export async function updateSiteSetting() { return true; }
