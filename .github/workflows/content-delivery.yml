@@ -2,8 +2,18 @@ name: Content Delivery & Sync Pipeline
 
 on:
   schedule:
+    # 05:00, 10:00, 15:00, 20:00 UTC ≈ 06:00–21:00 WAT
     - cron: '0 5,10,15,20 * * *'
   workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Run even if CONTENT_AUTOMATION_PAUSED is true'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 concurrency:
   group: content-sync-pipeline
@@ -13,7 +23,13 @@ jobs:
   content-sync:
     name: Content Delivery & Upstream Sync
     runs-on: ubuntu-latest
-    if: github.event_name != 'push'
+    # Skip scheduled runs when paused. Manual dispatch can force with force_run=true.
+    if: >
+      github.event_name != 'push' &&
+      (
+        secrets.CONTENT_AUTOMATION_PAUSED != 'true' ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.force_run == 'true')
+      )
     permissions:
       contents: read
 
