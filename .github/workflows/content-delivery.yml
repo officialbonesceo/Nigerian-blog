@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       force_run:
-        description: 'Run even if CONTENT_AUTOMATION_PAUSED is true'
+        description: 'Run even if automation is paused'
         required: false
         default: 'false'
         type: choice
@@ -23,11 +23,12 @@ jobs:
   content-sync:
     name: Content Delivery & Upstream Sync
     runs-on: ubuntu-latest
-    # Skip scheduled runs when paused. Manual dispatch can force with force_run=true.
+    # vars.CONTENT_AUTOMATION_PAUSED = true  → skip scheduled runs
+    # Manual Run workflow → set force_run=true to override pause
     if: >
       github.event_name != 'push' &&
       (
-        secrets.CONTENT_AUTOMATION_PAUSED != 'true' ||
+        vars.CONTENT_AUTOMATION_PAUSED != 'true' ||
         (github.event_name == 'workflow_dispatch' && github.event.inputs.force_run == 'true')
       )
     permissions:
