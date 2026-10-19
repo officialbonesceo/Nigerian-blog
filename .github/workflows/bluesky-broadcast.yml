@@ -1,17 +1,9 @@
 name: Bluesky Social Syndication
 
-# ==============================================================================
-# 9jaBeacon - Autonomous Bluesky Social Syndication
-#
-# TRIGGER POLICY:
-# - Schedule: Thrice daily at 06:00, 12:00, 18:00 UTC (07:00, 13:00, 19:00 WAT)
-# - Workflow Dispatch: Manual 1-click broadcast from GitHub Actions UI
-# - Push events: Strictly disabled to conserve Actions minutes
-# ==============================================================================
-
 on:
-  schedule:
-    - cron: '0 6,12,18 * * *' # Thrice daily (Morning briefing, Afternoon peak, Evening roundup)
+  # schedule paused — was pulling full D1 table 3x/day and burning free quota
+  # schedule:
+  #   - cron: '0 6,12,18 * * *'
   workflow_dispatch:
     inputs:
       article_slug:
@@ -22,28 +14,28 @@ on:
 
 jobs:
   bluesky-broadcast:
-    name: 🦋 Broadcast to Bluesky
+    name: Broadcast to Bluesky
     runs-on: ubuntu-latest
     if: github.event_name != 'push'
     permissions:
       contents: read
 
     steps:
-      - name: 📦 Checkout Repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: 🟢 Setup Node.js Runtime
+      - name: Setup Node.js Runtime
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           check-latest: false
 
-      - name: 📦 Install Runtime Packages
+      - name: Install Runtime Packages
         run: npm install --no-audit --no-fund
 
-      - name: 📥 Sync Latest Articles from Upstream (D1)
+      - name: Sync Latest Articles from Upstream (D1)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -53,7 +45,7 @@ jobs:
           ALLOW_SEED_DATA: 'false'
         run: npx tsx scripts/sync-cache.ts || true
 
-      - name: 🦋 Publish to Bluesky AT Protocol
+      - name: Publish to Bluesky AT Protocol
         env:
           BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_IDENTIFIER }}
           BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
