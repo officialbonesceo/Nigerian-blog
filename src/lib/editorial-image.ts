@@ -1,7 +1,7 @@
 /**
  * 9jaBeacon Editorial image resolver
  * Person stories: Wikipedia Commons or branded SVG (never random stock faces).
- * Non-person: Unsplash API (TOS: Client-ID, download ping, photographer attribution) then SVG.
+ * Non-person: Unsplash API (TOS) then SVG.
  */
 import { fetchVerifiedWikipediaImage } from './wikipedia-image';
 
@@ -49,12 +49,17 @@ export function isPublisherLogoOrBanner(url?: string | null): boolean {
 }
 
 function escapeXml(unsafe: string): string {
+  const amp = String.fromCharCode(38) + 'amp;';
+  const lt = String.fromCharCode(38) + 'lt;';
+  const gt = String.fromCharCode(38) + 'gt;';
+  const quot = String.fromCharCode(38) + 'quot;';
+  const apos = String.fromCharCode(38) + 'apos;';
   return (unsafe || '')
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, ''');
+    .replace(/&/g, amp)
+    .replace(/</g, lt)
+    .replace(/>/g, gt)
+    .replace(/"/g, quot)
+    .replace(/'/g, apos);
 }
 
 function wrapSvgText(text: string, maxCharsPerLine = 38, maxLines = 3): string[] {
@@ -110,44 +115,69 @@ export function generateEditorialSvgString(options: EditorialSvgOptions): string
   const lineTexts = lines
     .map(
       (line, i) =>
-        `<text x="80" y="${280 + i * 60}" font-family="system-ui,sans-serif" font-size="42" font-weight="800" fill="#f8fafc">${escapeXml(line)}</text>`
+        '<text x="80" y="' +
+        String(280 + i * 60) +
+        '" font-family="system-ui,sans-serif" font-size="42" font-weight="800" fill="#f8fafc">' +
+        escapeXml(line) +
+        '</text>'
     )
     .join('\n');
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">`,
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' +
+      width +
+      ' ' +
+      height +
+      '" width="' +
+      width +
+      '" height="' +
+      height +
+      '">',
     '<defs>',
     '<linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">',
-    `<stop offset="0%" stop-color="${bgStart}" />`,
-    `<stop offset="60%" stop-color="${bgMid}" />`,
-    `<stop offset="100%" stop-color="${bgEnd}" />`,
+    '<stop offset="0%" stop-color="' + bgStart + '" />',
+    '<stop offset="60%" stop-color="' + bgMid + '" />',
+    '<stop offset="100%" stop-color="' + bgEnd + '" />',
     '</linearGradient>',
     '</defs>',
-    `<rect width="${width}" height="${height}" fill="url(#bgGrad)" />`,
-    `<rect x="36" y="36" width="${width - 72}" height="${height - 72}" rx="24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />`,
-    `<text x="80" y="110" font-family="system-ui,sans-serif" font-size="28" font-weight="900" fill="#ffffff">9ja<tspan fill="${primaryColor}">Beacon</tspan></text>`,
-    `<text x="80" y="200" font-family="system-ui,sans-serif" font-size="14" font-weight="800" fill="${primaryColor}" letter-spacing="1.5">${escapedTheme}</text>`,
+    '<rect width="' + width + '" height="' + height + '" fill="url(#bgGrad)" />',
+    '<rect x="36" y="36" width="' +
+      (width - 72) +
+      '" height="' +
+      (height - 72) +
+      '" rx="24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />',
+    '<text x="80" y="110" font-family="system-ui,sans-serif" font-size="28" font-weight="900" fill="#ffffff">9ja<tspan fill="' +
+      primaryColor +
+      '">Beacon</tspan></text>',
+    '<text x="80" y="200" font-family="system-ui,sans-serif" font-size="14" font-weight="800" fill="' +
+      primaryColor +
+      '" letter-spacing="1.5">' +
+      escapedTheme +
+      '</text>',
     lineTexts,
-    `<text x="80" y="560" font-family="system-ui,sans-serif" font-size="14" fill="#cbd5e1">9jaBeacon News Wire - ${sourceName}</text>`,
+    '<text x="80" y="560" font-family="system-ui,sans-serif" font-size="14" fill="#cbd5e1">9jaBeacon News Wire - ' +
+      sourceName +
+      '</text>',
     '</svg>',
   ].join('\n');
 }
 
 export function generateEditorialSvgDataUrl(options: EditorialSvgOptions): string {
-  return `data:image/svg+xml;utf8,${encodeURIComponent(generateEditorialSvgString(options))}`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(generateEditorialSvgString(options));
 }
 
 export function isPersonRelatedStory(title: string, content?: string): boolean {
-  const combined = `${title || ''} ${(content || '').slice(0, 1000)}`.toLowerCase();
+  const combined = (title || '') + ' ' + (content || '').slice(0, 1000);
+  const lower = combined.toLowerCase();
   if (
     /\b(president|governor|minister|senator|lawmaker|commissioner|coach|manager|athlete|captain)\b/i.test(
-      combined
+      lower
     )
   ) {
     return true;
   }
   if (
     /\b(tinubu|shettima|wike|peter\s+obi|atiku|buhari|dangote|soludo|lookman|osimhen|iwobi|fubara|sanwo-?olu)\b/i.test(
-      combined
+      lower
     )
   ) {
     return true;
@@ -198,13 +228,16 @@ async function searchUnsplash(query: string): Promise<ResolvedImageResult | null
   }
   const appName = (process.env.UNSPLASH_APP_NAME || '9jaBeacon').replace(/\s+/g, '');
   try {
-    const endpoint = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`;
+    const endpoint =
+      'https://api.unsplash.com/search/photos?query=' +
+      encodeURIComponent(query) +
+      '&per_page=1&orientation=landscape';
     const res = await fetch(endpoint, {
-      headers: { Authorization: `Client-ID ${key}`, 'Accept-Version': 'v1' },
+      headers: { Authorization: 'Client-ID ' + key, 'Accept-Version': 'v1' },
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
-      console.warn(`[Unsplash] HTTP ${res.status}`);
+      console.warn('[Unsplash] HTTP ' + res.status);
       return null;
     }
     const data = (await res.json()) as any;
@@ -212,19 +245,26 @@ async function searchUnsplash(query: string): Promise<ResolvedImageResult | null
     if (!photo?.urls?.regular) return null;
     if (photo.links?.download_location) {
       fetch(photo.links.download_location, {
-        headers: { Authorization: `Client-ID ${key}` },
+        headers: { Authorization: 'Client-ID ' + key },
         signal: AbortSignal.timeout(3000),
-      }).catch(() => {});
+      }).catch(function () {});
     }
     const author = photo.user?.name || 'Unsplash Contributor';
     const authorUrl = photo.user?.links?.html
-      ? `${photo.user.links.html}?utm_source=${appName}&utm_medium=referral`
-      : `https://unsplash.com/?utm_source=${appName}&utm_medium=referral`;
-    const home = `https://unsplash.com/?utm_source=${appName}&utm_medium=referral`;
-    const creditHtml = `Photo by <a href="${authorUrl}" target="_blank" rel="noopener noreferrer">${author}</a> on <a href="${home}" target="_blank" rel="noopener noreferrer">Unsplash</a>`;
+      ? photo.user.links.html + '?utm_source=' + appName + '&utm_medium=referral'
+      : 'https://unsplash.com/?utm_source=' + appName + '&utm_medium=referral';
+    const home = 'https://unsplash.com/?utm_source=' + appName + '&utm_medium=referral';
+    const creditHtml =
+      'Photo by <a href="' +
+      authorUrl +
+      '" target="_blank" rel="noopener noreferrer">' +
+      author +
+      '</a> on <a href="' +
+      home +
+      '" target="_blank" rel="noopener noreferrer">Unsplash</a>';
     return {
-      imageUrl: `${photo.urls.regular}&auto=format&fit=crop&w=1200&q=80`,
-      imageCaption: photo.alt_description || photo.description || `${query} — editorial photo.`,
+      imageUrl: photo.urls.regular + '&auto=format&fit=crop&w=1200&q=80',
+      imageCaption: photo.alt_description || photo.description || query + ' — editorial photo.',
       imageCredit: creditHtml,
       imageLicense: 'Unsplash License (Free Editorial Use with Attribution)',
     };
@@ -242,7 +282,12 @@ export async function resolveEditorialImage(options: {
   sourceImageUrl?: string | null;
   aiKeyword?: string | null;
 }): Promise<ResolvedImageResult> {
-  const { title, content, category, sourceName, sourceImageUrl, aiKeyword } = options;
+  const title = options.title;
+  const content = options.content;
+  const category = options.category;
+  const sourceName = options.sourceName;
+  const sourceImageUrl = options.sourceImageUrl;
+  const aiKeyword = options.aiKeyword;
 
   if (sourceImageUrl && !isPublisherLogoOrBanner(sourceImageUrl)) {
     const u = sourceImageUrl.toLowerCase();
@@ -254,7 +299,7 @@ export async function resolveEditorialImage(options: {
     ) {
       return {
         imageUrl: sourceImageUrl,
-        imageCaption: `${title} — Verified wire report.`,
+        imageCaption: title + ' — Verified wire report.',
         imageCredit: sourceName || 'Open source wire',
         imageLicense: 'Open / Editorial',
       };
@@ -267,10 +312,10 @@ export async function resolveEditorialImage(options: {
     try {
       const wiki = await fetchVerifiedWikipediaImage(title, category);
       if (wiki?.imageUrl) {
-        console.log(`[Image] Wikipedia: ${title.slice(0, 50)}`);
+        console.log('[Image] Wikipedia: ' + title.slice(0, 50));
         return {
           imageUrl: wiki.imageUrl,
-          imageCaption: wiki.caption || `${wiki.wikiTitle} — archival.`,
+          imageCaption: wiki.caption || (wiki.wikiTitle || '') + ' — archival.',
           imageCredit: wiki.credit || 'Wikimedia Commons',
           imageLicense: 'Creative Commons / Editorial',
         };
@@ -278,35 +323,35 @@ export async function resolveEditorialImage(options: {
     } catch {
       // continue to SVG
     }
-    console.log(`[Image] Person → SVG: ${title.slice(0, 50)}`);
+    console.log('[Image] Person → SVG: ' + title.slice(0, 50));
     return {
       imageUrl: generateEditorialSvgDataUrl({
-        title,
+        title: title,
         category: category || 'cat_naija_news',
         sourceName: sourceName || '9jaBeacon',
       }),
-      imageCaption: `${title} — 9jaBeacon editorial card.`,
+      imageCaption: title + ' — 9jaBeacon editorial card.',
       imageCredit: '9jaBeacon Editorial Visual Desk',
       imageLicense: 'Editorial (own graphic)',
     };
   }
 
   const query =
-    (aiKeyword && aiKeyword.trim().length > 2 ? aiKeyword.trim() : '') || extractSearchQuery(title);
-  console.log(`[Image] Unsplash search: ${query}`);
+    aiKeyword && aiKeyword.trim().length > 2 ? aiKeyword.trim() : extractSearchQuery(title);
+  console.log('[Image] Unsplash search: ' + query);
   const stock = await searchUnsplash(query);
   if (stock) {
-    console.log(`[Image] Unsplash OK: ${stock.imageUrl.slice(0, 70)}`);
+    console.log('[Image] Unsplash OK: ' + stock.imageUrl.slice(0, 70));
     return stock;
   }
 
   return {
     imageUrl: generateEditorialSvgDataUrl({
-      title,
+      title: title,
       category: category || 'cat_naija_news',
       sourceName: sourceName || '9jaBeacon',
     }),
-    imageCaption: `${title} — 9jaBeacon editorial card.`,
+    imageCaption: title + ' — 9jaBeacon editorial card.',
     imageCredit: '9jaBeacon Editorial Visual Desk',
     imageLicense: 'Editorial (own graphic)',
   };
