@@ -1,10 +1,6 @@
 /**
- * Content worker entry for GitHub Actions.
- *
- * Quota policy:
- * - Max MAX_ARTICLES_PER_CATEGORY_PER_DAY (default 2) published per category per UTC day
- * - Categories already at cap are skipped entirely (no RSS fetch for their sources)
- * - Only unfilled categories are processed, each with maxArticles = remaining slots
+ * Content worker — 1 published article per category per UTC day.
+ * GitHub Actions: dedup against local SQLite + static RSS (not remote D1 scans).
  */
 import { getD1 } from '../src/lib/runtime-db';
 import { runIngestionPipeline } from '../src/lib/automated-ingest-pipeline';
@@ -13,16 +9,29 @@ import {
   countPublishedTodayByCategory,
   buildRemainingSlots,
 } from '../src/lib/ingest-category-quota';
+import { buildLocalDedupIndex } from './actions-local-dedup';
 
 async function main() {
   const maxPerCategory = Math.min(
-    Math.max(parseInt(process.env.MAX_ARTICLES_PER_CATEGORY_PER_DAY || '2', 10) || 2, 1),
-    5
+    Math.max(parseInt(process.env.MAX_ARTICLES_PER_CATEGORY_PER_DAY || '1', 10) || 1, 1),
+    3
   );
 
   console.log('=== 9jaBeacon content worker ===');
   console.log('MAX_ARTICLES_PER_CATEGORY_PER_DAY:', maxPerCategory);
-  console.log('Mode: per-category quota → skip full desks → RSS → rank → rewrite');
+  console.log('Mode: 1/day/desk → local dedup → RSS → AI → insert');
+
+  // Build local dedup index once (SQLite + public/rss.xml) for Actions
+  if (process.env.GITHUB_ACTIONS === 'true' || process.env.USE_LOCAL_DEDUP === 'true') {
+    try {
+      const index = buildLocalDedupIndex();
+      (globalThis as any).__9jaLocalDedup = index;
+      process.env.USE_LOCAL_DEDUP = 'true';
+      console.log('[worker] local dedup index ready');
+    } catch (e: any) {
+      console.warn('[worker] local dedup unavailable, pipeline may use D1 checks:', e?.message || e);
+    }
+  }
 
   const db = getD1();
   const todayCounts = await countPublishedTodayByCategory(db);
@@ -35,7 +44,7 @@ async function main() {
   }
 
   if (totalSlots <= 0) {
-    console.log('[ingest] All categories filled for today — no RSS/AI work');
+    console.log('[ingest] All categories filled for today — exit early (no RSS/AI)');
     console.log(
       JSON.stringify(
         { fetched: 0, passed: 0, rejected: 0, inserted: 0, errors: ['all categories at daily cap'] },
@@ -65,7 +74,7 @@ async function main() {
     const result = await runIngestionPipeline(db, {
       categoryId,
       maxArticles: slots,
-      limitPerSource: 5,
+      limitPerSource: 4,
     });
 
     combined.fetched += result.fetched || 0;
