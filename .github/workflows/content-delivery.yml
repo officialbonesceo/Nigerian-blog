@@ -2,8 +2,8 @@ name: Content Delivery & Sync Pipeline
 
 on:
   schedule:
-    # 05:00, 10:00, 15:00, 20:00 UTC ≈ 06:00–21:00 WAT
-    - cron: '0 5,10,15,20 * * *'
+    # Once per day 07:00 UTC ≈ 08:00 WAT
+    - cron: '0 7 * * *'
   workflow_dispatch:
     inputs:
       force_run:
@@ -23,8 +23,6 @@ jobs:
   content-sync:
     name: Content Delivery & Upstream Sync
     runs-on: ubuntu-latest
-    # vars.CONTENT_AUTOMATION_PAUSED = true  → skip scheduled runs
-    # Manual Run workflow → set force_run=true to override pause
     if: >
       github.event_name != 'push' &&
       (
@@ -32,13 +30,14 @@ jobs:
         (github.event_name == 'workflow_dispatch' && github.event.inputs.force_run == 'true')
       )
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js Runtime
         uses: actions/setup-node@v4
@@ -78,6 +77,10 @@ jobs:
 
       - name: Execute Scheduled Content Worker
         env:
+          GITHUB_ACTIONS: 'true'
+          USE_LOCAL_DEDUP: 'true'
+          MAX_ARTICLES_PER_CATEGORY_PER_DAY: '1'
+          MAX_ARTICLES_PER_RUN: '4'
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -116,7 +119,6 @@ jobs:
           UNSPLASH_APP_ID: ${{ secrets.UNSPLASH_APP_ID || secrets.UNSPLASH_APPLICATION_ID || secrets.UNSPLASH_ID }}
           UNSPLASH_APP_NAME: ${{ secrets.UNSPLASH_APP_NAME || secrets.UNSPLASH_NAME || '9jaBeacon' }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          MAX_ARTICLES_PER_RUN: '3'
           NODE_ENV: production
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'
@@ -131,6 +133,21 @@ jobs:
           ALLOW_SEED_ARTICLES: 'false'
           ALLOW_SEED_DATA: 'false'
         run: npx tsx scripts/sync-upstream.ts
+
+      - name: Generate static RSS + sitemaps
+        run: npx tsx scripts/generate-static-feeds.ts
+
+      - name: Commit static feeds to repo
+        run: |
+          git config user.name "9jaBeacon-bot"
+          git config user.email "bot@9jabeacon.name.ng"
+          git add public/rss.xml public/sitemap.xml public/news-sitemap.xml public/scooper-feed.xml || true
+          if git diff --staged --quiet; then
+            echo 'No feed file changes to commit.'
+          else
+            git commit -m "chore(feeds): refresh static RSS + sitemaps [skip ci]"
+            git push origin HEAD:main
+          fi
 
       - name: Verify Workspace Cleanliness
         run: |
