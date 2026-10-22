@@ -1,7 +1,7 @@
 name: Bluesky Social Syndication
 
+# PAUSED 2026-10-22 — news automation frozen until D1 issues fixed
 on:
-  # schedule paused — was pulling full D1 table 3x/day and burning free quota
   # schedule:
   #   - cron: '0 6,12,18 * * *'
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
   bluesky-broadcast:
     name: Broadcast to Bluesky
     runs-on: ubuntu-latest
-    if: github.event_name != 'push'
+    if: false
     permissions:
       contents: read
 

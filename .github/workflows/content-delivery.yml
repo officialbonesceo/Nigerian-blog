@@ -1,13 +1,14 @@
 name: Content Delivery & Sync Pipeline
 
+# PAUSED 2026-10-22 — no scheduled or automatic runs until D1 quota / pipeline is fixed.
+# To resume: restore the job `if:` condition and uncomment schedule.
 on:
-  schedule:
-    # Once per day 07:00 UTC ≈ 08:00 WAT
-    - cron: '0 7 * * *'
+  # schedule:
+  #   - cron: '0 7 * * *'
   workflow_dispatch:
     inputs:
       force_run:
-        description: 'Run even if automation is paused'
+        description: 'PAUSED — only runs if you set force_run=true AND job if is re-enabled'
         required: false
         default: 'false'
         type: choice
@@ -23,12 +24,8 @@ jobs:
   content-sync:
     name: Content Delivery & Upstream Sync
     runs-on: ubuntu-latest
-    if: >
-      github.event_name != 'push' &&
-      (
-        vars.CONTENT_AUTOMATION_PAUSED != 'true' ||
-        (github.event_name == 'workflow_dispatch' && github.event.inputs.force_run == 'true')
-      )
+    # Hard pause — job never starts (even manual) until this line is changed
+    if: false
     permissions:
       contents: write
 

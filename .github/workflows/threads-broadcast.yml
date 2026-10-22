@@ -1,13 +1,13 @@
 name: Meta Threads Social Syndication
 
+# PAUSED 2026-10-22 — news automation frozen until D1 issues fixed
 on:
-  # schedule paused to protect D1 free daily quota
   # schedule:
   #   - cron: '30 6,12,18 * * *'
   workflow_dispatch:
     inputs:
       article_slug:
-        description: 'Article Slug to broadcast (leave empty to broadcast latest unsyndicated story)'
+        description: 'Article Slug to broadcast'
         required: false
         default: ''
         type: string
@@ -21,7 +21,7 @@ jobs:
   threads-broadcast:
     name: Broadcast to Meta Threads
     runs-on: ubuntu-latest
-    if: github.event_name != 'push'
+    if: false
     permissions:
       contents: read
 
