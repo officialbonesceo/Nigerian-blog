@@ -138,17 +138,19 @@ export async function ensureTablesExist(db: D1Database, force = false) {
     try {
       await db.prepare('SELECT 1 FROM articles LIMIT 1').first();
       tablesChecked = true;
-      return;
+      // Still ensure critical indexes exist (cheap IF NOT EXISTS)
     } catch {}
   }
   try {
     await db.prepare('CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_articles_source_original_url ON articles(source_original_url)').run();
     await db.prepare('CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)').run();
     await db
       .prepare(
         'CREATE INDEX IF NOT EXISTS idx_articles_category_status_pub ON articles(category_id, status, published_at DESC)'
       )
       .run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_rejected_original_url ON rejected_articles(original_url)').run();
   } catch {}
   tablesChecked = true;
 }
@@ -422,7 +424,6 @@ export async function getArticlesWithCount(db: D1Database, o: any = {}) {
   return { articles, total: articles.length };
 }
 
-// Safe no-op / empty stubs so admin imports compile without burning D1
 export async function getAutomationLogs() { return []; }
 export async function addAutomationLog() { return true; }
 export async function updateAutomationSetting() { return true; }
@@ -458,7 +459,7 @@ export async function createPublisher() { return true; }
 export async function updatePublisher() { return true; }
 export async function deletePublisher() { return true; }
 export async function togglePublisherStatus() { return true; }
-export async function getVideoArticles() { return []; }
+export async function getVideoArticles() { return { videos: [] }; }
 export async function getVideoArticleById() { return null; }
 export async function getVideoArticleBySlug() { return null; }
 export async function createVideoArticle() { return true; }
