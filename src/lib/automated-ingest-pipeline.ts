@@ -161,6 +161,16 @@ async function isDuplicate(
   cleanTitle: string,
   baseSlug: string
 ): Promise<boolean> {
+  // Prefer indexed equality only — never LOWER() or leading-wildcard LIKE (full scans).
+  const idx = (globalThis as any).__9jaLocalDedup;
+  if (process.env.USE_LOCAL_DEDUP === 'true' && idx) {
+    const normU = (u: string) => (u || '').trim().split('#')[0].replace(/\/$/, '').toLowerCase();
+    const normT = (t: string) => (t || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (cleanLink && idx.urls?.has(normU(cleanLink))) return true;
+    if (cleanTitle && idx.titles?.has(normT(cleanTitle))) return true;
+    if (baseSlug && idx.slugs?.has(String(baseSlug).toLowerCase())) return true;
+  }
+
   if (cleanLink) {
     const matchUrl = await db
       .prepare('SELECT id FROM articles WHERE source_original_url = ? LIMIT 1')
@@ -170,7 +180,7 @@ async function isDuplicate(
     if (matchUrl) return true;
     const matchRej = await db
       .prepare(
-        "SELECT id, rejection_reason FROM rejected_articles WHERE original_url = ? ORDER BY created_at DESC LIMIT 1"
+        'SELECT id, rejection_reason FROM rejected_articles WHERE original_url = ? ORDER BY created_at DESC LIMIT 1'
       )
       .bind(cleanLink)
       .first<{ id: string; rejection_reason?: string }>()
@@ -183,19 +193,24 @@ async function isDuplicate(
     }
   }
   if (cleanTitle) {
+    // Exact title match only (indexed-friendly)
     const matchTitle = await db
-      .prepare('SELECT id FROM articles WHERE LOWER(title) = LOWER(?) LIMIT 1')
+      .prepare('SELECT id FROM articles WHERE title = ? LIMIT 1')
       .bind(cleanTitle)
       .first<{ id: string }>()
       .catch(() => null);
     if (matchTitle) return true;
   }
-  const matchSlug = await db
-    .prepare('SELECT id FROM articles WHERE slug = ? OR slug LIKE ? LIMIT 1')
-    .bind(baseSlug, `${baseSlug}-%`)
-    .first<{ id: string }>()
-    .catch(() => null);
-  return !!matchSlug;
+  // Exact slug only — random suffix on insert makes LIKE prefix scans unnecessary
+  if (baseSlug) {
+    const matchSlug = await db
+      .prepare('SELECT id FROM articles WHERE slug = ? LIMIT 1')
+      .bind(baseSlug)
+      .first<{ id: string }>()
+      .catch(() => null);
+    if (matchSlug) return true;
+  }
+  return false;
 }
 
 export async function runIngestionPipeline(
@@ -410,137 +425,6 @@ export async function runIngestionPipeline(
       if (inserted) {
         result.inserted++;
         console.log('[ingest] INSERT', uniqueSlug, '| image:', (visual.imageUrl || '').slice(0, 60));
-
-        try {
-          const autoSettings = await getAutomationSettings(db).catch(() => []);
-          const sMap: Record<string, string> = {};
-          for (const s of autoSettings) sMap[s.key] = s.value;
-          const siteSettings = await getSiteSettings(db).catch(() => ({} as Record<string, string>));
-          const siteBase = ((siteSettings as any).site_url || 'https://www.9jabeacon.name.ng').replace(
-            /\/+$/,
-            ''
-          );
-          const canonicalUrl = `${siteBase}/news/${newArticle.slug}`;
-
-          // Default: one social network per article (Bluesky primary).
-          // Set SYNDICATE_ALL=true in Actions secrets to also post Tumblr/Buffer in the same run.
-          const syndicateAll = process.env.SYNDICATE_ALL === 'true' || sMap.syndicate_all === 'true';
-          let postedPrimary = false;
-
-          const bskyAuto =
-            sMap.bluesky_auto_post_enabled !== 'false' &&
-            process.env.BLUESKY_AUTO_POST_ENABLED !== 'false';
-          const bskyId =
-            sMap.bluesky_identifier ||
-            (typeof process !== 'undefined' ? process.env?.BLUESKY_IDENTIFIER : '');
-          const bskyPass =
-            sMap.bluesky_app_password ||
-            (typeof process !== 'undefined' ? process.env?.BLUESKY_APP_PASSWORD : '');
-
-          if (bskyAuto && bskyId && bskyPass) {
-            try {
-              const liveCheck = await checkIfUrlAlreadyOnBlueskyTimeline(
-                bskyId,
-                newArticle.slug,
-                newArticle.title
-              );
-              if (liveCheck.exists) {
-                await db
-                  .prepare(
-                    'UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?'
-                  )
-                  .bind(new Date().toISOString(), newArticle.slug)
-                  .run()
-                  .catch(() => {});
-                postedPrimary = true;
-              } else {
-                const bRes = await postToBluesky(
-                  {
-                    title: newArticle.title,
-                    summary: newArticle.summary,
-                    category: categorySlug,
-                    imageUrl: newArticle.image_url,
-                    slug: newArticle.slug,
-                    canonicalUrl,
-                  },
-                  { identifier: bskyId, appPassword: bskyPass },
-                  siteBase
-                );
-                if (bRes.success) {
-                  postedPrimary = true;
-                  await db
-                    .prepare(
-                      'UPDATE articles SET syndicated_bluesky = 1, syndicated_bluesky_at = ? WHERE slug = ?'
-                    )
-                    .bind(new Date().toISOString(), newArticle.slug)
-                    .run()
-                    .catch(() => {});
-                  console.log('[syndicate] Bluesky OK', newArticle.slug);
-                }
-              }
-            } catch (e: any) {
-              console.warn('[syndicate] Bluesky error', e?.message || e);
-            }
-          }
-
-          const bufferToken = sMap.buffer_access_token || process.env.BUFFER_ACCESS_TOKEN;
-          if (syndicateAll && sMap.buffer_auto_post_enabled !== 'false' && bufferToken) {
-            postToBuffer(
-              {
-                title: newArticle.title,
-                summary: newArticle.summary,
-                url: canonicalUrl,
-                imageUrl: newArticle.image_url,
-              },
-              bufferToken
-            ).catch(() => {});
-          }
-
-          const tumblrBlog =
-            sMap.tumblr_blog_name ||
-            process.env.TUMBLR_BLOG_IDENTIFIER ||
-            process.env.TUMBLR_BLOG_NAME;
-          const tumblrKey = sMap.tumblr_api_key || process.env.TUMBLR_API_KEY;
-          if (
-            (syndicateAll || !postedPrimary) &&
-            sMap.tumblr_auto_post_enabled !== 'false' &&
-            process.env.TUMBLR_AUTO_POST_ENABLED !== 'false' &&
-            tumblrBlog &&
-            tumblrKey
-          ) {
-            try {
-              const exists = await checkIfUrlAlreadyOnTumblrBlog(tumblrBlog, newArticle.slug);
-              if (!exists) {
-                await postToTumblr(
-                  {
-                    title: newArticle.title,
-                    summary: newArticle.summary,
-                    url: canonicalUrl,
-                    imageUrl: newArticle.image_url,
-                  },
-                  { blogName: tumblrBlog, apiKey: tumblrKey }
-                );
-                console.log('[syndicate] Tumblr OK', newArticle.slug);
-              }
-            } catch (e: any) {
-              console.warn('[syndicate] Tumblr error', e?.message || e);
-            }
-          }
-
-          const threadsToken = sMap.threads_access_token || process.env.THREADS_ACCESS_TOKEN;
-          if (syndicateAll && sMap.threads_auto_post_enabled !== 'false' && threadsToken) {
-            postToThreads(
-              {
-                title: newArticle.title,
-                summary: newArticle.summary,
-                url: canonicalUrl,
-              },
-              threadsToken
-            ).catch(() => {});
-          }
-        } catch (synErr: any) {
-          console.warn('[Ingest Syndication]', synErr?.message || synErr);
-        }
       }
     }
 
