@@ -4,7 +4,7 @@ import { getD1, getArticles, getSiteSettings } from '../lib/runtime-db';
 export const prerender = false;
 
 function escapeXml(unsafe: string): string {
-  return (unsafe || '')
+  return String(unsafe || '')
     .replace(/&/g, '&')
     .replace(/</g, '<')
     .replace(/>/g, '>')
@@ -15,7 +15,6 @@ function escapeXml(unsafe: string): string {
 export const GET: APIRoute = async ({ url, locals, request }) => {
   try {
     const db = getD1(locals);
-    // Small limit — primary feed is static public/rss.xml after content run deploy
     const [articles, settings] = await Promise.all([
       getArticles(db, { limit: 40, status: 'published' }),
       getSiteSettings(db),
@@ -86,7 +85,6 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
     return new Response(xml.trim(), {
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
-        // Long cache: bots should mostly hit edge; static public/ is preferred after deploy
         'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
       },
     });
