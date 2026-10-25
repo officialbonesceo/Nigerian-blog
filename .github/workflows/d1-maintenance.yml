@@ -1,0 +1,72 @@
+name: D1 Maintenance (dedupe + indexes)
+
+# Manual only — uses GitHub secrets to talk to Cloudflare D1 REST API.
+# Does NOT run ingest. Safe while content-delivery stays paused.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'What to run'
+        required: true
+        default: 'dedupe_and_index'
+        type: choice
+        options:
+          - dedupe_and_index
+          - indexes_only
+          - count_only
+
+jobs:
+  d1-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run D1 SQL via Cloudflare API
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          ACTION: ${{ inputs.action }}
+        run: |
+          set -euo pipefail
+          TOKEN="${CLOUDFLARE_D1_API_TOKEN:-$CLOUDFLARE_API_TOKEN}"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$TOKEN"
+          test -n "$CLOUDFLARE_D1_DATABASE_ID"
+          API="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database/${CLOUDFLARE_D1_DATABASE_ID}/query"
+
+          run_sql() {
+            local sql="$1"
+            echo "---- SQL ----"
+            echo "$sql"
+            curl -sS -X POST "$API" \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "$(jq -n --arg s "$sql" '{sql:$s}')" | tee /tmp/d1-out.json
+            echo
+            jq -e '.success == true' /tmp/d1-out.json >/dev/null || {
+              echo 'D1 query failed'
+              cat /tmp/d1-out.json
+              exit 1
+            }
+          }
+
+          if [ "$ACTION" = "count_only" ] || [ "$ACTION" = "dedupe_and_index" ] || [ "$ACTION" = "indexes_only" ]; then
+            run_sql "SELECT COUNT(*) AS total_articles FROM articles"
+          fi
+
+          if [ "$ACTION" = "indexes_only" ] || [ "$ACTION" = "dedupe_and_index" ]; then
+            run_sql "CREATE INDEX IF NOT EXISTS idx_articles_source_original_url ON articles(source_original_url)"
+            run_sql "CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)"
+            run_sql "CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)"
+            run_sql "CREATE INDEX IF NOT EXISTS idx_articles_category_status_pub ON articles(category_id, status, published_at DESC)"
+            run_sql "CREATE INDEX IF NOT EXISTS idx_rejected_original_url ON rejected_articles(original_url)"
+          fi
+
+          if [ "$ACTION" = "dedupe_and_index" ]; then
+            run_sql "DELETE FROM articles WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY source_original_url ORDER BY published_at ASC, id ASC) AS rn FROM articles WHERE source_original_url IS NOT NULL AND TRIM(source_original_url) != '') t WHERE rn > 1)"
+            run_sql "DELETE FROM articles WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY title ORDER BY published_at ASC, id ASC) AS rn FROM articles) t WHERE rn > 1)"
+            run_sql "DELETE FROM rejected_articles WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY original_url ORDER BY created_at ASC, id ASC) AS rn FROM rejected_articles WHERE original_url IS NOT NULL AND TRIM(original_url) != '') t WHERE rn > 1)"
+            run_sql "SELECT COUNT(*) AS total_articles_after FROM articles"
+          fi
+
+          echo 'Done.'
