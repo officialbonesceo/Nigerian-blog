@@ -1,29 +1,26 @@
-# 9jaBeacon Cloudflare Worker Configuration
+# 9jaBeacon Cloudflare Worker — HARD STOPPED 2026-10-25
+# Cron removed. Do NOT re-add until D1 quota + dedup are stable.
+# After pushing: from workers/ run:
+#   npx wrangler deploy
+# Or in CF dashboard: Workers → 9jabeacon-ingest-worker → Triggers → delete cron
+
 name = "9jabeacon-ingest-worker"
 main = "./cron-ingest.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-# Cloudflare D1 Database Binding
 [[d1_databases]]
 binding = "DB"
 database_name = "naijablog"
 database_id = "5ad4457f-0528-473b-a805-f505aa71eacf"
 migrations_dir = "../migrations"
 
-# Cloudflare Cron Triggers (Every 30 minutes automated sync)
+# CRON DISABLED — empty triggers (no */30 schedule)
 [triggers]
-crons = ["*/30 * * * *"]
+crons = []
 
-# Worker Environment Variables
 [vars]
 ENVIRONMENT = "production"
 SITE_NAME = "9jaBeacon"
-SITE_URL = "https://9jabeacon.pages.dev"
-
-# Secrets to configure on Cloudflare:
-# npx wrangler secret put CLOUDFLARE_ACCOUNT_ID
-# npx wrangler secret put CLOUDFLARE_API_TOKEN
-# npx wrangler secret put OPENROUTER_API_KEY
-# npx wrangler secret put ADMIN_SECRET
-# npx wrangler secret put POLLINATIONS_API_KEY
+SITE_URL = "https://www.9jabeacon.name.ng"
+INGEST_DISABLED = "true"
