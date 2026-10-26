@@ -7,7 +7,7 @@ interface PublicImageResult {
   title: string;
   url: string;
   thumbUrl: string;
-  source: 'Wikimedia Commons' | 'Unsplash Editorial' | 'Open Public Domain';
+  source: string;
   license: string;
   author: string;
   width?: number;
@@ -16,43 +16,12 @@ interface PublicImageResult {
   sanitizedCdnUrl: string;
 }
 
-// Fallback high quality editorial photos for common news categories
-const EDITORIAL_NEWS_COLLECTION: Record<string, Array<{ title: string; url: string; author: string }>> = {
-  politics: [
-    { title: 'National Assembly & Governance', url: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Editorial' },
-    { title: 'Official Press Conference & Spokesperson', url: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Editorial' },
-    { title: 'Democratic Balloting & Voting Box', url: 'https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Editorial' },
-  ],
-  economy: [
-    { title: 'Central Bank & Financial District', url: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Finance' },
-    { title: 'Currency & Economic Growth Chart', url: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Markets' },
-    { title: 'Commercial Container Port & Maritime Trade', url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Logistics' },
-  ],
-  tech: [
-    { title: 'Digital Innovation & Fiber Infrastructure', url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Tech' },
-    { title: 'Artificial Intelligence & Data Center', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Tech' },
-    { title: 'Fintech Mobile Application Development', url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Digital' },
-  ],
-  sports: [
-    { title: 'Super Eagles International Stadium Floodlights', url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Sports' },
-    { title: 'Athletic Football Field Match Action', url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Sports' },
-    { title: 'Track and Field Championship Runner', url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80', author: 'Unsplash Sports' },
-  ],
-  general: [
-    { title: 'Press Desk Breaking Broadcast', url: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80', author: 'Editorial Media' },
-    { title: 'African Metropolitan Skyline', url: 'https://images.unsplash.com/photo-1577975882846-431adc8c2009?auto=format&fit=crop&w=1200&q=80', author: 'Urban Media' },
-    { title: 'Public Security & Emergency Response', url: 'https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&w=1200&q=80', author: 'Civic Media' },
-  ],
-};
-
 function buildSanitizedCdnUrl(rawUrl: string): string {
   if (!rawUrl || !rawUrl.startsWith('http')) return rawUrl;
-  // If already an optimized Unsplash URL
   if (rawUrl.includes('images.unsplash.com')) {
     const clean = rawUrl.split('?')[0];
     return `${clean}?auto=format&fit=crop&w=1200&h=675&q=82`;
   }
-  // Use Cloudflare-backed weserv CDN for zero-cost caching and legal privacy sanitization
   try {
     const encoded = encodeURIComponent(rawUrl.replace(/^https?:\/\//, ''));
     return `https://images.weserv.nl/?url=${encoded}&w=1200&h=675&fit=cover&output=webp&q=85`;
@@ -67,52 +36,45 @@ export const GET: APIRoute = async ({ request }) => {
     const rawQuery = (url.searchParams.get('query') || '').trim();
     const category = (url.searchParams.get('category') || 'general').toLowerCase();
 
-    // Clean query words for Wikimedia search
-    const cleanSearch = rawQuery
-      .replace(/[^\w\s]/gi, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .split(' ')
-      .slice(0, 5)
-      .join(' ') || 'Nigeria news';
+    const cleanSearch =
+      rawQuery
+        .replace(/[^\w\s]/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .split(' ')
+        .slice(0, 6)
+        .join(' ') || 'Nigeria news';
 
     const results: PublicImageResult[] = [];
 
-    // 1. Fetch Wikimedia Commons Public Domain & Creative Commons Media
+    // 1) Wikimedia Commons
     try {
-      const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(cleanSearch)}&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url|size|mime|extmetadata&format=json&origin=*`;
+      const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(cleanSearch)}&gsrnamespace=6&gsrlimit=12&prop=imageinfo&iiprop=url|size|mime|extmetadata&format=json&origin=*`;
       const res = await fetch(wikiUrl, {
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(6000),
         headers: {
-          'User-Agent': '9jaBeaconNewsBot/2.0 (editorial newsroom image search; contact@9jabeacon.name.ng)'
-        }
+          'User-Agent': '9jaBeaconNewsBot/2.0 (editorial; contact@9jabeacon.name.ng)',
+        },
       });
-
       if (res.ok) {
-        const data = await res.json() as any;
+        const data = (await res.json()) as any;
         const pages = data?.query?.pages || {};
         for (const pageId of Object.keys(pages)) {
           const p = pages[pageId];
           const info = p.imageinfo?.[0];
-          if (!info || !info.url) continue;
-
-          // Only keep standard raster photos (skip SVG icons, audio, PDF)
+          if (!info?.url) continue;
           const mime = (info.mime || '').toLowerCase();
-          if (!mime.includes('jpeg') && !mime.includes('png') && !mime.includes('webp') && !mime.includes('jpg')) {
-            continue;
-          }
-
+          if (!/jpeg|jpg|png|webp/.test(mime)) continue;
           const ext = info.extmetadata || {};
-          const license = ext.LicenseShortName?.value || ext.License?.value || 'Creative Commons / Public Domain';
-          const author = ext.Artist?.value?.replace(/<[^>]*>/g, '').trim() || 'Wikimedia Contributor';
-          const title = (p.title || 'Public Editorial Photo').replace(/^File:/i, '').replace(/\.[^/.]+$/, '');
-          const thumbUrl = info.thumburl || info.url;
-
+          const license = ext.LicenseShortName?.value || ext.License?.value || 'CC / Public Domain';
+          const author =
+            ext.Artist?.value?.replace(/<[^>]*>/g, '').trim() || 'Wikimedia Contributor';
+          const title = (p.title || 'Public photo').replace(/^File:/i, '').replace(/\.[^/.]+$/, '');
           results.push({
             id: `wiki_${pageId}`,
             title: title.slice(0, 80),
             url: info.url,
-            thumbUrl: thumbUrl,
+            thumbUrl: info.thumburl || info.url,
             source: 'Wikimedia Commons',
             license: String(license).slice(0, 40),
             author: author.slice(0, 50),
@@ -123,32 +85,148 @@ export const GET: APIRoute = async ({ request }) => {
           });
         }
       }
-    } catch (wikiErr) {
-      console.warn('Wikimedia API query timeout/error:', wikiErr);
+    } catch (e) {
+      console.warn('Wikimedia search failed', e);
     }
 
-    // 2. Add category-matched high quality editorial photos
-    const catKey = category.includes('tech') ? 'tech' :
-                   category.includes('econ') || category.includes('fin') || category.includes('biz') ? 'economy' :
-                   category.includes('sport') ? 'sports' :
-                   category.includes('gov') || category.includes('pol') ? 'politics' : 'general';
-
-    const fallbackList = EDITORIAL_NEWS_COLLECTION[catKey] || EDITORIAL_NEWS_COLLECTION.general;
-    fallbackList.forEach((item, index) => {
-      results.push({
-        id: `editorial_${catKey}_${index}`,
-        title: item.title,
-        url: item.url,
-        thumbUrl: item.url.replace('&w=1200', '&w=400'),
-        source: 'Unsplash Editorial',
-        license: 'Free Commercial & Editorial Use',
-        author: item.author,
-        width: 1200,
-        height: 675,
-        aspectRatio: '16:9',
-        sanitizedCdnUrl: buildSanitizedCdnUrl(item.url),
+    // 2) Openverse (open licenses, free)
+    try {
+      const ovUrl = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(cleanSearch)}&page_size=10&license_type=commercial,modification`;
+      const ovRes = await fetch(ovUrl, {
+        signal: AbortSignal.timeout(6000),
+        headers: { Accept: 'application/json' },
       });
-    });
+      if (ovRes.ok) {
+        const ov = (await ovRes.json()) as any;
+        for (const item of ov?.results || []) {
+          if (!item?.url) continue;
+          results.push({
+            id: `ov_${item.id}`,
+            title: String(item.title || cleanSearch).slice(0, 80),
+            url: item.url,
+            thumbUrl: item.thumbnail || item.url,
+            source: 'Openverse',
+            license: String(item.license || 'Open license').slice(0, 40),
+            author: String(item.creator || 'Openverse').slice(0, 50),
+            width: item.width || 1200,
+            height: item.height || 675,
+            aspectRatio: '16:9',
+            sanitizedCdnUrl: buildSanitizedCdnUrl(item.url),
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Openverse search failed', e);
+    }
+
+    // 3) Pexels (if key present on Pages env)
+    const pexelsKey =
+      (typeof process !== 'undefined' && process.env?.PEXELS_API_KEY) || '';
+    if (pexelsKey) {
+      try {
+        const pxRes = await fetch(
+          `https://api.pexels.com/v1/search?query=${encodeURIComponent(cleanSearch)}&per_page=8`,
+          {
+            signal: AbortSignal.timeout(6000),
+            headers: { Authorization: pexelsKey },
+          }
+        );
+        if (pxRes.ok) {
+          const px = (await pxRes.json()) as any;
+          for (const photo of px?.photos || []) {
+            const src = photo.src?.large2x || photo.src?.large || photo.src?.original;
+            if (!src) continue;
+            results.push({
+              id: `pexels_${photo.id}`,
+              title: String(photo.alt || cleanSearch).slice(0, 80),
+              url: src,
+              thumbUrl: photo.src?.medium || src,
+              source: 'Pexels',
+              license: 'Pexels License',
+              author: String(photo.photographer || 'Pexels').slice(0, 50),
+              width: photo.width || 1200,
+              height: photo.height || 675,
+              aspectRatio: '16:9',
+              sanitizedCdnUrl: buildSanitizedCdnUrl(src),
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Pexels search failed', e);
+      }
+    }
+
+    // 4) Unsplash API if key present
+    const unsplashKey =
+      (typeof process !== 'undefined' &&
+        (process.env?.UNSPLASH_ACCESS_KEY || process.env?.UNSPLASH_API_KEY)) ||
+      '';
+    if (unsplashKey) {
+      try {
+        const uRes = await fetch(
+          `https://api.unsplash.com/search/photos?query=${encodeURIComponent(cleanSearch)}&per_page=8`,
+          {
+            signal: AbortSignal.timeout(6000),
+            headers: { Authorization: `Client-ID ${unsplashKey}` },
+          }
+        );
+        if (uRes.ok) {
+          const u = (await uRes.json()) as any;
+          for (const photo of u?.results || []) {
+            const src = photo.urls?.regular || photo.urls?.full;
+            if (!src) continue;
+            results.push({
+              id: `unsplash_${photo.id}`,
+              title: String(photo.alt_description || cleanSearch).slice(0, 80),
+              url: src,
+              thumbUrl: photo.urls?.thumb || src,
+              source: 'Unsplash',
+              license: 'Unsplash License',
+              author: String(photo.user?.name || 'Unsplash').slice(0, 50),
+              width: photo.width || 1200,
+              height: photo.height || 675,
+              aspectRatio: '16:9',
+              sanitizedCdnUrl: buildSanitizedCdnUrl(src),
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Unsplash search failed', e);
+      }
+    }
+
+    // 5) Category editorial fallbacks if thin results
+    if (results.length < 4) {
+      const fallbacks = [
+        {
+          title: 'Editorial press desk',
+          url: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80',
+        },
+        {
+          title: 'City skyline',
+          url: 'https://images.unsplash.com/photo-1577975882846-431adc8c2009?auto=format&fit=crop&w=1200&q=80',
+        },
+        {
+          title: 'Markets chart',
+          url: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
+        },
+      ];
+      fallbacks.forEach((item, i) => {
+        results.push({
+          id: `fallback_${category}_${i}`,
+          title: item.title,
+          url: item.url,
+          thumbUrl: item.url.replace('w=1200', 'w=400'),
+          source: 'Unsplash Editorial',
+          license: 'Free editorial use',
+          author: 'Editorial',
+          width: 1200,
+          height: 675,
+          aspectRatio: '16:9',
+          sanitizedCdnUrl: buildSanitizedCdnUrl(item.url),
+        });
+      });
+    }
 
     return new Response(
       JSON.stringify({
