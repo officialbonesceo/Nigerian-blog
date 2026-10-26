@@ -1,9 +1,17 @@
 import type { APIRoute } from 'astro';
-import { getD1, createArticle, updateArticle, deleteArticle, getArticlesWithCount, getArticleById, getSiteSettings } from '../../../lib/runtime-db';
+import {
+  getD1,
+  createArticle,
+  getArticlesWithCount,
+  getArticleById,
+  getSiteSettings,
+} from '../../../lib/runtime-db';
+import { updateArticle, deleteArticle, deleteArticlesByIds } from '../../../lib/article-mutations';
 import { submitUrlToBing, submitToIndexNow } from '../../../lib/bing-api';
 
 interface ArticleBody {
   id?: string;
+  ids?: string[];
   title?: string;
   content?: string;
   summary?: string;
@@ -36,10 +44,13 @@ export const GET: APIRoute = async ({ request, locals }) => {
     if (singleId) {
       const article = await getArticleById(db, singleId);
       if (!article) {
-        return new Response(JSON.stringify({ error: 'Article not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ error: 'Article not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
       return new Response(JSON.stringify({ success: true, article }), {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -83,23 +94,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const db = getD1(locals);
     const article = await createArticle(db, body);
 
-    // Automated Bing Submission if article is published
     let bingSubmission = null;
-    if (article && (article.status === 'published' || !article.status)) {
+    if (article && (body.status === 'published' || !body.status)) {
       try {
         const settings = await getSiteSettings(db);
         const bingKey = (settings.bing_api_key || '').trim();
         const autoSubmit = settings.bing_auto_submit_enabled === '1' || settings.bing_auto_submit_enabled === 'true';
-
         if (bingKey && autoSubmit) {
-          const siteUrl = (settings.site_url || 'https://9jabeacon.name.ng').replace(/\/+$/, '');
-          const articleUrl = `${siteUrl}/news/${article.slug}`;
-          bingSubmission = await submitUrlToBing(articleUrl, {
-            apiKey: bingKey,
-            siteUrl,
-          });
-
-          // Also submit to IndexNow protocol
+          const siteUrl = (settings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
+          const slug = (body as any).slug || '';
+          const articleUrl = `${siteUrl}/news/${slug}`;
+          bingSubmission = await submitUrlToBing(articleUrl, { apiKey: bingKey, siteUrl });
           const indexNowKey = (settings.indexnow_key || bingKey).trim();
           if (indexNowKey) {
             const host = new URL(siteUrl).hostname;
@@ -126,9 +131,15 @@ export const PUT: APIRoute = async ({ request, locals }) => {
       return new Response(JSON.stringify({ error: 'Article ID is required' }), { status: 400 });
     }
     const success = await updateArticle(getD1(locals), body.id, body);
-    return new Response(JSON.stringify({ success }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        success,
+        message: success
+          ? 'Article updated in D1 (including image fields).'
+          : 'No rows updated — check id and that D1 writes are allowed.',
+      }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500 });
   }
@@ -138,19 +149,34 @@ export const DELETE: APIRoute = async ({ request, locals }) => {
   try {
     const url = new URL(request.url);
     let id = url.searchParams.get('id');
+    let ids: string[] = [];
 
-    if (!id) {
-      const body = (await request.json().catch(() => ({}))) as { id?: string };
-      id = body?.id || null;
+    const body = (await request.json().catch(() => ({}))) as { id?: string; ids?: string[] };
+    if (!id) id = body?.id || null;
+    if (Array.isArray(body?.ids)) ids = body.ids.filter(Boolean);
+
+    if (!id && !ids.length) {
+      return new Response(JSON.stringify({ error: 'Article id or ids[] required' }), { status: 400 });
     }
 
-    if (!id) {
-      return new Response(JSON.stringify({ error: 'Article ID is required' }), { status: 400 });
+    const db = getD1(locals);
+    if (ids.length) {
+      const deleted = await deleteArticlesByIds(db, ids);
+      return new Response(
+        JSON.stringify({ success: deleted > 0, deleted, message: `Hard-deleted ${deleted} row(s) from D1` }),
+        { headers: { 'Content-Type': 'application/json' } }
+      );
     }
-    const success = await deleteArticle(getD1(locals), id);
-    return new Response(JSON.stringify({ success }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+
+    const success = await deleteArticle(db, id!);
+    return new Response(
+      JSON.stringify({
+        success,
+        deleted: success ? 1 : 0,
+        message: success ? 'Hard-deleted from D1' : 'No row deleted (missing id or write blocked)',
+      }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500 });
   }
