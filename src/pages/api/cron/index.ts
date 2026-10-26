@@ -1,6 +1,13 @@
 import type { APIRoute } from 'astro';
-import { GET as ingestGet, POST as ingestPost } from './ingest';
 
 export const prerender = false;
-export const GET: APIRoute = (ctx) => ingestGet(ctx);
-export const POST: APIRoute = (ctx) => ingestPost(ctx);
+
+function gone() {
+  return new Response(
+    JSON.stringify({ success: false, error: 'Cron ingest disabled' }),
+    { status: 410, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
+  );
+}
+
+export const GET: APIRoute = async () => gone();
+export const POST: APIRoute = async () => gone();
