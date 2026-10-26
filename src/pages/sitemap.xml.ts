@@ -3,13 +3,15 @@ import { getD1, getArticles, getCategories, getSiteSettings, getVideoArticles } 
 
 export const prerender = false;
 
+/** Build XML entities without broken quote literals. */
 function escapeXml(unsafe: string): string {
-  return (unsafe || '')
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, ''');
+  const a = String.fromCharCode(38); // &
+  return String(unsafe || '')
+    .replace(/&/g, a + 'amp;')
+    .replace(/</g, a + 'lt;')
+    .replace(/>/g, a + 'gt;')
+    .replace(/"/g, a + 'quot;')
+    .replace(/'/g, a + 'apos;');
 }
 
 /** SSR fallback only — primary is static public/sitemap.xml after daily content deploy. */
@@ -22,7 +24,7 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
     getVideoArticles(db, { limit: 50, status: 'published' }),
   ]);
   const videosEnabled = settings.videos_enabled !== '0';
-  const videos = videosEnabled ? videoResult.videos || [] : [];
+  const videos = videosEnabled ? (videoResult as any)?.videos || [] : [];
 
   let siteBase = (settings.site_url || '').trim();
   if (!siteBase) {
@@ -73,7 +75,7 @@ export const GET: APIRoute = async ({ url, locals, request }) => {
     .join('');
 
   const videoUrls = videos
-    .map((v) => {
+    .map((v: any) => {
       const dateStr = (v.published_at || '').split('T')[0] || new Date().toISOString().slice(0, 10);
       return `
   <url>
