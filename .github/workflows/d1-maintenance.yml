@@ -1,10 +1,9 @@
 name: D1 Maintenance (dedupe + indexes)
 
 # Runs after D1 free-tier daily reset (midnight UTC) even if you are offline.
-# Does NOT run news ingest. Content-delivery stays paused separately.
+# Does NOT run news ingest.
 on:
   schedule:
-    # 00:10 UTC = ~1:10 AM WAT — right after quota refresh
     - cron: '10 0 * * *'
   workflow_dispatch:
     inputs:
@@ -28,7 +27,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-          # scheduled runs always full cleanup; manual can choose
           ACTION: ${{ github.event.inputs.action || 'dedupe_and_index' }}
         run: |
           set -euo pipefail
@@ -54,9 +52,7 @@ jobs:
             }
           }
 
-          if [ "$ACTION" = "count_only" ] || [ "$ACTION" = "dedupe_and_index" ] || [ "$ACTION" = "indexes_only" ]; then
-            run_sql "SELECT COUNT(*) AS total_articles FROM articles"
-          fi
+          run_sql "SELECT COUNT(*) AS total_articles FROM articles"
 
           if [ "$ACTION" = "indexes_only" ] || [ "$ACTION" = "dedupe_and_index" ]; then
             run_sql "CREATE INDEX IF NOT EXISTS idx_articles_source_original_url ON articles(source_original_url)"
@@ -67,9 +63,10 @@ jobs:
           fi
 
           if [ "$ACTION" = "dedupe_and_index" ]; then
+            # Same source URL → keep oldest (handles random slug tails)
             run_sql "DELETE FROM articles WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY source_original_url ORDER BY published_at ASC, id ASC) AS rn FROM articles WHERE source_original_url IS NOT NULL AND TRIM(source_original_url) != '') t WHERE rn > 1)"
+            # Same title → keep oldest
             run_sql "DELETE FROM articles WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY title ORDER BY published_at ASC, id ASC) AS rn FROM articles) t WHERE rn > 1)"
-            run_sql "DELETE FROM articles WHERE id IN (SELECT a.id FROM articles a INNER JOIN articles b ON a.id != b.id AND length(a.slug) > length(b.slug) AND a.slug LIKE (b.slug || '-%'))"
             run_sql "DELETE FROM rejected_articles WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY original_url ORDER BY created_at ASC, id ASC) AS rn FROM rejected_articles WHERE original_url IS NOT NULL AND TRIM(original_url) != '') t WHERE rn > 1)"
             run_sql "SELECT COUNT(*) AS total_articles_after FROM articles"
           fi
