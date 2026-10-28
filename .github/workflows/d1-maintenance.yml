@@ -1,10 +1,9 @@
 name: D1 Maintenance (dedupe + indexes)
 
-# Runs after D1 free-tier daily reset (midnight UTC) even if you are offline.
-# Does NOT run news ingest.
+# PAUSED — schedule off. Manual only when you restore a token and want cleanup.
 on:
-  schedule:
-    - cron: '10 0 * * *'
+  # schedule:
+  #   - cron: '10 0 * * *'
   workflow_dispatch:
     inputs:
       action:
@@ -20,6 +19,8 @@ on:
 jobs:
   d1-fix:
     runs-on: ubuntu-latest
+    # Hard pause until you re-enable
+    if: false
     steps:
       - name: Run D1 SQL via Cloudflare API
         env:
@@ -63,9 +64,7 @@ jobs:
           fi
 
           if [ "$ACTION" = "dedupe_and_index" ]; then
-            # Same source URL → keep oldest (handles random slug tails)
             run_sql "DELETE FROM articles WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY source_original_url ORDER BY published_at ASC, id ASC) AS rn FROM articles WHERE source_original_url IS NOT NULL AND TRIM(source_original_url) != '') t WHERE rn > 1)"
-            # Same title → keep oldest
             run_sql "DELETE FROM articles WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY title ORDER BY published_at ASC, id ASC) AS rn FROM articles) t WHERE rn > 1)"
             run_sql "DELETE FROM rejected_articles WHERE id IN (SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY original_url ORDER BY created_at ASC, id ASC) AS rn FROM rejected_articles WHERE original_url IS NOT NULL AND TRIM(original_url) != '') t WHERE rn > 1)"
             run_sql "SELECT COUNT(*) AS total_articles_after FROM articles"
