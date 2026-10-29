@@ -3,11 +3,6 @@ pages_build_output_dir = "dist"
 compatibility_date = "2026-08-29"
 compatibility_flags = ["nodejs_compat"]
 
-# Cloudflare D1 Database Binding for Cloudflare Pages
-[[d1_databases]]
-binding = "DB"
-database_name = "naijablog"
-database_id = "5ad4457f-0528-473b-a805-f505aa71eacf"
 
 [vars]
 ENVIRONMENT = "production"
