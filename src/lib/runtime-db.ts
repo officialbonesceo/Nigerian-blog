@@ -131,28 +131,16 @@ export function isStubOrRejected(row: any): boolean {
   return s === 'rejected' || s === 'draft' || t.includes('[stub]') || t.includes('placeholder');
 }
 
+/** Indexes must be created via maintenance workflow only — never on every page request. */
 let tablesChecked = false;
 export async function ensureTablesExist(db: D1Database, force = false) {
   if (tablesChecked && !force) return;
-  if (!force) {
-    try {
-      await db.prepare('SELECT 1 FROM articles LIMIT 1').first();
-      tablesChecked = true;
-      // Still ensure critical indexes exist (cheap IF NOT EXISTS)
-    } catch {}
-  }
   try {
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_articles_source_original_url ON articles(source_original_url)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC)').run();
-    await db
-      .prepare(
-        'CREATE INDEX IF NOT EXISTS idx_articles_category_status_pub ON articles(category_id, status, published_at DESC)'
-      )
-      .run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_rejected_original_url ON rejected_articles(original_url)').run();
-  } catch {}
-  tablesChecked = true;
+    await db.prepare('SELECT 1 FROM articles LIMIT 1').first();
+    tablesChecked = true;
+  } catch {
+    tablesChecked = true;
+  }
 }
 
 export async function getArticleBySlug(db: D1Database, slug: string) {
@@ -209,10 +197,10 @@ export async function getArticles(
     isBreaking?: boolean;
   } = {}
 ): Promise<Article[]> {
-  await ensureTablesExist(db);
-  const limit = Math.min(o.limit || 20, 50);
+  // Do NOT call ensureTablesExist / CREATE INDEX here — that burned quota on every list request.
+  const limit = Math.min(o.limit || 20, 40);
   const offset = o.offset || 0;
-  const cacheKey = `articles:${o.categoryId || o.categorySlug || 'all'}:${limit}:${offset}:${o.isTopStory}:${o.isTrending}`;
+  const cacheKey = `articles:${o.categoryId || o.categorySlug || 'all'}:${limit}:${offset}:${o.isTopStory}:${o.isTrending}:${o.isBreaking}`;
   const cached = getCached<Article[]>(cacheKey);
   if (cached) return cached;
   try {
@@ -237,7 +225,7 @@ export async function getArticles(
     v.push(limit, offset);
     const res = await db.prepare(q).bind(...v).all<any>();
     const list = (res?.results || []).map(formatArticle);
-    setCached(cacheKey, list, 45000);
+    setCached(cacheKey, list, 60000);
     return list;
   } catch {
     return [];
