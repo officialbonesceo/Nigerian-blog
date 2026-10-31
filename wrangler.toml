@@ -3,9 +3,14 @@ pages_build_output_dir = "dist"
 compatibility_date = "2026-08-29"
 compatibility_flags = ["nodejs_compat"]
 
-
 [vars]
 ENVIRONMENT = "production"
 SITE_NAME = "9jaBeacon"
 SITE_URL = "https://9jabeacon.pages.dev"
 
+# Rebound after stopping per-request CREATE INDEX + slim homepage.
+# Ingest stays disabled in code. Remove this block (or run d1-guard) if rows_read spikes.
+[[d1_databases]]
+binding = "DB"
+database_name = "naijablog"
+database_id = "5ad4457f-0528-473b-a805-f505aa71eacf"
