@@ -6,6 +6,18 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://www.9jabeacon.name.ng/news/inec-upholds-66-of-130-state-candidate-petitions-2027</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/tinubu-nominates-six-nmdpra-executive-directors-for-senate-confirmation</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
     <loc>https://www.9jabeacon.name.ng/market-rates</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
