@@ -2,30 +2,57 @@ import type { D1Database } from '@cloudflare/workers-types';
 
 export const CATEGORY_IDS = ['cat_naija_news', 'cat_money_hustle', 'cat_sports', 'cat_world'] as const;
 
+/** Africa/Lagos has no DST — fixed UTC+1. */
+const WAT_OFFSET_MS = 3600_000;
+
+/** Start/end of current Nigerian calendar day, as UTC ISO strings. */
+export function watDayRangeUtc(now = new Date()): {
+  startIso: string;
+  endIso: string;
+  label: string;
+} {
+  const wat = new Date(now.getTime() + WAT_OFFSET_MS);
+  const y = wat.getUTCFullYear();
+  const m = wat.getUTCMonth();
+  const d = wat.getUTCDate();
+  const startMs = Date.UTC(y, m, d) - WAT_OFFSET_MS;
+  const endMs = startMs + 24 * 3600_000;
+  return {
+    startIso: new Date(startMs).toISOString(),
+    endIso: new Date(endMs).toISOString(),
+    label: `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')} WAT`,
+  };
+}
+
+/**
+ * Count published articles per category for today's WAT window.
+ * Throws on query failure so the worker can fail closed (do not treat as zero).
+ */
 export async function countPublishedTodayByCategory(
   db: D1Database
 ): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
   for (const id of CATEGORY_IDS) counts[id] = 0;
-  try {
-    const startUtc = new Date();
-    startUtc.setUTCHours(0, 0, 0, 0);
-    const res = await db
-      .prepare(
-        `SELECT category_id, COUNT(*) AS c
-         FROM articles
-         WHERE (status = 'published' OR status IS NULL)
-           AND published_at >= ?
-         GROUP BY category_id`
-      )
-      .bind(startUtc.toISOString())
-      .all<{ category_id: string; c: number }>();
-    for (const row of res?.results || []) {
-      counts[String(row.category_id || '')] = Number(row.c) || 0;
-    }
-  } catch (e: any) {
-    console.warn('[ingest] category count failed:', e?.message || e);
+
+  const { startIso, endIso, label } = watDayRangeUtc();
+  const res = await db
+    .prepare(
+      `SELECT category_id, COUNT(*) AS c
+       FROM articles
+       WHERE (status = 'published' OR status IS NULL)
+         AND published_at >= ?
+         AND published_at < ?
+       GROUP BY category_id`
+    )
+    .bind(startIso, endIso)
+    .all<{ category_id: string; c: number }>();
+
+  for (const row of res?.results || []) {
+    const key = String(row.category_id || '');
+    if (key in counts) counts[key] = Number(row.c) || 0;
+    else counts[key] = Number(row.c) || 0;
   }
+  console.log(`[quota] day=${label}`, counts);
   return counts;
 }
 
