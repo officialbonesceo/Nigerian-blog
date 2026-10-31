@@ -1,55 +1,138 @@
 import type { APIRoute } from 'astro';
-import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 
 export const prerender = false;
 
-/**
- * Prefer static public/news-sitemap.xml (0 D1).
- * If the static file is missing at runtime, return a minimal valid news sitemap
- * so GSC never sees an empty urlset ("Missing XML tag").
- */
-export const GET: APIRoute = async () => {
-  try {
-    const staticPath = join(process.cwd(), 'public', 'news-sitemap.xml');
-    if (existsSync(staticPath)) {
-      const body = readFileSync(staticPath, 'utf8');
-      if (body.includes('<news:news>')) {
-        return new Response(body, {
-          headers: {
-            'Content-Type': 'application/xml; charset=utf-8',
-            'Cache-Control': 'public, max-age=3600, s-maxage=86400',
-          },
-        });
-      }
-    }
-  } catch {
-    /* fall through */
-  }
-
-  const base = 'https://www.9jabeacon.name.ng';
-  const now = new Date().toISOString();
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+/** Static Google News sitemap — no D1. Updated when desk publishes. */
+const BODY = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
   <url>
-    <loc>${base}/</loc>
-    <lastmod>${now}</lastmod>
+    <loc>https://www.9jabeacon.name.ng/news/inec-upholds-66-of-130-state-candidate-petitions-2027</loc>
+    <lastmod>2026-10-31T13:35:00Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
         <news:language>en</news:language>
       </news:publication>
-      <news:publication_date>${now}</news:publication_date>
-      <news:title>9jaBeacon Nigerian News</news:title>
+      <news:publication_date>2026-10-31T13:35:00Z</news:publication_date>
+      <news:title>INEC Upholds 66 of 130 Petitions on State Election Candidate Lists</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/tinubu-nominates-six-nmdpra-executive-directors-for-senate-confirmation</loc>
+    <lastmod>2026-10-31T13:35:00Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-31T13:35:00Z</news:publication_date>
+      <news:title>Tinubu Nominates Six NMDPRA Executive Directors for Senate Confirmation</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/breaking-court-declares-okorocha-winner-of-imo-west-apc-primary-uee1g</loc>
+    <lastmod>2026-10-29T10:32:00Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T10:32:00Z</news:publication_date>
+      <news:title>Federal Court Names Rochas Okorocha APC Candidate for Imo West Senatorial Seat</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/esther-christian-orphaned-at-4-bags-scholarship-as-debate-champion-at-15-scn2k</loc>
+    <lastmod>2026-10-29T06:40:00Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T06:40:00Z</news:publication_date>
+      <news:title>Abia Governor Alex Otti Grants Full Scholarship to 15-Year-Old Debate Champion Esther Christian</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/hardship-our-problems-with-fg-s-90-day-relief-plan-labour-ackg3</loc>
+    <lastmod>2026-10-29T06:11:00Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T06:11:00Z</news:publication_date>
+      <news:title>Federal 90-Day Relief Plan Sparks NLC Accusation of Confession Not Cure</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/tuc-rejects-fg-s-proposed-n70-000-monthly-transport-allowance-for-workers-kwra3</loc>
+    <lastmod>2026-10-29T04:46:00Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T04:46:00Z</news:publication_date>
+      <news:title>TUC Rejects Federal Workers Proposed N70000 Transport Allowance</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/fg-approves-east-west-super-grids-to-raise-transmission-capacity-to-19-000mw-x99m2</loc>
+    <lastmod>2026-10-29T04:35:00Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T04:35:00Z</news:publication_date>
+      <news:title>Nigeria Boosts Transmission to 19000MW with New East and West Super Grids</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/police-nab-nscdc-officer-for-shooting-in-abuja-market-6vxtx</loc>
+    <lastmod>2026-10-29T04:12:00Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T04:12:00Z</news:publication_date>
+      <news:title>NSCDC Deputy Superintendent Nabbed for Firing Shots at Abuja Market</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/2027-kwankwaso-warns-inec-over-alleged-ai-generated-images-in-voter-register-1qesi</loc>
+    <lastmod>2026-10-28T21:19:00Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-28T21:19:00Z</news:publication_date>
+      <news:title>Kwankwaso Alerts INEC on Suspected AI-Generated Voter Images</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/tinubu-departs-abuja-for-makkah-to-pray-for-nigeria-q3gf9</loc>
+    <lastmod>2026-10-28T18:53:00Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-28T18:53:00Z</news:publication_date>
+      <news:title>President Tinubu Departs Abuja for Makkah to Offer Prayers for Nigeria</news:title>
     </news:news>
   </url>
 </urlset>`;
 
-  return new Response(xml, {
+export const GET: APIRoute = async () => {
+  return new Response(BODY, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=300, s-maxage=3600',
+      'Cache-Control': 'public, max-age=3600, s-maxage=86400',
     },
   });
 };
