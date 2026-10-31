@@ -9,54 +9,22 @@ import FAQSection from '../components/FAQSection.astro';
 import AdSlot from '../components/AdSlot.astro';
 import AdsterraNativeBanner from '../components/AdsterraNativeBanner.astro';
 import CurrencyMiniStrip from '../components/CurrencyMiniStrip.astro';
-import {
-  getD1,
-  getTopStory,
-  getArticles,
-  getMostReadArticles,
-  getBreakingArticles,
-  getSiteSettings,
-  getCategories,
-} from '../lib/runtime-db';
-
-import type { Article, Category } from '../lib/types';
+import { getD1, getArticles } from '../lib/runtime-db';
+import type { Article } from '../lib/types';
 
 export const prerender = false;
 
-let topStory: Article | null = null;
 let latestArticles: Article[] = [];
-let mostRead: Article[] = [];
-let breakingNews: Article[] = [];
-let categories: Category[] = [];
-let siteSettings: Record<string, string> = {};
-let heroSlides: Article[] = [];
 let d1Available = true;
 
 const page = Math.max(1, parseInt(Astro.url.searchParams.get('page') || '1', 10));
 const pageSize = 10;
 const offset = (page - 1) * pageSize;
 
+// ONE list query — derive hero / breaking / most-read from the same rows (was 6 parallel D1 calls).
 try {
   const d1 = getD1(Astro.locals);
-  // Single batch — no per-category extra queries (those burned D1 under crawlers)
-  const [top, latest, read, breaking, settings, cats] = await Promise.all([
-    page === 1 ? getTopStory(d1) : Promise.resolve(null),
-    getArticles(d1, { limit: pageSize + 1, offset }),
-    getMostReadArticles(d1, 5),
-    page === 1 ? getBreakingArticles(d1, 1) : Promise.resolve([]),
-    getSiteSettings(d1),
-    page === 1 ? getCategories(d1) : Promise.resolve([]),
-  ]);
-  topStory = top;
-  latestArticles = latest || [];
-  mostRead = read || [];
-  breakingNews = breaking || [];
-  siteSettings = settings || {};
-  categories = cats || [];
-  // Hero from latest feed only (no N extra category queries)
-  if (page === 1 && latestArticles.length > 0) {
-    heroSlides = latestArticles.slice(0, 6);
-  }
+  latestArticles = await getArticles(d1, { limit: pageSize + 1, offset });
 } catch (e) {
   d1Available = false;
   console.error('[index.astro] Error loading articles:', e);
@@ -64,60 +32,26 @@ try {
 
 const hasNextPage = latestArticles.length > pageSize;
 const currentFeed = latestArticles.slice(0, pageSize);
+const heroSlides = page === 1 ? currentFeed.slice(0, 6) : [];
+const effectiveTopStory = page === 1 && currentFeed[0] ? currentFeed[0] : null;
+const breakingNews = page === 1 ? currentFeed.filter((a) => Number(a.is_breaking) === 1).slice(0, 1) : [];
+const mostRead = page === 1 ? currentFeed.slice(0, 5) : [];
 
-const rawSiteBase = (siteSettings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
-const siteBase = rawSiteBase === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteBase;
+const siteBase = 'https://www.9jabeacon.name.ng';
 const prevUrl = page > 1 ? (page === 2 ? `${siteBase}/` : `${siteBase}/?page=${page - 1}`) : undefined;
 const nextUrl = hasNextPage ? `${siteBase}/?page=${page + 1}` : undefined;
 
-let effectiveTopStory: Article | null = null;
-if (page === 1) {
-  const heroCandidatePool: Article[] = [];
-  const seenIds = new Set<string>();
-  const poolSources = [
-    topStory,
-    ...breakingNews,
-    ...mostRead.slice(0, 3),
-    ...currentFeed.slice(0, 4),
-  ].filter((art): art is Article => Boolean(art && art.id));
-  for (const art of poolSources) {
-    if (!seenIds.has(art.id)) {
-      seenIds.add(art.id);
-      heroCandidatePool.push(art);
-    }
-  }
-  if (heroCandidatePool.length > 0) {
-    heroCandidatePool.sort((a, b) => {
-      const timeA = a.published_at ? new Date(a.published_at).getTime() : 0;
-      const timeB = b.published_at ? new Date(b.published_at).getTime() : 0;
-      return timeB - timeA;
-    });
-    effectiveTopStory = heroCandidatePool[0];
-  }
-}
-
-const carouselEnabled = (siteSettings.hero_carousel_enabled ?? '1') !== '0';
-const useCarousel = page === 1 && carouselEnabled && heroSlides.length > 0;
-
+const useCarousel = page === 1 && heroSlides.length > 0;
 const DEFAULT_ADSTERRA_CONTAINER = 'container-4e5de78ab786afbf822590e03b1b657e';
 const DEFAULT_ADSTERRA_SCRIPT =
   'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js';
-const heroAdContainer =
-  siteSettings.hero_adsterra_container_id ||
-  siteSettings.adsterra_container_id ||
-  DEFAULT_ADSTERRA_CONTAINER;
-const heroAdScript =
-  siteSettings.hero_adsterra_script_url ||
-  siteSettings.adsterra_script_url ||
-  DEFAULT_ADSTERRA_SCRIPT;
 const smartLink =
-  siteSettings.ad_smartlink_url ||
   'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead';
 ---
 
 <Layout
   title={page > 1 ? `9jaBeacon - Verified Nigerian News (Page ${page})` : '9jaBeacon - Your Trusted Light on Nigerian News'}
-  description={page > 1 ? `Explore page ${page} of verified Nigerian news, politics, business, tech, and cultural dispatches on 9jaBeacon.` : siteSettings.site_tagline || "Nigeria's independent digital newsroom. Delivering fast, verified Nigerian news, politics, business, tech, and cultural updates."}
+  description={page > 1 ? `Explore page ${page} of verified Nigerian news on 9jaBeacon.` : "Nigeria's independent digital newsroom. Fast, verified Nigerian news."}
   prevUrl={prevUrl}
   nextUrl={nextUrl}
   activeNav="home"
@@ -144,7 +78,7 @@ const smartLink =
       </div>
       <div>
         <span class="text-xs font-bold text-white block">Follow 9jaBeacon Official Community</span>
-        <span class="text-[10px] text-slate-300 block sm:inline">Join thousands of Nigerians for verified wire alerts and debates.</span>
+        <span class="text-[10px] text-slate-300 block sm:inline">Join for verified wire alerts.</span>
       </div>
     </div>
     <div class="flex items-center gap-2 shrink-0">
@@ -157,8 +91,8 @@ const smartLink =
   {page === 1 && useCarousel && (
     <HeroCarousel
       slides={heroSlides}
-      adsterraContainerId={heroAdContainer}
-      adsterraScriptUrl={heroAdScript}
+      adsterraContainerId={DEFAULT_ADSTERRA_CONTAINER}
+      adsterraScriptUrl={DEFAULT_ADSTERRA_SCRIPT}
       smartLinkUrl={smartLink}
     />
   )}
@@ -195,18 +129,13 @@ const smartLink =
 
       <div class="pt-4 pb-2 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
         {page > 1 ? (
-          <a href={page === 2 ? '/' : `/?page=${page - 1}`} class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">&larr; Previous</a>
+          <a href={page === 2 ? '/' : `/?page=${page - 1}`} class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300">&larr; Previous</a>
         ) : (
           <span class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 text-xs font-bold text-slate-400 cursor-not-allowed">&larr; Previous</span>
         )}
-        <div class="flex items-center gap-1.5">
-          {page > 1 && <a href="/" class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold font-mono flex items-center justify-center">1</a>}
-          {page > 2 && <span class="text-xs text-slate-400 font-mono">..</span>}
-          <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white text-xs font-bold font-mono flex items-center justify-center">{page}</span>
-          {hasNextPage && <a href={`/?page=${page + 1}`} class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold font-mono flex items-center justify-center">{page + 1}</a>}
-        </div>
+        <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white text-xs font-bold font-mono flex items-center justify-center">{page}</span>
         {hasNextPage ? (
-          <a href={`/?page=${page + 1}`} class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">Next &rarr;</a>
+          <a href={`/?page=${page + 1}`} class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">Next &rarr;</a>
         ) : (
           <span class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 text-xs font-bold text-slate-400 cursor-not-allowed">Next &rarr;</span>
         )}
@@ -215,29 +144,16 @@ const smartLink =
   ) : (
     <div class="mt-4 mb-6 p-8 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center space-y-3">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white">{d1Available ? 'End of Stories' : 'News temporarily offline'}</h2>
-      <p class="text-sm text-slate-500">{d1Available ? 'No more articles on this page.' : 'Database is unbound for maintenance. Stories will return after reconnect.'}</p>
+      <p class="text-sm text-slate-500">{d1Available ? 'No more articles on this page.' : 'Database unbound for maintenance.'}</p>
       <a href="/" class="inline-block px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Return to Front Page</a>
     </div>
   )}
 
   <AdsterraNativeBanner className="my-6" />
 
-  {mostRead.length > 0 && (
-    <MostReadSection articles={mostRead} />
-  )}
+  {mostRead.length > 0 && <MostReadSection articles={mostRead} />}
 
   {page === 1 && <CurrencyMiniStrip />}
 
   <FAQSection />
-
-  <script type="application/ld+json" set:html={JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "FinancialService",
-    "name": "9jaBeacon Daily Naira FX & Exchange Rate Intelligence",
-    "description": "Daily verified exchange rates for USD to NGN, GBP to Naira, Euro to NGN, and USDT P2P parallel street rates in Nigeria.",
-    "url": `${siteBase}/market-rates`,
-    "areaServed": "NG",
-    "currenciesAccepted": "NGN, USD, GBP, EUR, CAD, USDT",
-    "provider": { "@type": "NewsMediaOrganization", "name": "9jaBeacon", "url": siteBase }
-  })} />
 </Layout>
