@@ -2,19 +2,23 @@ User-agent: *
 Allow: /
 Disallow: /bonesceo/admin
 Disallow: /admin
+Disallow: /api/
 Disallow: /api/admin/
-Disallow: /search?
+Disallow: /api/cron/
 Disallow: /search?
 
 User-agent: Googlebot
 Allow: /
 Disallow: /bonesceo/admin
 Disallow: /admin
+Disallow: /api/
 Disallow: /api/admin/
+Disallow: /api/cron/
 Disallow: /search?
 
 User-agent: Googlebot-News
 Allow: /
+Disallow: /api/
 
 User-agent: Googlebot-Image
 Allow: /
@@ -22,10 +26,12 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 Disallow: /bonesceo/admin
+Disallow: /api/
 Disallow: /search?
 
 User-agent: msnbot
 Allow: /
+Disallow: /api/
 
 Sitemap: https://www.9jabeacon.name.ng/sitemap.xml
 Sitemap: https://www.9jabeacon.name.ng/news-sitemap.xml
