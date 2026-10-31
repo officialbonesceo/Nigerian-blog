@@ -112,7 +112,20 @@ export function getD1(locals?: RuntimeLocals): D1Database {
   throw new Error('D1 binding not available');
 }
 
-const select = `SELECT a.*,c.name AS category_name,c.slug AS category_slug FROM articles a LEFT JOIN categories c ON a.category_id=c.id`;
+/** Lean columns only — never SELECT a.* (full content text inflates rows_read cost). */
+const LIST_SELECT = `SELECT a.id, a.slug, a.title, a.summary, a.category_id, a.image_url,
+  a.author_name, a.is_top_story, a.is_trending, a.is_breaking, a.views_count,
+  a.reading_time_minutes, a.published_at, a.updated_at, a.status,
+  c.name AS category_name, c.slug AS category_slug
+  FROM articles a LEFT JOIN categories c ON a.category_id = c.id`;
+
+const DETAIL_SELECT = `SELECT a.id, a.slug, a.title, a.summary, a.content, a.category_id, a.image_url,
+  a.image_caption, a.image_credit, a.author_name, a.author_role,
+  a.is_top_story, a.is_trending, a.is_breaking, a.views_count,
+  a.reading_time_minutes, a.source_name, a.source_original_url,
+  a.published_at, a.updated_at, a.status,
+  c.name AS category_name, c.slug AS category_slug
+  FROM articles a LEFT JOIN categories c ON a.category_id = c.id`;
 
 function formatArticle(row: any): Article {
   return {
@@ -134,12 +147,7 @@ export function isStubOrRejected(row: any): boolean {
 let tablesChecked = false;
 export async function ensureTablesExist(db: D1Database, force = false) {
   if (tablesChecked && !force) return;
-  try {
-    await db.prepare('SELECT 1 FROM articles LIMIT 1').first();
-    tablesChecked = true;
-  } catch {
-    tablesChecked = true;
-  }
+  tablesChecked = true;
 }
 
 export async function getArticleBySlug(db: D1Database, slug: string) {
@@ -147,17 +155,17 @@ export async function getArticleBySlug(db: D1Database, slug: string) {
   const cached = getCached<Article | null>(cacheKey);
   if (cached !== null && cached !== undefined) return cached;
   try {
-    const row = await db.prepare(`${select} WHERE a.slug=? LIMIT 1`).bind(slug).first<any>();
+    const row = await db.prepare(`${DETAIL_SELECT} WHERE a.slug = ? AND a.status = 'published' LIMIT 1`).bind(slug).first<any>();
     if (row) {
       if (isStubOrRejected(row)) {
-        setCached(cacheKey, null, 30000);
+        setCached(cacheKey, null, 60000);
         return null;
       }
       const formatted = formatArticle(row);
-      setCached(cacheKey, formatted, 90000);
+      setCached(cacheKey, formatted, 180000);
       return formatted;
     }
-    setCached(cacheKey, null, 20000);
+    setCached(cacheKey, null, 30000);
   } catch (err) {
     console.warn('getArticleBySlug error:', err);
   }
@@ -171,12 +179,12 @@ export async function getRelatedArticles(db: D1Database, id: string, categoryId:
   try {
     const res = await db
       .prepare(
-        `${select} WHERE (a.status='published' OR a.status IS NULL) AND a.id!=? AND a.category_id=? ORDER BY a.published_at DESC LIMIT ?`
+        `${LIST_SELECT} WHERE a.status = 'published' AND a.id != ? AND a.category_id = ? ORDER BY a.published_at DESC LIMIT ?`
       )
-      .bind(id, categoryId, limit)
+      .bind(id, categoryId, Math.min(limit, 6))
       .all<any>();
     const items = (res?.results || []).map(formatArticle);
-    setCached(relKey, items, 120000);
+    setCached(relKey, items, 300000);
     return items;
   } catch {
     return [];
@@ -196,34 +204,35 @@ export async function getArticles(
     isBreaking?: boolean;
   } = {}
 ): Promise<Article[]> {
-  const limit = Math.min(o.limit || 20, 40);
+  const limit = Math.min(o.limit || 20, 20);
   const offset = o.offset || 0;
   const cacheKey = `articles:${o.categoryId || o.categorySlug || 'all'}:${limit}:${offset}:${o.isTopStory}:${o.isTrending}:${o.isBreaking}`;
   const cached = getCached<Article[]>(cacheKey);
   if (cached) return cached;
   try {
-    let q = `${select} WHERE (a.status=? OR a.status IS NULL)`;
-    const v: unknown[] = [o.status || 'published'];
+    // status = 'published' only (no OR IS NULL) so indexes can be used
+    let q = `${LIST_SELECT} WHERE a.status = 'published'`;
+    const v: unknown[] = [];
     if (o.categoryId) {
-      q += ' AND a.category_id=?';
+      q += ' AND a.category_id = ?';
       v.push(o.categoryId);
     }
     if (o.categorySlug) {
       if (o.categorySlug === 'business' || o.categorySlug === 'money-hustle') {
-        q += " AND (c.slug='business' OR c.slug='money-hustle')";
+        q += " AND (c.slug = 'business' OR c.slug = 'money-hustle')";
       } else {
-        q += ' AND c.slug=?';
+        q += ' AND c.slug = ?';
         v.push(o.categorySlug);
       }
     }
-    if (o.isTopStory) q += ' AND a.is_top_story=1';
-    if (o.isTrending) q += ' AND a.is_trending=1';
-    if (o.isBreaking) q += ' AND a.is_breaking=1';
+    if (o.isTopStory) q += ' AND a.is_top_story = 1';
+    if (o.isTrending) q += ' AND a.is_trending = 1';
+    if (o.isBreaking) q += ' AND a.is_breaking = 1';
     q += ' ORDER BY a.published_at DESC LIMIT ? OFFSET ?';
     v.push(limit, offset);
     const res = await db.prepare(q).bind(...v).all<any>();
     const list = (res?.results || []).map(formatArticle);
-    setCached(cacheKey, list, 60000);
+    setCached(cacheKey, list, 180000); // 3 min isolate cache
     return list;
   } catch {
     return [];
@@ -231,21 +240,21 @@ export async function getArticles(
 }
 
 export async function getSiteSettings(db: D1Database): Promise<Record<string, string>> {
-  const cached = getCached<Record<string, string>>('site_settings');
-  if (cached) return cached;
   const defaults: Record<string, string> = {
     site_name: '9jaBeacon',
     site_url: 'https://www.9jabeacon.name.ng',
     site_description: "Nigeria's independent digital newsroom.",
   };
+  const cached = getCached<Record<string, string>>('site_settings');
+  if (cached) return cached;
   try {
     const res = await db.prepare('SELECT key, value FROM site_settings').all<{ key: string; value: string }>();
     const out = { ...defaults };
     for (const row of res?.results || []) out[row.key] = row.value;
-    setCached('site_settings', out, 300000);
+    setCached('site_settings', out, 600000);
     return out;
   } catch {
-    setCached('site_settings', defaults, 60000);
+    setCached('site_settings', defaults, 120000);
     return defaults;
   }
 }
@@ -254,9 +263,9 @@ export async function getCategories(db: D1Database): Promise<Category[]> {
   const cached = getCached<Category[]>('categories');
   if (cached) return cached;
   try {
-    const res = await db.prepare('SELECT * FROM categories ORDER BY display_order ASC').all<Category>();
+    const res = await db.prepare('SELECT id, name, slug FROM categories').all<Category>();
     const list = res?.results || (initialCategories as Category[]);
-    setCached('categories', list, 300000);
+    setCached('categories', list, 600000);
     return list;
   } catch {
     return initialCategories as Category[];
@@ -279,11 +288,14 @@ function sanitizeReferrer(ref: string | null | undefined): string {
 export async function logVisitorSession(db: D1Database, input: Record<string, unknown>) {
   const pagePath = String(input.page_path || '');
   if (pagePath.startsWith('/bonesceo') || pagePath.startsWith('/admin')) return;
+  // Skip analytics writes for bots / heavy traffic — saves write quota
+  const ua = String(input.user_agent || '').toLowerCase();
+  if (ua.includes('bot') || ua.includes('crawl') || ua.includes('spider')) return;
 
   const sessionKey = `${input.session_id}_${pagePath}`;
   const now = Date.now();
   const lastTime = recentLoggedSessions.get(sessionKey);
-  if (lastTime && now - lastTime < 1800000) return;
+  if (lastTime && now - lastTime < 3600000) return; // 1 hour
   recentLoggedSessions.set(sessionKey, now);
   try {
     await db
@@ -295,7 +307,7 @@ export async function logVisitorSession(db: D1Database, input: Record<string, un
         String(input.session_id || ''),
         new Date().toISOString().slice(0, 10),
         pagePath.slice(0, 250),
-        String(input.user_agent || '').slice(0, 250),
+        String(input.user_agent || '').slice(0, 120),
         sanitizeReferrer(String(input.referrer || '')),
         String(input.device_type || 'mobile')
       )
@@ -306,11 +318,10 @@ export async function logVisitorSession(db: D1Database, input: Record<string, un
 export async function incrementArticleView(db: D1Database, id: string) {
   const now = Date.now();
   const last = recentViewIncrements.get(id);
-  if (last && now - last < 30000) return;
+  if (last && now - last < 120000) return; // 2 min
   recentViewIncrements.set(id, now);
   try {
-    await db.prepare('UPDATE articles SET views_count=COALESCE(views_count,0)+1 WHERE id=?').bind(id).run();
-    invalidateCache('most_read');
+    await db.prepare('UPDATE articles SET views_count = COALESCE(views_count, 0) + 1 WHERE id = ?').bind(id).run();
   } catch {}
 }
 
@@ -391,7 +402,7 @@ export async function getTopStory(db: D1Database) {
 
 export async function getCategoryBySlug(db: D1Database, slug: string) {
   try {
-    return await db.prepare('SELECT * FROM categories WHERE slug=? LIMIT 1').bind(slug).first<Category>();
+    return await db.prepare('SELECT id, name, slug FROM categories WHERE slug=? LIMIT 1').bind(slug).first<Category>();
   } catch {
     return null;
   }
@@ -399,7 +410,7 @@ export async function getCategoryBySlug(db: D1Database, slug: string) {
 
 export async function getArticleById(db: D1Database, id: string) {
   try {
-    const row = await db.prepare(`${select} WHERE a.id=? LIMIT 1`).bind(id).first<any>();
+    const row = await db.prepare(`${DETAIL_SELECT} WHERE a.id=? LIMIT 1`).bind(id).first<any>();
     return row ? formatArticle(row) : null;
   } catch {
     return null;
@@ -409,8 +420,8 @@ export async function getArticleById(db: D1Database, id: string) {
 export async function searchArticles(db: D1Database, q: string, limit = 20) {
   try {
     const res = await db
-      .prepare(`${select} WHERE a.title LIKE ? ORDER BY a.published_at DESC LIMIT ?`)
-      .bind(`%${q}%`, Math.min(limit, 30))
+      .prepare(`${LIST_SELECT} WHERE a.status = 'published' AND a.title LIKE ? ORDER BY a.published_at DESC LIMIT ?`)
+      .bind(`%${q}%`, Math.min(limit, 20))
       .all<any>();
     return (res?.results || []).map(formatArticle);
   } catch {
