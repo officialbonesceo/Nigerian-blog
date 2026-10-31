@@ -131,7 +131,6 @@ export function isStubOrRejected(row: any): boolean {
   return s === 'rejected' || s === 'draft' || t.includes('[stub]') || t.includes('placeholder');
 }
 
-/** Indexes must be created via maintenance workflow only — never on every page request. */
 let tablesChecked = false;
 export async function ensureTablesExist(db: D1Database, force = false) {
   if (tablesChecked && !force) return;
@@ -197,7 +196,6 @@ export async function getArticles(
     isBreaking?: boolean;
   } = {}
 ): Promise<Article[]> {
-  // Do NOT call ensureTablesExist / CREATE INDEX here — that burned quota on every list request.
   const limit = Math.min(o.limit || 20, 40);
   const offset = o.offset || 0;
   const cacheKey = `articles:${o.categoryId || o.categorySlug || 'all'}:${limit}:${offset}:${o.isTopStory}:${o.isTrending}:${o.isBreaking}`;
@@ -268,8 +266,21 @@ export async function getCategories(db: D1Database): Promise<Category[]> {
 const recentLoggedSessions = new Map<string, number>();
 const recentViewIncrements = new Map<string, number>();
 
+function sanitizeReferrer(ref: string | null | undefined): string {
+  if (!ref) return '';
+  try {
+    const u = new URL(ref);
+    return (u.origin + u.pathname).slice(0, 250);
+  } catch {
+    return '';
+  }
+}
+
 export async function logVisitorSession(db: D1Database, input: Record<string, unknown>) {
-  const sessionKey = `${input.session_id}_${input.page_path}`;
+  const pagePath = String(input.page_path || '');
+  if (pagePath.startsWith('/bonesceo') || pagePath.startsWith('/admin')) return;
+
+  const sessionKey = `${input.session_id}_${pagePath}`;
   const now = Date.now();
   const lastTime = recentLoggedSessions.get(sessionKey);
   if (lastTime && now - lastTime < 1800000) return;
@@ -283,9 +294,9 @@ export async function logVisitorSession(db: D1Database, input: Record<string, un
         `visit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         String(input.session_id || ''),
         new Date().toISOString().slice(0, 10),
-        String(input.page_path || ''),
+        pagePath.slice(0, 250),
         String(input.user_agent || '').slice(0, 250),
-        String(input.referrer || '').slice(0, 250),
+        sanitizeReferrer(String(input.referrer || '')),
         String(input.device_type || 'mobile')
       )
       .run();
