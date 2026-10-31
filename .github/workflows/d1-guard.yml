@@ -1,109 +1,23 @@
 name: D1 Quota Guard
 
-# Polls Cloudflare GraphQL for naijablog rows_read. If over threshold,
-# commits a wrangler.toml without [[d1_databases]] so the next Pages
-# deploy unbinds D1 and stops the burn. Does NOT re-enable ingest.
-
+# PAUSED 2026-11-01 — no scheduled token use. Manual only if you restore a READ token.
 on:
-  schedule:
-    # Every 2 hours (UTC)
-    - cron: '15 */2 * * *'
+  # schedule:
+  #   - cron: '15 */2 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 env:
-  # Free tier is 5M rows_read/day account-wide. Trip early on naijablog alone.
   ROWS_READ_THRESHOLD: '3500000'
   NAIJABLOG_DB_ID: '5ad4457f-0528-473b-a805-f505aa71eacf'
 
 jobs:
   guard:
     runs-on: ubuntu-latest
+    if: false
     steps:
       - uses: actions/checkout@v4
-
-      - name: Query today's D1 rows_read (naijablog)
-        id: usage
-        env:
-          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${CF_ACCOUNT_ID:-}" ] || [ -z "${CF_API_TOKEN:-}" ]; then
-            echo "Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN — skip"
-            echo "rows=0" >> "$GITHUB_OUTPUT"
-            echo "skip=1" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          TODAY=$(date -u +%F)
-          BODY=$(jq -n \
-            --arg account "$CF_ACCOUNT_ID" \
-            --arg db "$NAIJABLOG_DB_ID" \
-            --arg day "$TODAY" \
-            '{query: ("query { viewer { accounts(filter: { accountTag: \"" + $account + "\" }) { d1AnalyticsAdaptiveGroups(limit: 5, filter: { date_geq: \"" + $day + "\", date_leq: \"" + $day + "\", databaseId: \"" + $db + "\" }) { sum { rowsRead rowsWritten readQueries } dimensions { date } } } } }")}')
-          RESP=$(curl -sS -X POST "https://api.cloudflare.com/client/v4/graphql" \
-            -H "Authorization: Bearer $CF_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "$BODY")
-          ROWS=$(echo "$RESP" | jq -r '.data.viewer.accounts[0].d1AnalyticsAdaptiveGroups[0].sum.rowsRead // 0')
-          echo "naijablog rows_read today ($TODAY UTC): $ROWS"
-          echo "rows=$ROWS" >> "$GITHUB_OUTPUT"
-          echo "skip=0" >> "$GITHUB_OUTPUT"
-
-      - name: Unbind D1 in wrangler.toml if over threshold
-        if: steps.usage.outputs.skip != '1'
-        env:
-          ROWS: ${{ steps.usage.outputs.rows }}
-        run: |
-          set -euo pipefail
-          THRESH="$ROWS_READ_THRESHOLD"
-          echo "Threshold: $THRESH  Current: $ROWS"
-          if [ "${ROWS:-0}" -lt "$THRESH" ]; then
-            echo "Under threshold — keep binding."
-            exit 0
-          fi
-          if ! grep -q 'd1_databases' wrangler.toml; then
-            echo "Already unbound in wrangler.toml"
-            exit 0
-          fi
-          # Strip [[d1_databases]] block and related comments
-          python3 << 'PY'
-          from pathlib import Path
-          p = Path("wrangler.toml")
-          text = p.read_text()
-          lines = text.splitlines(keepends=True)
-          out = []
-          skip = False
-          for line in lines:
-              if line.strip().startswith("[[d1_databases]]"):
-                  skip = True
-                  continue
-              if skip:
-                  if line.strip() == "" or line.startswith("["):
-                      skip = False
-                      if line.startswith("["):
-                          out.append(line)
-                      continue
-                  if line.startswith("binding") or line.startswith("database_"):
-                      continue
-                  if line.strip().startswith("#"):
-                      continue
-                  skip = False
-              # Drop trailing comment lines about rebound that sit above the block
-              if "Rebound after stopping" in line or "Remove this block" in line:
-                  continue
-              out.append(line)
-          p.write_text("".join(out).rstrip() + "\n")
-          print("Stripped [[d1_databases]] from wrangler.toml")
-          PY
-          git config user.name "d1-guard[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add wrangler.toml
-          if git diff --cached --quiet; then
-            echo "No file change"
-            exit 0
-          fi
-          git commit -m "ops(d1-guard): auto-unbind DB — naijablog rows_read ${ROWS} exceeded ${THRESH}"
-          git push
+      - name: Paused
+        run: echo 'd1-guard paused — re-enable job if after restoring a read-only token'
