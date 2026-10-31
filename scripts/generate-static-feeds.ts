@@ -1,6 +1,7 @@
 /**
  * Build static RSS + sitemaps into public/ from local SQLite (after sync-cache).
  * Served as static files on Cloudflare Pages → 0 D1 reads for bot traffic.
+ * Same model as LaneCash / Xenvest static sitemaps.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,7 +11,7 @@ const SITE = 'https://www.9jabeacon.name.ng';
 const SITE_NAME = '9jaBeacon';
 
 function esc(s: string): string {
-  return (s || '')
+  return String(s || '')
     .replace(/&/g, '&')
     .replace(/</g, '<')
     .replace(/>/g, '>')
@@ -58,7 +59,8 @@ function writeRss(articles: Art[]) {
   const items = articles.slice(0, 50).map((a) => {
     const url = `${SITE}/news/${encodeURIComponent(a.slug)}`;
     const pub = a.published_at ? new Date(a.published_at).toUTCString() : new Date().toUTCString();
-    const img = a.image_url && a.image_url.startsWith('http') ? a.image_url : `${SITE}/favicon.svg`;
+    const img =
+      a.image_url && a.image_url.startsWith('http') ? a.image_url : `${SITE}/favicon.svg`;
     const body = a.content || `<p>${esc(a.summary || a.title)}</p>`;
     return `
     <item>
@@ -74,7 +76,7 @@ function writeRss(articles: Art[]) {
     </item>`;
   });
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"
   xmlns:content="http://purl.org/rss/1.0/modules/content/"
   xmlns:dc="http://purl.org/dc/elements/1.1/"
@@ -88,8 +90,7 @@ function writeRss(articles: Art[]) {
     <atom:link href="${SITE}/rss.xml" rel="self" type="application/rss+xml" />
     ${items.join('')}
   </channel>
-</rss>`;
-  return xml.trim();
+</rss>`.trim();
 }
 
 function writeSitemap(articles: Art[]) {
@@ -184,15 +185,10 @@ function main() {
   const articles = loadArticles(500);
   console.log(`[static-feeds] loaded ${articles.length} articles from local SQLite`);
 
-  const rss = writeRss(articles);
-  const sitemap = writeSitemap(articles);
-  const newsSitemap = writeNewsSitemap(articles);
-
-  fs.writeFileSync(path.join(outDir, 'rss.xml'), rss, 'utf8');
-  fs.writeFileSync(path.join(outDir, 'sitemap.xml'), sitemap, 'utf8');
-  fs.writeFileSync(path.join(outDir, 'news-sitemap.xml'), newsSitemap, 'utf8');
-  // Alias used by some clients
-  fs.writeFileSync(path.join(outDir, 'scooper-feed.xml'), rss, 'utf8');
+  fs.writeFileSync(path.join(outDir, 'rss.xml'), writeRss(articles), 'utf8');
+  fs.writeFileSync(path.join(outDir, 'sitemap.xml'), writeSitemap(articles), 'utf8');
+  fs.writeFileSync(path.join(outDir, 'news-sitemap.xml'), writeNewsSitemap(articles), 'utf8');
+  fs.writeFileSync(path.join(outDir, 'scooper-feed.xml'), writeRss(articles), 'utf8');
 
   console.log('[static-feeds] wrote public/rss.xml, sitemap.xml, news-sitemap.xml, scooper-feed.xml');
   db.close();
