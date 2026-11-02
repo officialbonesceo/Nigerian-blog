@@ -12,13 +12,14 @@ const { siteName = '9jaBeacon', settings = {}, categories = [] } = Astro.props;
 const fbUrl = settings.social_facebook_url || 'https://facebook.com/9jabeacon';
 const blueskyUrl = settings.social_bluesky_url || 'https://bsky.app/profile/9jabeacon.bsky.social';
 const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
+const waChannelUrl =
+  settings.social_whatsapp_channel_url ||
+  'https://whatsapp.com/channel/0029Vb99qfRJZg451r58zq00';
 ---
 
 <footer id="site-footer" class="mt-16 border-t border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-950 transition-colors max-w-full overflow-hidden">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-12 space-y-10">
-    <!-- Top Section: Brand & Social Channels -->
     <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-      <!-- Brand & Mission -->
       <div class="md:col-span-6 space-y-3">
         <a href="/" class="inline-flex items-center gap-2 group" title={siteName}>
           <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-sm shadow-emerald-500/20">
@@ -34,9 +35,28 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
         <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm">
           Nigeria's independent, verified digital newsroom. Delivering fast, factual coverage across national affairs, economy, sports, and regional developments.
         </p>
+        <!-- Pinned WhatsApp Channel CTA -->
+        <a
+          id="footer-whatsapp-channel"
+          href={waChannelUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2.5 mt-1 px-3.5 py-2.5 rounded-xl bg-[#25D366]/10 border border-[#25D366]/40 hover:bg-[#25D366]/20 text-slate-900 dark:text-white transition-colors group max-w-full"
+        >
+          <span class="w-8 h-8 rounded-lg bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-sm">
+            <svg class="w-4.5 h-4.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.698.053-1.11-.079-.267-.085-.595-.213-1.042-.407-1.895-.824-3.125-2.735-3.218-2.862-.095-.125-.768-1.021-.768-1.947 0-.925.485-1.38.658-1.57.172-.189.376-.236.501-.236.126 0 .252.002.361.007.116.006.27-.044.423.324.157.377.534 1.303.58 1.398.047.095.078.206.016.332-.063.127-.094.206-.188.316-.094.111-.198.248-.282.333-.095.095-.193.198-.083.388.11.189.489.807 1.05 1.307.724.644 1.334.844 1.523.938.189.095.3.079.412-.047.11-.127.472-.55.598-.739.125-.189.25-.157.422-.094.172.063 1.096.517 1.284.611.189.095.314.142.361.221.046.079.046.457-.098.862z"/>
+              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.113 1.523 5.837L.057 23.31a.5.5 0 00.612.612l5.58-1.463A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.71 9.71 0 01-4.95-1.35l-.355-.21-3.71.973.99-3.63-.23-.37A9.69 9.69 0 012.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z"/>
+            </svg>
+          </span>
+          <span class="min-w-0 text-left">
+            <span class="block text-xs font-black tracking-wide">Follow on WhatsApp</span>
+            <span class="block text-[10px] text-slate-500 dark:text-slate-400 truncate">Official 9jaBeacon Channel · free alerts</span>
+          </span>
+          <span class="ml-auto text-[10px] font-bold uppercase tracking-wider text-[#128C7E] shrink-0">Join</span>
+        </a>
       </div>
 
-      <!-- Visible Social Communities: Facebook, Bluesky, YouTube -->
       <div class="md:col-span-6 space-y-3">
         <h4 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white font-mono flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -46,8 +66,23 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
           Watch video bulletins, breaking clips, and community discussions on our verified channels:
         </p>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-          <!-- Facebook -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+          <a
+            id="footer-social-wa"
+            href={waChannelUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 hover:bg-[#25D366]/10 text-slate-800 dark:text-slate-200 transition-colors group"
+          >
+            <div class="w-7 h-7 rounded-lg bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-xs">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.698.053-1.11-.079-.267-.085-.595-.213-1.042-.407-1.895-.824-3.125-2.735-3.218-2.862-.095-.125-.768-1.021-.768-1.947 0-.925.485-1.38.658-1.57.172-.189.376-.236.501-.236.126 0 .252.002.361.007.116.006.27-.044.423.324.157.377.534 1.303.58 1.398.047.095.078.206.016.332-.063.127-.094.206-.188.316-.094.111-.198.248-.282.333-.095.095-.193.198-.083.388.11.189.489.807 1.05 1.307.724.644 1.334.844 1.523.938.189.095.3.079.412-.047.11-.127.472-.55.598-.739.125-.189.25-.157.422-.094.172.063 1.096.517 1.284.611.189.095.314.142.361.221.046.079.046.457-.098.862z"/></svg>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-slate-900 dark:text-white group-hover:text-[#128C7E] truncate">WhatsApp</div>
+              <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Official Channel</div>
+            </div>
+          </a>
+
           <a
             id="footer-social-fb"
             href={fbUrl}
@@ -66,7 +101,6 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
             </div>
           </a>
 
-          <!-- Bluesky -->
           <a
             id="footer-social-bluesky"
             href={blueskyUrl}
@@ -85,7 +119,6 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
             </div>
           </a>
 
-          <!-- YouTube -->
           <a
             id="footer-social-yt"
             href={ytUrl}
@@ -107,7 +140,6 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
       </div>
     </div>
 
-    <!-- Category Desks Quick Grid -->
     <div class="pt-6 border-t border-slate-200 dark:border-slate-800/80">
       <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 font-mono">
         Editorial Desks
@@ -125,14 +157,12 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
       </div>
     </div>
 
-    <!-- Bottom Attribution & Standards -->
     <div class="pt-6 border-t border-slate-200 dark:border-slate-800/80 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
         <span>© {new Date().getFullYear()} 9jaBeacon. All rights reserved.</span>
       </div>
 
-      <!-- Legal Compliance Links -->
       <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-medium">
         <a id="footer-link-about" href="/about" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-semibold text-slate-900 dark:text-white">About Us</a>
         <a id="footer-link-contact" href="/contact" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Contact & Advertise</a>
@@ -144,7 +174,6 @@ const ytUrl = settings.social_youtube_url || 'https://youtube.com/@9jabeacon';
       </div>
     </div>
 
-    <!-- Meziem Studio Footer (Required, matching sister sites LaneCash + Unimeziem) -->
     <div class="meziem-foot" aria-label="Studio">
       <span class="meziem-logo" aria-hidden="true">
         <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
