@@ -1,11 +1,19 @@
 /**
  * Admin analytics — Cloudflare GraphQL only.
- * Zero D1 SQL reads/writes. Uses Zone Analytics + adaptive country groups.
+ * Zero D1 SQL reads/writes. Zone series + country (busy region) breakdown.
  */
 import type { APIRoute } from 'astro';
 
-const ZONE_ID = (import.meta.env.CLOUDFLARE_ZONE_ID || process.env.CLOUDFLARE_ZONE_ID || '58c456d568397b758c080a05446e4939').trim();
-const ACCOUNT_ID = (import.meta.env.CLOUDFLARE_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+const ZONE_ID = (
+  import.meta.env.CLOUDFLARE_ZONE_ID ||
+  process.env.CLOUDFLARE_ZONE_ID ||
+  '58c456d568397b758c080a05446e4939'
+).trim();
+const ACCOUNT_ID = (
+  import.meta.env.CLOUDFLARE_ACCOUNT_ID ||
+  process.env.CLOUDFLARE_ACCOUNT_ID ||
+  '0e41e6b5d65256a952a96bc52f26ea8d'
+).trim();
 const TOKEN = (
   import.meta.env.CLOUDFLARE_API_TOKEN ||
   process.env.CLOUDFLARE_API_TOKEN ||
@@ -36,7 +44,8 @@ export const GET: APIRoute = async ({ request }) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'CLOUDFLARE_API_TOKEN missing — needs Zone Analytics Read + Account Analytics Read',
+          error:
+            'CLOUDFLARE_API_TOKEN missing — needs Zone Analytics Read + Account Analytics Read',
         }),
         { status: 503, headers: { 'Content-Type': 'application/json' } }
       );
@@ -62,20 +71,20 @@ export const GET: APIRoute = async ({ request }) => {
             uniq { uniques }
           }
           countries: httpRequestsAdaptiveGroups(
-            limit: 20,
-            filter: { datetime_geq: "${sinceIso}" },
-            orderBy: [sum_requests_DESC]
+            limit: 40,
+            filter: { datetime_geq: "${sinceIso}" }
           ) {
             dimensions { clientCountryName }
-            sum { requests }
+            count
+            sum { visits edgeResponseBytes }
           }
           paths: httpRequestsAdaptiveGroups(
-            limit: 15,
-            filter: { datetime_geq: "${sinceIso}" },
-            orderBy: [sum_requests_DESC]
+            limit: 25,
+            filter: { datetime_geq: "${sinceIso}" }
           ) {
             dimensions { clientRequestPath }
-            sum { requests }
+            count
+            sum { visits }
           }
         }
       }
@@ -83,6 +92,7 @@ export const GET: APIRoute = async ({ request }) => {
 
     const data = await cfGraphQL(query);
     const zone = data?.viewer?.zones?.[0] || {};
+
     const series = (zone.series || []).map((row: any) => ({
       date: row.dimensions?.date,
       requests: row.sum?.requests || 0,
@@ -96,15 +106,21 @@ export const GET: APIRoute = async ({ request }) => {
       .filter((r: any) => r.dimensions?.clientCountryName)
       .map((r: any) => ({
         country: r.dimensions.clientCountryName,
-        requests: r.sum?.requests || 0,
-      }));
+        requests: r.count || 0,
+        visits: r.sum?.visits || 0,
+        bytes: r.sum?.edgeResponseBytes || 0,
+      }))
+      .sort((a: any, b: any) => b.requests - a.requests);
 
-    const topPaths = (zone.paths || [])
+    const top_paths = (zone.paths || [])
       .filter((r: any) => r.dimensions?.clientRequestPath)
       .map((r: any) => ({
         path: r.dimensions.clientRequestPath,
-        requests: r.sum?.requests || 0,
-      }));
+        requests: r.count || 0,
+        visits: r.sum?.visits || 0,
+      }))
+      .sort((a: any, b: any) => b.requests - a.requests)
+      .slice(0, 15);
 
     const totals = series.reduce(
       (acc: any, d: any) => {
@@ -118,8 +134,7 @@ export const GET: APIRoute = async ({ request }) => {
       { requests: 0, pageViews: 0, bytes: 0, threats: 0, uniques: 0 }
     );
 
-    // Busiest region = top country by requests
-    const busyRegion = countries[0] || null;
+    const busy_region = countries[0] || null;
 
     return new Response(
       JSON.stringify({
@@ -127,16 +142,18 @@ export const GET: APIRoute = async ({ request }) => {
         source: 'cloudflare-graphql',
         zero_d1: true,
         zone_id: ZONE_ID,
-        account_id: ACCOUNT_ID || null,
+        account_id: ACCOUNT_ID,
         range_days: days,
         totals,
-        busy_region: busyRegion,
+        busy_region,
         countries,
-        top_paths: topPaths,
+        top_paths,
         series,
         dashboard: {
-          zone_analytics: `https://dash.cloudflare.com/${ACCOUNT_ID || 'account'}/9jabeacon.name.ng/analytics`,
-          web_analytics: `https://dash.cloudflare.com/${ACCOUNT_ID || 'account'}/web-analytics`,
+          zone: `https://dash.cloudflare.com/${ACCOUNT_ID}/9jabeacon.name.ng`,
+          zone_analytics: `https://dash.cloudflare.com/${ACCOUNT_ID}/9jabeacon.name.ng/analytics`,
+          web_analytics: `https://dash.cloudflare.com/${ACCOUNT_ID}/web-analytics`,
+          api_tokens: 'https://dash.cloudflare.com/profile/api-tokens',
         },
       }),
       {
