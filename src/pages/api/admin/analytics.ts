@@ -1,6 +1,10 @@
 /**
- * Admin analytics — Cloudflare GraphQL only.
- * Zero D1 SQL reads/writes. Zone series + country (busy region) breakdown.
+ * Admin analytics — Cloudflare GraphQL only (zero D1).
+ *
+ * IMPORTANT:
+ * - `series` / totals from httpRequests1dGroups = reliable zone-wide totals
+ * - countries / paths from httpRequestsAdaptiveGroups = SAMPLED subset
+ *   (path "visits" of 4 does NOT mean only 4 real readers site-wide)
  */
 import type { APIRoute } from 'astro';
 
@@ -21,6 +25,9 @@ const TOKEN = (
   process.env.CLOUDFLARE_D1_API_TOKEN ||
   ''
 ).trim();
+
+const BOT_PATH_RE =
+  /\.(env|git|sql|php|asp|aspx|bak)$|wp-admin|wp-json|wp-login|xmlrpc|composer|phpmyadmin|\.aws|\/vendor\/|\/cgi-bin|\/actuator|\/onboarding$|\/pulse$|\/config\//i;
 
 async function cfGraphQL(query: string) {
   const res = await fetch('https://api.cloudflare.com/client/v4/graphql', {
@@ -76,15 +83,17 @@ export const GET: APIRoute = async ({ request }) => {
           ) {
             dimensions { clientCountryName }
             count
+            avg { sampleInterval }
             sum { visits edgeResponseBytes }
           }
           paths: httpRequestsAdaptiveGroups(
-            limit: 25,
+            limit: 50,
             filter: { datetime_geq: "${sinceIso}" }
           ) {
             dimensions { clientRequestPath }
             count
-            sum { visits }
+            avg { sampleInterval }
+            sum { visits edgeResponseBytes }
           }
         }
       }
@@ -104,23 +113,44 @@ export const GET: APIRoute = async ({ request }) => {
 
     const countries = (zone.countries || [])
       .filter((r: any) => r.dimensions?.clientCountryName)
-      .map((r: any) => ({
-        country: r.dimensions.clientCountryName,
-        requests: r.count || 0,
-        visits: r.sum?.visits || 0,
-        bytes: r.sum?.edgeResponseBytes || 0,
-      }))
-      .sort((a: any, b: any) => b.requests - a.requests);
+      .map((r: any) => {
+        const interval = Number(r.avg?.sampleInterval) || 1;
+        const sampleCount = r.count || 0;
+        return {
+          country: r.dimensions.clientCountryName,
+          // sampled edge events (NOT full page views)
+          sample_hits: sampleCount,
+          estimated_hits: Math.round(sampleCount * interval),
+          requests: Math.round(sampleCount * interval),
+          visits: r.sum?.visits || 0,
+          bytes: r.sum?.edgeResponseBytes || 0,
+          sample_interval: interval,
+        };
+      })
+      .sort((a: any, b: any) => b.estimated_hits - a.estimated_hits);
 
     const top_paths = (zone.paths || [])
-      .filter((r: any) => r.dimensions?.clientRequestPath)
-      .map((r: any) => ({
-        path: r.dimensions.clientRequestPath,
-        requests: r.count || 0,
-        visits: r.sum?.visits || 0,
-      }))
-      .sort((a: any, b: any) => b.requests - a.requests)
-      .slice(0, 15);
+      .filter((r: any) => {
+        const p = r.dimensions?.clientRequestPath || '';
+        if (!p) return false;
+        if (BOT_PATH_RE.test(p)) return false;
+        return true;
+      })
+      .map((r: any) => {
+        const interval = Number(r.avg?.sampleInterval) || 1;
+        const sampleCount = r.count || 0;
+        return {
+          path: r.dimensions.clientRequestPath,
+          sample_hits: sampleCount,
+          estimated_hits: Math.round(sampleCount * interval),
+          requests: Math.round(sampleCount * interval),
+          visits: r.sum?.visits || 0,
+          sample_interval: interval,
+          note: 'sampled — not full site page views',
+        };
+      })
+      .sort((a: any, b: any) => b.estimated_hits - a.estimated_hits)
+      .slice(0, 20);
 
     const totals = series.reduce(
       (acc: any, d: any) => {
@@ -134,7 +164,9 @@ export const GET: APIRoute = async ({ request }) => {
       { requests: 0, pageViews: 0, bytes: 0, threats: 0, uniques: 0 }
     );
 
-    const busy_region = countries[0] || null;
+    // Human-leaning busy region: prefer visits, then estimated hits
+    const byVisits = [...countries].sort((a, b) => b.visits - a.visits || b.estimated_hits - a.estimated_hits);
+    const busy_region = byVisits[0] || countries[0] || null;
 
     return new Response(
       JSON.stringify({
@@ -144,16 +176,19 @@ export const GET: APIRoute = async ({ request }) => {
         zone_id: ZONE_ID,
         account_id: ACCOUNT_ID,
         range_days: days,
+        reliability: {
+          totals_and_series: 'reliable_zone_daily_aggregates',
+          countries_and_paths:
+            'adaptive_sample_only — numbers will NOT add up to totals.pageViews',
+        },
         totals,
         busy_region,
         countries,
         top_paths,
         series,
         dashboard: {
-          zone: `https://dash.cloudflare.com/${ACCOUNT_ID}/9jabeacon.name.ng`,
           zone_analytics: `https://dash.cloudflare.com/${ACCOUNT_ID}/9jabeacon.name.ng/analytics`,
           web_analytics: `https://dash.cloudflare.com/${ACCOUNT_ID}/web-analytics`,
-          api_tokens: 'https://dash.cloudflare.com/profile/api-tokens',
         },
       }),
       {
