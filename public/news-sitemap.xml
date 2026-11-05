@@ -1,124 +1,245 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+
   <url>
-    <loc>https://www.9jabeacon.name.ng/news/inec-upholds-66-of-130-state-candidate-petitions-2027</loc>
-    <lastmod>2026-10-31T13:35:00Z</lastmod>
+    <loc>https://www.9jabeacon.name.ng/news/jesus-de-miguel-tenerife-striker-dies-after-collision-andorra-match</loc>
+    <lastmod>2026-11-05T06:51:37.881Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
-      <news:publication_date>2026-10-31T13:35:00Z</news:publication_date>
+      <news:publication_date>2026-11-05T06:51:37.881Z</news:publication_date>
+      <news:title>Tenerife Striker Jesús de Miguel Dies at 30 After On-Pitch Collision in Spain</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/follow-9jabeacon-on-whatsapp-verified-naija-news-channel</loc>
+    <lastmod>2026-11-02T18:06:51.222Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-11-02T18:06:51.222Z</news:publication_date>
+      <news:title>Follow 9jaBeacon on WhatsApp — Verified Naija News, Straight to Your Phone</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/inec-upholds-66-of-130-state-candidate-petitions-2027</loc>
+    <lastmod>2026-10-31T13:45:44.876Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-31T13:45:44.876Z</news:publication_date>
       <news:title>INEC Upholds 66 of 130 Petitions on State Election Candidate Lists</news:title>
     </news:news>
   </url>
   <url>
     <loc>https://www.9jabeacon.name.ng/news/tinubu-nominates-six-nmdpra-executive-directors-for-senate-confirmation</loc>
-    <lastmod>2026-10-31T13:35:00Z</lastmod>
+    <lastmod>2026-10-31T13:45:44.876Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
-      <news:publication_date>2026-10-31T13:35:00Z</news:publication_date>
+      <news:publication_date>2026-10-31T13:45:44.876Z</news:publication_date>
       <news:title>Tinubu Nominates Six NMDPRA Executive Directors for Senate Confirmation</news:title>
     </news:news>
   </url>
   <url>
-    <loc>https://www.9jabeacon.name.ng/news/breaking-court-declares-okorocha-winner-of-imo-west-apc-primary-uee1g</loc>
-    <lastmod>2026-10-29T10:32:00Z</lastmod>
+    <loc>https://www.9jabeacon.name.ng/news/imo-west-south-east-youths-congratulate-okorocha-urge-uzodimma-to-respect-the-lq0e5</loc>
+    <lastmod>2026-10-29T13:41:07.517Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
-      <news:publication_date>2026-10-29T10:32:00Z</news:publication_date>
+      <news:publication_date>2026-10-29T13:41:07.517Z</news:publication_date>
+      <news:title>Youth Forum Hails Court Decision Favoring Okorocha, Urges INEC to Recognise Him</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/breaking-court-declares-okorocha-winner-of-imo-west-apc-primary-uee1g</loc>
+    <lastmod>2026-10-29T10:32:44.444Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T10:32:44.444Z</news:publication_date>
       <news:title>Federal Court Names Rochas Okorocha APC Candidate for Imo West Senatorial Seat</news:title>
     </news:news>
   </url>
   <url>
     <loc>https://www.9jabeacon.name.ng/news/esther-christian-orphaned-at-4-bags-scholarship-as-debate-champion-at-15-scn2k</loc>
-    <lastmod>2026-10-29T06:40:00Z</lastmod>
+    <lastmod>2026-10-29T06:40:39.891Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
-      <news:publication_date>2026-10-29T06:40:00Z</news:publication_date>
+      <news:publication_date>2026-10-29T06:40:39.891Z</news:publication_date>
       <news:title>Abia Governor Alex Otti Grants Full Scholarship to 15-Year-Old Debate Champion Esther Christian</news:title>
     </news:news>
   </url>
   <url>
     <loc>https://www.9jabeacon.name.ng/news/hardship-our-problems-with-fg-s-90-day-relief-plan-labour-ackg3</loc>
-    <lastmod>2026-10-29T06:11:00Z</lastmod>
+    <lastmod>2026-10-29T06:11:43.150Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
-      <news:publication_date>2026-10-29T06:11:00Z</news:publication_date>
-      <news:title>Federal 90-Day Relief Plan Sparks NLC Accusation of Confession Not Cure</news:title>
+      <news:publication_date>2026-10-29T06:11:43.150Z</news:publication_date>
+      <news:title>Federal 90‑Day Relief Plan Sparks NLC Accusation of ‘Confession, Not Cure’</news:title>
     </news:news>
   </url>
   <url>
     <loc>https://www.9jabeacon.name.ng/news/tuc-rejects-fg-s-proposed-n70-000-monthly-transport-allowance-for-workers-kwra3</loc>
-    <lastmod>2026-10-29T04:46:00Z</lastmod>
+    <lastmod>2026-10-29T04:46:38.869Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
-      <news:publication_date>2026-10-29T04:46:00Z</news:publication_date>
-      <news:title>TUC Rejects Federal Workers Proposed N70000 Transport Allowance</news:title>
+      <news:publication_date>2026-10-29T04:46:38.869Z</news:publication_date>
+      <news:title>TUC Rejects Federal Workers’ Proposed N70,000 Transport Allowance, Calls for Wage Justice</news:title>
     </news:news>
   </url>
   <url>
     <loc>https://www.9jabeacon.name.ng/news/fg-approves-east-west-super-grids-to-raise-transmission-capacity-to-19-000mw-x99m2</loc>
-    <lastmod>2026-10-29T04:35:00Z</lastmod>
+    <lastmod>2026-10-29T04:35:39.524Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
-      <news:publication_date>2026-10-29T04:35:00Z</news:publication_date>
-      <news:title>Nigeria Boosts Transmission to 19000MW with New East and West Super Grids</news:title>
+      <news:publication_date>2026-10-29T04:35:39.524Z</news:publication_date>
+      <news:title>Nigeria Boosts Transmission to 19,000MW with New East & West Super Grids</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/manufacturers-raise-alarm-over-n1-35trn-alternative-power-costs-18-935-job-rc0x7</loc>
+    <lastmod>2026-10-29T04:26:36.521Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T04:26:36.521Z</news:publication_date>
+      <news:title>N1.35 Trillion Energy Bill Leaves 18,935 Manufacturing Jobs at Risk, CANMPEF Demands Action</news:title>
     </news:news>
   </url>
   <url>
     <loc>https://www.9jabeacon.name.ng/news/police-nab-nscdc-officer-for-shooting-in-abuja-market-6vxtx</loc>
-    <lastmod>2026-10-29T04:12:00Z</lastmod>
+    <lastmod>2026-10-29T04:12:41.531Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
-      <news:publication_date>2026-10-29T04:12:00Z</news:publication_date>
+      <news:publication_date>2026-10-29T04:12:41.531Z</news:publication_date>
       <news:title>NSCDC Deputy Superintendent Nabbed for Firing Shots at Abuja Market</news:title>
     </news:news>
   </url>
   <url>
-    <loc>https://www.9jabeacon.name.ng/news/2027-kwankwaso-warns-inec-over-alleged-ai-generated-images-in-voter-register-1qesi</loc>
-    <lastmod>2026-10-28T21:19:00Z</lastmod>
+    <loc>https://www.9jabeacon.name.ng/news/he-knows-his-role-rulli-provides-heroics-but-no-worries-for-donnarumma-t9y4w</loc>
+    <lastmod>2026-10-29T04:00:55.312Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
-      <news:publication_date>2026-10-28T21:19:00Z</news:publication_date>
-      <news:title>Kwankwaso Alerts INEC on Suspected AI-Generated Voter Images</news:title>
+      <news:publication_date>2026-10-29T04:00:55.312Z</news:publication_date>
+      <news:title>Rulli’s Heroic Saves Keep Donnarumma Unclouded as City Eye Quarter‑Finals</news:title>
     </news:news>
   </url>
   <url>
-    <loc>https://www.9jabeacon.name.ng/news/tinubu-departs-abuja-for-makkah-to-pray-for-nigeria-q3gf9</loc>
-    <lastmod>2026-10-28T18:53:00Z</lastmod>
+    <loc>https://www.9jabeacon.name.ng/news/group-pledges-massive-votes-for-tinubu-1d57z</loc>
+    <lastmod>2026-10-29T01:37:22.767Z</lastmod>
     <news:news>
       <news:publication>
         <news:name>9jaBeacon</news:name>
-        <news:language>en</news:language>
+        <news:language>en-NG</news:language>
       </news:publication>
-      <news:publication_date>2026-10-28T18:53:00Z</news:publication_date>
-      <news:title>President Tinubu Departs Abuja for Makkah to Offer Prayers for Nigeria</news:title>
+      <news:publication_date>2026-10-29T01:37:22.767Z</news:publication_date>
+      <news:title>Renewed Hope Ambassadors Pledge Massive Vote Drive for Tinubu in Akwa Ibom</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/africa-s-digital-economy-needs-more-than-apps-to-scale-a8gsp</loc>
+    <lastmod>2026-10-29T01:34:34.919Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T01:34:34.919Z</news:publication_date>
+      <news:title>Beyond the App: Africa’s Digital Economy Needs a Strong Underlying Infrastructure</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/grey-launches-paycheck-targets-growth-beyond-three-million-users-xbu5g</loc>
+    <lastmod>2026-10-29T01:07:26.846Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T01:07:26.846Z</news:publication_date>
+      <news:title>Grey Unveils Paycheck Salary Account Ahead of Lagos Launch Amid Rapid User Growth</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/au-accredits-nigeria-s-counter-terrorism-centre-for-west-africa-o4kke</loc>
+    <lastmod>2026-10-29T00:39:17.833Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-29T00:39:17.833Z</news:publication_date>
+      <news:title>AU Recognises Nigeria’s Counter‑Terrorism Centre as Regional Hub for West Africa and Sahel</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/2027-fubara-urges-rivers-monarchs-to-remain-neutral-xn9qx</loc>
+    <lastmod>2026-10-28T23:48:35.012Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-28T23:48:35.012Z</news:publication_date>
+      <news:title>Governor Fubara Calls Rivers Monarchs to Exercise Neutrality Ahead of 2027 Elections</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/alton-urges-states-to-scrap-telecoms-right-of-way-fees-cz7us</loc>
+    <lastmod>2026-10-28T23:35:45.394Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-28T23:35:45.394Z</news:publication_date>
+      <news:title>ALTON Calls for Elimination of Telecom Right‑of‑Way Fees, Citing Up to 60% Cost of Fiber Deployment</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/court-remands-actress-doris-ogala-over-cyberstalking-of-pastor-zl4mt</loc>
+    <lastmod>2026-10-28T23:04:59.383Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-10-28T23:04:59.383Z</news:publication_date>
+      <news:title>Actress Doris Ogala Remanded Over Alleged Cyberstalking of Pastor Chris Okafor</news:title>
     </news:news>
   </url>
 </urlset>
