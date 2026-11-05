@@ -1,7 +1,6 @@
 /**
  * Build static RSS + sitemaps into public/ from local SQLite (after sync-cache).
  * Served as static files on Cloudflare Pages → 0 D1 reads for bot traffic.
- * Same model as LaneCash / Xenvest static sitemaps.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,7 +15,7 @@ function esc(s: string): string {
     .replace(/</g, '<')
     .replace(/>/g, '>')
     .replace(/"/g, '"')
-    .replace(/'/g, ''');
+    .replace(/'/g, '&#39;');
 }
 
 type Art = {
