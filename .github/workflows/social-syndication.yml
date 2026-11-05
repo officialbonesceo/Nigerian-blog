@@ -1,0 +1,85 @@
+name: Social Syndication (file queue)
+
+on:
+  schedule:
+    # A few times daily after content window
+    - cron: '30 7,13,19 * * *'
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Content Delivery & Sync Pipeline"]
+    types: [completed]
+
+concurrency:
+  group: file-syndication
+  cancel-in-progress: false
+
+jobs:
+  syndicate:
+    name: Process pending social + IndexNow
+    runs-on: ubuntu-latest
+    # Run on manual/schedule always; on content-delivery only if that run succeeded
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Optional local cache (for channel scripts that still read sqlite)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          ALLOW_SEED_ARTICLES: 'false'
+          ALLOW_SEED_DATA: 'false'
+        run: npx tsx scripts/sync-cache.ts || true
+
+      - name: Run file-based syndication
+        env:
+          SYND_MAX: '2'
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+          BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_IDENTIFIER }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          BLUESKY_AUTO_POST_ENABLED: 'true'
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          THREADS_APP_ID: ${{ secrets.THREADS_APP_ID }}
+          THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+          THREADS_AUTO_POST_ENABLED: 'true'
+          TUMBLR_BLOG_IDENTIFIER: ${{ secrets.TUMBLR_BLOG_IDENTIFIER }}
+          TUMBLR_CONSUMER_KEY: ${{ secrets.TUMBLR_CONSUMER_KEY }}
+          TUMBLR_CONSUMER_SECRET: ${{ secrets.TUMBLR_CONSUMER_SECRET }}
+          TUMBLR_TOKEN: ${{ secrets.TUMBLR_TOKEN }}
+          TUMBLR_TOKEN_SECRET: ${{ secrets.TUMBLR_TOKEN_SECRET }}
+          TUMBLR_ACCESS_TOKEN: ${{ secrets.TUMBLR_ACCESS_TOKEN }}
+          TUMBLR_AUTO_POST_ENABLED: 'true'
+          SITE_URL: https://www.9jabeacon.name.ng
+        run: npx tsx scripts/run-file-syndication.ts
+
+      - name: Commit queue / history changes
+        run: |
+          git config user.name "9jaBeacon-bot"
+          git config user.email "bot@9jabeacon.name.ng"
+          git add syndication/ || true
+          if git diff --staged --quiet; then
+            echo 'No syndication file changes.'
+          else
+            git commit -m "chore(syndication): process pending queue [skip ci]"
+            git push origin HEAD:main
+          fi
