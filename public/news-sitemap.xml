@@ -3,6 +3,30 @@
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
 
   <url>
+    <loc>https://www.9jabeacon.name.ng/news/fg-n50k-nersi-relief-grant-eligibility-how-to-claim-november-2026</loc>
+    <lastmod>2026-11-06T07:28:27.911Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-11-06T07:28:27.911Z</news:publication_date>
+      <news:title>FG’s ₦50,000 NERSI Relief: Who Qualifies, How Selection Works, and How to Claim Safely</news:title>
+    </news:news>
+  </url>
+  <url>
+    <loc>https://www.9jabeacon.name.ng/news/n50k-nersi-grant-scams-how-to-stay-safe-official-helpline</loc>
+    <lastmod>2026-11-06T07:28:27.911Z</lastmod>
+    <news:news>
+      <news:publication>
+        <news:name>9jaBeacon</news:name>
+        <news:language>en-NG</news:language>
+      </news:publication>
+      <news:publication_date>2026-11-06T07:28:27.911Z</news:publication_date>
+      <news:title>₦50,000 Grant Scams Are Spreading: Official NERSI Rules, Helpline, and How to Stay Safe</news:title>
+    </news:news>
+  </url>
+  <url>
     <loc>https://www.9jabeacon.name.ng/news/jesus-de-miguel-tenerife-striker-dies-after-collision-andorra-match</loc>
     <lastmod>2026-11-05T06:51:37.881Z</lastmod>
     <news:news>
@@ -216,30 +240,6 @@
       </news:publication>
       <news:publication_date>2026-10-28T23:48:35.012Z</news:publication_date>
       <news:title>Governor Fubara Calls Rivers Monarchs to Exercise Neutrality Ahead of 2027 Elections</news:title>
-    </news:news>
-  </url>
-  <url>
-    <loc>https://www.9jabeacon.name.ng/news/alton-urges-states-to-scrap-telecoms-right-of-way-fees-cz7us</loc>
-    <lastmod>2026-10-28T23:35:45.394Z</lastmod>
-    <news:news>
-      <news:publication>
-        <news:name>9jaBeacon</news:name>
-        <news:language>en-NG</news:language>
-      </news:publication>
-      <news:publication_date>2026-10-28T23:35:45.394Z</news:publication_date>
-      <news:title>ALTON Calls for Elimination of Telecom Right‑of‑Way Fees, Citing Up to 60% Cost of Fiber Deployment</news:title>
-    </news:news>
-  </url>
-  <url>
-    <loc>https://www.9jabeacon.name.ng/news/court-remands-actress-doris-ogala-over-cyberstalking-of-pastor-zl4mt</loc>
-    <lastmod>2026-10-28T23:04:59.383Z</lastmod>
-    <news:news>
-      <news:publication>
-        <news:name>9jaBeacon</news:name>
-        <news:language>en-NG</news:language>
-      </news:publication>
-      <news:publication_date>2026-10-28T23:04:59.383Z</news:publication_date>
-      <news:title>Actress Doris Ogala Remanded Over Alleged Cyberstalking of Pastor Chris Okafor</news:title>
     </news:news>
   </url>
 </urlset>
