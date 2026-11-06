@@ -1,0 +1,249 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { getD1, getArticleById, getCategories, getSiteSettings } from '../../../lib/runtime-db';
+import { verifyAdminToken, getEnvSecret } from '../../../lib/auth';
+
+const db = getD1(Astro.locals);
+const cookie = Astro.request.headers.get('cookie') || '';
+const authHeader = Astro.request.headers.get('authorization') || '';
+const url = new URL(Astro.request.url);
+const queryToken = url.searchParams.get('token') || '';
+const articleId = url.searchParams.get('id') || '';
+
+let token = '';
+const match = cookie.match(/bonesceo_session=([^;]+)/);
+if (match) token = match[1];
+else if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7).trim();
+else if (queryToken) token = queryToken;
+
+const siteSettings = await getSiteSettings(db);
+const secretKey =
+  getEnvSecret(Astro.locals, 'ADMIN_SECRET_KEY', 'admin_secret_key', 'SECRET_KEY') ||
+  siteSettings.admin_secret_key ||
+  '9jaBeacon_bonesceo_secret_key_2026_super_secure';
+
+const tokenVerification = token ? verifyAdminToken(token, secretKey) : { valid: false };
+if (!tokenVerification.valid && !cookie.includes('bonesceo_session=') && !queryToken) {
+  return Astro.redirect('/bonesceo/admin/login', 302);
+}
+
+if (queryToken && tokenVerification.valid) {
+  const isHttps =
+    Astro.request.url.startsWith('https://') ||
+    Astro.request.headers.get('x-forwarded-proto') === 'https';
+  Astro.response.headers.set(
+    'Set-Cookie',
+    `bonesceo_session=${queryToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`
+  );
+}
+
+const article = articleId ? await getArticleById(db, articleId).catch(() => null) : null;
+const categories = await getCategories(db).catch(() => []);
+const isNew = !article;
+---
+
+<Layout title={isNew ? 'Write article' : 'Edit article'} activeNav="menu" isWideLayout={true}>
+  <div class="max-w-6xl mx-auto pb-28 px-1 sm:px-0">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+      <div>
+        <a href="/bonesceo/admin/articles" class="text-[11px] font-bold text-emerald-600 hover:underline">← Articles</a>
+        <h1 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white">{isNew ? 'Write article' : 'Edit article'}</h1>
+      </div>
+      <div class="flex gap-2">
+        {!isNew && article?.slug && (
+          <a href={`/news/${article.slug}`} target="_blank" rel="noopener" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold">View live</a>
+        )}
+        <button type="button" id="saveBtn" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Save</button>
+      </div>
+    </div>
+
+    <p id="statusMsg" class="hidden mb-3 text-xs font-semibold px-3 py-2 rounded-xl"></p>
+
+    <!-- Dual pane: form | image studio -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- LEFT: fields -->
+      <div class="space-y-3 order-2 lg:order-1">
+        <input type="hidden" id="artId" value={article?.id || ''} />
+        <div>
+          <label class="text-[10px] font-bold text-slate-500 uppercase">Title</label>
+          <input id="title" class="mt-1 w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-semibold" value={article?.title || ''} />
+        </div>
+        <div>
+          <label class="text-[10px] font-bold text-slate-500 uppercase">Summary</label>
+          <textarea id="summary" rows="3" class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs">{article?.summary || ''}</textarea>
+        </div>
+        <div>
+          <label class="text-[10px] font-bold text-slate-500 uppercase">Body (HTML ok)</label>
+          <textarea id="content" rows="14" class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs font-mono leading-relaxed">{article?.content || ''}</textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase">Category</label>
+            <select id="category_id" class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs">
+              {(categories || []).map((c: any) => (
+                <option value={c.id} selected={article?.category_id === c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase">Status</label>
+            <select id="status" class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs">
+              <option value="published" selected={article?.status !== 'draft'}>Published</option>
+              <option value="draft" selected={article?.status === 'draft'}>Draft</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <label class="flex items-center gap-2 text-[11px] font-semibold"><input type="checkbox" id="is_top_story" checked={!!article?.is_top_story} /> Top</label>
+          <label class="flex items-center gap-2 text-[11px] font-semibold"><input type="checkbox" id="is_trending" checked={!!article?.is_trending} /> Trending</label>
+          <label class="flex items-center gap-2 text-[11px] font-semibold"><input type="checkbox" id="is_breaking" checked={!!article?.is_breaking} /> Breaking</label>
+        </div>
+        <div>
+          <label class="text-[10px] font-bold text-slate-500 uppercase">Author</label>
+          <input id="author_name" class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs" value={article?.author_name || '9jaBeacon Desk'} />
+        </div>
+      </div>
+
+      <!-- RIGHT: image dual view -->
+      <div class="space-y-3 order-1 lg:order-2 lg:sticky lg:top-3 lg:self-start">
+        <div class="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div class="text-[10px] font-bold text-slate-500 uppercase mb-2">Selected image preview</div>
+          <div class="aspect-video rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <img id="previewImg" src={article?.image_url || ''} alt="Preview" class="w-full h-full object-cover" style={article?.image_url ? '' : 'display:none'} />
+            <div id="previewEmpty" class="w-full h-full flex items-center justify-center text-[11px] text-slate-400" style={article?.image_url ? 'display:none' : ''}>No image yet — search below</div>
+          </div>
+          <input id="image_url" type="url" class="mt-2 w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-[11px] font-mono" placeholder="Image URL" value={article?.image_url || ''} />
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <input id="image_caption" class="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-[11px]" placeholder="Caption" value={article?.image_caption || ''} />
+            <input id="image_credit" class="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-[11px]" placeholder="Credit" value={article?.image_credit || ''} />
+          </div>
+        </div>
+
+        <div class="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div class="text-[10px] font-bold text-slate-500 uppercase mb-2">Search public images</div>
+          <p class="text-[10px] text-slate-400 mb-2">Wikimedia · Openverse · optional Pexels/Unsplash keys. Pick one to preview instantly.</p>
+          <div class="flex gap-2">
+            <input id="imgQuery" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs" placeholder="e.g. Nigeria cash transfer" value={article?.title ? String(article.title).slice(0, 48) : 'Nigeria'} />
+            <button type="button" id="searchImgBtn" class="px-3 py-2 rounded-xl bg-slate-900 dark:bg-emerald-600 text-white text-xs font-bold shrink-0">Search</button>
+          </div>
+          <div id="imgResults" class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-72 overflow-y-auto"></div>
+          <p id="imgSearchStatus" class="text-[10px] text-slate-400 mt-2"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script is:inline>
+  (function () {
+    var previewImg = document.getElementById('previewImg');
+    var previewEmpty = document.getElementById('previewEmpty');
+    var imageUrl = document.getElementById('image_url');
+
+    function setPreview(url) {
+      if (!url) {
+        if (previewImg) { previewImg.style.display = 'none'; previewImg.removeAttribute('src'); }
+        if (previewEmpty) previewEmpty.style.display = '';
+        return;
+      }
+      if (previewImg) { previewImg.src = url; previewImg.style.display = ''; }
+      if (previewEmpty) previewEmpty.style.display = 'none';
+      if (imageUrl) imageUrl.value = url;
+    }
+
+    imageUrl?.addEventListener('input', function () { setPreview(imageUrl.value.trim()); });
+
+    async function searchImages() {
+      var q = document.getElementById('imgQuery')?.value?.trim() || 'Nigeria';
+      var box = document.getElementById('imgResults');
+      var st = document.getElementById('imgSearchStatus');
+      if (st) st.textContent = 'Searching…';
+      if (box) box.innerHTML = '';
+      try {
+        var res = await fetch('/api/admin/search-public-images?query=' + encodeURIComponent(q), { credentials: 'same-origin' });
+        var data = await res.json();
+        var list = data.images || [];
+        if (st) st.textContent = list.length ? list.length + ' results' : 'No results';
+        if (!box) return;
+        list.forEach(function (img) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'text-left rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-emerald-500 focus:ring-2 focus:ring-emerald-500';
+          btn.innerHTML = '<img src="' + (img.thumbUrl || img.url).replace(/"/g, '') + '" class="w-full h-20 object-cover bg-slate-100" loading="lazy" /><div class="p-1 text-[9px] text-slate-500 truncate">' + (img.source || '') + '</div>';
+          btn.addEventListener('click', function () {
+            var u = img.sanitizedCdnUrl || img.url;
+            setPreview(u);
+            var cap = document.getElementById('image_caption');
+            var cred = document.getElementById('image_credit');
+            if (cap && !cap.value) cap.value = img.title || '';
+            if (cred) cred.value = (img.author || '') + (img.license ? ' · ' + img.license : '') + ' · ' + (img.source || '');
+            if (st) st.textContent = 'Selected: ' + (img.title || u).slice(0, 60);
+          });
+          box.appendChild(btn);
+        });
+      } catch (e) {
+        if (st) st.textContent = 'Search failed: ' + (e.message || e);
+      }
+    }
+
+    document.getElementById('searchImgBtn')?.addEventListener('click', searchImages);
+    document.getElementById('imgQuery')?.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); searchImages(); }
+    });
+
+    async function save() {
+      var id = document.getElementById('artId')?.value || '';
+      var payload = {
+        id: id || undefined,
+        title: document.getElementById('title')?.value?.trim(),
+        summary: document.getElementById('summary')?.value?.trim(),
+        content: document.getElementById('content')?.value || '',
+        category_id: document.getElementById('category_id')?.value,
+        status: document.getElementById('status')?.value || 'published',
+        author_name: document.getElementById('author_name')?.value?.trim() || '9jaBeacon Desk',
+        image_url: document.getElementById('image_url')?.value?.trim() || '',
+        image_caption: document.getElementById('image_caption')?.value?.trim() || '',
+        image_credit: document.getElementById('image_credit')?.value?.trim() || '',
+        is_top_story: document.getElementById('is_top_story')?.checked ? 1 : 0,
+        is_trending: document.getElementById('is_trending')?.checked ? 1 : 0,
+        is_breaking: document.getElementById('is_breaking')?.checked ? 1 : 0,
+      };
+      var st = document.getElementById('statusMsg');
+      var btn = document.getElementById('saveBtn');
+      if (!payload.title || !payload.content) {
+        if (st) { st.classList.remove('hidden'); st.textContent = 'Title and body required'; st.className = 'mb-3 text-xs font-semibold px-3 py-2 rounded-xl bg-red-50 text-red-700'; }
+        return;
+      }
+      if (btn) btn.textContent = 'Saving…';
+      try {
+        var res = await fetch('/api/admin/articles', {
+          method: id ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(payload),
+        });
+        var data = await res.json();
+        if (st) {
+          st.classList.remove('hidden');
+          if (data.success) {
+            st.textContent = id ? '✅ Saved (including image)' : '✅ Created';
+            st.className = 'mb-3 text-xs font-semibold px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800';
+            if (!id && data.article?.id) {
+              window.location.href = '/bonesceo/admin/article-edit?id=' + encodeURIComponent(data.article.id);
+              return;
+            }
+          } else {
+            st.textContent = '❌ ' + (data.error || data.message || 'Failed');
+            st.className = 'mb-3 text-xs font-semibold px-3 py-2 rounded-xl bg-red-50 text-red-700';
+          }
+        }
+      } catch (e) {
+        if (st) { st.classList.remove('hidden'); st.textContent = '❌ ' + e.message; st.className = 'mb-3 text-xs font-semibold px-3 py-2 rounded-xl bg-red-50 text-red-700'; }
+      } finally {
+        if (btn) btn.textContent = 'Save';
+      }
+    }
+
+    document.getElementById('saveBtn')?.addEventListener('click', save);
+  })();
+</script>
