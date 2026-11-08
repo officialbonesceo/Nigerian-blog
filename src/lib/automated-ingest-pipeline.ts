@@ -1,8 +1,8 @@
 /**
- * HARD DISABLED 2026-11-08
- * Full pipeline restored briefly 2026-11-07 then disabled again after
- * unexpected multi-article D1 inserts that did not match GitHub Actions runs.
- * Stub keeps imports/builds working; nothing inserts.
+ * HARD DISABLED 2026-11-01 (restored this state 2026-11-08)
+ * Full pipeline lived here (RSS → rank → AI rewrite → insert).
+ * Kept as a stub so old imports do not crash builds, but nothing inserts.
+ * Do NOT restore full pipeline until D1 mystery writer is fully isolated.
  */
 import type { D1Database } from '@cloudflare/workers-types';
 import type { IngestionPipelineResult } from './automated-ingest-types';
@@ -17,6 +17,6 @@ export async function runIngestionPipeline(
     passed: 0,
     rejected: 0,
     inserted: 0,
-    errors: ['ingest pipeline hard-disabled 2026-11-08'],
+    errors: ['ingest pipeline hard-disabled 2026-11-01'],
   };
 }
