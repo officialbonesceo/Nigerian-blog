@@ -1,14 +1,14 @@
 name: Content Delivery & Sync Pipeline
 
-# Resumed 2026-11-05 — hard global max 1 article per run to protect D1 quota.
+# PAUSED 2026-11-08 — schedule off; job hard-stopped. Multi-article D1 inserts
+# appeared without matching Actions runs after pipeline restore.
 on:
-  schedule:
-    # Once daily ~07:00 UTC (~08:00 WAT)
-    - cron: '0 7 * * *'
+  # schedule:
+  #   - cron: '0 7 * * *'
   workflow_dispatch:
     inputs:
       force_run:
-        description: 'Manual run (still capped at 1 article/day by worker)'
+        description: 'PAUSED — job will not run until if: false is removed'
         required: false
         default: 'true'
         type: choice
@@ -24,121 +24,11 @@ jobs:
   content-sync:
     name: Content Delivery & Upstream Sync
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # Hard pause — nothing runs until this is changed
+    if: false
     permissions:
       contents: write
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node.js Runtime
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          check-latest: false
-
-      - name: Install Runtime Packages
-        run: npm install --no-audit --no-fund
-
-      - name: Verify Upstream Credentials
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-        run: |
-          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-          TOKEN="${CLOUDFLARE_D1_API_TOKEN:-$CLOUDFLARE_API_TOKEN}"
-          test -n "$TOKEN" || { echo 'Missing Cloudflare API Token'; exit 1; }
-          test -n "$CLOUDFLARE_D1_DATABASE_ID" || { echo 'Missing CLOUDFLARE_D1_DATABASE_ID'; exit 1; }
-          echo 'Credentials verified.'
-
-      - name: Prepare Execution Context
-        run: npx tsx scripts/prepare-env.ts
-
-      - name: Synchronize Local Cache with Upstream
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-          NODE_ENV: production
-          ALLOW_SEED_ARTICLES: 'false'
-          ALLOW_SEED_DATA: 'false'
-        run: npx tsx scripts/sync-cache.ts
-
-      - name: Execute Scheduled Content Worker
-        env:
-          GITHUB_ACTIONS: 'true'
-          USE_LOCAL_DEDUP: 'true'
-          MAX_ARTICLES_PER_CATEGORY_PER_DAY: '1'
-          MAX_ARTICLES_PER_RUN: '1'
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-          CLOUDFLARE_AI_MODEL: ${{ secrets.CLOUDFLARE_AI_MODEL }}
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-          CLOUDFLARE_D1_DATABASE: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL }}
-          MEDIA_AUTOMATION_ENABLED: ${{ secrets.MEDIA_AUTOMATION_ENABLED || 'true' }}
-          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY || secrets.UNSPLASH_CLIENT_ID || secrets.UNSPLASH_API_KEY || secrets.UNSPLASH_KEY }}
-          UNSPLASH_SECRET_KEY: ${{ secrets.UNSPLASH_SECRET_KEY || secrets.UNSPLASH_CLIENT_SECRET || secrets.UNSPLASH_SECRET }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          NODE_ENV: production
-          ALLOW_SEED_ARTICLES: 'false'
-          ALLOW_SEED_DATA: 'false'
-          # Social is handled by file-queue workflow — keep off here
-          BLUESKY_AUTO_POST_ENABLED: 'false'
-          TUMBLR_AUTO_POST_ENABLED: 'false'
-          THREADS_AUTO_POST_ENABLED: 'false'
-          BUFFER_AUTO_POST_ENABLED: 'false'
-        run: npx tsx scripts/content-worker.ts
-
-      - name: Push Processed Updates to Upstream Datastore
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
-          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
-          ALLOW_SEED_ARTICLES: 'false'
-          ALLOW_SEED_DATA: 'false'
-        run: npx tsx scripts/sync-upstream.ts
-
-      - name: Generate static RSS + sitemaps
-        run: npx tsx scripts/generate-static-feeds.ts
-
-      - name: Queue syndication pending files (file-based dedup)
-        env:
-          QUEUE_LIMIT: '2'
-        run: npx tsx scripts/queue-syndication.ts
-
-      - name: Submit Bing IndexNow
-        env:
-          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
-        run: npx tsx scripts/indexnow-submit.ts || true
-
-      - name: Commit feeds + pending queue
-        run: |
-          git config user.name "9jaBeacon-bot"
-          git config user.email "bot@9jabeacon.name.ng"
-          git add public/rss.xml public/sitemap.xml public/news-sitemap.xml public/scooper-feed.xml public/*.txt syndication/ || true
-          if git diff --staged --quiet; then
-            echo 'No feed/queue changes to commit.'
-          else
-            git commit -m "chore(feeds+queue): refresh static feeds and syndication pending [skip ci]"
-            git push origin HEAD:main
-          fi
-
-      - name: Verify Workspace Cleanliness
-        run: |
-          if git ls-files --error-unmatch 9jabeacon.db >/dev/null 2>&1; then
-            echo 'ERROR: 9jabeacon.db is still tracked by Git.'
-            exit 1
-          fi
-          echo 'Workspace verified clean.'
+      - name: Paused
+        run: echo 'content-delivery paused 2026-11-08 — ingest stub also disabled'
