@@ -11,140 +11,74 @@ const siteName = settings.site_name || '9jaBeacon';
 const rawSiteUrl = (settings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
 const siteUrl = rawSiteUrl === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteUrl;
 const contactEmail = settings.contact_email || settings.admin_email || 'officialbonesceo@gmail.com';
-const lastUpdated = 'October 3, 2026';
+const lastUpdated = 'November 10, 2026';
 ---
 
 <Layout
-  title={`Terms of Service | ${siteName}`}
-  description={`Read the Terms of Service for ${siteName}. Understand our syndication policies, fair use standards, rights holder procedures, and user rights.`}
+  title={`Terms of Use | ${siteName}`}
+  description={`Simple terms for using ${siteName}, a Nigerian news blog.`}
   canonicalUrl={`${siteUrl}/terms`}
 >
-  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6 font-mono">
+  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6">
     <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Home</a>
     <span>/</span>
-    <span class="text-slate-800 dark:text-slate-200">Terms of Service</span>
+    <span class="text-slate-800 dark:text-slate-200">Terms of Use</span>
   </nav>
 
-  <article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-10 shadow-xs space-y-8 transition-colors">
+  <article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-10 shadow-xs space-y-6 transition-colors">
     <header class="border-b border-slate-200 dark:border-slate-800 pb-6 space-y-2">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-        <span>Legal Terms & Content Agreement</span>
-      </div>
-      <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-        Terms of Service
+      <p class="text-xs text-slate-500">Updated: {lastUpdated}</p>
+      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+        Terms of Use
       </h1>
-      <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-        Effective Date: {lastUpdated} &bull; Applicable to all readers, contributors, and digital visitors
+      <p class="text-sm text-slate-600 dark:text-slate-400">
+        By using {siteName}, you agree to these simple rules.
       </p>
     </header>
 
-    <div class="prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed space-y-6 text-slate-700 dark:text-slate-300">
-      <!-- Section 1 -->
-      <section class="space-y-3">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">1.</span> Agreement to Terms
-        </h2>
+    <div class="space-y-5 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">1. The site</h2>
         <p>
-          By visiting, accessing, browsing, reading, or interacting with <strong>{siteName}</strong> ("the Publication", "we", "our", or "us"), hosted at <code>{siteUrl}</code> and distributed across digital channels, RSS feeds, or social networks, you acknowledge that you have read, understood, and agreed to be legally bound by these Terms of Service. If you do not consent to these terms, please discontinue use of our platform immediately.
+          {siteName} ({siteUrl}) is an independent blog that posts news-style articles for general reading. It is not a bank, government service, or law firm.
         </p>
       </section>
 
-      <!-- Section 2 -->
-      <section class="space-y-3">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">2.</span> Editorial Nature & News Syndication Model
-        </h2>
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">2. Content</h2>
         <p>
-          {siteName} is an independent digital newsroom, syndication wire, and editorial digest platform. We provide curated coverage, executive summaries, investigative briefs, and contextual reporting on Nigerian national affairs, business, technology, sports, and cultural developments.
+          Articles may summarise or discuss information that other websites, newspapers, or public bodies have already published. We try to name those sources in plain language. We do not claim ownership of other people’s original reporting.
         </p>
         <p>
-          Our editorial process involves gathering, synthesizing, and summarizing public-interest news from official press releases, government gazettes, regulatory disclosures, institutional briefings, and reputable domestic and international news agencies. All materials published on our platform are intended strictly for general informational, educational, and journalistic commentary purposes.
+          You may share links and short quotes with credit. Please do not copy whole articles for your own commercial site without permission.
         </p>
       </section>
 
-      <!-- Section 3 -->
-      <section class="space-y-3">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">3.</span> Intellectual Property, Sourcing & Fair Dealing
-        </h2>
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">3. If something is yours</h2>
         <p>
-          <strong>{siteName} respects intellectual property rights and adheres strictly to fair dealing principles under Section 20 of the Nigerian Copyright Act (2022) and international conventions:</strong>
-        </p>
-        <ul class="list-disc pl-6 space-y-2 text-slate-600 dark:text-slate-300">
-          <li><strong>Source Attribution:</strong> Where articles synthesize reporting from external news publishers, originating agencies, or journalists, we provide explicit source attribution and direct link references to the original reporting.</li>
-          <li><strong>Third-Party Trademarks:</strong> Corporate logos, brand marks, and publication titles referenced within journalistic articles are used nominatively to identify subjects of reporting and remain the property of their respective trademark holders.</li>
-          <li><strong>Original Synthesis:</strong> Editorial digests, analytical commentary, visual assets, site design, and compilation curation created by {siteName} are protected under applicable intellectual property laws.</li>
-          <li><strong>Permissible Reader Sharing:</strong> You are encouraged to quote short excerpts, headlines, or share links across social media provided that clear attribution and a direct hyperlink to {siteName} are preserved. Mass unauthorized copying or commercial reproduction without written permission is prohibited.</li>
-        </ul>
-      </section>
-
-      <!-- Section 4 -->
-      <section class="space-y-3">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">4.</span> Rights Holder Notice & Fast-Track Takedown Policy
-        </h2>
-        <p>
-          As an ethical publisher, {siteName} operates a transparent, good-faith Notice-and-Takedown procedure. If you are a copyright owner, author, or publisher and believe that any material on our site infringes your intellectual property or exceeds fair use standards, we are committed to resolving your concern immediately.
-        </p>
-        <p>
-          Please email our designated rights desk at <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 font-semibold underline">{contactEmail}</a> with the subject line <em>"Copyright Notice / Rights Inquiry"</em>, including:
-        </p>
-        <ul class="list-disc pl-6 space-y-1 text-slate-600 dark:text-slate-300">
-          <li>The specific URL link(s) on {siteName} containing the contested content;</li>
-          <li>Proof of copyright ownership or authorization to act on behalf of the rights holder;</li>
-          <li>The requested remedy (e.g. enhanced attribution, text update, or immediate removal).</li>
-        </ul>
-        <p>
-          Our team reviews notices and executes appropriate modifications or takedowns within <strong>24 to 48 business hours</strong> without bureaucratic delay.
+          Email <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 font-semibold underline">{contactEmail}</a> with the page link and what you want (credit change or removal). We will review requests in good faith.
         </p>
       </section>
 
-      <!-- Section 5 -->
-      <section class="space-y-3">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">5.</span> Accuracy, Disclaimers & Professional Advice Caveat
-        </h2>
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">4. No guarantees</h2>
         <p>
-          While our editorial team exercises rigorous diligence to synthesize accurate and verified information, breaking news develops quickly. Reports are provided on an <strong>"as is"</strong> and <strong>"as available"</strong> basis without warranties of completeness or uninterrupted operation.
-        </p>
-        <p>
-          <strong>No Financial, Legal, or Medical Advice:</strong> News reporting concerning the Central Bank of Nigeria, Naira exchange rates, corporate stocks, investment instruments, legal trials, or medical matters is strictly informational. It does not constitute professional investment, financial, legal, or medical advice. Readers must conduct independent due diligence before making financial or legal commitments.
+          The site is provided “as is.” News moves fast and details can be incomplete. Do not treat posts as professional advice of any kind.
         </p>
       </section>
 
-      <!-- Section 6 -->
-      <section class="space-y-3">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">6.</span> External Links & Third-Party Platforms
-        </h2>
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">5. Links</h2>
         <p>
-          Our articles and digital digests may contain hyperlinks to external websites, government gazettes, regulatory portals, or social networks (such as Facebook, Bluesky, YouTube, or X). {siteName} does not govern or endorse the privacy practices, availability, or contents of third-party websites. Navigating to external links is at your sole discretion.
+          We may link to other sites. We are not responsible for what those sites say or do.
         </p>
       </section>
 
-      <!-- Section 7 -->
-      <section class="space-y-3">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">7.</span> Limitation of Liability
-        </h2>
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">6. Contact</h2>
         <p>
-          To the maximum extent permitted under applicable law, {siteName}, its founders, editors, contributors, and technology partners shall not be liable for any direct, indirect, incidental, consequential, special, or exemplary damages arising out of your access to, use of, or inability to access our publication, or any reliance placed upon reports published.
-        </p>
-      </section>
-
-      <!-- Section 8 -->
-      <section class="space-y-3">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">8.</span> Governing Law & Legal Contact
-        </h2>
-        <p>
-          These Terms of Service are governed by and construed in accordance with the substantive laws of the <strong>Federal Republic of Nigeria</strong>. Any disputes arising hereunder shall be resolved before courts of competent jurisdiction in Nigeria.
-        </p>
-        <p>
-          Direct all formal inquiries, rights clearances, and legal communications to:
-          <br />
-          <strong>Legal & Editorial Desk</strong>: <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 font-semibold underline">{contactEmail}</a>
+          <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 font-semibold underline">{contactEmail}</a>
         </p>
       </section>
     </div>
