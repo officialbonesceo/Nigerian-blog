@@ -1,7 +1,7 @@
 name: Newsdesk 3D Test
 
 # 9jaBeacon desk render — Blender + Edge TTS + FFmpeg.
-# Manual only. No D1. No content-delivery. No dfre dependency.
+# Manual or push to newsdesk/**. No D1.
 on:
   workflow_dispatch:
     inputs:
@@ -9,6 +9,11 @@ on:
         description: "Seed JSON path"
         required: true
         default: "newsdesk/seeds/test_main_ada.json"
+  push:
+    branches: [main]
+    paths:
+      - "newsdesk/**"
+      - ".github/workflows/newsdesk-3d-test.yml"
 
 permissions:
   contents: read
@@ -16,7 +21,7 @@ permissions:
 jobs:
   render-newsdesk:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       SEED_FILE: ${{ github.event.inputs.seed || 'newsdesk/seeds/test_main_ada.json' }}
     steps:
@@ -25,7 +30,7 @@ jobs:
       - name: Install Blender + FFmpeg + Edge TTS
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender ffmpeg fonts-dejavu-core libegl1 libgl1 libxrender1 libxi6 libxkbcommon0
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y blender ffmpeg fonts-dejavu-core libegl1 libgl1 libxrender1 libxi6 libxkbcommon0
           python3 -m pip install --user --upgrade edge-tts
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           blender --version | head -1
@@ -60,7 +65,7 @@ jobs:
               import edge_tts
               await edge_tts.Communicate(text, voice).save(str(out / "narration.mp3"))
               (out / "captions.srt").write_text(
-                  "1\n00:00:00,000 --> 00:00:11,500\n" + text[:120] + "\n", encoding="utf-8"
+                  "1\n00:00:00,000 --> 00:00:08,000\n" + text[:120] + "\n", encoding="utf-8"
               )
           asyncio.run(main())
           print("narration ok", voice)
@@ -69,9 +74,9 @@ jobs:
       - name: Assemble final MP4
         run: |
           ffmpeg -y -i output/newsdesk/scene-silent.mp4 -i output/newsdesk/narration.mp3 \
-            -vf "subtitles=output/newsdesk/captions.srt:force_style='FontName=DejaVu Sans,FontSize=16,PrimaryColour=&H00FFFFFF,OutlineColour=&H00101010,BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=48'" \
-            -map 0:v:0 -map 1:a:0 -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p \
-            -c:a aac -b:a 160k -shortest -movflags +faststart \
+            -vf "subtitles=output/newsdesk/captions.srt:force_style='FontName=DejaVu Sans,FontSize=14,PrimaryColour=&H00FFFFFF,OutlineColour=&H00101010,BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=40'" \
+            -map 0:v:0 -map 1:a:0 -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p \
+            -c:a aac -b:a 128k -shortest -movflags +faststart \
             output/newsdesk/newsdesk-test.mp4
           ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 output/newsdesk/newsdesk-test.mp4
 
