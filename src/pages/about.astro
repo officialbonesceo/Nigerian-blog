@@ -11,161 +11,69 @@ const siteName = settings.site_name || '9jaBeacon';
 const rawSiteUrl = (settings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
 const siteUrl = rawSiteUrl === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteUrl;
 const contactEmail = settings.contact_email || settings.admin_email || 'officialbonesceo@gmail.com';
-const lastUpdated = 'October 3, 2026';
+const lastUpdated = 'November 10, 2026';
 ---
 
 <Layout
-  title={`About Us — Nigeria's Digital Newsroom & Syndication Wire | ${siteName}`}
-  description={`Learn about ${siteName}, our mission, news gathering methodology, verified attribution standards, and editorial coverage of Nigerian public affairs.`}
+  title={`About | ${siteName}`}
+  description={`${siteName} is a simple Nigerian news blog. We share stories from public reports and name the outlets we used.`}
   canonicalUrl={`${siteUrl}/about`}
   activeNav="about"
 >
-  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6 font-mono">
+  <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6">
     <a href="/" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Home</a>
     <span>/</span>
-    <span class="text-slate-800 dark:text-slate-200">About Us</span>
+    <span class="text-slate-800 dark:text-slate-200">About</span>
   </nav>
 
-  <article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-10 shadow-xs space-y-10 transition-colors">
-    <header class="border-b border-slate-200 dark:border-slate-800 pb-8 space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-          <span>Independent Nigerian Digital Newsroom & Syndication Digest</span>
-        </div>
-        <span class="text-xs text-slate-400 font-mono">Updated: {lastUpdated}</span>
-      </div>
-      <h1 class="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+  <article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-10 shadow-xs space-y-8 transition-colors">
+    <header class="border-b border-slate-200 dark:border-slate-800 pb-6 space-y-2">
+      <p class="text-xs text-slate-500">Updated: {lastUpdated}</p>
+      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
         About {siteName}
       </h1>
-      <p class="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
-        Illuminating Nigeria’s national conversation. We deliver timely, curated, and contextualized coverage across national politics, business & financial markets, regional developments, technology, and culture.
+      <p class="text-sm text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+        {siteName} is a small Nigerian news blog. We write short, readable posts about politics, money, sports, and everyday stories people care about.
       </p>
     </header>
 
-    <div class="prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed space-y-8 text-slate-700 dark:text-slate-300">
-      <!-- Section 1: Who We Are & Our News Gathering Model -->
-      <section class="space-y-3">
-        <h2 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">01.</span> Who We Are & How We Operate
-        </h2>
+    <div class="space-y-6 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Who we are</h2>
         <p>
-          Founded to bring clarity to a fast-moving and fragmented media landscape, <strong>{siteName}</strong> is an independent digital news publication and editorial digest designed to serve Nigerians at home and across the global diaspora.
-        </p>
-        <p>
-          In today’s media environment, breaking developments occur across hundreds of institutional press desks, regulatory gazettes, and major news outlets simultaneously. <strong>{siteName}</strong> bridges this gap by acting as a curated newsroom and syndication wire: our team monitors, aggregates, synthesizes, and contextualizes vital public-interest stories reported by verified domestic news agencies, accredited press desks, government spokespersons, and reputable regional publishers.
-        </p>
-        <p>
-          We take complex, fast-developing news events and distill them into rapid, accessible, and structured digests with clear bulleted takeaways, allowing busy readers to stay accurately informed without information overload.
+          We are not a big newspaper or a formal news agency. This is an independent blog that follows public stories and tries to explain them in plain language.
         </p>
       </section>
 
-      <!-- Section 2: Attribution, Fair Use & Sourcing Standards -->
-      <section class="space-y-3">
-        <h2 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">02.</span> Sourcing, Transparency & Fair Use Attribution
-        </h2>
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Where stories come from</h2>
         <p>
-          {siteName} strictly adheres to established fair use principles and ethical journalism protocols under the <strong>Nigerian Copyright Act (2022)</strong> and international digital publishing standards:
+          Posts are based on information that is already public — for example newspaper reports, official statements, and other open sources. When we use a story, we try to say where it came from (for example, “According to Punch…”).
         </p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-              Prominent Source Attribution
-            </h3>
-            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Every curated dispatch, quotation, and report clearly credits the originating publisher, news agency, or institutional wire in the story byline or lead paragraph with a direct reference.
-            </p>
-          </div>
-
-          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-              Editorial Value-Add & Context
-            </h3>
-            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              We do not duplicate raw text verbatim. Our editorial desk synthesizes multi-source coverage, verifies dates and figures, and formats stories into actionable executive summaries with historical background.
-            </p>
-          </div>
-
-          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-              Primary Verification Protocols
-            </h3>
-            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              When reporting on major policy changes, judicial decisions, or economic indices, our editors cross-reference claims against official gazettes, corporate regulatory disclosures, and authorized spokespersons.
-            </p>
-          </div>
-
-          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-              Fast-Track Publisher Desk
-            </h3>
-            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              We honor the rights of fellow journalists and publishers. Rights holders may request attribution adjustments, updates, or immediate removal via our dedicated desk within 24 business hours.
-            </p>
-          </div>
-        </div>
+        <p>
+          Other outlets can make mistakes and later update their own reports. We do the same when we notice an error. We do not claim to be the original investigators of every story we cover.
+        </p>
       </section>
 
-      <!-- Section 3: Desks & Coverage Pillars -->
-      <section class="space-y-3">
-        <h2 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">03.</span> Coverage Desks
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
-            <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">National Affairs & Governance</h3>
-            <p class="text-xs text-slate-600 dark:text-slate-400">
-              Executive policies, National Assembly debates, state government actions, and constitutional developments shaping Nigeria’s democracy.
-            </p>
-          </div>
-          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
-            <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">Business, FX & Economy</h3>
-            <p class="text-xs text-slate-600 dark:text-slate-400">
-              Central Bank of Nigeria monetary policy, Naira foreign exchange rates, inflation metrics, oil & gas developments, and entrepreneurship.
-            </p>
-          </div>
-          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
-            <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">Tech & African Innovation</h3>
-            <p class="text-xs text-slate-600 dark:text-slate-400">
-              Startups, fintech infrastructure, digital currencies, telecommunications, and government digital economy initiatives.
-            </p>
-          </div>
-          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1">
-            <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">Culture, Sports & Entertainment</h3>
-            <p class="text-xs text-slate-600 dark:text-slate-400">
-              Super Eagles, NPFL, Afrobeats global impact, Nollywood releases, and cultural milestones celebrating Nigerian resilience.
-            </p>
-          </div>
-        </div>
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">What we cover</h2>
+        <ul class="list-disc pl-5 space-y-1 text-slate-600 dark:text-slate-400">
+          <li>Nigeria news and politics</li>
+          <li>Money, markets, and business</li>
+          <li>Sports</li>
+          <li>World stories that matter to Nigerian readers</li>
+        </ul>
       </section>
 
-      <!-- Section 4: Corrections & Rights Holder Contact -->
-      <section class="space-y-3">
-        <h2 class="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-          <span class="text-emerald-600 dark:text-emerald-400 font-mono">04.</span> Corrections Policy & Rights Clearance
-        </h2>
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Corrections and contact</h2>
         <p>
-          Factual precision is our cornerstone. If an error is detected or if a developing story requires an update, our editorial desk updates the article promptly. We welcome verifiable corrections, formal press releases, and rights holder inquiries:
+          If something is wrong, or you need a credit fixed, email us. We will look at it as soon as we can.
         </p>
-        <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
-          <div>
-            <strong class="text-slate-900 dark:text-white">Editorial & News Desk:</strong>
-            <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold ml-1">{contactEmail}</a>
-          </div>
-          <div>
-            <strong class="text-slate-900 dark:text-white">Rights Holder & Takedown Inquiries:</strong>
-            <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold ml-1">{contactEmail} (Subject: "Attribution / Notice & Takedown")</a>
-          </div>
-          <div>
-            <strong class="text-slate-900 dark:text-white">Official Domain:</strong>
-            <a href={siteUrl} class="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold ml-1">{siteUrl}</a>
-          </div>
-        </div>
+        <p>
+          <a href={`mailto:${contactEmail}`} class="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline">{contactEmail}</a>
+          · <a href={siteUrl} class="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline">{siteUrl}</a>
+        </p>
       </section>
     </div>
   </article>
