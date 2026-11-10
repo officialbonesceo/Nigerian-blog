@@ -1,22 +1,22 @@
 {
   "project": {
-    "fps": 24,
-    "width": 1280,
-    "height": 720,
-    "duration_seconds": 14,
+    "fps": 16,
+    "width": 960,
+    "height": 540,
+    "duration_seconds": 8,
     "title": "9jaBeacon Newsdesk Test"
   },
   "character": "newsdesk/characters/ada.json",
   "environment": "newsdesk/environments/studio_main.json",
   "headline": "INEC removes 1.6 million invalid names from voter register",
-  "ticker": "INEC cleans voter register · 1,608,660 invalid records removed · 54 officials flagged · 9jaBeacon · www.9jabeacon.name.ng",
+  "ticker": "INEC cleans voter register · 1.6m invalid records removed · 9jaBeacon · www.9jabeacon.name.ng",
   "boards": [
     { "label": "LEAD", "color": [0.15, 0.45, 0.35] },
     { "label": "INEC", "color": [0.20, 0.30, 0.50] },
     { "label": "2027", "color": [0.35, 0.20, 0.40] }
   ],
   "narration": {
-    "text": "Good evening from the 9jaBeacon desk. Reports say INEC has removed one point six million invalid names from the voter register ahead of 2027, and identified fifty-four registration officials across ten states for possible disciplinary action.",
+    "text": "Good evening from the 9jaBeacon desk. Reports say INEC has removed about one point six million invalid names from the voter register ahead of 2027.",
     "voice": "en-NG-EzinneNeural"
   }
 }
