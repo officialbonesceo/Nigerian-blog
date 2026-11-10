@@ -32,48 +32,41 @@ export async function rewriteWithEditorialQuality(input: {
   const sourceUrl = (input.link || '').trim();
   const rawExcerpt = (input.content || input.description || '').trim();
   const sourceExcerpt = rawExcerpt.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 6000);
-  const sourceOutlet = (input.sourceName || 'Verified Wire').trim();
+  const sourceOutlet = (input.sourceName || 'national media reports').trim();
   const sourceTitle = (input.title || '').trim();
 
-  // Raised threshold: thin teasers must not become long invented articles
   if (!sourceUrl || !sourceExcerpt || sourceExcerpt.length < 280) {
     return {
       success: false,
-      reasons: ['Missing required source_url or source_excerpt before rewrite (fail-closed legal minimum)'],
+      reasons: ['Missing required source_url or source_excerpt before rewrite'],
       rawError: 'Missing source_url or source_excerpt',
     };
   }
 
   const prompt = `
-You rewrite news for 9jaBeacon from ONE provided source excerpt only.
+You write a clear news article for 9jaBeacon based on ONE provided source excerpt.
 
-LEGAL / COPYRIGHT RULES (MANDATORY):
-1. Transform — do NOT copy sentences or long phrases from the source. Paraphrase fully in original wording.
-2. Fact-lock — every hard fact (name, age, place, date, score, amount, direct quote) MUST appear in SOURCE_EXCERPT. If a detail is not in the excerpt, omit it.
-3. No invention — never add statistics, quotes, motives, or outcomes not present in the excerpt.
-4. Attribution — lead must cite the outlet: "According to ${sourceOutlet}..."
-5. This is a secondary report based on public reporting, not an original investigation claim.
-6. Do not reproduce paywalled or exclusive long passages; keep quotes under 20 words if used at all.
+RULES:
+1. Use your own words. Do not copy long phrases from the source.
+2. Only include hard facts (names, places, dates, amounts, quotes) that appear in SOURCE_EXCERPT. If a detail is missing, leave it out.
+3. Do not invent statistics, quotes, or outcomes.
+4. Open with plain attribution, e.g. "According to ${sourceOutlet}..." or "Reports from ${sourceOutlet} say...".
+5. Do NOT write "fully verified", "verified wire", "rewritten", "AI-generated", or similar labels in the article body.
+6. Do NOT use jargon like "wired from", "ingest", or "pipeline". Write like a normal news desk.
+7. Keep any direct quote under 20 words.
+8. This is a secondary report based on public reporting — not an original investigation claim.
 
-CATEGORY ALLOW-LIST — pick EXACTLY ONE based on the TOPIC of the lead fact:
-- naija-news — Nigeria politics, courts, police, INEC, security, governors, states, national institutions, traditional rulers, societal news
-- business — CBN, banks, FX, trade, investment, corporate Nigeria, fintech, energy deals, macroeconomic trends
-- sports — football, athletics, boxing, match results, coaching staff, athletes, league/tournament results only
-- world — foreign politics, international disputes, non-Nigeria primary events
+CATEGORY — pick EXACTLY ONE:
+- naija-news — Nigeria politics, courts, police, INEC, security, governors, states
+- business — CBN, banks, FX, trade, investment, corporate Nigeria, fintech
+- sports — football, athletics, match results, athletes
+- world — foreign politics and international events with no Nigeria lead
 
-TOPIC-FIRST CLASSIFICATION RULES:
-1. Topic of the lead fact wins, not money keywords alone.
-2. Court / police / INEC / governors / presidency → naija-news.
-3. CBN / banks / FX / fintech / business acquisitions → business.
-4. Match results / athletes / clubs → sports.
-5. Foreign politics with no Nigeria lead → world.
-
-QUALITY RULES:
-1. Ban filler: NEVER write "Observers anticipate...", "the situation remains fluid...", or "Nigerian search interest surges".
+STYLE:
+1. No filler like "Observers anticipate..." or "the situation remains fluid...".
 2. No duplicate paragraphs.
-3. No chain-of-thought or "as an AI".
-4. Produce 2 to 4 FAQ items; answers only restate facts already in your article.
-5. Write 180–320 words across 3–4 paragraphs with informative <h3> subheadings when useful.
+3. 2 to 4 FAQ items; answers only restate facts already in your article.
+4. About 180–320 words, 3–4 short paragraphs, with simple subheadings when useful.
 
 SOURCE_TITLE: ${sourceTitle}
 SOURCE_OUTLET: ${sourceOutlet}
@@ -238,6 +231,6 @@ ${sourceExcerpt}
 
   return {
     success: false,
-    reasons: ['Rewrite failed quality and category gates after 2 attempts (fail-closed)'],
+    reasons: ['Rewrite failed quality and category gates after 2 attempts'],
   };
 }
