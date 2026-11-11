@@ -112,7 +112,6 @@ export function getD1(locals?: RuntimeLocals): D1Database {
   throw new Error('D1 binding not available');
 }
 
-/** Lean columns only — never SELECT a.* (full content text inflates rows_read cost). */
 const LIST_SELECT = `SELECT a.id, a.slug, a.title, a.summary, a.category_id, a.image_url,
   a.author_name, a.is_top_story, a.is_trending, a.is_breaking, a.views_count,
   a.reading_time_minutes, a.published_at, a.updated_at, a.status,
@@ -210,7 +209,6 @@ export async function getArticles(
   const cached = getCached<Article[]>(cacheKey);
   if (cached) return cached;
   try {
-    // status = 'published' only (no OR IS NULL) so indexes can be used
     let q = `${LIST_SELECT} WHERE a.status = 'published'`;
     const v: unknown[] = [];
     if (o.categoryId) {
@@ -218,8 +216,9 @@ export async function getArticles(
       v.push(o.categoryId);
     }
     if (o.categorySlug) {
-      if (o.categorySlug === 'business' || o.categorySlug === 'money-hustle') {
-        q += " AND (c.slug = 'business' OR c.slug = 'money-hustle')";
+      // business is canonical; old money/hustle/money-hustle aliases still resolve
+      if (['business', 'money-hustle', 'money', 'hustle'].includes(o.categorySlug)) {
+        q += " AND (c.slug = 'business' OR c.slug = 'money-hustle' OR a.category_id = 'cat_money_hustle')";
       } else {
         q += ' AND c.slug = ?';
         v.push(o.categorySlug);
@@ -232,7 +231,7 @@ export async function getArticles(
     v.push(limit, offset);
     const res = await db.prepare(q).bind(...v).all<any>();
     const list = (res?.results || []).map(formatArticle);
-    setCached(cacheKey, list, 180000); // 3 min isolate cache
+    setCached(cacheKey, list, 180000);
     return list;
   } catch {
     return [];
@@ -243,7 +242,7 @@ export async function getSiteSettings(db: D1Database): Promise<Record<string, st
   const defaults: Record<string, string> = {
     site_name: '9jaBeacon',
     site_url: 'https://www.9jabeacon.name.ng',
-    site_description: "Nigeria's independent digital newsroom.",
+    site_description: 'A Nigerian news blog.',
   };
   const cached = getCached<Record<string, string>>('site_settings');
   if (cached) return cached;
@@ -264,7 +263,14 @@ export async function getCategories(db: D1Database): Promise<Category[]> {
   if (cached) return cached;
   try {
     const res = await db.prepare('SELECT id, name, slug FROM categories').all<Category>();
-    const list = res?.results || (initialCategories as Category[]);
+    let list = res?.results || (initialCategories as Category[]);
+    // Normalize display: never expose money/hustle in UI
+    list = list.map((c) => {
+      if (c.slug === 'money-hustle' || c.slug === 'money' || c.slug === 'hustle' || c.id === 'cat_money_hustle') {
+        return { ...c, name: 'Business', slug: 'business' };
+      }
+      return c;
+    });
     setCached('categories', list, 600000);
     return list;
   } catch {
@@ -288,14 +294,13 @@ function sanitizeReferrer(ref: string | null | undefined): string {
 export async function logVisitorSession(db: D1Database, input: Record<string, unknown>) {
   const pagePath = String(input.page_path || '');
   if (pagePath.startsWith('/bonesceo') || pagePath.startsWith('/admin')) return;
-  // Skip analytics writes for bots / heavy traffic — saves write quota
   const ua = String(input.user_agent || '').toLowerCase();
   if (ua.includes('bot') || ua.includes('crawl') || ua.includes('spider')) return;
 
   const sessionKey = `${input.session_id}_${pagePath}`;
   const now = Date.now();
   const lastTime = recentLoggedSessions.get(sessionKey);
-  if (lastTime && now - lastTime < 3600000) return; // 1 hour
+  if (lastTime && now - lastTime < 3600000) return;
   recentLoggedSessions.set(sessionKey, now);
   try {
     await db
@@ -318,7 +323,7 @@ export async function logVisitorSession(db: D1Database, input: Record<string, un
 export async function incrementArticleView(db: D1Database, id: string) {
   const now = Date.now();
   const last = recentViewIncrements.get(id);
-  if (last && now - last < 120000) return; // 2 min
+  if (last && now - last < 120000) return;
   recentViewIncrements.set(id, now);
   try {
     await db.prepare('UPDATE articles SET views_count = COALESCE(views_count, 0) + 1 WHERE id = ?').bind(id).run();
@@ -400,9 +405,19 @@ export async function getTopStory(db: D1Database) {
   return list[0] || null;
 }
 
+/** Canonical category lookup — money/hustle aliases resolve to Business. */
 export async function getCategoryBySlug(db: D1Database, slug: string) {
   try {
-    return await db.prepare('SELECT id, name, slug FROM categories WHERE slug=? LIMIT 1').bind(slug).first<Category>();
+    const raw = (slug || '').toLowerCase().trim();
+    const aliases = ['business', 'money-hustle', 'money', 'hustle'];
+    if (aliases.includes(raw)) {
+      const row =
+        (await db.prepare("SELECT id, name, slug FROM categories WHERE slug = 'business' OR slug = 'money-hustle' OR id = 'cat_money_hustle' LIMIT 1").first<Category>()) ||
+        null;
+      if (row) return { ...row, name: 'Business', slug: 'business' };
+      return { id: 'cat_money_hustle', name: 'Business', slug: 'business' } as Category;
+    }
+    return await db.prepare('SELECT id, name, slug FROM categories WHERE slug=? LIMIT 1').bind(raw).first<Category>();
   } catch {
     return null;
   }
