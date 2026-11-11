@@ -1,0 +1,60 @@
+name: Daily Desk (strict 1–2/day)
+
+# NEW engine — not content-delivery. Old pipeline stays paused.
+# Default: manual only. Uncomment schedule when you trust it.
+on:
+  workflow_dispatch:
+    inputs:
+      max_articles:
+        description: "Max articles this run (1 or 2)"
+        required: true
+        default: "1"
+        type: choice
+        options:
+          - "1"
+          - "2"
+  # schedule:
+  #   - cron: '0 8 * * *'   # 08:00 UTC once daily — enable only when ready
+
+concurrency:
+  group: daily-desk-strict
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Strict daily desk
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run daily desk (max 1–2)
+        env:
+          MAX_ARTICLES: ${{ github.event.inputs.max_articles || '1' }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+          CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        run: |
+          node scripts/daily-desk.mjs
+
+      - name: Commit feed lock + sitemap touch (if changed)
+        run: |
+          git config user.name "9jaBeacon Desk"
+          git config user.email "desk@9jabeacon.name.ng"
+          git add desk/state public/news-sitemap.xml public/sitemap.xml public/rss.xml 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No feed/lock changes"
+          else
+            git commit -m "chore(desk): daily lock + feed refresh [skip ci]" || true
+            git push || true
+          fi
