@@ -14,24 +14,27 @@ interface Props {
   prevUrl?: string;
   nextUrl?: string;
   noIndex?: boolean;
+  keywords?: string;
   article?: {
     publishedTime?: string;
     modifiedTime?: string;
     author?: string;
     section?: string;
+    tags?: string[];
   };
   activeNav?: string;
   isWideLayout?: boolean;
 }
 
 const {
-  title = '9jaBeacon - Verified Nigerian News',
-  description = "Nigeria's independent digital newsroom. Delivering fast, verified Nigerian news, politics, business, tech, and cultural updates.",
+  title = '9jaBeacon - Nigerian News Blog',
+  description = "Nigerian news blog covering politics, business, sports, and world stories for everyday readers.",
   image = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80',
   canonicalUrl,
   prevUrl,
   nextUrl,
   noIndex = false,
+  keywords = '',
   article,
   activeNav = 'home',
   isWideLayout = false,
@@ -43,14 +46,12 @@ const siteName = settings.site_name || '9jaBeacon';
 const rawSiteBase = (settings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
 const siteBase = rawSiteBase === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteBase;
 
-// Ensure social og:image is ALWAYS an absolute raster HTTPS URL (never SVG or relative data URLs which Pinterest & Bluesky fail on)
 const fallbackSocialImage = 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1200&q=80';
 let safeSocialImage = image;
 if (!safeSocialImage || safeSocialImage.startsWith('data:') || !safeSocialImage.startsWith('http')) {
   safeSocialImage = fallbackSocialImage;
 }
 
-// Compute clean absolute canonical URL respecting pagination
 const pagePath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 const pageParam = Astro.url.searchParams.get('page');
 const parsedPage = pageParam ? parseInt(pageParam, 10) : 1;
@@ -70,7 +71,6 @@ if (computedCanonical.startsWith('https://9jabeacon.name.ng/')) {
   computedCanonical = computedCanonical.replace('https://9jabeacon.name.ng/', 'https://www.9jabeacon.name.ng/');
 }
 
-// Auto-derive prevUrl for pagination if not explicitly passed
 const effectivePrevUrl = prevUrl || (isPaginated
   ? (parsedPage === 2
       ? (pagePath === '/' ? `${siteBase}/` : `${siteBase}${pagePath}`)
@@ -78,7 +78,6 @@ const effectivePrevUrl = prevUrl || (isPaginated
     )
   : undefined);
 
-// Helper to sanitize verification tokens if the user pasted a raw <meta> snippet
 function extractVerificationCode(val?: string): string {
   if (!val) return '';
   const trimmed = val.trim();
@@ -94,6 +93,7 @@ const pinterestVerification = extractVerificationCode(settings.pinterest_site_ve
 const baiduVerification = extractVerificationCode(settings.baidu_site_verification);
 const facebookVerification = extractVerificationCode(settings.facebook_domain_verification);
 const customHeadTags = (settings.custom_head_tags || '').trim();
+const keywordMeta = (keywords || '').trim();
 ---
 <!doctype html>
 <html lang="en" class="dark overflow-x-hidden max-w-full">
@@ -102,6 +102,7 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{title}</title>
   <meta name="description" content={description} />
+  {keywordMeta && <meta name="keywords" content={keywordMeta} />}
   <meta name="robots" content={noIndex ? "noindex, follow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"} />
   <link rel="canonical" href={computedCanonical} />
   {effectivePrevUrl && <link rel="prev" href={effectivePrevUrl} />}
@@ -109,13 +110,8 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="theme-color" content="#008751" />
 
-  <!-- Ad Network & Smartlink Fast-Load Preconnect / DNS-Prefetch -->
   <link rel="preconnect" href="https://www.highrevenueformat.com" crossorigin />
   <link rel="dns-prefetch" href="https://www.highrevenueformat.com" />
-  <link rel="preconnect" href="https://www.profitableratecpmnetwork.com" crossorigin />
-  <link rel="dns-prefetch" href="https://www.profitableratecpmnetwork.com" />
-  <link rel="preconnect" href="https://pl31396495.profitableratecpmnetwork.com" crossorigin />
-  <link rel="dns-prefetch" href="https://pl31396495.profitableratecpmnetwork.com" />
   {googleVerification && (
     <meta name="google-site-verification" content={googleVerification} />
   )}
@@ -138,10 +134,8 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
     <Fragment set:html={customHeadTags} />
   )}
 
-  <!-- Referrer Policy: Enables seamless loading of verified CDN and Wikimedia photography -->
   <meta name="referrer" content="no-referrer-when-downgrade" />
 
-  <!-- Theme Initialization Script (Prevents flash of wrong theme) -->
   <script is:inline>
     (function() {
       try {
@@ -161,7 +155,6 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
     })();
   </script>
 
-  <!-- Open Graph & Pinterest Rich Article Pins -->
   <meta property="og:site_name" content={siteName} />
   <meta property="og:type" content={article ? 'article' : 'website'} />
   <meta property="og:title" content={title} />
@@ -172,8 +165,8 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content={title} />
+  <meta property="og:locale" content="en_NG" />
 
-  <!-- Twitter & Bluesky Link Cards -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={title} />
   <meta name="twitter:description" content={description} />
@@ -185,18 +178,20 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
       {article.modifiedTime && <meta property="article:modified_time" content={article.modifiedTime} />}
       {article.author && <meta property="article:author" content={article.author} />}
       {article.section && <meta property="article:section" content={article.section} />}
+      {(article.tags || []).slice(0, 8).map((tag) => (
+        <meta property="article:tag" content={tag} />
+      ))}
     </>
   )}
 
   <link rel="sitemap" href="/sitemap.xml" />
   <link rel="sitemap" type="application/xml" title="Google News Sitemap" href="/news-sitemap.xml" />
 
-  <!-- Schema.org Publisher & NewsMediaOrganization Structured Data -->
   <script is:inline type="application/ld+json" set:html={JSON.stringify({
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "NewsMediaOrganization",
+        "@type": "Organization",
         "@id": `${siteBase}/#organization`,
         "name": siteName,
         "url": siteBase,
@@ -205,13 +200,11 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
           "url": `${siteBase}/favicon.svg`
         },
         "description": description,
-        "publishingPrinciples": `${siteBase}/about`,
-        "correctionsPolicy": `${siteBase}/disclaimer`,
         "sameAs": [
           settings.social_facebook_url || "https://facebook.com/9jabeacon",
           settings.social_bluesky_url || "https://bsky.app/profile/9jabeacon.bsky.social",
           settings.social_youtube_url || "https://youtube.com/@9jabeacon"
-        ]
+        ].filter(Boolean)
       },
       {
         "@type": "WebSite",
@@ -240,7 +233,6 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
   <Footer siteName={siteName} settings={settings} categories={categories} />
   <BottomNav activeNav={activeNav} />
   <script is:inline>
-    // Lightweight, debounced visitor telemetry that respects database write limits
     (function() {
       try {
         let sid = sessionStorage.getItem('9ja_sess_id');
@@ -250,7 +242,6 @@ const customHeadTags = (settings.custom_head_tags || '').trim();
         }
         const currentPath = window.location.pathname;
         const pageKey = 'pv_' + currentPath;
-        // Only log once per session per page path to dramatically reduce DB writes
         if (!sessionStorage.getItem(pageKey)) {
           sessionStorage.setItem(pageKey, '1');
           const payload = JSON.stringify({
