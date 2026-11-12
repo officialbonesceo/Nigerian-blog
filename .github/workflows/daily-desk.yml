@@ -1,7 +1,6 @@
 name: Daily Desk (strict 1–2/day)
 
-# NEW engine — not content-delivery. Old pipeline stays paused.
-# Default: manual only. Uncomment schedule when you trust it.
+# NEW engine — old content-delivery stays paused.
 on:
   workflow_dispatch:
     inputs:
@@ -14,7 +13,7 @@ on:
           - "1"
           - "2"
   # schedule:
-  #   - cron: '0 8 * * *'   # 08:00 UTC once daily — enable only when ready
+  #   - cron: '0 8 * * *'
 
 concurrency:
   group: daily-desk-strict
@@ -42,10 +41,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           CLOUDFLARE_D1_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
-        run: |
-          node scripts/daily-desk.mjs
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: node scripts/daily-desk.mjs
 
       - name: Commit feed lock + sitemap touch (if changed)
         run: |
