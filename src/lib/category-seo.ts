@@ -45,7 +45,7 @@ export function extractEmbeddedKeywords(content?: string | null): string[] {
   const m = content.match(/<!--\s*seo-keywords:\s*([^-][\s\S]*?)\s*-->/i);
   if (!m) return [];
   return m[1]
-    .split(/,/)\
+    .split(',')
     .map((k) => k.trim())
     .filter(Boolean)
     .slice(0, 12);
