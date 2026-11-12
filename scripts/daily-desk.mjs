@@ -57,19 +57,18 @@ const RSS_FEEDS = [
   { name: 'BusinessDay', url: 'https://businessday.ng/feed/' },
 ];
 
-// API message (Nov 2026): use gemini-3.8-flash for new users
+// Working model from run logs: gemini-3-flash-preview
 const GEMINI_MODELS = [
-  'gemini-3.8-flash',
   'gemini-3-flash-preview',
+  'gemini-3.8-flash',
   'gemini-flash-latest',
-  'gemini-2.5-flash',
 ];
 
 const OPENROUTER_MODELS = [
-  'google/gemini-2.5-flash',
-  'google/gemini-2.0-flash-001',
-  'meta-llama/llama-3.3-70b-instruct',
-  'openai/gpt-4o-mini',
+  'google/gemini-2.5-flash-preview',
+  'google/gemini-flash-1.5',
+  'meta-llama/llama-3.1-8b-instruct',
+  'mistralai/mistral-7b-instruct',
 ];
 
 function todayUtc() {
@@ -244,7 +243,7 @@ async function fetchRss(url) {
 function parseItems(xml) {
   const items = [];
   const blocks = xml.split(/<item[\s>]/i).slice(1);
-  for (const block of blocks.slice(0, 10)) {
+  for (const block of blocks.slice(0, 8)) {
     const title = (block.match(/<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/is) || [])[1]?.trim();
     const link = (block.match(/<link>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/link>/is) || [])[1]?.trim();
     const desc = (block.match(/<description>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/description>/is) || [])[1]?.trim();
@@ -340,6 +339,10 @@ function normalizeModelPayload(parsed) {
   };
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 async function rewriteWithGemini(item, outlet) {
   if (!GEMINI) return null;
   const prompt = buildPrompt(item, outlet);
@@ -361,7 +364,9 @@ async function rewriteWithGemini(item, outlet) {
       );
       if (!res.ok) {
         const errBody = await res.text().catch(() => '');
-        console.warn('[daily-desk] Gemini', model, res.status, errBody.slice(0, 200));
+        console.warn('[daily-desk] Gemini', model, res.status, errBody.slice(0, 160));
+        // On 429, wait briefly then try next model once
+        if (res.status === 429) await sleep(1500);
         continue;
       }
       const data = await res.json();
@@ -493,13 +498,15 @@ async function main() {
   }
 
   candidates.sort((a, b) => a.score - b.score);
-  console.log('[daily-desk] candidates', candidates.length);
+  // Only try a few items to avoid burning Gemini quota (429)
+  const tryList = candidates.slice(0, Math.max(3, remaining + 2));
+  console.log('[daily-desk] candidates', candidates.length, 'trying', tryList.length);
 
   let inserted = 0;
   let lastModelError = null;
   const publishedUrls = [];
 
-  for (const item of candidates) {
+  for (const item of tryList) {
     if (inserted >= remaining) break;
     try {
       const rewritten = await rewriteArticle(item, item.outlet);
@@ -521,9 +528,13 @@ async function main() {
       const now = new Date().toISOString();
       const title = String(rewritten.title || item.title).slice(0, 140);
       const summary = String(rewritten.summary || item.description).slice(0, 320);
-      const plainLen = content.replace(/<[^>]+>/g, ' ').trim().length;
+
+      // FIX: plain text string first, then length + word count (plainLen was a number before)
+      const plainText = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const plainLen = plainText.length;
+      const wordCount = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
       if (plainLen < 150) {
-        console.warn('[daily-desk] skip thin', title);
+        console.warn('[daily-desk] skip thin', title, 'plainLen=', plainLen);
         continue;
       }
 
@@ -542,7 +553,7 @@ async function main() {
           now,
           item.outlet,
           item.link,
-          Math.max(1, Math.ceil(plainLen.split(/\s+/).filter(Boolean).length / 200)),
+          Math.max(1, Math.ceil(wordCount / 200)),
         ]
       );
 
@@ -590,6 +601,9 @@ async function main() {
       } catch (e) {
         console.warn('[daily-desk] sitemap patch', e.message);
       }
+
+      // Stop after successful inserts to save API quota
+      if (inserted >= remaining) break;
     } catch (e) {
       lastModelError = e;
       console.error('[daily-desk] item failed', e.message);
@@ -600,7 +614,7 @@ async function main() {
 
   console.log(`[daily-desk] done inserted=${inserted} day=${day} count=${lock.count}/${MAX}`);
 
-  if (inserted === 0 && candidates.length > 0 && lastModelError) {
+  if (inserted === 0 && tryList.length > 0 && lastModelError) {
     console.error('[daily-desk] fatal: models failed and no article published');
     process.exit(1);
   }
