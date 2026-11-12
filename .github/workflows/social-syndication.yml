@@ -1,23 +1,49 @@
 name: Social Syndication (file queue)
 
-# PAUSED 2026-11-08 — was still running sync-cache against D1.
+# File-based only — zero D1 reads/writes
 on:
-  # schedule:
-  #   - cron: '30 7,13,19 * * *'
   workflow_dispatch:
-  # workflow_run disabled while paused
+  workflow_run:
+    workflows: ["Daily Desk (strict 1–2/day)"]
+    types: [completed]
+  # schedule:
+  #   - cron: '45 8,14 * * *'
 
 concurrency:
   group: file-syndication
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   syndicate:
-    name: Process pending social + IndexNow
+    name: Process pending social (no D1)
     runs-on: ubuntu-latest
-    if: false
-    permissions:
-      contents: write
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     steps:
-      - name: Paused
-        run: echo 'social-syndication paused 2026-11-08'
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run file-based social queue
+        env:
+          BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_IDENTIFIER }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          BLUESKY_AUTO_POST_ENABLED: ${{ secrets.BLUESKY_AUTO_POST_ENABLED }}
+          TUMBLR_AUTO_POST_ENABLED: ${{ secrets.TUMBLR_AUTO_POST_ENABLED }}
+        run: node scripts/social-syndicate-file.mjs
+
+      - name: Commit history / pending cleanup
+        run: |
+          git config user.name "9jaBeacon Desk"
+          git config user.email "desk@9jabeacon.name.ng"
+          git add desk/state/social-pending desk/state/social-history.jsonl 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No social state changes"
+          else
+            git commit -m "chore(social): queue state [skip ci]" || true
+            git push || true
+          fi
