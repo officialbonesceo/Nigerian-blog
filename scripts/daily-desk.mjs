@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /**
  * 9jaBeacon Daily Desk — strict 1–2/day
- * - Model chooses category from FIXED list (JSON)
- * - Model writes the full article (no static template)
- * - If no model responds → workflow fails (no local fallback)
- * - Prefer lower-competition / under-covered angles
+ * - Model returns JSON: category + article + faq
+ * - No local template; models required or workflow fails
+ * - Social queue is file-based (desk/state) — zero D1 reads/writes for sharing
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,6 +13,8 @@ const ROOT = process.cwd();
 const STATE_DIR = path.join(ROOT, 'desk', 'state');
 const LOCK_FILE = path.join(STATE_DIR, 'daily-lock.json');
 const HISTORY_FILE = path.join(STATE_DIR, 'published-urls.jsonl');
+const SOCIAL_PENDING = path.join(STATE_DIR, 'social-pending');
+const SOCIAL_HISTORY = path.join(STATE_DIR, 'social-history.jsonl');
 
 const MAX = Math.min(2, Math.max(1, parseInt(process.env.MAX_ARTICLES || '1', 10) || 1));
 const ACCOUNT = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
@@ -21,16 +22,37 @@ const DB_ID = (process.env.CLOUDFLARE_D1_DATABASE_ID || '').trim();
 const TOKEN = (process.env.CLOUDFLARE_D1_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '').trim();
 const GEMINI = (process.env.GEMINI_API_KEY || '').trim();
 const OPENROUTER = (process.env.OPENROUTER_API_KEY || '').trim();
+const INDEXNOW_KEY = (process.env.INDEXNOW_KEY || '70f499f3fc3c41878432eab0610cb2cf').trim();
 
-/** Public category slugs the model may return */
 const ALLOWED_CATEGORIES = ['naija-news', 'business', 'sports', 'world'];
-
-/** Map public slug → D1 category_id */
 const CATEGORY_IDS = {
   'naija-news': 'cat_naija_news',
   business: 'cat_money_hustle',
   sports: 'cat_sports',
   world: 'cat_world',
+};
+
+const CATEGORY_SEO = {
+  'naija-news': {
+    section: 'Nigeria News',
+    keywords: ['Nigeria news', 'Naija news', 'Lagos', 'Abuja', 'politics Nigeria'],
+    ogType: 'article',
+  },
+  business: {
+    section: 'Business',
+    keywords: ['Nigeria business', 'Naira', 'CBN', 'economy', 'markets Nigeria'],
+    ogType: 'article',
+  },
+  sports: {
+    section: 'Sports',
+    keywords: ['Nigeria sports', 'NPFL', 'Super Eagles', 'football Nigeria'],
+    ogType: 'article',
+  },
+  world: {
+    section: 'World',
+    keywords: ['world news', 'international', 'Africa news'],
+    ogType: 'article',
+  },
 };
 
 const RSS_FEEDS = [
@@ -52,10 +74,12 @@ function todayUtc() {
 
 function ensureState() {
   fs.mkdirSync(STATE_DIR, { recursive: true });
+  fs.mkdirSync(SOCIAL_PENDING, { recursive: true });
   if (!fs.existsSync(LOCK_FILE)) {
     fs.writeFileSync(LOCK_FILE, JSON.stringify({ date: '', count: 0, slugs: [] }, null, 2));
   }
   if (!fs.existsSync(HISTORY_FILE)) fs.writeFileSync(HISTORY_FILE, '');
+  if (!fs.existsSync(SOCIAL_HISTORY)) fs.writeFileSync(SOCIAL_HISTORY, '');
 }
 
 function readLock() {
@@ -81,6 +105,24 @@ function appendHistory(url, slug) {
   fs.appendFileSync(HISTORY_FILE, JSON.stringify({ url, slug, at: new Date().toISOString() }) + '\n');
 }
 
+function socialAlreadyQueued(slug) {
+  const hist = fs.existsSync(SOCIAL_HISTORY) ? fs.readFileSync(SOCIAL_HISTORY, 'utf8') : '';
+  if (hist.includes(`"slug":"${slug}"`) || hist.includes(slug)) return true;
+  const files = fs.existsSync(SOCIAL_PENDING) ? fs.readdirSync(SOCIAL_PENDING) : [];
+  return files.some((f) => f.includes(slug));
+}
+
+function queueSocialShare(payload) {
+  ensureState();
+  if (socialAlreadyQueued(payload.slug)) {
+    console.log('[daily-desk] social dedupe skip', payload.slug);
+    return;
+  }
+  const file = path.join(SOCIAL_PENDING, `${payload.slug}.json`);
+  fs.writeFileSync(file, JSON.stringify(payload, null, 2));
+  console.log('[daily-desk] social queued', file);
+}
+
 function slugify(title) {
   return String(title || 'story')
     .toLowerCase()
@@ -97,20 +139,75 @@ function escapeXml(s) {
     .replace(/"/g, '"');
 }
 
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"');
+}
+
 function resolveCategory(raw) {
   const slug = String(raw || '')
     .toLowerCase()
     .trim()
     .replace(/_/g, '-');
-  // Map common mistakes
   if (slug === 'money' || slug === 'hustle' || slug === 'money-hustle' || slug === 'economy') {
     return { slug: 'business', id: CATEGORY_IDS.business };
   }
   if (ALLOWED_CATEGORIES.includes(slug)) {
     return { slug, id: CATEGORY_IDS[slug] };
   }
-  // Safe default if model drifts
   return { slug: 'naija-news', id: CATEGORY_IDS['naija-news'] };
+}
+
+function normalizeFaq(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const q = String(item.question || item.q || '')
+      .replace(/<[^>]*>/g, '')
+      .trim();
+    const a = String(item.answer || item.a || '')
+      .replace(/<[^>]*>/g, '')
+      .trim();
+    if (q.length < 8 || a.length < 20) continue;
+    out.push({ question: q, answer: a });
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
+function buildFaqHtml(items) {
+  const faq = normalizeFaq(items);
+  if (faq.length < 2) return '';
+  const details = faq
+    .map(
+      (item, i) => `
+<details class="group rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 overflow-hidden">
+  <summary class="flex items-center justify-between gap-3 p-3.5 cursor-pointer list-none select-none">
+    <span class="flex items-center gap-2.5 text-left">
+      <span class="w-5 h-5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold flex items-center justify-center shrink-0 font-mono">${i + 1}</span>
+      <span class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 leading-snug">${escapeHtml(item.question)}</span>
+    </span>
+  </summary>
+  <div class="px-4 pb-4 pt-1 text-xs sm:text-sm leading-relaxed text-slate-600 dark:text-slate-300 border-t border-slate-200/60 dark:border-slate-700/60">
+    <p>${escapeHtml(item.answer)}</p>
+  </div>
+</details>`
+    )
+    .join('\n');
+  return `
+<section class="article-faq-block my-8 not-prose" data-article-faq="1" aria-label="Article FAQ">
+  <div class="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 shadow-xs overflow-hidden">
+    <div class="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800">
+      <h2 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">Reader FAQ</h2>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Quick answers from this report</p>
+    </div>
+    <div class="p-4 sm:p-5 space-y-3">${details}</div>
+  </div>
+</section>`.trim();
 }
 
 async function d1(sql, params = []) {
@@ -158,16 +255,12 @@ function parseItems(xml) {
   return items;
 }
 
-/** Prefer quieter / less competitive stories (avoid mega-headlines if possible). */
 function scoreCompetitiveness(item) {
   const t = `${item.title} ${item.description}`.toLowerCase();
   let score = 0;
-  // High competition noise
   if (/\b(breaking|exclusive|shock|viral|just in)\b/.test(t)) score += 3;
   if (/\b(tinubu|trump|biden|messi|ronaldo)\b/.test(t)) score += 2;
-  if (/\b(election|kidnap|accident|crash)\b/.test(t)) score += 1;
-  // Lower competition signals
-  if (/\b(policy|guideline|report|survey|budget|scheme|grant|regulation|export|import|sme|startup|tech|education|health|agriculture)\b/.test(t)) {
+  if (/\b(policy|guideline|report|survey|budget|scheme|grant|regulation|export|sme|startup|tech|education|health|agriculture)\b/.test(t)) {
     score -= 2;
   }
   if ((item.description || '').length > 400) score -= 1;
@@ -175,49 +268,77 @@ function scoreCompetitiveness(item) {
 }
 
 function buildPrompt(item, outlet) {
-  return `You are writing for 9jaBeacon, a simple Nigerian news blog (not a newspaper company).
+  return `You are writing for 9jaBeacon, a simple Nigerian news blog.
 
-SOURCE EXCERPT (use only this — do not invent facts):
+SOURCE (facts only from this):
 Outlet: ${outlet}
 Title: ${item.title}
 Excerpt: ${item.description}
 
 TASK:
-1. Choose ONE category from this exact list only:
-   - naija-news
-   - business
-   - sports
-   - world
-2. Write a full original blog article in your own words based on the excerpt.
-3. Prefer a clear, less competitive angle (policy impact, practical takeaway, local context) when the story allows it — avoid clickbait.
-4. Structure the article yourself for that category (lead, context, what it means, short close). Use simple HTML <p> tags only. Optional one <h2> if useful.
-5. Attribute once with "According to ${outlet}". Do NOT say verified, rewritten, AI, multi-source, newsroom, or outlet.
-6. Length: about 180–280 words.
+1. Choose ONE category from: naija-news | business | sports | world
+2. Write an original article in your own words (180–280 words), simple HTML <p> only, optional one <h2>.
+3. Prefer a clear, less competitive angle when possible.
+4. Attribute once: "According to ${outlet}". Never say verified, rewritten, AI, multi-source, or newsroom.
+5. Add 2–4 FAQ pairs grounded only in the excerpt (useful reader questions).
+6. Add 4–8 seo_keywords relevant to the chosen category and story.
 
-Return ONLY valid JSON (no markdown fences) with this shape:
+Return ONLY valid JSON (no markdown fences):
 {
   "category": "naija-news|business|sports|world",
-  "title": "original clear headline under 110 characters",
-  "summary": "1–2 sentence summary under 280 characters",
-  "content": "<p>...</p><p>...</p>"
+  "title": "headline under 110 chars",
+  "summary": "1-2 sentences under 280 chars",
+  "content": "<p>...</p>",
+  "faq": [{"question": "...", "answer": "..."}],
+  "seo_keywords": ["keyword1", "keyword2"]
 }`;
 }
 
+/** Robust JSON extraction from model text */
 function parseModelJson(text) {
-  const cleaned = String(text || '')
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-  const parsed = JSON.parse(cleaned);
-  if (!parsed?.title || !parsed?.content || !parsed?.category) {
-    throw new Error('JSON missing title, content, or category');
+  let cleaned = String(text || '').trim();
+  cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  // Direct parse
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (parsed?.title && parsed?.content && parsed?.category) return normalizeModelPayload(parsed);
+  } catch {
+    /* continue */
   }
+
+  // Extract first {...} block
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    const slice = cleaned.slice(start, end + 1);
+    try {
+      const parsed = JSON.parse(slice);
+      if (parsed?.title && parsed?.content && parsed?.category) return normalizeModelPayload(parsed);
+    } catch (e) {
+      // Try fixing trailing commas
+      try {
+        const fixed = slice.replace(/,\s*([}\]])/g, '$1');
+        const parsed = JSON.parse(fixed);
+        if (parsed?.title && parsed?.content && parsed?.category) return normalizeModelPayload(parsed);
+      } catch (e2) {
+        throw new Error(`JSON parse failed: ${e2.message}`);
+      }
+    }
+  }
+  throw new Error('No valid JSON object with title/content/category');
+}
+
+function normalizeModelPayload(parsed) {
   return {
     category: String(parsed.category),
     title: String(parsed.title).slice(0, 140),
     summary: String(parsed.summary || '').slice(0, 320),
     content: String(parsed.content),
+    faq: normalizeFaq(parsed.faq),
+    seo_keywords: Array.isArray(parsed.seo_keywords)
+      ? parsed.seo_keywords.map((k) => String(k).trim()).filter(Boolean).slice(0, 10)
+      : [],
   };
 }
 
@@ -242,14 +363,18 @@ async function rewriteWithGemini(item, outlet) {
       );
       if (!res.ok) {
         const errBody = await res.text().catch(() => '');
-        console.warn('[daily-desk] Gemini', model, res.status, errBody.slice(0, 200));
+        console.warn('[daily-desk] Gemini', model, res.status, errBody.slice(0, 180));
         continue;
       }
       const data = await res.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const parsed = parseModelJson(text);
-      console.log('[daily-desk] Gemini ok', model, 'category=', parsed.category);
-      return parsed;
+      try {
+        const parsed = parseModelJson(text);
+        console.log('[daily-desk] Gemini ok', model, 'category=', parsed.category, 'faq=', parsed.faq.length);
+        return parsed;
+      } catch (pe) {
+        console.warn('[daily-desk] Gemini JSON error', model, pe.message);
+      }
     } catch (e) {
       console.warn('[daily-desk] Gemini', model, e.message);
     }
@@ -281,22 +406,45 @@ async function rewriteWithOpenRouter(item, outlet) {
     }
     const data = await res.json();
     const text = data?.choices?.[0]?.message?.content || '';
-    const parsed = parseModelJson(text);
-    console.log('[daily-desk] OpenRouter ok category=', parsed.category);
-    return parsed;
+    try {
+      const parsed = parseModelJson(text);
+      console.log('[daily-desk] OpenRouter ok category=', parsed.category, 'faq=', parsed.faq.length);
+      return parsed;
+    } catch (pe) {
+      console.warn('[daily-desk] OpenRouter JSON error', pe.message);
+      return null;
+    }
   } catch (e) {
     console.warn('[daily-desk] OpenRouter', e.message);
     return null;
   }
 }
 
-/** No local template. Fail hard if models are down. */
 async function rewriteArticle(item, outlet) {
   const fromGemini = await rewriteWithGemini(item, outlet);
   if (fromGemini) return fromGemini;
   const fromOr = await rewriteWithOpenRouter(item, outlet);
   if (fromOr) return fromOr;
   throw new Error('No AI model available (Gemini and OpenRouter both failed)');
+}
+
+async function pingIndexNow(urlList) {
+  if (!INDEXNOW_KEY || !urlList.length) return;
+  try {
+    await fetch('https://api.indexnow.org/indexnow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({
+        host: 'www.9jabeacon.name.ng',
+        key: INDEXNOW_KEY,
+        keyLocation: `https://www.9jabeacon.name.ng/${INDEXNOW_KEY}.txt`,
+        urlList,
+      }),
+    });
+    console.log('[daily-desk] IndexNow pinged', urlList.length);
+  } catch (e) {
+    console.warn('[daily-desk] IndexNow', e.message);
+  }
 }
 
 async function main() {
@@ -344,30 +492,38 @@ async function main() {
     process.exit(0);
   }
 
-  // Lower score = less competitive → process first
   candidates.sort((a, b) => a.score - b.score);
-  console.log(
-    '[daily-desk] candidates',
-    candidates.length,
-    'top:',
-    candidates.slice(0, 3).map((c) => `${c.score}:${c.title.slice(0, 50)}`)
-  );
+  console.log('[daily-desk] candidates', candidates.length);
 
   let inserted = 0;
   let lastModelError = null;
+  const publishedUrls = [];
 
   for (const item of candidates) {
     if (inserted >= remaining) break;
     try {
       const rewritten = await rewriteArticle(item, item.outlet);
       const cat = resolveCategory(rewritten.category);
+      const seo = CATEGORY_SEO[cat.slug] || CATEGORY_SEO['naija-news'];
+      const keywords = [
+        ...seo.keywords,
+        ...rewritten.seo_keywords,
+      ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 12);
+
+      const faqHtml = buildFaqHtml(rewritten.faq);
+      let content = String(rewritten.content || '').slice(0, 18000);
+      if (faqHtml) content = `${content}\n\n${faqHtml}`;
+
+      // Hidden SEO keyword line for category-specific tagging (visible only as meta on page if extracted)
+      content += `\n<!-- seo-keywords: ${keywords.map(escapeHtml).join(', ')} -->`;
+      content += `\n<!-- article-section: ${escapeHtml(seo.section)} -->`;
+
       const baseSlug = slugify(rewritten.title || item.title);
       const slug = `${baseSlug}-${crypto.randomBytes(2).toString('hex')}`;
       const id = `art_${Date.now()}_${crypto.randomBytes(2).toString('hex')}`;
       const now = new Date().toISOString();
       const title = String(rewritten.title || item.title).slice(0, 140);
       const summary = String(rewritten.summary || item.description).slice(0, 320);
-      const content = String(rewritten.content || '').slice(0, 20000);
       const plainLen = content.replace(/<[^>]+>/g, ' ').trim().length;
       if (plainLen < 150) {
         console.warn('[daily-desk] skip thin', title);
@@ -398,13 +554,28 @@ async function main() {
       lock.slugs.push(slug);
       writeLock(lock);
       inserted += 1;
-      console.log('[daily-desk] inserted', slug, 'category=', cat.slug);
+
+      const pageUrl = `https://www.9jabeacon.name.ng/news/${slug}`;
+      publishedUrls.push(pageUrl);
+
+      queueSocialShare({
+        slug,
+        title,
+        summary,
+        url: pageUrl,
+        category: cat.slug,
+        keywords,
+        source: item.outlet,
+        queued_at: now,
+      });
+
+      console.log('[daily-desk] inserted', slug, 'category=', cat.slug, 'faq=', rewritten.faq.length);
 
       try {
         const smPath = path.join(ROOT, 'public', 'news-sitemap.xml');
         let sm = fs.existsSync(smPath) ? fs.readFileSync(smPath, 'utf8') : '';
         const entry = `  <url>
-    <loc>https://www.9jabeacon.name.ng/news/${escapeXml(slug)}</loc>
+    <loc>${escapeXml(pageUrl)}</loc>
     <lastmod>${escapeXml(now)}</lastmod>
     <news:news>
       <news:publication>
@@ -428,9 +599,10 @@ async function main() {
     }
   }
 
+  if (publishedUrls.length) await pingIndexNow(publishedUrls);
+
   console.log(`[daily-desk] done inserted=${inserted} day=${day} count=${lock.count}/${MAX}`);
 
-  // Fail the workflow if we had candidates but could not publish because models were down
   if (inserted === 0 && candidates.length > 0 && lastModelError) {
     console.error('[daily-desk] fatal: models failed and no article published');
     process.exit(1);
