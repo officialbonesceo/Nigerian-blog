@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * 9jaBeacon Daily Desk — strict 1–2/day
- * - Model returns JSON: category + article + faq
- * - No local template; models required or workflow fails
- * - Social queue is file-based (desk/state) — zero D1 reads/writes for sharing
+ * Model returns JSON: category + article + faq + seo_keywords
+ * No local template; models required or workflow fails
+ * Social queue is file-based (desk/state) — zero D1 for sharing
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,22 +36,18 @@ const CATEGORY_SEO = {
   'naija-news': {
     section: 'Nigeria News',
     keywords: ['Nigeria news', 'Naija news', 'Lagos', 'Abuja', 'politics Nigeria'],
-    ogType: 'article',
   },
   business: {
     section: 'Business',
     keywords: ['Nigeria business', 'Naira', 'CBN', 'economy', 'markets Nigeria'],
-    ogType: 'article',
   },
   sports: {
     section: 'Sports',
     keywords: ['Nigeria sports', 'NPFL', 'Super Eagles', 'football Nigeria'],
-    ogType: 'article',
   },
   world: {
     section: 'World',
     keywords: ['world news', 'international', 'Africa news'],
-    ogType: 'article',
   },
 };
 
@@ -61,11 +57,19 @@ const RSS_FEEDS = [
   { name: 'BusinessDay', url: 'https://businessday.ng/feed/' },
 ];
 
+// API message (Nov 2026): use gemini-3.8-flash for new users
 const GEMINI_MODELS = [
+  'gemini-3.8-flash',
+  'gemini-3-flash-preview',
+  'gemini-flash-latest',
   'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-latest',
+];
+
+const OPENROUTER_MODELS = [
+  'google/gemini-2.5-flash',
+  'google/gemini-2.0-flash-001',
+  'meta-llama/llama-3.3-70b-instruct',
+  'openai/gpt-4o-mini',
 ];
 
 function todayUtc() {
@@ -294,20 +298,15 @@ Return ONLY valid JSON (no markdown fences):
 }`;
 }
 
-/** Robust JSON extraction from model text */
 function parseModelJson(text) {
   let cleaned = String(text || '').trim();
   cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-
-  // Direct parse
   try {
     const parsed = JSON.parse(cleaned);
     if (parsed?.title && parsed?.content && parsed?.category) return normalizeModelPayload(parsed);
   } catch {
     /* continue */
   }
-
-  // Extract first {...} block
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}');
   if (start >= 0 && end > start) {
@@ -316,7 +315,6 @@ function parseModelJson(text) {
       const parsed = JSON.parse(slice);
       if (parsed?.title && parsed?.content && parsed?.category) return normalizeModelPayload(parsed);
     } catch (e) {
-      // Try fixing trailing commas
       try {
         const fixed = slice.replace(/,\s*([}\]])/g, '$1');
         const parsed = JSON.parse(fixed);
@@ -363,7 +361,7 @@ async function rewriteWithGemini(item, outlet) {
       );
       if (!res.ok) {
         const errBody = await res.text().catch(() => '');
-        console.warn('[daily-desk] Gemini', model, res.status, errBody.slice(0, 180));
+        console.warn('[daily-desk] Gemini', model, res.status, errBody.slice(0, 200));
         continue;
       }
       const data = await res.json();
@@ -384,40 +382,42 @@ async function rewriteWithGemini(item, outlet) {
 
 async function rewriteWithOpenRouter(item, outlet) {
   if (!OPENROUTER) return null;
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${OPENROUTER}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://www.9jabeacon.name.ng',
-        'X-Title': '9jaBeacon Daily Desk',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-001',
-        response_format: { type: 'json_object' },
-        temperature: 0.5,
-        messages: [{ role: 'user', content: buildPrompt(item, outlet) }],
-      }),
-    });
-    if (!res.ok) {
-      console.warn('[daily-desk] OpenRouter', res.status);
-      return null;
-    }
-    const data = await res.json();
-    const text = data?.choices?.[0]?.message?.content || '';
+  const prompt = buildPrompt(item, outlet);
+  for (const model of OPENROUTER_MODELS) {
     try {
-      const parsed = parseModelJson(text);
-      console.log('[daily-desk] OpenRouter ok category=', parsed.category, 'faq=', parsed.faq.length);
-      return parsed;
-    } catch (pe) {
-      console.warn('[daily-desk] OpenRouter JSON error', pe.message);
-      return null;
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPENROUTER}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://www.9jabeacon.name.ng',
+          'X-Title': '9jaBeacon Daily Desk',
+        },
+        body: JSON.stringify({
+          model,
+          response_format: { type: 'json_object' },
+          temperature: 0.5,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (!res.ok) {
+        console.warn('[daily-desk] OpenRouter', model, res.status);
+        continue;
+      }
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content || '';
+      try {
+        const parsed = parseModelJson(text);
+        console.log('[daily-desk] OpenRouter ok', model, 'category=', parsed.category, 'faq=', parsed.faq.length);
+        return parsed;
+      } catch (pe) {
+        console.warn('[daily-desk] OpenRouter JSON error', model, pe.message);
+      }
+    } catch (e) {
+      console.warn('[daily-desk] OpenRouter', model, e.message);
     }
-  } catch (e) {
-    console.warn('[daily-desk] OpenRouter', e.message);
-    return null;
   }
+  return null;
 }
 
 async function rewriteArticle(item, outlet) {
@@ -505,16 +505,13 @@ async function main() {
       const rewritten = await rewriteArticle(item, item.outlet);
       const cat = resolveCategory(rewritten.category);
       const seo = CATEGORY_SEO[cat.slug] || CATEGORY_SEO['naija-news'];
-      const keywords = [
-        ...seo.keywords,
-        ...rewritten.seo_keywords,
-      ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 12);
+      const keywords = [...seo.keywords, ...rewritten.seo_keywords]
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .slice(0, 12);
 
       const faqHtml = buildFaqHtml(rewritten.faq);
       let content = String(rewritten.content || '').slice(0, 18000);
       if (faqHtml) content = `${content}\n\n${faqHtml}`;
-
-      // Hidden SEO keyword line for category-specific tagging (visible only as meta on page if extracted)
       content += `\n<!-- seo-keywords: ${keywords.map(escapeHtml).join(', ')} -->`;
       content += `\n<!-- article-section: ${escapeHtml(seo.section)} -->`;
 
