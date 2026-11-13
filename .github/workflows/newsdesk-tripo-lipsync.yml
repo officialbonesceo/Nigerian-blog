@@ -1,0 +1,118 @@
+name: Newsdesk Tripo + Rhubarb Lipsync
+
+# Uses cleaned Tripo presenter GLB when present, Edge TTS + Rhubarb lipsync, Blender render.
+# Manual only — does not touch D1 or content pipeline.
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Seed JSON path"
+        required: true
+        default: "newsdesk/seeds/test_tripo_presenter.json"
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SEED_FILE: ${{ github.event.inputs.seed || 'newsdesk/seeds/test_tripo_presenter.json' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Blender, FFmpeg, Edge TTS, Rhubarb
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            blender ffmpeg fonts-dejavu-core \
+            libegl1 libgl1 libxrender1 libxi6 libxkbcommon0 \
+            wget unzip
+          python3 -m pip install --user --upgrade edge-tts
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+          # Rhubarb Lip Sync (Linux binary)
+          RH_VER=1.13.0
+          wget -q "https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v${RH_VER}/Rhubarb-Lip-Sync-${RH_VER}-Linux.zip" -O /tmp/rhubarb.zip
+          sudo unzip -o /tmp/rhubarb.zip -d /opt/rhubarb
+          RH_DIR=$(find /opt/rhubarb -maxdepth 2 -type d -name "Rhubarb*" | head -1)
+          sudo ln -sf "$RH_DIR/rhubarb" /usr/local/bin/rhubarb
+          rhubarb --version || true
+          blender --version | head -1
+
+      - name: Validate seed
+        run: |
+          python3 -m json.tool "$SEED_FILE" > /tmp/seed.json
+          CHAR=$(python3 -c "import json; print(json.load(open('/tmp/seed.json'))['character'])")
+          python3 -m json.tool "$CHAR" > /dev/null
+          echo "OK seed=$SEED_FILE char=$CHAR"
+          if [ -f newsdesk/characters/models/presenter_cleaned.glb ]; then
+            echo "GLB present: $(du -h newsdesk/characters/models/presenter_cleaned.glb)"
+          else
+            echo "GLB missing — will fall back to procedural stickman"
+          fi
+
+      - name: Generate narration (Edge TTS → WAV for Rhubarb)
+        run: |
+          python3 <<'PY'
+          import json, asyncio, os, pathlib, subprocess
+          seed = json.load(open(os.environ["SEED_FILE"]))
+          nar = seed.get("narration", {})
+          text = nar.get("text") or seed.get("headline", "9jaBeacon newsdesk.")
+          voice = nar.get("voice", "en-NG-AbeoNeural")
+          out = pathlib.Path("output/newsdesk")
+          out.mkdir(parents=True, exist_ok=True)
+          mp3 = out / "narration.mp3"
+          wav = out / "narration.wav"
+          async def main():
+              import edge_tts
+              await edge_tts.Communicate(text, voice).save(str(mp3))
+          asyncio.run(main())
+          # Rhubarb prefers WAV
+          subprocess.check_call([
+              "ffmpeg", "-y", "-i", str(mp3),
+              "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
+              str(wav)
+          ])
+          (out / "captions.srt").write_text(
+              "1\n00:00:00,000 --> 00:00:12,000\n" + text[:140] + "\n", encoding="utf-8"
+          )
+          print("narration ok", voice, "bytes", mp3.stat().st_size)
+          PY
+
+      - name: Rhubarb lipsync
+        run: |
+          mkdir -p output/newsdesk
+          rhubarb -f json -o output/newsdesk/mouth.json \
+            -r phonetic output/newsdesk/narration.wav \
+            || rhubarb -f json -o output/newsdesk/mouth.json output/newsdesk/narration.wav
+          python3 -c "import json; d=json.load(open('output/newsdesk/mouth.json')); print('cues', len(d.get('mouthCues',[])))"
+
+      - name: Render desk scene (Blender + lipsync)
+        run: |
+          mkdir -p output/newsdesk
+          blender --background --factory-startup --python newsdesk/blender/render_newsdesk.py -- \
+            --seed "$SEED_FILE" \
+            --output output/newsdesk/scene-silent.mp4 \
+            --lipsync output/newsdesk/mouth.json
+
+      - name: Assemble final MP4
+        run: |
+          ffmpeg -y -i output/newsdesk/scene-silent.mp4 -i output/newsdesk/narration.mp3 \
+            -vf "subtitles=output/newsdesk/captions.srt:force_style='FontName=DejaVu Sans,FontSize=16,PrimaryColour=&H00FFFFFF,OutlineColour=&H00101010,BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=48'" \
+            -map 0:v:0 -map 1:a:0 -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p \
+            -c:a aac -b:a 128k -shortest -movflags +faststart \
+            output/newsdesk/newsdesk-tripo.mp4
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 output/newsdesk/newsdesk-tripo.mp4
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: newsdesk-tripo-lipsync
+          path: |
+            output/newsdesk/newsdesk-tripo.mp4
+            output/newsdesk/mouth.json
+            output/newsdesk/narration.mp3
+          if-no-files-found: error
+          retention-days: 7
