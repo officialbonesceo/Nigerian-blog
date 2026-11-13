@@ -1,0 +1,12 @@
+{
+  "id": "presenter_tripo",
+  "display_name": "Desk Presenter",
+  "role": "Main news desk",
+  "voice": "en-NG-AbeoNeural",
+  "skin": [0.35, 0.22, 0.16],
+  "outfit": [0.08, 0.10, 0.14],
+  "accent": [0.10, 0.55, 0.45],
+  "default_pose": "seated_desk",
+  "model_glb": "newsdesk/characters/models/presenter_cleaned.glb",
+  "use_glb": true
+}
