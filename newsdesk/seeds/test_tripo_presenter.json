@@ -1,0 +1,23 @@
+{
+  "project": {
+    "fps": 24,
+    "width": 1280,
+    "height": 720,
+    "duration_seconds": 12,
+    "title": "9jaBeacon Tripo Desk Test"
+  },
+  "character": "newsdesk/characters/presenter_tripo.json",
+  "environment": "newsdesk/environments/studio_main.json",
+  "headline": "INEC removes 1.6 million invalid names from voter register",
+  "ticker": "INEC cleans voter register · 1.6m invalid records removed · 9jaBeacon · www.9jabeacon.name.ng",
+  "boards": [
+    { "label": "LEAD", "color": [0.15, 0.45, 0.35] },
+    { "label": "INEC", "color": [0.20, 0.30, 0.50] },
+    { "label": "2027", "color": [0.35, 0.20, 0.40] }
+  ],
+  "narration": {
+    "text": "Good evening from the 9jaBeacon desk. Reports say INEC has removed about one point six million invalid names from the voter register ahead of twenty twenty seven. We will keep following the story.",
+    "voice": "en-NG-AbeoNeural"
+  },
+  "lipsync": true
+}
