@@ -7,6 +7,8 @@
   "outfit": [0.08, 0.10, 0.14],
   "accent": [0.10, 0.55, 0.45],
   "default_pose": "seated_desk",
-  "model_glb": "newsdesk/characters/models/present.glb",
-  "use_glb": true
+  "model_glb": "newsdesk/characters/models/Presenter.glb",
+  "use_glb": true,
+  "skeleton": "mixamo",
+  "joint_count": 53
 }
