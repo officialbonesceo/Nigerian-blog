@@ -114,9 +114,26 @@ for i, (bx, by, bz) in enumerate([(-2.45, 2.7, 2.0), (0.0, 2.75, 2.15), (2.45, 2
 
 presenter_root = None
 mouth_obj = None
+armature_obj = None
+pose_bones = {}
+
+def find_pose_bone(arm, *candidates):
+    if arm is None:
+        return None
+    names = {b.name: b for b in arm.pose.bones}
+    lower = {b.name.lower(): b for b in arm.pose.bones}
+    for c in candidates:
+        if c in names:
+            return names[c]
+        if c.lower() in lower:
+            return lower[c.lower()]
+        for n, b in lower.items():
+            if c.lower() in n:
+                return b
+    return None
 
 def import_glb(path):
-    global presenter_root, mouth_obj
+    global presenter_root, mouth_obj, armature_obj, pose_bones
     if not path or not os.path.isfile(path):
         print("GLB_MISSING", path, flush=True)
         return False
@@ -126,24 +143,59 @@ def import_glb(path):
     if not after:
         print("GLB_IMPORT_EMPTY", flush=True)
         return False
-    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0.05, 0))
+
+    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0.12, 0.05))
     root = bpy.context.object
     root.name = "PRESENTER_ROOT"
     for o in after:
-        o.parent = root
-    root.location = (0, 0.05, 0.15)
-    root.scale = (1.15, 1.15, 1.15)
-    root.rotation_euler = Euler((math.radians(8), 0, 0), "XYZ")
+        if o.parent is None:
+            o.parent = root
+    root.location = (0, 0.12, 0.02)
+    root.scale = (1.05, 1.05, 1.05)
+    root.rotation_euler = Euler((math.radians(6), 0, 0), "XYZ")
     presenter_root = root
+
+    for o in after:
+        if o.type == "ARMATURE":
+            armature_obj = o
+            break
+    if armature_obj is None:
+        for o in bpy.data.objects:
+            if o.type == "ARMATURE":
+                armature_obj = o
+                break
+
+    if armature_obj is not None:
+        bpy.context.view_layer.objects.active = armature_obj
+        armature_obj.select_set(True)
+        try:
+            bpy.ops.object.mode_set(mode="POSE")
+        except Exception:
+            pass
+        for b in armature_obj.pose.bones:
+            pose_bones[b.name] = b
+        print("ARMATURE", armature_obj.name, "bones=", len(armature_obj.pose.bones), flush=True)
+        jaw = find_pose_bone(armature_obj, "Jaw", "jaw", "mixamorig:Jaw", "Jaw_Open")
+        head = find_pose_bone(armature_obj, "mixamorig:Head", "Head", "head")
+        neck = find_pose_bone(armature_obj, "mixamorig:Neck", "Neck", "neck")
+        print("BONES jaw=", getattr(jaw, "name", None), "head=", getattr(head, "name", None), "neck=", getattr(neck, "name", None), flush=True)
+        try:
+            bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            pass
+    else:
+        print("NO_ARMATURE", flush=True)
+
     for o in after:
         ln = o.name.lower()
         if any(k in ln for k in ("mouth", "jaw", "lips")):
             mouth_obj = o
             break
-    if mouth_obj is None:
+    if mouth_obj is None and armature_obj is None:
         mouth_obj = ball("MOUTH_PROXY", (0, -0.12, 1.72), (0.06, 0.02, 0.035), m_white)
         mouth_obj.parent = root
-    print("GLB_OK objects=", len(after), "mouth=", mouth_obj.name, flush=True)
+
+    print("GLB_OK objects=", len(after), "mouth=", getattr(mouth_obj, "name", None), flush=True)
     return True
 
 def build_stickman():
@@ -185,33 +237,110 @@ if use_glb:
 else:
     build_stickman()
 
-def apply_lipsync(path):
-    if not path or not os.path.isfile(path) or mouth_obj is None:
-        print("LIPSYNC_SKIP", path, flush=True)
-        return
-    data = json.load(open(path))
-    cues = data.get("mouthCues") or data.get("cues") or []
-    open_map = {
-        "A": 0.15, "B": 0.55, "C": 0.85, "D": 0.70, "E": 0.45,
-        "F": 0.35, "G": 0.50, "H": 0.25, "X": 0.08,
-    }
-    base_scale = list(mouth_obj.scale)
-    mouth_obj.scale = (base_scale[0], base_scale[1], base_scale[2] * 0.15)
-    mouth_obj.keyframe_insert(data_path="scale", frame=1)
-    for cue in cues:
-        start = float(cue.get("start", 0))
-        value = str(cue.get("value", "X"))
-        frame = max(1, int(start * FPS) + 1)
-        open_amt = open_map.get(value, 0.2)
-        mouth_obj.scale = (base_scale[0] * (0.9 + 0.4 * open_amt), base_scale[1], base_scale[2] * (0.12 + open_amt))
-        mouth_obj.keyframe_insert(data_path="scale", frame=frame)
-    if mouth_obj.animation_data and mouth_obj.animation_data.action:
+OPEN_MAP = {
+    "A": 0.12, "B": 0.55, "C": 0.90, "D": 0.72, "E": 0.48,
+    "F": 0.35, "G": 0.52, "H": 0.28, "X": 0.05,
+}
+
+def keyframe_pose_bone(pb, frame, rot_euler):
+    pb.rotation_mode = "XYZ"
+    pb.rotation_euler = rot_euler
+    pb.keyframe_insert(data_path="rotation_euler", frame=frame)
+
+def apply_facial_and_lipsync(path):
+    cues = []
+    if path and os.path.isfile(path):
+        data = json.load(open(path))
+        cues = data.get("mouthCues") or data.get("cues") or []
+    print("LIPSYNC_CUES", len(cues), flush=True)
+
+    jaw = None
+    head = None
+    neck = None
+    if armature_obj is not None:
+        bpy.context.view_layer.objects.active = armature_obj
+        try:
+            bpy.ops.object.mode_set(mode="POSE")
+        except Exception:
+            pass
+        jaw = find_pose_bone(armature_obj, "Jaw", "jaw", "mixamorig:Jaw")
+        head = find_pose_bone(armature_obj, "mixamorig:Head", "Head", "head")
+        neck = find_pose_bone(armature_obj, "mixamorig:Neck", "Neck", "neck")
+
+    def open_at_time(t):
+        if not cues:
+            return 0.08
+        amt = 0.08
+        for cue in cues:
+            start = float(cue.get("start", 0))
+            if start <= t:
+                amt = OPEN_MAP.get(str(cue.get("value", "X")), 0.2)
+            else:
+                break
+        return amt
+
+    step = max(1, FPS // 12)
+    for f in range(1, LAST + 1, step):
+        t = (f - 1) / float(FPS)
+        open_amt = open_at_time(t)
+
+        if jaw is not None:
+            keyframe_pose_bone(jaw, f, Euler((math.radians(28 * open_amt), 0, 0), "XYZ"))
+        elif head is not None:
+            talk = 0.04 * math.sin(t * 9.0)
+            keyframe_pose_bone(
+                head, f,
+                Euler((math.radians(-6 * open_amt + talk), math.radians(3 * math.sin(t * 2.2)), 0), "XYZ")
+            )
+        elif mouth_obj is not None:
+            base = (1.0, 1.0, 1.0)
+            mouth_obj.scale = (base[0] * (0.95 + 0.35 * open_amt), base[1], base[2] * (0.15 + open_amt))
+            mouth_obj.keyframe_insert(data_path="scale", frame=f)
+
+        if neck is not None and head is not None:
+            keyframe_pose_bone(
+                neck, f,
+                Euler((math.radians(2.5 * open_amt), math.radians(1.5 * math.sin(t * 1.7)), 0), "XYZ")
+            )
+
+    if head is not None:
+        blink_times = [1.8, 4.2, 7.5, 10.2]
+        for bt in blink_times:
+            bf = max(1, int(bt * FPS))
+            if bf >= LAST:
+                continue
+            keyframe_pose_bone(head, max(1, bf - 2), Euler((0, 0, 0), "XYZ"))
+            keyframe_pose_bone(head, bf, Euler((math.radians(4), 0, 0), "XYZ"))
+            keyframe_pose_bone(head, min(LAST, bf + 2), Euler((0, 0, 0), "XYZ"))
+
+    if armature_obj and armature_obj.animation_data and armature_obj.animation_data.action:
+        for fc in armature_obj.animation_data.action.fcurves:
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
+
+    if mouth_obj and mouth_obj.animation_data and mouth_obj.animation_data.action:
         for fc in mouth_obj.animation_data.action.fcurves:
             for kp in fc.keyframe_points:
                 kp.interpolation = "LINEAR"
-    print("LIPSYNC_APPLIED cues=", len(cues), flush=True)
 
-apply_lipsync(A.lipsync)
+    try:
+        if armature_obj:
+            bpy.ops.object.mode_set(mode="OBJECT")
+    except Exception:
+        pass
+    print(
+        "FACIAL_OK",
+        json.dumps({
+            "jaw": getattr(jaw, "name", None),
+            "head": getattr(head, "name", None),
+            "neck": getattr(neck, "name", None),
+            "proxy": getattr(mouth_obj, "name", None),
+            "cues": len(cues),
+        }),
+        flush=True,
+    )
+
+apply_facial_and_lipsync(A.lipsync)
 
 cube("H_BG", (0, -1.55, 0.52), (6.2, 0.07, 0.30), mat("HBg", (0.09, 0.10, 0.12), 0.4))
 text_obj("H_TXT", headline[:62], (0, -1.58, 0.52), size=0.15, color=(0.98, 0.98, 0.99))
