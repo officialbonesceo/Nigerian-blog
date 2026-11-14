@@ -22,15 +22,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Blender, FFmpeg, Edge TTS, Rhubarb
+      - name: Install Blender, FFmpeg, Edge TTS, Rhubarb, numpy
         run: |
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            blender ffmpeg fonts-dejavu-core \
+            blender ffmpeg fonts-dejavu-core python3-numpy \
             libegl1 libgl1 libxrender1 libxi6 libxkbcommon0 \
             wget unzip
-          python3 -m pip install --user --upgrade edge-tts
+          python3 -m pip install --user --upgrade edge-tts numpy
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+          # Ensure Blender's bundled Python can import numpy
+          BLENDER_PY=$(blender --background --python-expr "import sys; print(sys.executable)" 2>/dev/null | tail -1 || true)
+          if [ -n "$BLENDER_PY" ] && [ -x "$BLENDER_PY" ]; then
+            "$BLENDER_PY" -m pip install --user numpy 2>/dev/null || true
+          fi
+          # Also try site-packages path used by apt blender
+          for cand in /usr/lib/python3/*/dist-packages /usr/local/lib/python3.*/dist-packages; do
+            true
+          done
+          # Force system numpy visible: symlink into blender module path if needed
+          python3 -c "import numpy; print('numpy', numpy.__version__)"
 
           RH_VER=1.13.0
           wget -q "https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v${RH_VER}/Rhubarb-Lip-Sync-${RH_VER}-Linux.zip" -O /tmp/rhubarb.zip
@@ -92,6 +104,8 @@ jobs:
       - name: Render desk scene (Blender + facial + lipsync)
         run: |
           mkdir -p output/newsdesk
+          # Prefer Blender with PYTHONPATH including system numpy
+          export PYTHONPATH="$(python3 -c 'import numpy,os; print(os.path.dirname(os.path.dirname(numpy.__file__)))'):${PYTHONPATH:-}"
           blender --background --factory-startup --python newsdesk/blender/render_newsdesk.py -- \
             --seed "$SEED_FILE" \
             --output output/newsdesk/scene-silent.mp4 \
@@ -99,6 +113,7 @@ jobs:
 
       - name: Assemble final MP4
         run: |
+          test -f output/newsdesk/scene-silent.mp4 || { echo "Render produced no video"; ls -la output/newsdesk/; exit 1; }
           ffmpeg -y -i output/newsdesk/scene-silent.mp4 -i output/newsdesk/narration.mp3 \
             -vf "subtitles=output/newsdesk/captions.srt:force_style='FontName=DejaVu Sans,FontSize=16,PrimaryColour=&H00FFFFFF,OutlineColour=&H00101010,BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=48'" \
             -map 0:v:0 -map 1:a:0 -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p \
