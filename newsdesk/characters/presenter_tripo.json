@@ -7,6 +7,6 @@
   "outfit": [0.08, 0.10, 0.14],
   "accent": [0.10, 0.55, 0.45],
   "default_pose": "seated_desk",
-  "model_glb": "newsdesk/characters/models/presenter_cleaned.glb",
+  "model_glb": "newsdesk/characters/models/present.glb",
   "use_glb": true
 }
