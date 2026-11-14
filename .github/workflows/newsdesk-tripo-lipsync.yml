@@ -1,6 +1,6 @@
 name: Newsdesk Tripo + Rhubarb Lipsync
 
-# Uses cleaned Tripo presenter GLB when present, Edge TTS + Rhubarb lipsync, Blender render.
+# Presenter.glb (Mixamo) + Edge TTS + Rhubarb + Blender facial.
 # Manual only — does not touch D1 or content pipeline.
 on:
   workflow_dispatch:
@@ -32,7 +32,6 @@ jobs:
           python3 -m pip install --user --upgrade edge-tts
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-          # Rhubarb Lip Sync (Linux binary)
           RH_VER=1.13.0
           wget -q "https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v${RH_VER}/Rhubarb-Lip-Sync-${RH_VER}-Linux.zip" -O /tmp/rhubarb.zip
           sudo unzip -o /tmp/rhubarb.zip -d /opt/rhubarb
@@ -41,16 +40,18 @@ jobs:
           rhubarb --version || true
           blender --version | head -1
 
-      - name: Validate seed
+      - name: Validate seed + model
         run: |
           python3 -m json.tool "$SEED_FILE" > /tmp/seed.json
           CHAR=$(python3 -c "import json; print(json.load(open('/tmp/seed.json'))['character'])")
           python3 -m json.tool "$CHAR" > /dev/null
-          echo "OK seed=$SEED_FILE char=$CHAR"
-          if [ -f newsdesk/characters/models/presenter_cleaned.glb ]; then
-            echo "GLB present: $(du -h newsdesk/characters/models/presenter_cleaned.glb)"
+          GLB=$(python3 -c "import json; print(json.load(open('$CHAR')).get('model_glb',''))")
+          echo "OK seed=$SEED_FILE char=$CHAR glb=$GLB"
+          if [ -n "$GLB" ] && [ -f "$GLB" ]; then
+            echo "GLB present: $(du -h "$GLB")"
           else
-            echo "GLB missing — will fall back to procedural stickman"
+            echo "GLB missing at '$GLB' — stickman fallback"
+            ls -la newsdesk/characters/models/ || true
           fi
 
       - name: Generate narration (Edge TTS → WAV for Rhubarb)
@@ -69,7 +70,6 @@ jobs:
               import edge_tts
               await edge_tts.Communicate(text, voice).save(str(mp3))
           asyncio.run(main())
-          # Rhubarb prefers WAV
           subprocess.check_call([
               "ffmpeg", "-y", "-i", str(mp3),
               "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
@@ -89,7 +89,7 @@ jobs:
             || rhubarb -f json -o output/newsdesk/mouth.json output/newsdesk/narration.wav
           python3 -c "import json; d=json.load(open('output/newsdesk/mouth.json')); print('cues', len(d.get('mouthCues',[])))"
 
-      - name: Render desk scene (Blender + lipsync)
+      - name: Render desk scene (Blender + facial + lipsync)
         run: |
           mkdir -p output/newsdesk
           blender --background --factory-startup --python newsdesk/blender/render_newsdesk.py -- \
