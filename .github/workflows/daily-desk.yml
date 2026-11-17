@@ -45,9 +45,25 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
         run: node scripts/daily-desk.mjs
 
-      - name: Commit feed lock + sitemap touch (if changed)
+      - name: Social syndication (Bluesky + Tumblr, file-based)
+        env:
+          BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_IDENTIFIER }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          BLUESKY_AUTO_POST_ENABLED: ${{ secrets.BLUESKY_AUTO_POST_ENABLED }}
+          TUMBLR_BLOG_IDENTIFIER: ${{ secrets.TUMBLR_BLOG_IDENTIFIER }}
+          TUMBLR_CONSUMER_KEY: ${{ secrets.TUMBLR_CONSUMER_KEY }}
+          TUMBLR_CONSUMER_SECRET: ${{ secrets.TUMBLR_CONSUMER_SECRET }}
+          TUMBLR_TOKEN: ${{ secrets.TUMBLR_TOKEN }}
+          TUMBLR_TOKEN_SECRET: ${{ secrets.TUMBLR_TOKEN_SECRET }}
+          TUMBLR_ACCESS_TOKEN: ${{ secrets.TUMBLR_ACCESS_TOKEN }}
+          TUMBLR_AUTO_POST_ENABLED: ${{ secrets.TUMBLR_AUTO_POST_ENABLED }}
+        run: node scripts/social-syndicate-file.mjs
+        continue-on-error: true
+
+      - name: Commit feed lock + social state (if changed)
         run: |
           git config user.name "9jaBeacon Desk"
           git config user.email "desk@9jabeacon.name.ng"
@@ -55,6 +71,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No feed/lock changes"
           else
-            git commit -m "chore(desk): daily lock + feed refresh [skip ci]" || true
+            git commit -m "chore(desk): daily lock + feed + social state [skip ci]" || true
             git push || true
           fi
