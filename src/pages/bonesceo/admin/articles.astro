@@ -11,7 +11,7 @@ const queryToken = url.searchParams.get('token') || '';
 
 let token = '';
 const match = cookie.match(/bonesceo_session=([^;]+)/);
-if (match) token = match[1];
+if (match) token = decodeURIComponent(match[1]);
 else if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7).trim();
 else if (queryToken) token = queryToken;
 
@@ -22,7 +22,9 @@ const secretKey =
   '9jaBeacon_bonesceo_secret_key_2026_super_secure';
 
 const tokenVerification = token ? verifyAdminToken(token, secretKey) : { valid: false };
-if (!tokenVerification.valid && !cookie.includes('bonesceo_session=') && !queryToken) {
+
+// Strict: invalid/missing token always redirects — never open to public
+if (!tokenVerification.valid) {
   return Astro.redirect('/bonesceo/admin/login', 302);
 }
 
@@ -32,7 +34,7 @@ if (queryToken && tokenVerification.valid) {
     Astro.request.headers.get('x-forwarded-proto') === 'https';
   Astro.response.headers.set(
     'Set-Cookie',
-    `bonesceo_session=${queryToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`
+    `bonesceo_session=${encodeURIComponent(queryToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${isHttps ? '; Secure' : ''}`
   );
 }
 
@@ -41,10 +43,19 @@ const categories = await getCategories(db).catch(() => []);
 const catMap = Object.fromEntries((categories || []).map((c: any) => [c.id, c.name]));
 
 const siteBase = 'https://www.9jabeacon.name.ng';
+/** GSC URL Inspection deep-link (domain property + URL-prefix fallback params) */
 function gscInspectUrl(pageUrl: string) {
-  const resource = encodeURIComponent(siteBase + '/');
+  // Prefer domain property (covers www + apex). If your GSC is URL-prefix only, open GSC and switch property once.
+  const resourceDomain = encodeURIComponent('sc-domain:9jabeacon.name.ng');
+  const resourceWww = encodeURIComponent(siteBase + '/');
   const id = encodeURIComponent(pageUrl);
-  return `https://search.google.com/search-console/inspect?resource_id=${resource}&id=${id}`;
+  // Domain property first — works when Search Console is set up as Domain: 9jabeacon.name.ng
+  return `https://search.google.com/search-console/inspect?resource_id=${resourceDomain}&id=${id}`;
+}
+function gscInspectUrlPrefix(pageUrl: string) {
+  const resourceWww = encodeURIComponent(siteBase + '/');
+  const id = encodeURIComponent(pageUrl);
+  return `https://search.google.com/search-console/inspect?resource_id=${resourceWww}&id=${id}`;
 }
 ---
 
@@ -54,7 +65,7 @@ function gscInspectUrl(pageUrl: string) {
       <div>
         <a href="/bonesceo/admin" class="text-[11px] font-bold text-emerald-600 hover:underline">← Hub</a>
         <h1 class="text-xl font-black text-slate-900 dark:text-white mt-0.5">Articles</h1>
-        <p class="text-xs text-slate-500">Edit, write, change images · GSC inspect per story</p>
+        <p class="text-xs text-slate-500">Edit · view · request indexing in GSC</p>
       </div>
       <a
         href="/bonesceo/admin/article-edit"
@@ -64,13 +75,20 @@ function gscInspectUrl(pageUrl: string) {
       </a>
     </div>
 
+    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-3 py-2 text-[11px] text-slate-600 dark:text-slate-400">
+      <strong class="text-slate-800 dark:text-slate-200">GSC tip:</strong>
+      “Inspect” opens Google Search Console for that URL. You must be logged into the Google account that owns the property.
+      If domain property fails, use <em>Inspect (www)</em>. Pages must already return 200 publicly.
+    </div>
+
     <ul class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
       {(articles || []).length === 0 && (
         <li class="px-4 py-8 text-center text-xs text-slate-500">No articles</li>
       )}
       {(articles || []).map((a: any) => {
         const pageUrl = `${siteBase}/news/${a.slug}`;
-        const inspect = gscInspectUrl(pageUrl);
+        const inspectDomain = gscInspectUrl(pageUrl);
+        const inspectWww = gscInspectUrlPrefix(pageUrl);
         return (
         <li class="p-3 sm:p-4 flex gap-3 items-start">
           {a.image_url ? (
@@ -91,12 +109,19 @@ function gscInspectUrl(pageUrl: string) {
               <a href={`/bonesceo/admin/article-edit?id=${a.id}`} class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">Edit</a>
               <a href={`/news/${a.slug}`} target="_blank" rel="noopener" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold">View</a>
               <a
-                href={inspect}
+                href={inspectDomain}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold"
-                title="Open URL Inspection in Google Search Console"
-              >Inspect in Google</a>
+                title="GSC Inspect (domain property)"
+              >Inspect</a>
+              <a
+                href={inspectWww}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold"
+                title="GSC Inspect (www URL-prefix property)"
+              >Inspect (www)</a>
             </div>
           </div>
         </li>
