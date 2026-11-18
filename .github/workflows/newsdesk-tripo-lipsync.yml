@@ -82,7 +82,6 @@ jobs:
               "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
               str(wav)
           ])
-          # longer caption window for 18s piece
           (out / "captions.srt").write_text(
               "1\n00:00:00,000 --> 00:00:18,000\n" + text[:160] + "\n", encoding="utf-8"
           )
@@ -101,10 +100,19 @@ jobs:
         run: |
           mkdir -p output/newsdesk
           export PYTHONPATH="$(python3 -c 'import numpy,os; print(os.path.dirname(os.path.dirname(numpy.__file__)))'):${PYTHONPATH:-}"
+          set +e
           blender --background --factory-startup --python newsdesk/blender/render_newsdesk.py -- \
             --seed "$SEED_FILE" \
             --output output/newsdesk/scene-silent.mp4 \
             --lipsync output/newsdesk/mouth.json
+          BR=$?
+          set -e
+          if [ ! -f output/newsdesk/scene-silent.mp4 ]; then
+            echo "Blender exit=$BR — no scene-silent.mp4"
+            ls -la output/newsdesk/ || true
+            exit 1
+          fi
+          echo "Blender ok exit=$BR size=$(du -h output/newsdesk/scene-silent.mp4)"
 
       - name: Assemble final MP4
         run: |
