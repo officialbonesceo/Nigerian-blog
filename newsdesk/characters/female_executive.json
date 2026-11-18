@@ -1,0 +1,26 @@
+{
+  "id": "female_executive",
+  "display_name": "Ada Executive",
+  "role": "Main news desk presenter",
+  "voice": "en-NG-EzinneNeural",
+  "skin": [0.35, 0.22, 0.16],
+  "outfit": [0.08, 0.10, 0.14],
+  "accent": [0.10, 0.55, 0.45],
+  "default_pose": "seated_desk",
+  "model_glb": "assets/presenter/The_Female_Executive.glb",
+  "use_glb": true,
+  "skeleton": "makehuman_full",
+  "joint_count": 164,
+  "preferred_anims": [
+    "Sit idle (chair)",
+    "Talk with gestures",
+    "Talk",
+    "Idle",
+    "Point",
+    "Look around",
+    "Wave"
+  ],
+  "lipsync_morphs": true,
+  "jaw_bone": "jaw",
+  "head_bone": "head"
+}
