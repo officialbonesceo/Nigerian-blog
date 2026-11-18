@@ -88,7 +88,6 @@ def text_obj(name, body, loc, size=0.16, extrude=0.004, color=(1, 1, 1), align="
     ob.data.materials.append(tm)
     return ob
 
-# --- Broadcast studio v2 palette ---
 wall_c = tuple(env.get("wall", [0.07, 0.11, 0.16]))
 accent_c = tuple(env.get("accent", [0.10, 0.62, 0.48]))
 desk_c = tuple(env.get("desk", [0.09, 0.10, 0.12]))
@@ -106,30 +105,25 @@ m_ticker = mat("Ticker", (0.72, 0.06, 0.09), 0.28)
 m_white = mat("White", (0.95, 0.96, 0.97), 0.35)
 m_panel = mat("Panel", (0.16, 0.18, 0.22), 0.4)
 
-# Room
 cube("FLOOR", (0, 0.3, -0.04), (16, 12, 0.12), m_floor)
 cube("BACK", (0, 3.4, 2.2), (14, 0.14, 4.6), m_wall)
 cube("LEFT", (-6.2, 0.5, 2.2), (0.14, 8, 4.6), m_wall)
 cube("RIGHT", (6.2, 0.5, 2.2), (0.14, 8, 4.6), m_wall)
 cube("CEIL", (0, 0.5, 4.35), (14, 8, 0.1), mat("Ceil", (0.12, 0.14, 0.18), 0.7))
-# Accent architecture
 cube("STRIPE_TOP", (0, 3.28, 3.55), (10, 0.08, 0.18), m_accent)
 cube("STRIPE_MID", (0, 3.28, 0.55), (10, 0.06, 0.10), m_accent)
 cube("COL_L", (-4.2, 3.2, 2.0), (0.22, 0.22, 3.6), m_panel)
 cube("COL_R", (4.2, 3.2, 2.0), (0.22, 0.22, 3.6), m_panel)
 
-# Desk — covers lower body when seated
 cube("DESK_TOP", (0, -0.05, 0.98), (4.2, 1.45, 0.09), m_desk)
 cube("DESK_FRONT", (0, -0.72, 0.50), (4.1, 0.10, 0.95), m_desk)
 cube("DESK_EDGE", (0, -0.78, 0.95), (4.15, 0.06, 0.06), m_accent)
 cube("LOGO_PLATE", (0, -0.82, 0.52), (1.55, 0.05, 0.32), m_accent)
 text_obj("LOGO", "9jaBeacon", (0, -0.86, 0.52), size=0.14, color=(0.95, 0.98, 0.97))
 
-# Three glass-style boards behind presenter
 for i, (bx, by, bz) in enumerate([(-2.55, 2.85, 2.05), (0.0, 2.9, 2.2), (2.55, 2.85, 2.05)]):
     cube(f"BF{i}", (bx, by, bz), (1.85, 0.08, 1.25), m_board)
     cube(f"BP{i}", (bx, by - 0.06, bz), (1.68, 0.04, 1.08), m_screen)
-    # subtle glass rim
     cube(f"BG{i}", (bx, by - 0.02, bz), (1.78, 0.03, 1.18), m_glass, b=0.004)
     lab = boards_cfg[i].get("label", f"{i+1}") if i < len(boards_cfg) else f"{i+1}"
     text_obj(f"BL{i}", lab, (bx, by - 0.12, bz + 0.35), size=0.16, color=(0.95, 0.97, 0.98))
@@ -169,7 +163,6 @@ def import_glb(path):
         print("GLB_IMPORT_EMPTY", flush=True)
         return False
 
-    # Collect new actions from the GLB
     for a in bpy.data.actions:
         if a.name not in before_actions:
             imported_actions[a.name] = a
@@ -181,7 +174,6 @@ def import_glb(path):
     for o in after:
         if o.parent is None:
             o.parent = root
-    # Seated-at-desk placement (chair anims assume grounded hips)
     root.location = (0, 0.22, 0.0)
     root.scale = (0.95, 0.95, 0.95)
     root.rotation_euler = Euler((0, 0, 0), "XYZ")
@@ -215,7 +207,6 @@ def import_glb(path):
         except Exception:
             pass
 
-    # Mesh with shape keys (visemes / jawOpen)
     for o in after:
         if o.type == "MESH" and o.data.shape_keys and o.data.shape_keys.key_blocks:
             mesh_with_shapes = o
@@ -230,7 +221,6 @@ def resolve_action(name):
         return None
     if name in imported_actions:
         return imported_actions[name]
-    # partial / case-insensitive
     lower = {k.lower(): v for k, v in imported_actions.items()}
     if name.lower() in lower:
         return lower[name.lower()]
@@ -240,31 +230,34 @@ def resolve_action(name):
     return None
 
 def apply_animation_plan():
-    """NLA strip plan so Talk / Sit idle / Point play over the timeline."""
+    """Sequential body clips via NLA — one track per strip (no overlap)."""
     if armature_obj is None:
         print("ANIM_PLAN skip — no armature", flush=True)
         return
-    plan = anim_plan
+    plan = list(anim_plan) if anim_plan else []
     if not plan:
-        # default: sit idle then talk
         plan = [
-            {"name": "Sit idle (chair)", "start": 0.0, "end": DUR * 0.15},
-            {"name": "Talk with gestures", "start": DUR * 0.12, "end": DUR * 0.85},
-            {"name": "Sit idle (chair)", "start": DUR * 0.82, "end": DUR},
+            {"name": "Sit idle (chair)", "start": 0.0, "end": 2.5},
+            {"name": "Talk with gestures", "start": 2.5, "end": DUR - 2.0},
+            {"name": "Sit idle (chair)", "start": DUR - 2.0, "end": DUR},
         ]
-        # fallback names if missing
-        if resolve_action("Talk with gestures") is None:
-            plan = [{"name": "Talk", "start": 0.0, "end": DUR}]
-        if resolve_action("Sit idle (chair)") is None and resolve_action("Idle"):
-            plan = [{"name": "Idle", "start": 0.0, "end": DUR}]
+    # Prefer Talk if specific names missing
+    if resolve_action("Talk with gestures") is None and resolve_action("Talk"):
+        plan = [{"name": "Talk", "start": 0.0, "end": DUR}]
+    if resolve_action("Sit idle (chair)") is None and resolve_action("Idle") and len(plan) > 1:
+        for step in plan:
+            if "sit" in step.get("name", "").lower():
+                step["name"] = "Idle"
 
     if armature_obj.animation_data is None:
         armature_obj.animation_data_create()
-    # Clear prior NLA
-    track = armature_obj.animation_data.nla_tracks.new()
-    track.name = "NewsdeskPlan"
+    # Drop any previous NLA tracks
+    while armature_obj.animation_data.nla_tracks:
+        armature_obj.animation_data.nla_tracks.remove(armature_obj.animation_data.nla_tracks[0])
+    armature_obj.animation_data.action = None
 
     used = 0
+    cursor = 1
     for i, step in enumerate(plan):
         act = resolve_action(step.get("name", ""))
         if act is None:
@@ -272,18 +265,42 @@ def apply_animation_plan():
             continue
         f0 = max(1, int(float(step.get("start", 0)) * FPS) + 1)
         f1 = min(LAST, int(float(step.get("end", DUR)) * FPS))
+        # Force non-overlapping sequential placement if seed overlaps
+        if f0 < cursor:
+            f0 = cursor
         if f1 <= f0:
-            f1 = min(LAST, f0 + FPS)
-        strip = track.strips.new(act.name[:40], f0, act)
-        strip.frame_end = f1
-        strip.blend_type = "REPLACE"
-        strip.extrapolation = "HOLD"
-        used += 1
-        print("ANIM_STRIP", act.name, f0, f1, flush=True)
+            f1 = min(LAST, f0 + max(FPS, 12))
+        cursor = f1 + 1
 
-    # Also push action onto any mesh that came with the same anim (some exporters bind to mesh)
+        track = armature_obj.animation_data.nla_tracks.new()
+        track.name = f"clip_{i}_{act.name[:24]}"
+        try:
+            strip = track.strips.new(act.name[:40], f0, act)
+            strip.frame_end = f1
+            # loop action if strip longer than source
+            try:
+                strip.scale = 1.0
+                if hasattr(strip, "repeat"):
+                    src_len = max(1, int(act.frame_range[1] - act.frame_range[0]))
+                    need = max(1, f1 - f0)
+                    strip.repeat = max(1.0, need / float(src_len))
+            except Exception:
+                pass
+            strip.blend_type = "REPLACE"
+            strip.extrapolation = "HOLD"
+            used += 1
+            print("ANIM_STRIP", act.name, f0, f1, flush=True)
+        except Exception as e:
+            print("ANIM_STRIP_FAIL", act.name, e, flush=True)
+            # Fallback: assign as active action for whole range
+            try:
+                armature_obj.animation_data.action = act
+                used += 1
+                print("ANIM_ACTION_FALLBACK", act.name, flush=True)
+            except Exception as e2:
+                print("ANIM_ACTION_FAIL", e2, flush=True)
+
     if used == 0:
-        # last resort: assign first available action
         for nm in ("Talk with gestures", "Talk", "Idle", "Sit idle (chair)"):
             act = resolve_action(nm)
             if act:
@@ -354,7 +371,6 @@ def apply_facial_and_lipsync(path):
     sk = None
     if mesh_with_shapes and mesh_with_shapes.data.shape_keys:
         sk = mesh_with_shapes.data.shape_keys
-        # ensure animation data on shape keys
         if sk.animation_data is None:
             sk.animation_data_create()
 
@@ -376,13 +392,11 @@ def apply_facial_and_lipsync(path):
         t = (f - 1) / float(FPS)
         open_amt, cue_val = open_at_time(t)
 
-        # Morph: jawOpen + optional viseme
         if sk is not None:
             blocks = sk.key_blocks
             if "jawOpen" in blocks:
                 blocks["jawOpen"].value = min(1.0, open_amt)
                 blocks["jawOpen"].keyframe_insert(data_path="value", frame=f)
-            # reset visemes lightly
             for vn in ("viseme_aa", "viseme_E", "viseme_O", "viseme_U", "viseme_PP", "viseme_FF"):
                 if vn in blocks:
                     blocks[vn].value = 0.0
@@ -390,12 +404,11 @@ def apply_facial_and_lipsync(path):
             if target and target in blocks:
                 blocks[target].value = min(1.0, open_amt * 0.85)
                 blocks[target].keyframe_insert(data_path="value", frame=f)
-            # blink occasional
             if "eyeBlinkLeft" in blocks and f % (FPS * 3) < 2:
                 blocks["eyeBlinkLeft"].value = 1.0
-                blocks["eyeBlinkRight"].value = 1.0 if "eyeBlinkRight" in blocks else 0
                 blocks["eyeBlinkLeft"].keyframe_insert(data_path="value", frame=f)
                 if "eyeBlinkRight" in blocks:
+                    blocks["eyeBlinkRight"].value = 1.0
                     blocks["eyeBlinkRight"].keyframe_insert(data_path="value", frame=f)
 
         if jaw is not None:
@@ -434,7 +447,6 @@ def apply_facial_and_lipsync(path):
 
 apply_facial_and_lipsync(A.lipsync)
 
-# Lower-third headline + ticker
 cube("H_BG", (0, -1.55, 0.48), (6.4, 0.08, 0.32), mat("HBg", (0.06, 0.08, 0.10), 0.35))
 cube("H_ACCENT", (-2.9, -1.55, 0.48), (0.08, 0.09, 0.32), m_accent)
 text_obj("H_TXT", headline[:58], (0.15, -1.58, 0.48), size=0.14, color=(0.98, 0.98, 0.99))
@@ -448,7 +460,6 @@ if tx.animation_data and tx.animation_data.action:
         for kp in fc.keyframe_points:
             kp.interpolation = "LINEAR"
 
-# Camera — pro news framing (desk + boards + face)
 bpy.ops.object.camera_add(location=(0, -4.6, 1.55))
 cam = bpy.context.object
 cam.data.lens = 40
@@ -467,7 +478,6 @@ camkey(int(LAST * 0.3), (0.4, -4.3, 1.45), (0, 0.2, 1.5), 42)
 camkey(int(LAST * 0.65), (-0.3, -4.5, 1.65), (0, 0.2, 1.55), 46)
 camkey(LAST, (0, -4.2, 1.5), (0, 0.2, 1.45), 40)
 
-# Broadcast lighting: key + fill + rim
 bpy.ops.object.light_add(type="AREA", location=(-2.4, -2.6, 3.8))
 L = bpy.context.object
 L.data.energy = 1100
