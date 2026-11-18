@@ -1,0 +1,30 @@
+{
+  "project": {
+    "fps": 24,
+    "width": 1280,
+    "height": 720,
+    "duration_seconds": 18,
+    "title": "9jaBeacon Desk — Skills Over Certificates"
+  },
+  "character": "newsdesk/characters/female_executive.json",
+  "environment": "newsdesk/environments/studio_broadcast_v2.json",
+  "headline": "Skills over certificates: Alausa urges competent workforce",
+  "ticker": "Minister Alausa · skills drive growth · 87,000 trainees · 9jaBeacon · www.9jabeacon.name.ng",
+  "boards": [
+    { "label": "SKILLS", "color": [0.10, 0.55, 0.45] },
+    { "label": "EDU", "color": [0.15, 0.35, 0.55] },
+    { "label": "GROWTH", "color": [0.55, 0.35, 0.12] }
+  ],
+  "animation_plan": [
+    { "name": "Sit idle (chair)", "start": 0.0, "end": 2.0 },
+    { "name": "Talk with gestures", "start": 2.0, "end": 14.0 },
+    { "name": "Point", "start": 10.0, "end": 12.0 },
+    { "name": "Sit idle (chair)", "start": 14.0, "end": 18.0 }
+  ],
+  "narration": {
+    "text": "Good evening from the 9jaBeacon desk. Education Minister Tunji Alausa says Nigeria needs competent workers, not just paper certificates, to drive growth. Over eighty-seven thousand trainees have completed skills programmes. The minister is pushing practical training as a national priority. We will keep following this story.",
+    "voice": "en-NG-EzinneNeural"
+  },
+  "lipsync": true,
+  "article_slug": "skills-over-certificates-minister-alausa-advocates-for-competent-workfor-c02e"
+}
