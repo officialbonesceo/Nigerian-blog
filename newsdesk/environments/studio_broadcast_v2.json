@@ -1,0 +1,13 @@
+{
+  "id": "studio_broadcast_v2",
+  "name": "9jaBeacon broadcast desk v2",
+  "wall": [0.07, 0.11, 0.16],
+  "accent": [0.10, 0.62, 0.48],
+  "desk": [0.09, 0.10, 0.12],
+  "floor": [0.14, 0.15, 0.18],
+  "boards": 3,
+  "glassmorphism": true,
+  "ticker": { "bg": [0.72, 0.06, 0.09], "text": [1, 1, 1] },
+  "lighting": "broadcast_key_fill_rim",
+  "style": "modern_nigerian_newsroom"
+}
