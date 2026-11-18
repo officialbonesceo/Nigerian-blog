@@ -1,6 +1,6 @@
 name: Newsdesk Tripo + Rhubarb Lipsync
 
-# Presenter.glb (Mixamo) + Edge TTS + Rhubarb + Blender facial.
+# Female Executive GLB + Edge TTS + Rhubarb + Blender facial.
 # Manual only — does not touch D1 or content pipeline.
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
       seed:
         description: "Seed JSON path"
         required: true
-        default: "newsdesk/seeds/test_tripo_presenter.json"
+        default: "newsdesk/seeds/alausa_skills_executive.json"
 
 permissions:
   contents: read
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      SEED_FILE: ${{ github.event.inputs.seed || 'newsdesk/seeds/test_tripo_presenter.json' }}
+      SEED_FILE: ${{ github.event.inputs.seed || 'newsdesk/seeds/alausa_skills_executive.json' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,16 +32,10 @@ jobs:
           python3 -m pip install --user --upgrade edge-tts numpy
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-          # Ensure Blender's bundled Python can import numpy
           BLENDER_PY=$(blender --background --python-expr "import sys; print(sys.executable)" 2>/dev/null | tail -1 || true)
           if [ -n "$BLENDER_PY" ] && [ -x "$BLENDER_PY" ]; then
             "$BLENDER_PY" -m pip install --user numpy 2>/dev/null || true
           fi
-          # Also try site-packages path used by apt blender
-          for cand in /usr/lib/python3/*/dist-packages /usr/local/lib/python3.*/dist-packages; do
-            true
-          done
-          # Force system numpy visible: symlink into blender module path if needed
           python3 -c "import numpy; print('numpy', numpy.__version__)"
 
           RH_VER=1.13.0
@@ -62,8 +56,9 @@ jobs:
           if [ -n "$GLB" ] && [ -f "$GLB" ]; then
             echo "GLB present: $(du -h "$GLB")"
           else
-            echo "GLB missing at '$GLB' — stickman fallback"
-            ls -la newsdesk/characters/models/ || true
+            echo "GLB missing at '$GLB'"
+            ls -la assets/presenter/ newsdesk/characters/models/ || true
+            exit 1
           fi
 
       - name: Generate narration (Edge TTS → WAV for Rhubarb)
@@ -73,7 +68,7 @@ jobs:
           seed = json.load(open(os.environ["SEED_FILE"]))
           nar = seed.get("narration", {})
           text = nar.get("text") or seed.get("headline", "9jaBeacon newsdesk.")
-          voice = nar.get("voice", "en-NG-AbeoNeural")
+          voice = nar.get("voice", "en-NG-EzinneNeural")
           out = pathlib.Path("output/newsdesk")
           out.mkdir(parents=True, exist_ok=True)
           mp3 = out / "narration.mp3"
@@ -87,8 +82,9 @@ jobs:
               "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
               str(wav)
           ])
+          # longer caption window for 18s piece
           (out / "captions.srt").write_text(
-              "1\n00:00:00,000 --> 00:00:12,000\n" + text[:140] + "\n", encoding="utf-8"
+              "1\n00:00:00,000 --> 00:00:18,000\n" + text[:160] + "\n", encoding="utf-8"
           )
           print("narration ok", voice, "bytes", mp3.stat().st_size)
           PY
@@ -101,10 +97,9 @@ jobs:
             || rhubarb -f json -o output/newsdesk/mouth.json output/newsdesk/narration.wav
           python3 -c "import json; d=json.load(open('output/newsdesk/mouth.json')); print('cues', len(d.get('mouthCues',[])))"
 
-      - name: Render desk scene (Blender + facial + lipsync)
+      - name: Render desk scene (Blender + anims + facial)
         run: |
           mkdir -p output/newsdesk
-          # Prefer Blender with PYTHONPATH including system numpy
           export PYTHONPATH="$(python3 -c 'import numpy,os; print(os.path.dirname(os.path.dirname(numpy.__file__)))'):${PYTHONPATH:-}"
           blender --background --factory-startup --python newsdesk/blender/render_newsdesk.py -- \
             --seed "$SEED_FILE" \
