@@ -17,11 +17,13 @@ export const prerender = false;
 let latestArticles: Article[] = [];
 let d1Available = true;
 
-const page = Math.max(1, parseInt(Astro.url.searchParams.get('page') || '1', 10));
+// Prefer path /page/N (middleware redirects ?page= here). Fallback query only during transition.
+const pathPage = Astro.params.page ? parseInt(String(Astro.params.page), 10) : NaN;
+const queryPage = parseInt(Astro.url.searchParams.get('page') || '1', 10);
+const page = Math.max(1, Number.isFinite(pathPage) ? pathPage : (Number.isFinite(queryPage) ? queryPage : 1));
 const pageSize = 10;
 const offset = (page - 1) * pageSize;
 
-// ONE list query — derive hero / breaking / most-read from the same rows (was 6 parallel D1 calls).
 try {
   const d1 = getD1(Astro.locals);
   latestArticles = await getArticles(d1, { limit: pageSize + 1, offset });
@@ -38,8 +40,9 @@ const breakingNews = page === 1 ? currentFeed.filter((a) => Number(a.is_breaking
 const mostRead = page === 1 ? currentFeed.slice(0, 5) : [];
 
 const siteBase = 'https://www.9jabeacon.name.ng';
-const prevUrl = page > 1 ? (page === 2 ? `${siteBase}/` : `${siteBase}/?page=${page - 1}`) : undefined;
-const nextUrl = hasNextPage ? `${siteBase}/?page=${page + 1}` : undefined;
+const pageHref = (n: number) => (n <= 1 ? `${siteBase}/` : `${siteBase}/page/${n}`);
+const prevUrl = page > 1 ? pageHref(page - 1) : undefined;
+const nextUrl = hasNextPage ? pageHref(page + 1) : undefined;
 
 const useCarousel = page === 1 && heroSlides.length > 0;
 const DEFAULT_ADSTERRA_CONTAINER = 'container-4e5de78ab786afbf822590e03b1b657e';
@@ -47,11 +50,20 @@ const DEFAULT_ADSTERRA_SCRIPT =
   'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js';
 const smartLink =
   'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead';
+
+const title =
+  page > 1
+    ? `Latest Nigerian news — more stories | 9jaBeacon`
+    : '9jaBeacon - Your Trusted Light on Nigerian News';
+const description =
+  page > 1
+    ? 'More Nigerian news: politics, business, sports and world stories from 9jaBeacon.'
+    : "Nigeria's independent digital newsroom. Fast, verified Nigerian news.";
 ---
 
 <Layout
-  title={page > 1 ? `9jaBeacon - Verified Nigerian News (Page ${page})` : '9jaBeacon - Your Trusted Light on Nigerian News'}
-  description={page > 1 ? `Explore page ${page} of verified Nigerian news on 9jaBeacon.` : "Nigeria's independent digital newsroom. Fast, verified Nigerian news."}
+  title={title}
+  description={description}
   prevUrl={prevUrl}
   nextUrl={nextUrl}
   activeNav="home"
@@ -107,10 +119,10 @@ const smartLink =
       <div class="flex items-center justify-between">
         <h2 class="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>{page === 1 ? 'Latest News' : `News Archive (Page ${page})`}</span>
+          <span>{page === 1 ? 'Latest News' : 'More stories'}</span>
         </h2>
         <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">
-          {page > 1 ? `Page ${page}` : `${currentFeed.length} stories`}
+          {page > 1 ? `Archive` : `${currentFeed.length} stories`}
         </span>
       </div>
       <div class="space-y-2.5">
@@ -129,13 +141,13 @@ const smartLink =
 
       <div class="pt-4 pb-2 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
         {page > 1 ? (
-          <a href={page === 2 ? '/' : `/?page=${page - 1}`} class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300">&larr; Previous</a>
+          <a href={page === 2 ? '/' : `/page/${page - 1}`} class="px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300">&larr; Previous</a>
         ) : (
           <span class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 text-xs font-bold text-slate-400 cursor-not-allowed">&larr; Previous</span>
         )}
         <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white text-xs font-bold font-mono flex items-center justify-center">{page}</span>
         {hasNextPage ? (
-          <a href={`/?page=${page + 1}`} class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">Next &rarr;</a>
+          <a href={`/page/${page + 1}`} class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">Next &rarr;</a>
         ) : (
           <span class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 text-xs font-bold text-slate-400 cursor-not-allowed">Next &rarr;</span>
         )}
