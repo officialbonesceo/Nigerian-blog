@@ -1,26 +1,62 @@
 import type { APIRoute } from 'astro';
+import { getD1 } from '../lib/runtime-db';
 
 export const prerender = false;
 
-/**
- * D1-free fallback. Prefer static public/sitemap.xml after deploy.
- */
-export const GET: APIRoute = async () => {
-  const base = 'https://www.9jabeacon.name.ng';
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>${base}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>
-  <url><loc>${base}/category/naija-news</loc><changefreq>daily</changefreq><priority>0.85</priority></url>
-  <url><loc>${base}/category/business</loc><changefreq>daily</changefreq><priority>0.85</priority></url>
-  <url><loc>${base}/category/sports</loc><changefreq>daily</changefreq><priority>0.85</priority></url>
-  <url><loc>${base}/category/world</loc><changefreq>daily</changefreq><priority>0.85</priority></url>
-  <url><loc>${base}/market-rates</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
-  <url><loc>${base}/about</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
-</urlset>`;
+const BASE = 'https://www.9jabeacon.name.ng';
+
+function esc(s: string) {
+  return s.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"');
+}
+
+function urlNode(loc: string, lastmod?: string | null, changefreq = 'daily', priority = '0.8') {
+  const lm = lastmod ? `\n    <lastmod>${esc(String(lastmod).slice(0, 10))}</lastmod>` : '';
+  return `  <url>\n    <loc>${esc(loc)}</loc>${lm}\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+}
+
+export const GET: APIRoute = async ({ locals }) => {
+  const staticUrls = [
+    urlNode(`${BASE}/`, null, 'hourly', '1.0'),
+    urlNode(`${BASE}/market-rates`, null, 'hourly', '0.9'),
+    urlNode(`${BASE}/about`, null, 'weekly', '0.6'),
+    urlNode(`${BASE}/contact`, null, 'monthly', '0.5'),
+    urlNode(`${BASE}/privacy`, null, 'monthly', '0.4'),
+    urlNode(`${BASE}/terms`, null, 'monthly', '0.4'),
+    urlNode(`${BASE}/category/naija-news`, null, 'daily', '0.85'),
+    urlNode(`${BASE}/category/business`, null, 'daily', '0.85'),
+    urlNode(`${BASE}/category/sports`, null, 'daily', '0.85'),
+    urlNode(`${BASE}/category/world`, null, 'daily', '0.85'),
+  ];
+
+  const articleUrls: string[] = [];
+  try {
+    const db = getD1(locals as any);
+    // Lightweight: slug + date only. Cap at 2000 to protect D1 reads.
+    const res = await db
+      .prepare(
+        `SELECT slug, published_at FROM articles
+         WHERE status = 'published'
+           AND slug IS NOT NULL AND length(slug) > 3
+           AND title NOT LIKE '%[stub]%'
+         ORDER BY published_at DESC
+         LIMIT 2000`
+      )
+      .all<{ slug: string; published_at: string }>();
+    for (const row of res?.results || []) {
+      const slug = String(row.slug || '').trim();
+      if (!slug || slug.includes('?') || slug.includes('#')) continue;
+      articleUrls.push(urlNode(`${BASE}/news/${slug}`, row.published_at, 'daily', '0.9'));
+    }
+  } catch (e) {
+    console.warn('[sitemap] D1 unavailable, static-only', e);
+  }
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...staticUrls, ...articleUrls].join('\n')}\n</urlset>\n`;
+
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, s-maxage=86400',
+      'Cache-Control': 'public, max-age=1800, s-maxage=3600',
     },
   });
 };
