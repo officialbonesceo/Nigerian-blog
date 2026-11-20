@@ -1,30 +1,40 @@
-/** Category-specific SEO helpers for article pages */
+/** Category-specific SEO helpers */
 
 export type CategorySlug = 'naija-news' | 'business' | 'sports' | 'world' | string;
 
 const CATEGORY_DEFAULTS: Record<
   string,
-  { section: string; keywords: string[] }
+  { section: string; keywords: string[]; description: string }
 > = {
   'naija-news': {
     section: 'Nigeria News',
     keywords: ['Nigeria news', 'Naija news', 'Lagos', 'Abuja'],
+    description:
+      'Latest Nigerian news: politics, security, states and everyday stories across the country. Clear updates from 9jaBeacon.',
   },
   business: {
     section: 'Business',
     keywords: ['Nigeria business', 'economy', 'Naira', 'CBN', 'markets'],
+    description:
+      'Nigeria business and economy news: naira, markets, companies, policy and hustle stories explained simply on 9jaBeacon.',
   },
   sports: {
     section: 'Sports',
     keywords: ['Nigeria sports', 'football', 'NPFL', 'Super Eagles'],
+    description:
+      'Nigerian and African sports news: Super Eagles, NPFL, athletics and major fixtures. Scores and context on 9jaBeacon.',
   },
   world: {
     section: 'World',
     keywords: ['world news', 'international', 'Africa'],
+    description:
+      'World news that matters to Nigerian readers: Africa, global politics, tech and culture. Straight reporting on 9jaBeacon.',
   },
   'money-hustle': {
     section: 'Business',
     keywords: ['Nigeria business', 'economy', 'Naira', 'CBN', 'markets'],
+    description:
+      'Nigeria business and economy news: naira, markets, companies, policy and hustle stories explained simply on 9jaBeacon.',
   },
 };
 
@@ -39,7 +49,6 @@ export function getCategorySeo(slug?: string | null) {
   return CATEGORY_DEFAULTS[key] || CATEGORY_DEFAULTS['naija-news'];
 }
 
-/** Pull keywords written by daily-desk into HTML comments */
 export function extractEmbeddedKeywords(content?: string | null): string[] {
   if (!content) return [];
   const m = content.match(/<!--\s*seo-keywords:\s*([^-][\s\S]*?)\s*-->/i);
@@ -57,8 +66,10 @@ export function buildMetaDescription(
   categoryLabel: string
 ): string {
   let base = (summary || title || '').replace(/\s+/g, ' ').trim();
+  // Strip bylines like "By Name, CITY" that Ahrefs flagged as weak meta
+  base = base.replace(/^By\s+[^.]{2,60}\.?\s*/i, '').trim();
   if (base.length < 120) {
-    const pad = ` ${categoryLabel} coverage on 9jaBeacon.`;
+    const pad = ` ${categoryLabel} coverage on 9jaBeacon — Nigerian news for everyday readers.`;
     base = (base + pad).replace(/\s+/g, ' ').trim();
   }
   if (base.length > 160) return base.slice(0, 157).trimEnd() + '...';
