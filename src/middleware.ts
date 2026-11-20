@@ -19,23 +19,38 @@ export const onRequest = defineMiddleware(async ({ request, url, redirect }, nex
     return redirect(`${cleanPath}${url.search}`, 301);
   }
 
-  // 3. Category normalisation
+  // 3. Query pagination → clean path (/page/N, /category/x/page/N)
+  const pageQ = url.searchParams.get('page');
+  if (pageQ && /^\d+$/.test(pageQ)) {
+    const p = Math.max(1, parseInt(pageQ, 10));
+    if (pathname === '/' || pathname === '') {
+      if (p <= 1) return redirect('/', 301);
+      return redirect(`/page/${p}`, 301);
+    }
+    const cat = pathname.match(/^\/category\/([a-z0-9-]+)$/i);
+    if (cat) {
+      if (p <= 1) return redirect(`/category/${cat[1]}`, 301);
+      return redirect(`/category/${cat[1]}/page/${p}`, 301);
+    }
+  }
+
+  // 4. Category normalisation
   if (pathname === '/category/money-hustle' || pathname === '/category/money' || pathname === '/category/hustle') {
     return redirect(`/category/business${url.search}`, 301);
   }
 
-  // 4. Feed normalisation
+  // 5. Feed normalisation
   if (pathname === '/feed' || pathname === '/rss') {
     return redirect(`/rss.xml`, 301);
   }
 
-  // 5. GSC "Page with redirect" / removed sections → home (301)
+  // 6. GSC "Page with redirect" / removed sections → home (301)
   if (
     pathname === '/presenters' ||
     pathname === '/videos' ||
     pathname.startsWith('/videos/')
   ) {
-    return redirect(`/${url.search}`, 301);
+    return redirect(`/`, 301);
   }
 
   // Autonomous background ingest removed — only Daily Desk workflow may write articles.
