@@ -1,0 +1,48 @@
+name: Bluesky Niche Engagement
+
+# Safe growth: max 30 follows/UTC day, ~2 follows/run, 1 like/run.
+# Hourly schedule spreads activity; hard daily cap prevents spam even on manual dispatch.
+on:
+  schedule:
+    # Every hour (UTC) — ~24 windows/day × 2 follows ≤ 30 hard cap
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_note:
+        description: 'Optional note (no effect on limits)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bluesky-engage
+  cancel-in-progress: false
+
+jobs:
+  engage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run engagement (Nigeria niche)
+        env:
+          BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_IDENTIFIER }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+        run: npx --yes tsx scripts/bluesky-engage.ts
+
+      - name: Persist daily state
+        run: |
+          if [ -f data/bluesky-engage-state.json ]; then
+            git config user.name "9jaBeacon Bot"
+            git config user.email "bot@9jabeacon.name.ng"
+            git add data/bluesky-engage-state.json
+            git diff --staged --quiet || git commit -m "chore(bluesky): engagement state $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push || echo "push skipped (no changes or protected)"
+          fi
