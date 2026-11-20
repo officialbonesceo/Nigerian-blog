@@ -4,6 +4,7 @@ import ArticleCard from '../../components/ArticleCard.astro';
 import TopStoryCard from '../../components/TopStoryCard.astro';
 import AdSlot from '../../components/AdSlot.astro';
 import { getD1, getCategoryBySlug, getArticles, getCategories } from '../../lib/runtime-db';
+import { getCategorySeo } from '../../lib/category-seo';
 
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect('/');
@@ -22,6 +23,7 @@ if (!category) {
 const page = Math.max(1, parseInt(Astro.url.searchParams.get('page') || '1', 10));
 const pageSize = 8;
 const offset = (page - 1) * pageSize;
+const catSeo = getCategorySeo(slug);
 
 const [allCategories, fetchedArticles] = await Promise.all([
   getCategories(d1),
@@ -46,8 +48,8 @@ const title =
     : `${category.name} - 9jaBeacon`;
 const description =
   page > 1
-    ? `More ${category.name} stories from 9jaBeacon.`
-    : category.description || `${category.name} stories on 9jaBeacon`;
+    ? `More ${category.name} stories for Nigerian readers on 9jaBeacon.`
+    : category.description || catSeo.description;
 ---
 
 <Layout
@@ -65,9 +67,7 @@ const description =
           <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Category</span>
         </div>
         <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">{category.name}</h1>
-        {category.description && (
-          <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mt-1">{category.description}</p>
-        )}
+        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mt-1">{category.description || catSeo.description}</p>
       </div>
     </div>
 
