@@ -1,0 +1,12 @@
+---
+// Reuse home feed logic for /page/2, /page/3, ...
+import IndexPage from '../index.astro';
+export const prerender = false;
+const { page } = Astro.params;
+const n = Math.max(1, parseInt(String(page || '1'), 10) || 1);
+if (n <= 1) {
+  return Astro.redirect('/', 301);
+}
+// index.astro reads Astro.params.page when present
+---
+<IndexPage />
