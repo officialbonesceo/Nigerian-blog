@@ -1,6 +1,14 @@
 {
-  "date": "",
-  "follows": [],
-  "likes": [],
-  "followedEver": []
+  "date": "2026-11-20",
+  "follows": [
+    "did:plc:yvu2cdtvbjcuervvcvyuz6hl",
+    "did:plc:ckijfrr6ai6vwhdgdbho4sob"
+  ],
+  "likes": [
+    "at://did:plc:spjdchwn5opevbg34g5io3s2/app.bsky.feed.post/3n2mtrsy32v2q"
+  ],
+  "followedEver": [
+    "did:plc:yvu2cdtvbjcuervvcvyuz6hl",
+    "did:plc:ckijfrr6ai6vwhdgdbho4sob"
+  ]
 }
