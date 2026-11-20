@@ -15,18 +15,31 @@ function urlNode(loc: string, lastmod?: string | null, changefreq = 'daily', pri
 }
 
 export const GET: APIRoute = async ({ locals }) => {
-  const staticUrls = [
+  const staticUrls: string[] = [
     urlNode(`${BASE}/`, null, 'hourly', '1.0'),
     urlNode(`${BASE}/market-rates`, null, 'hourly', '0.9'),
     urlNode(`${BASE}/about`, null, 'weekly', '0.6'),
     urlNode(`${BASE}/contact`, null, 'monthly', '0.5'),
     urlNode(`${BASE}/privacy`, null, 'monthly', '0.4'),
     urlNode(`${BASE}/terms`, null, 'monthly', '0.4'),
+    urlNode(`${BASE}/topics`, null, 'weekly', '0.7'),
     urlNode(`${BASE}/category/naija-news`, null, 'daily', '0.85'),
     urlNode(`${BASE}/category/business`, null, 'daily', '0.85'),
     urlNode(`${BASE}/category/sports`, null, 'daily', '0.85'),
     urlNode(`${BASE}/category/world`, null, 'daily', '0.85'),
   ];
+
+  // Home archive pages (static ranges — no DB)
+  for (let p = 2; p <= 25; p++) {
+    staticUrls.push(urlNode(`${BASE}/page/${p}`, null, 'daily', '0.5'));
+  }
+
+  // Category archive pages
+  for (const cat of ['naija-news', 'business', 'sports', 'world']) {
+    for (let p = 2; p <= 12; p++) {
+      staticUrls.push(urlNode(`${BASE}/category/${cat}/page/${p}`, null, 'daily', '0.5'));
+    }
+  }
 
   const articleUrls: string[] = [];
   try {
