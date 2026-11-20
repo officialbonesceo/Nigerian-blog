@@ -46,10 +46,14 @@ const title =
   page > 1
     ? `${category.name} news — more stories | 9jaBeacon`
     : `${category.name} - 9jaBeacon`;
+// Prefer the long SEO description; pad short DB descriptions
+const baseDesc = (catSeo.description || category.description || `${category.name} news on 9jaBeacon`).trim();
 const description =
   page > 1
-    ? `More ${category.name} stories for Nigerian readers on 9jaBeacon.`
-    : category.description || catSeo.description;
+    ? `More ${category.name} stories for Nigerian readers on 9jaBeacon. ${baseDesc.slice(0, 100)}`
+    : baseDesc.length >= 120
+      ? baseDesc
+      : `${baseDesc} Clear updates from 9jaBeacon for everyday Nigerian readers.`;
 ---
 
 <Layout
