@@ -1,12 +1,12 @@
 name: Newsdesk Tripo + Rhubarb Lipsync
 
-# Female Executive GLB + Edge TTS + Rhubarb + Blender facial.
+# Female Executive + Newsdesk.glb + Edge TTS + Rhubarb + Blender facial.
 # Manual only — does not touch D1 or content pipeline.
 on:
   workflow_dispatch:
     inputs:
       seed:
-        description: "Seed JSON path (ci_fast_executive.json for CI; alausa_skills_executive.json for full)"
+        description: "Seed JSON path"
         required: true
         default: "newsdesk/seeds/ci_fast_executive.json"
 
@@ -46,19 +46,26 @@ jobs:
           rhubarb --version || true
           blender --version | head -1
 
-      - name: Validate seed + model
+      - name: Validate seed + models
         run: |
           python3 -m json.tool "$SEED_FILE" > /tmp/seed.json
           CHAR=$(python3 -c "import json; print(json.load(open('/tmp/seed.json'))['character'])")
           python3 -m json.tool "$CHAR" > /dev/null
           GLB=$(python3 -c "import json; print(json.load(open('$CHAR')).get('model_glb',''))")
-          echo "OK seed=$SEED_FILE char=$CHAR glb=$GLB"
+          DESK=$(python3 -c "import json; print(json.load(open('/tmp/seed.json')).get('desk_glb','assets/presenter/Newsdesk.glb'))")
+          echo "OK seed=$SEED_FILE char=$CHAR glb=$GLB desk=$DESK"
           if [ -n "$GLB" ] && [ -f "$GLB" ]; then
-            echo "GLB present: $(du -h "$GLB")"
+            echo "Character GLB: $(du -h "$GLB")"
           else
-            echo "GLB missing at '$GLB'"
-            ls -la assets/presenter/ newsdesk/characters/models/ || true
+            echo "Character GLB missing at '$GLB'"
+            ls -la assets/presenter/ || true
             exit 1
+          fi
+          if [ -f "$DESK" ]; then
+            echo "Desk GLB: $(du -h "$DESK")"
+          else
+            echo "Desk GLB missing at '$DESK' — continuing without desk"
+            ls -la assets/presenter/ || true
           fi
 
       - name: Generate narration (Edge TTS → WAV for Rhubarb)
@@ -82,9 +89,6 @@ jobs:
               "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
               str(wav)
           ])
-          (out / "captions.srt").write_text(
-              "1\n00:00:00,000 --> 00:00:12,000\n" + text[:160] + "\n", encoding="utf-8"
-          )
           print("narration ok", voice, "bytes", mp3.stat().st_size)
           PY
 
@@ -114,12 +118,11 @@ jobs:
           fi
           echo "Blender ok exit=$BR size=$(du -h output/newsdesk/scene-silent.mp4)"
 
-      - name: Assemble final MP4
+      - name: Assemble final MP4 (no captions)
         run: |
           test -f output/newsdesk/scene-silent.mp4 || { echo "Render produced no video"; ls -la output/newsdesk/; exit 1; }
           ffmpeg -y -i output/newsdesk/scene-silent.mp4 -i output/newsdesk/narration.mp3 \
-            -vf "subtitles=output/newsdesk/captions.srt:force_style='FontName=DejaVu Sans,FontSize=16,PrimaryColour=&H00FFFFFF,OutlineColour=&H00101010,BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=48'" \
-            -map 0:v:0 -map 1:a:0 -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p \
+            -map 0:v:0 -map 1:a:0 -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p \
             -c:a aac -b:a 128k -shortest -movflags +faststart \
             output/newsdesk/newsdesk-tripo.mp4
           ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 output/newsdesk/newsdesk-tripo.mp4
