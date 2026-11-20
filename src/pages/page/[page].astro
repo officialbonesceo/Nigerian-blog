@@ -4,6 +4,6 @@ const n = Math.max(1, parseInt(String(Astro.params.page || '1'), 10) || 1);
 if (n <= 1) {
   return Astro.redirect('/', 301);
 }
-// Serve home feed while browser URL stays /page/N
-return Astro.rewrite(`/?page=${n}`);
+// Internal rewrite only. fromPath=1 tells middleware not to bounce back to /page/N.
+return Astro.rewrite(`/?page=${n}&fromPath=1`);
 ---
