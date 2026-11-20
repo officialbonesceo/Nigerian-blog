@@ -1,7 +1,7 @@
 /**
  * 9jaBeacon Bluesky engagement (follows + likes) — Nigerian niche only.
  * Hard limits: max 30 follows / UTC day, max 2 follows / run, max 1 like / run.
- * Safe against rate limits; never spam. Uses existing BLUESKY_* secrets.
+ * Strict bio/handle filters so we never follow random foreigners from weak queries (e.g. "Abuja").
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -11,15 +11,20 @@ const MAX_FOLLOWS_PER_DAY = 30;
 const MAX_FOLLOWS_PER_RUN = 2;
 const MAX_LIKES_PER_RUN = 1;
 
+/** Prefer multi-word Nigerian queries so search is less noisy than single city names. */
 const NICHE_QUERIES = [
   'Nigeria news',
   'Naija news',
-  'Lagos',
-  'Abuja',
   'Nigerian politics',
   'CBN Naira',
   'Super Eagles',
   'Naija business',
+  'Lagos Nigeria',
+  'Abuja Nigeria',
+  'Tinubu Nigeria',
+  'INEC Nigeria',
+  'Nigerian economy',
+  'Port Harcourt Nigeria',
 ];
 
 const STATE_PATH = path.join(process.cwd(), 'data', 'bluesky-engage-state.json');
@@ -103,14 +108,59 @@ async function api(
   return data;
 }
 
-function looksNigerian(text: string): boolean {
-  const t = (text || '').toLowerCase();
-  const keys = [
-    'nigeria', 'naija', 'lagos', 'abuja', 'naira', 'cbn', 'tinubu', 'inec',
-    'super eagles', 'npfl', 'portharcourt', 'port harcourt', 'kano', 'ibadan',
-    '9ja', 'nigerian', 'efcc', 'nnpc', 'dangote',
-  ];
-  return keys.some((k) => t.includes(k));
+const NG_KEYS = [
+  'nigeria', 'naija', 'nigerian', 'lagos', 'abuja', 'naira', 'cbn', 'tinubu',
+  'inec', 'super eagles', 'npfl', 'port harcourt', 'portharcourt', 'kano',
+  'ibadan', '9ja', 'efcc', 'nnpc', 'dangote', 'fg nigeria', 'aso rock',
+  'rivers state', 'anambra', 'enugu', 'oyo state', 'kaduna', 'japa',
+  'naira life', 'nigerian news', 'channelstv', 'arise news', 'punch nigeria',
+];
+
+const FOREIGN_HARD = [
+  'russia', 'russian', 'moscow', 'ukraine', 'kyiv', 'belarus',
+  'china only', 'beijing', 'iran', 'tehran', 'north korea',
+];
+
+function textBlob(...parts: (string | undefined | null)[]): string {
+  return parts.filter(Boolean).join(' ').toLowerCase();
+}
+
+function ngScore(text: string): number {
+  const t = text.toLowerCase();
+  let score = 0;
+  for (const k of NG_KEYS) {
+    if (t.includes(k)) score += k.length > 8 ? 2 : 1;
+  }
+  return score;
+}
+
+function isForeignOnly(text: string): boolean {
+  const t = text.toLowerCase();
+  const hasForeign = FOREIGN_HARD.some((k) => t.includes(k));
+  if (!hasForeign) return false;
+  return ngScore(t) < 2;
+}
+
+function isNigerianProfile(actor: any): boolean {
+  const handle = (actor.handle || '').toLowerCase();
+  const blob = textBlob(actor.displayName, actor.description, handle);
+  if (isForeignOnly(blob)) return false;
+  if (ngScore(blob) >= 2) return true;
+  if (['nigeria', 'naija', 'lagos', 'abuja', '9ja', 'naira'].some((k) => handle.includes(k))) {
+    return true;
+  }
+  return false;
+}
+
+function isActiveEnough(actor: any): boolean {
+  const followers = Number(actor.followersCount ?? actor.followers ?? 0);
+  const posts = Number(actor.postsCount ?? actor.posts ?? 0);
+  if (followers === 0 && posts === 0) {
+    const blob = textBlob(actor.displayName, actor.description, actor.handle);
+    return ngScore(blob) >= 3 || (actor.description || '').length > 40;
+  }
+  if (posts === 0 && followers < 5) return false;
+  return true;
 }
 
 async function main() {
@@ -128,7 +178,9 @@ async function main() {
   const followsLeftToday = Math.max(0, MAX_FOLLOWS_PER_DAY - state.follows.length);
   const followsThisRun = Math.min(MAX_FOLLOWS_PER_RUN, followsLeftToday);
 
-  console.log(`Day ${state.date}: follows today ${state.follows.length}/${MAX_FOLLOWS_PER_DAY}, room this run ${followsThisRun}`);
+  console.log(
+    `Day ${state.date}: follows today ${state.follows.length}/${MAX_FOLLOWS_PER_DAY}, room this run ${followsThisRun}`
+  );
 
   if (followsThisRun === 0 && MAX_LIKES_PER_RUN === 0) {
     console.log('Daily follow budget exhausted. Exiting cleanly.');
@@ -141,57 +193,91 @@ async function main() {
   let followed = 0;
   if (followsThisRun > 0) {
     const q = NICHE_QUERIES[Math.floor(Math.random() * NICHE_QUERIES.length)];
-    console.log('Search actors:', q);
+    console.log('Search posts for authors:', q);
+    const candidates: any[] = [];
     try {
-      const actors = await api(session.accessJwt, 'GET', 'app.bsky.actor.searchActors', undefined, {
+      const feed = await api(session.accessJwt, 'GET', 'app.bsky.feed.searchPosts', undefined, {
         q,
-        limit: '25',
+        limit: '30',
+        sort: 'latest',
       });
-      const list: any[] = actors.actors || [];
-      for (const actor of list) {
-        if (followed >= followsThisRun) break;
-        const did = actor.did as string;
-        if (!did || did === session.did) continue;
-        if (state.follows.includes(did) || state.followedEver.includes(did)) continue;
-        const bio = `${actor.displayName || ''} ${actor.description || ''} ${actor.handle || ''}`;
-        if (!looksNigerian(bio) && !looksNigerian(q)) continue;
-        if (actor.viewer?.following) {
-          state.followedEver.push(did);
-          continue;
-        }
-        try {
-          await api(session.accessJwt, 'POST', 'com.atproto.repo.createRecord', {
-            repo: session.did,
-            collection: 'app.bsky.graph.follow',
-            record: {
-              $type: 'app.bsky.graph.follow',
-              subject: did,
-              createdAt: new Date().toISOString(),
-            },
-          });
-          state.follows.push(did);
-          state.followedEver.push(did);
-          followed++;
-          console.log(`Followed @${actor.handle} (${did})`);
-          await new Promise((r) => setTimeout(r, 4000 + Math.random() * 3000));
-        } catch (e: any) {
-          console.warn('Follow skip:', actor.handle, e.message || e);
-          if (e.status === 429) break;
-        }
+      for (const p of feed.posts || []) {
+        const a = p.author;
+        if (!a?.did) continue;
+        if (!isNigerianProfile(a)) continue;
+        if (!isActiveEnough(a)) continue;
+        candidates.push(a);
       }
     } catch (e: any) {
-      console.warn('Actor search failed:', e.message || e);
+      console.warn('Post-author search failed:', e.message || e);
+    }
+
+    if (candidates.length < followsThisRun * 3) {
+      const aq = NICHE_QUERIES[Math.floor(Math.random() * NICHE_QUERIES.length)];
+      console.log('Search actors fallback:', aq);
+      try {
+        const actors = await api(session.accessJwt, 'GET', 'app.bsky.actor.searchActors', undefined, {
+          q: aq,
+          limit: '30',
+        });
+        for (const actor of actors.actors || []) {
+          if (!isNigerianProfile(actor)) continue;
+          if (!isActiveEnough(actor)) continue;
+          candidates.push(actor);
+        }
+      } catch (e: any) {
+        console.warn('Actor search failed:', e.message || e);
+      }
+    }
+
+    const seen = new Set<string>();
+    const unique = candidates.filter((a) => {
+      if (!a.did || seen.has(a.did)) return false;
+      seen.add(a.did);
+      return true;
+    });
+
+    for (const actor of unique) {
+      if (followed >= followsThisRun) break;
+      const did = actor.did as string;
+      if (did === session.did) continue;
+      if (state.follows.includes(did) || state.followedEver.includes(did)) continue;
+      if (actor.viewer?.following) {
+        state.followedEver.push(did);
+        continue;
+      }
+      try {
+        await api(session.accessJwt, 'POST', 'com.atproto.repo.createRecord', {
+          repo: session.did,
+          collection: 'app.bsky.graph.follow',
+          record: {
+            $type: 'app.bsky.graph.follow',
+            subject: did,
+            createdAt: new Date().toISOString(),
+          },
+        });
+        state.follows.push(did);
+        state.followedEver.push(did);
+        followed++;
+        console.log(
+          `Followed @${actor.handle} score=${ngScore(textBlob(actor.displayName, actor.description, actor.handle))} (${did})`
+        );
+        await new Promise((r) => setTimeout(r, 4000 + Math.random() * 3000));
+      } catch (e: any) {
+        console.warn('Follow skip:', actor.handle, e.message || e);
+        if (e.status === 429) break;
+      }
     }
   }
 
   let liked = 0;
   if (MAX_LIKES_PER_RUN > 0) {
     const q = NICHE_QUERIES[Math.floor(Math.random() * NICHE_QUERIES.length)];
-    console.log('Search posts:', q);
+    console.log('Search posts to like:', q);
     try {
       const feed = await api(session.accessJwt, 'GET', 'app.bsky.feed.searchPosts', undefined, {
         q,
-        limit: '20',
+        limit: '25',
         sort: 'latest',
       });
       const posts: any[] = feed.posts || [];
@@ -204,9 +290,9 @@ async function main() {
         if (!uri || !cid) continue;
         if (state.likes.includes(uri)) continue;
         if (authorDid === session.did) continue;
-        if (!looksNigerian(text) && !looksNigerian(p.author?.handle || '') && !looksNigerian(p.author?.displayName || '')) {
-          continue;
-        }
+        const authorBlob = textBlob(p.author?.handle, p.author?.displayName, p.author?.description);
+        if (ngScore(text) < 1 && ngScore(authorBlob) < 2) continue;
+        if (isForeignOnly(text + ' ' + authorBlob)) continue;
         if (p.viewer?.like) continue;
         try {
           await api(session.accessJwt, 'POST', 'com.atproto.repo.createRecord', {
