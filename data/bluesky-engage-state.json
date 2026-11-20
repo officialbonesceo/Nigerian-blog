@@ -3,15 +3,18 @@
   "follows": [
     "did:plc:yvu2cdtvbjcuervvcvyuz6hl",
     "did:plc:ckijfrr6ai6vwhdgdbho4sob",
-    "did:plc:spjdchwn5opevbg34g5io3s2"
+    "did:plc:spjdchwn5opevbg34g5io3s2",
+    "did:plc:v3pvnv4pqafb6fsnhsumfoaw"
   ],
   "likes": [
     "at://did:plc:spjdchwn5opevbg34g5io3s2/app.bsky.feed.post/3n2mtrsy32v2q",
-    "at://did:plc:e5qnks72qfbmkh6iuir4s6gb/app.bsky.feed.post/3n2lnxebrhs2n"
+    "at://did:plc:e5qnks72qfbmkh6iuir4s6gb/app.bsky.feed.post/3n2lnxebrhs2n",
+    "at://did:plc:y4fcl5xq2wixvslfzprgwx27/app.bsky.feed.post/3n2raxqtci62k"
   ],
   "followedEver": [
     "did:plc:yvu2cdtvbjcuervvcvyuz6hl",
     "did:plc:ckijfrr6ai6vwhdgdbho4sob",
-    "did:plc:spjdchwn5opevbg34g5io3s2"
+    "did:plc:spjdchwn5opevbg34g5io3s2",
+    "did:plc:v3pvnv4pqafb6fsnhsumfoaw"
   ]
 }
