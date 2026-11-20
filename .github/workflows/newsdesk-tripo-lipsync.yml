@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       seed:
-        description: "Seed JSON path"
+        description: "Seed JSON path (ci_fast_executive.json for CI; alausa_skills_executive.json for full)"
         required: true
-        default: "newsdesk/seeds/alausa_skills_executive.json"
+        default: "newsdesk/seeds/ci_fast_executive.json"
 
 permissions:
   contents: read
@@ -16,9 +16,9 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
-      SEED_FILE: ${{ github.event.inputs.seed || 'newsdesk/seeds/alausa_skills_executive.json' }}
+      SEED_FILE: ${{ github.event.inputs.seed || 'newsdesk/seeds/ci_fast_executive.json' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +83,7 @@ jobs:
               str(wav)
           ])
           (out / "captions.srt").write_text(
-              "1\n00:00:00,000 --> 00:00:18,000\n" + text[:160] + "\n", encoding="utf-8"
+              "1\n00:00:00,000 --> 00:00:12,000\n" + text[:160] + "\n", encoding="utf-8"
           )
           print("narration ok", voice, "bytes", mp3.stat().st_size)
           PY
