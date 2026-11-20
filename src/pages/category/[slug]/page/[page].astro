@@ -7,5 +7,6 @@ if (slug === 'money-hustle' || slug === 'money' || slug === 'hustle') {
 }
 const n = Math.max(1, parseInt(String(page || '1'), 10) || 1);
 if (n <= 1) return Astro.redirect(`/category/${slug}`, 301);
-return Astro.rewrite(`/category/${slug}?page=${n}`);
+// Internal rewrite — fromPath=1 prevents middleware bounce
+return Astro.rewrite(`/category/${slug}?page=${n}&fromPath=1`);
 ---
