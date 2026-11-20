@@ -20,8 +20,10 @@ export const onRequest = defineMiddleware(async ({ request, url, redirect }, nex
   }
 
   // 3. Query pagination → clean path (/page/N, /category/x/page/N)
+  // Skip when fromPath=1 (internal rewrite from path routes) to avoid redirect loop.
   const pageQ = url.searchParams.get('page');
-  if (pageQ && /^\d+$/.test(pageQ)) {
+  const isInternalRewrite = url.searchParams.get('fromPath') === '1';
+  if (pageQ && /^\d+$/.test(pageQ) && !isInternalRewrite) {
     const p = Math.max(1, parseInt(pageQ, 10));
     if (pathname === '/' || pathname === '') {
       if (p <= 1) return redirect('/', 301);
