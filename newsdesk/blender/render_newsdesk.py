@@ -88,6 +88,34 @@ def text_obj(name, body, loc, size=0.16, extrude=0.004, color=(1, 1, 1), align="
     ob.data.materials.append(tm)
     return ob
 
+def set_linear_interp(obj):
+    """Blender 4/5 safe: Action.fcurves removed in layered actions (Blender 5)."""
+    try:
+        ad = getattr(obj, "animation_data", None)
+        if not ad or not ad.action:
+            return
+        act = ad.action
+        fcurves = getattr(act, "fcurves", None)
+        if fcurves is None:
+            # Blender 5 layered actions
+            try:
+                for layer in getattr(act, "layers", []) or []:
+                    for strip in getattr(layer, "strips", []) or []:
+                        ch = getattr(strip, "channelbag", None) or getattr(strip, "action", None)
+                        fcs = getattr(ch, "fcurves", None) if ch else None
+                        if fcs:
+                            for fc in fcs:
+                                for kp in fc.keyframe_points:
+                                    kp.interpolation = "LINEAR"
+            except Exception as e:
+                print("LINEAR_SKIP", e, flush=True)
+            return
+        for fc in fcurves:
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
+    except Exception as e:
+        print("LINEAR_FAIL", e, flush=True)
+
 wall_c = tuple(env.get("wall", [0.07, 0.11, 0.16]))
 accent_c = tuple(env.get("accent", [0.10, 0.62, 0.48]))
 desk_c = tuple(env.get("desk", [0.09, 0.10, 0.12]))
@@ -230,7 +258,6 @@ def resolve_action(name):
     return None
 
 def apply_animation_plan():
-    """Sequential body clips via NLA — one track per strip (no overlap)."""
     if armature_obj is None:
         print("ANIM_PLAN skip — no armature", flush=True)
         return
@@ -241,7 +268,6 @@ def apply_animation_plan():
             {"name": "Talk with gestures", "start": 2.5, "end": DUR - 2.0},
             {"name": "Sit idle (chair)", "start": DUR - 2.0, "end": DUR},
         ]
-    # Prefer Talk if specific names missing
     if resolve_action("Talk with gestures") is None and resolve_action("Talk"):
         plan = [{"name": "Talk", "start": 0.0, "end": DUR}]
     if resolve_action("Sit idle (chair)") is None and resolve_action("Idle") and len(plan) > 1:
@@ -251,7 +277,6 @@ def apply_animation_plan():
 
     if armature_obj.animation_data is None:
         armature_obj.animation_data_create()
-    # Drop any previous NLA tracks
     while armature_obj.animation_data.nla_tracks:
         armature_obj.animation_data.nla_tracks.remove(armature_obj.animation_data.nla_tracks[0])
     armature_obj.animation_data.action = None
@@ -265,7 +290,6 @@ def apply_animation_plan():
             continue
         f0 = max(1, int(float(step.get("start", 0)) * FPS) + 1)
         f1 = min(LAST, int(float(step.get("end", DUR)) * FPS))
-        # Force non-overlapping sequential placement if seed overlaps
         if f0 < cursor:
             f0 = cursor
         if f1 <= f0:
@@ -277,7 +301,6 @@ def apply_animation_plan():
         try:
             strip = track.strips.new(act.name[:40], f0, act)
             strip.frame_end = f1
-            # loop action if strip longer than source
             try:
                 strip.scale = 1.0
                 if hasattr(strip, "repeat"):
@@ -292,7 +315,6 @@ def apply_animation_plan():
             print("ANIM_STRIP", act.name, f0, f1, flush=True)
         except Exception as e:
             print("ANIM_STRIP_FAIL", act.name, e, flush=True)
-            # Fallback: assign as active action for whole range
             try:
                 armature_obj.animation_data.action = act
                 used += 1
@@ -455,10 +477,7 @@ tx = text_obj("T_TXT", (ticker + "  ·  ") * 2, (3.8, -1.75, 0.18), size=0.11, c
 for f in (1, LAST):
     tx.location = (4.0 - (f / max(1, LAST)) * 9.0, -1.75, 0.18)
     tx.keyframe_insert(data_path="location", frame=f)
-if tx.animation_data and tx.animation_data.action:
-    for fc in tx.animation_data.action.fcurves:
-        for kp in fc.keyframe_points:
-            kp.interpolation = "LINEAR"
+set_linear_interp(tx)
 
 bpy.ops.object.camera_add(location=(0, -4.6, 1.55))
 cam = bpy.context.object
