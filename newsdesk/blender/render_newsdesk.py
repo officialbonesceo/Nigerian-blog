@@ -1,4 +1,4 @@
-import bpy, math, json, os, sys, argparse
+import bpy, math, json, os, sys, argparse, subprocess
 from mathutils import Vector, Euler
 
 av = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
@@ -10,11 +10,11 @@ A = p.parse_args(av)
 
 seed = json.load(open(A.seed))
 cfg = seed["project"]
-FPS = min(int(cfg.get("fps", 24)), 24)
-W = min(int(cfg.get("width", 1280)), 1280)
-H = min(int(cfg.get("height", 720)), 720)
-DUR = min(float(cfg.get("duration_seconds", 12)), 22.0)
-LAST = max(12, int(FPS * DUR))
+FPS = min(int(cfg.get("fps", 16)), 24)
+W = min(int(cfg.get("width", 960)), 1280)
+H = min(int(cfg.get("height", 540)), 720)
+DUR = min(float(cfg.get("duration_seconds", 8)), 18.0)
+LAST = max(16, int(FPS * DUR))
 
 def load_json(path):
     return json.load(open(path))
@@ -22,11 +22,10 @@ def load_json(path):
 char = load_json(seed["character"])
 env = load_json(seed["environment"]) if seed.get("environment") else {}
 headline = seed.get("headline", "9jaBeacon")
-ticker = seed.get("ticker", "9jaBeacon · www.9jabeacon.name.ng")
-boards_cfg = seed.get("boards", [{"label": "A"}, {"label": "B"}, {"label": "C"}])
 anim_plan = seed.get("animation_plan") or []
 use_glb = bool(char.get("use_glb")) and bool(char.get("model_glb"))
 glb_path = char.get("model_glb", "")
+desk_glb = seed.get("desk_glb") or "assets/presenter/Newsdesk.glb"
 
 bpy.ops.object.select_all(action="SELECT")
 bpy.ops.object.delete(use_global=False)
@@ -41,7 +40,7 @@ def mat(n, c, r=0.45, metallic=0.0):
         bsdf.inputs["Metallic"].default_value = metallic
     return m
 
-def cube(n, loc, dim, m, b=0.012):
+def cube(n, loc, dim, m, b=0.0):
     bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
     o = bpy.context.object
     o.name = n
@@ -54,39 +53,8 @@ def cube(n, loc, dim, m, b=0.012):
     o.data.materials.append(m)
     return o
 
-def ball(n, loc, sc, m):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=14, ring_count=8, radius=1, location=loc)
-    o = bpy.context.object
-    o.name = n
-    o.scale = sc
-    o.data.materials.append(m)
-    for f in o.data.polygons:
-        f.use_smooth = True
-    return o
-
-def cyl(n, loc, r, depth, m):
-    bpy.ops.mesh.primitive_cylinder_add(vertices=10, radius=r, depth=depth, location=loc)
-    o = bpy.context.object
-    o.name = n
-    o.data.materials.append(m)
-    return o
-
 def aim(o, t):
     o.rotation_euler = (Vector(t) - o.location).to_track_quat("-Z", "Y").to_euler()
-
-def text_obj(name, body, loc, size=0.16, extrude=0.004, color=(1, 1, 1), align="CENTER"):
-    curve = bpy.data.curves.new(name=name, type="FONT")
-    curve.body = body
-    curve.size = size
-    curve.extrude = extrude
-    curve.align_x = align
-    curve.align_y = "CENTER"
-    ob = bpy.data.objects.new(name, curve)
-    bpy.context.collection.objects.link(ob)
-    ob.location = loc
-    tm = mat(name + "_mat", color, 0.3)
-    ob.data.materials.append(tm)
-    return ob
 
 def set_linear_interp(obj):
     try:
@@ -114,45 +82,15 @@ def set_linear_interp(obj):
     except Exception as e:
         print("LINEAR_FAIL", e, flush=True)
 
-wall_c = tuple(env.get("wall", [0.07, 0.11, 0.16]))
-accent_c = tuple(env.get("accent", [0.10, 0.62, 0.48]))
-desk_c = tuple(env.get("desk", [0.09, 0.10, 0.12]))
-floor_c = tuple(env.get("floor", [0.14, 0.15, 0.18]))
-
-m_black = mat("Stick", (0.05, 0.05, 0.06), 0.35)
-m_wall = mat("Wall", wall_c, 0.82)
-m_floor = mat("Floor", floor_c, 0.45, metallic=0.15)
-m_desk = mat("Desk", desk_c, 0.28, metallic=0.25)
-m_accent = mat("Accent", accent_c, 0.22, metallic=0.35)
-m_board = mat("Board", (0.12, 0.14, 0.18), 0.30, metallic=0.2)
-m_screen = mat("Screen", (0.08, 0.22, 0.38), 0.15)
-m_glass = mat("Glass", (0.55, 0.65, 0.72), 0.08, metallic=0.4)
-m_ticker = mat("Ticker", (0.72, 0.06, 0.09), 0.28)
-m_white = mat("White", (0.95, 0.96, 0.97), 0.35)
-m_panel = mat("Panel", (0.16, 0.18, 0.22), 0.4)
-
-cube("FLOOR", (0, 0.3, -0.04), (16, 12, 0.12), m_floor)
-cube("BACK", (0, 3.4, 2.2), (14, 0.14, 4.6), m_wall)
-cube("LEFT", (-6.2, 0.5, 2.2), (0.14, 8, 4.6), m_wall)
-cube("RIGHT", (6.2, 0.5, 2.2), (0.14, 8, 4.6), m_wall)
-cube("CEIL", (0, 0.5, 4.35), (14, 8, 0.1), mat("Ceil", (0.12, 0.14, 0.18), 0.7))
-cube("STRIPE_TOP", (0, 3.28, 3.55), (10, 0.08, 0.18), m_accent)
-cube("STRIPE_MID", (0, 3.28, 0.55), (10, 0.06, 0.10), m_accent)
-cube("COL_L", (-4.2, 3.2, 2.0), (0.22, 0.22, 3.6), m_panel)
-cube("COL_R", (4.2, 3.2, 2.0), (0.22, 0.22, 3.6), m_panel)
-
-cube("DESK_TOP", (0, -0.05, 0.98), (4.2, 1.45, 0.09), m_desk)
-cube("DESK_FRONT", (0, -0.72, 0.50), (4.1, 0.10, 0.95), m_desk)
-cube("DESK_EDGE", (0, -0.78, 0.95), (4.15, 0.06, 0.06), m_accent)
-cube("LOGO_PLATE", (0, -0.82, 0.52), (1.55, 0.05, 0.32), m_accent)
-text_obj("LOGO", "9jaBeacon", (0, -0.86, 0.52), size=0.14, color=(0.95, 0.98, 0.97))
-
-for i, (bx, by, bz) in enumerate([(-2.55, 2.85, 2.05), (0.0, 2.9, 2.2), (2.55, 2.85, 2.05)]):
-    cube(f"BF{i}", (bx, by, bz), (1.85, 0.08, 1.25), m_board)
-    cube(f"BP{i}", (bx, by - 0.06, bz), (1.68, 0.04, 1.08), m_screen)
-    cube(f"BG{i}", (bx, by - 0.02, bz), (1.78, 0.03, 1.18), m_glass, b=0.004)
-    lab = boards_cfg[i].get("label", f"{i+1}") if i < len(boards_cfg) else f"{i+1}"
-    text_obj(f"BL{i}", lab, (bx, by - 0.12, bz + 0.35), size=0.16, color=(0.95, 0.97, 0.98))
+# Soft neutral backdrop only (no full studio yet)
+m_floor = mat("Floor", (0.12, 0.13, 0.15), 0.55, metallic=0.05)
+m_wall = mat("Wall", (0.10, 0.12, 0.16), 0.85)
+m_ceil = mat("Ceil", (0.08, 0.09, 0.11), 0.9)
+cube("FLOOR", (0, 0.5, -0.02), (18, 14, 0.08), m_floor)
+cube("BACK", (0, 4.0, 2.4), (16, 0.12, 5.2), m_wall)
+cube("LEFT", (-7.0, 0.5, 2.4), (0.12, 10, 5.2), m_wall)
+cube("RIGHT", (7.0, 0.5, 2.4), (0.12, 10, 5.2), m_wall)
+cube("CEIL", (0, 0.5, 4.6), (16, 10, 0.1), m_ceil)
 
 presenter_root = None
 mouth_obj = None
@@ -160,6 +98,7 @@ armature_obj = None
 mesh_with_shapes = None
 pose_bones = {}
 imported_actions = {}
+desk_root = None
 
 def find_pose_bone(arm, *candidates):
     if arm is None:
@@ -175,6 +114,31 @@ def find_pose_bone(arm, *candidates):
             if c.lower() in n:
                 return b
     return None
+
+def import_desk(path):
+    global desk_root
+    if not path or not os.path.isfile(path):
+        print("DESK_MISSING", path, flush=True)
+        return False
+    before = set(bpy.data.objects.keys())
+    bpy.ops.import_scene.gltf(filepath=os.path.abspath(path))
+    after = [o for o in bpy.data.objects if o.name not in before]
+    if not after:
+        print("DESK_IMPORT_EMPTY", flush=True)
+        return False
+    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
+    root = bpy.context.object
+    root.name = "DESK_ROOT"
+    for o in after:
+        if o.parent is None:
+            o.parent = root
+    # Sit desk at origin; scale conservatively so character fits
+    root.location = (0.0, 0.35, 0.0)
+    root.scale = (1.0, 1.0, 1.0)
+    root.rotation_euler = Euler((0, 0, 0), "XYZ")
+    desk_root = root
+    print("DESK_OK objects=", len(after), flush=True)
+    return True
 
 def import_glb(path):
     global presenter_root, mouth_obj, armature_obj, mesh_with_shapes, imported_actions
@@ -200,8 +164,9 @@ def import_glb(path):
     for o in after:
         if o.parent is None:
             o.parent = root
-    root.location = (0, 0.22, 0.0)
-    root.scale = (0.95, 0.95, 0.95)
+    # Seat presenter behind desk; slight scale so proportions look natural
+    root.location = (0.0, 0.15, 0.0)
+    root.scale = (0.92, 0.92, 0.92)
     root.rotation_euler = Euler((0, 0, 0), "XYZ")
     presenter_root = root
 
@@ -262,9 +227,9 @@ def apply_animation_plan():
     plan = list(anim_plan) if anim_plan else []
     if not plan:
         plan = [
-            {"name": "Sit idle (chair)", "start": 0.0, "end": 2.5},
-            {"name": "Talk with gestures", "start": 2.5, "end": DUR - 2.0},
-            {"name": "Sit idle (chair)", "start": DUR - 2.0, "end": DUR},
+            {"name": "Sit idle (chair)", "start": 0.0, "end": 1.2},
+            {"name": "Talk with gestures", "start": 1.2, "end": DUR - 1.2},
+            {"name": "Sit idle (chair)", "start": DUR - 1.2, "end": DUR},
         ]
     if resolve_action("Talk with gestures") is None and resolve_action("Talk"):
         plan = [{"name": "Talk", "start": 0.0, "end": DUR}]
@@ -330,34 +295,21 @@ def apply_animation_plan():
                 break
     print("ANIM_PLAN_APPLIED", used, flush=True)
 
-def build_stickman():
-    global presenter_root, mouth_obj
-    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0.1, 0))
-    root = bpy.context.object
-    root.name = "PRESENTER_ROOT"
-    presenter_root = root
-    head = ball("HEAD", (0, 0.1, 2.0), (0.2, 0.18, 0.22), m_black)
-    head.parent = root
-    neck = cyl("NECK", (0, 0.1, 1.75), 0.04, 0.14, m_black)
-    neck.parent = root
-    torso = cyl("TORSO", (0, 0.12, 1.35), 0.05, 0.55, m_black)
-    torso.parent = root
-    mouth_obj = cube("MOUTH", (0, -0.07, 1.92), (0.07, 0.015, 0.02), m_white, 0.002)
-    mouth_obj.parent = root
-
+# Desk first, then character
+import_desk(desk_glb)
 if use_glb:
     ok = import_glb(glb_path)
-    if not ok:
-        print("FALLBACK_STICKMAN", flush=True)
-        build_stickman()
-    else:
+    if ok:
         apply_animation_plan()
+    else:
+        print("CHARACTER_IMPORT_FAIL", flush=True)
 else:
-    build_stickman()
+    print("CHARACTER_NO_GLB", flush=True)
 
+# Softer lipsync — avoid sucking/popping mouth
 OPEN_MAP = {
-    "A": 0.15, "B": 0.55, "C": 0.90, "D": 0.72, "E": 0.48,
-    "F": 0.35, "G": 0.52, "H": 0.28, "X": 0.05,
+    "A": 0.10, "B": 0.32, "C": 0.55, "D": 0.42, "E": 0.28,
+    "F": 0.22, "G": 0.30, "H": 0.18, "X": 0.03,
 }
 VISEME_MAP = {
     "A": "viseme_aa", "B": "viseme_PP", "C": "viseme_E",
@@ -396,18 +348,18 @@ def apply_facial_and_lipsync(path):
 
     def open_at_time(t):
         if not cues:
-            return 0.08, "X"
-        amt, val = 0.08, "X"
+            return 0.05, "X"
+        amt, val = 0.05, "X"
         for cue in cues:
             start = float(cue.get("start", 0))
             if start <= t:
                 val = str(cue.get("value", "X"))
-                amt = OPEN_MAP.get(val, 0.2)
+                amt = OPEN_MAP.get(val, 0.15)
             else:
                 break
         return amt, val
 
-    step = max(1, FPS // 12)
+    step = max(1, FPS // 10)
     for f in range(1, LAST + 1, step):
         t = (f - 1) / float(FPS)
         open_amt, cue_val = open_at_time(t)
@@ -415,16 +367,17 @@ def apply_facial_and_lipsync(path):
         if sk is not None:
             blocks = sk.key_blocks
             if "jawOpen" in blocks:
-                blocks["jawOpen"].value = min(1.0, open_amt)
+                # Soften jawOpen — was over-driving into "sucking" look
+                blocks["jawOpen"].value = min(0.55, open_amt * 0.7)
                 blocks["jawOpen"].keyframe_insert(data_path="value", frame=f)
             for vn in ("viseme_aa", "viseme_E", "viseme_O", "viseme_U", "viseme_PP", "viseme_FF"):
                 if vn in blocks:
                     blocks[vn].value = 0.0
             target = VISEME_MAP.get(cue_val)
             if target and target in blocks:
-                blocks[target].value = min(1.0, open_amt * 0.85)
+                blocks[target].value = min(0.6, open_amt * 0.65)
                 blocks[target].keyframe_insert(data_path="value", frame=f)
-            if "eyeBlinkLeft" in blocks and f % (FPS * 3) < 2:
+            if "eyeBlinkLeft" in blocks and f % max(1, FPS * 4) < 2:
                 blocks["eyeBlinkLeft"].value = 1.0
                 blocks["eyeBlinkLeft"].keyframe_insert(data_path="value", frame=f)
                 if "eyeBlinkRight" in blocks:
@@ -432,21 +385,19 @@ def apply_facial_and_lipsync(path):
                     blocks["eyeBlinkRight"].keyframe_insert(data_path="value", frame=f)
 
         if jaw is not None:
-            keyframe_pose_bone(jaw, f, Euler((math.radians(22 * open_amt), 0, 0), "XYZ"))
+            # Gentle jaw (was ~22 deg → looked robotic)
+            keyframe_pose_bone(jaw, f, Euler((math.radians(10 * open_amt), 0, 0), "XYZ"))
         elif head is not None:
-            talk = 0.03 * math.sin(t * 9.0)
+            talk = 0.015 * math.sin(t * 7.0)
             keyframe_pose_bone(
                 head, f,
-                Euler((math.radians(-5 * open_amt + talk), math.radians(2.5 * math.sin(t * 2.0)), 0), "XYZ")
+                Euler((math.radians(-2.5 * open_amt + talk), math.radians(1.5 * math.sin(t * 1.6)), 0), "XYZ")
             )
-        elif mouth_obj is not None:
-            mouth_obj.scale = (0.95 + 0.35 * open_amt, 1.0, 0.15 + open_amt)
-            mouth_obj.keyframe_insert(data_path="scale", frame=f)
 
         if neck is not None:
             keyframe_pose_bone(
                 neck, f,
-                Euler((math.radians(2.0 * open_amt), math.radians(1.2 * math.sin(t * 1.5)), 0), "XYZ")
+                Euler((math.radians(1.0 * open_amt), math.radians(0.8 * math.sin(t * 1.2)), 0), "XYZ")
             )
 
     try:
@@ -461,25 +412,17 @@ def apply_facial_and_lipsync(path):
             "head": getattr(head, "name", None),
             "shapes": bool(sk),
             "cues": len(cues),
+            "soft": True,
         }),
         flush=True,
     )
 
 apply_facial_and_lipsync(A.lipsync)
 
-cube("H_BG", (0, -1.55, 0.48), (6.4, 0.08, 0.32), mat("HBg", (0.06, 0.08, 0.10), 0.35))
-cube("H_ACCENT", (-2.9, -1.55, 0.48), (0.08, 0.09, 0.32), m_accent)
-text_obj("H_TXT", headline[:58], (0.15, -1.58, 0.48), size=0.14, color=(0.98, 0.98, 0.99))
-cube("T_BG", (0, -1.72, 0.18), (9.0, 0.08, 0.22), m_ticker)
-tx = text_obj("T_TXT", (ticker + "  ·  ") * 2, (3.8, -1.75, 0.18), size=0.11, color=(1, 1, 1), align="LEFT")
-for f in (1, LAST):
-    tx.location = (4.0 - (f / max(1, LAST)) * 9.0, -1.75, 0.18)
-    tx.keyframe_insert(data_path="location", frame=f)
-set_linear_interp(tx)
-
-bpy.ops.object.camera_add(location=(0, -4.6, 1.55))
+# Camera: far → zoom in → slight arc around desk
+bpy.ops.object.camera_add(location=(0, -7.5, 2.2))
 cam = bpy.context.object
-cam.data.lens = 40
+cam.data.lens = 35
 bpy.context.scene.camera = cam
 
 def camkey(f, loc, target, lens):
@@ -490,30 +433,54 @@ def camkey(f, loc, target, lens):
     cam.keyframe_insert(data_path="rotation_euler", frame=f)
     cam.data.keyframe_insert(data_path="lens", frame=f)
 
-camkey(1, (0, -5.0, 1.6), (0, 0.2, 1.35), 36)
-camkey(int(LAST * 0.3), (0.4, -4.3, 1.45), (0, 0.2, 1.5), 42)
-camkey(int(LAST * 0.65), (-0.3, -4.5, 1.65), (0, 0.2, 1.55), 46)
-camkey(LAST, (0, -4.2, 1.5), (0, 0.2, 1.45), 40)
+# Look-at point near presenter chest/desk height
+look = (0.0, 0.2, 1.25)
+camkey(1, (0.0, -8.2, 2.6), look, 32)                    # far wide
+camkey(int(LAST * 0.28), (0.15, -5.4, 1.85), look, 38)   # push in
+camkey(int(LAST * 0.55), (0.55, -4.3, 1.55), (0.05, 0.2, 1.35), 42)  # closer + slight right
+camkey(int(LAST * 0.78), (-0.35, -4.0, 1.50), (0.0, 0.2, 1.40), 44)  # arc left
+camkey(LAST, (0.1, -3.7, 1.45), (0.0, 0.15, 1.38), 46)   # medium close
+set_linear_interp(cam)
 
-bpy.ops.object.light_add(type="AREA", location=(-2.4, -2.6, 3.8))
+# Soft realistic lighting (less flat / less cartoon)
+bpy.ops.object.light_add(type="AREA", location=(-2.8, -3.2, 4.0))
 L = bpy.context.object
-L.data.energy = 1100
-L.data.size = 4.8
-aim(L, (0, 0.2, 1.4))
-bpy.ops.object.light_add(type="AREA", location=(2.6, 0.4, 3.2))
+L.data.energy = 650
+L.data.size = 5.5
+L.data.color = (1.0, 0.97, 0.94)
+aim(L, (0, 0.2, 1.2))
+
+bpy.ops.object.light_add(type="AREA", location=(3.0, -1.0, 3.4))
 L2 = bpy.context.object
-L2.data.energy = 550
-L2.data.size = 3.5
-aim(L2, (0, 0.2, 1.4))
-bpy.ops.object.light_add(type="AREA", location=(0, 2.8, 3.6))
+L2.data.energy = 320
+L2.data.size = 4.0
+L2.data.color = (0.85, 0.92, 1.0)  # cool fill
+aim(L2, (0, 0.2, 1.2))
+
+bpy.ops.object.light_add(type="AREA", location=(0.0, 2.5, 3.8))
 L3 = bpy.context.object
-L3.data.energy = 400
-L3.data.size = 3.0
-aim(L3, (0, 0.2, 1.3))
-bpy.ops.object.light_add(type="AREA", location=(0, -1.2, 2.5))
+L3.data.energy = 220
+L3.data.size = 3.5
+L3.data.color = (1.0, 1.0, 1.0)
+aim(L3, (0, 0.2, 1.1))
+
+bpy.ops.object.light_add(type="AREA", location=(0.0, -2.0, 2.2))
 L4 = bpy.context.object
-L4.data.energy = 280
-L4.data.size = 2.2
+L4.data.energy = 120
+L4.data.size = 2.5
+L4.data.color = (1.0, 0.95, 0.9)
+aim(L4, (0, 0.2, 1.0))
+
+# Soft world ambient so skin isn't pure black in shadows
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.08, 0.09, 0.11, 1)
+    bg.inputs[1].default_value = 0.35
 
 scene = bpy.context.scene
 scene.frame_start = 1
@@ -524,8 +491,8 @@ try:
 except Exception:
     scene.render.engine = "BLENDER_EEVEE"
 if hasattr(scene, "eevee"):
-    # Fast path for short CI seeds (<=120 frames); full quality otherwise
-    scene.eevee.taa_render_samples = 4 if LAST <= 120 else 12
+    # 8 samples: cleaner than 4, still CI-friendly
+    scene.eevee.taa_render_samples = 8 if LAST <= 160 else 12
 scene.render.resolution_x = W
 scene.render.resolution_y = H
 out_abs = os.path.abspath(A.output)
@@ -535,17 +502,27 @@ scene.render.image_settings.file_format = "PNG"
 scene.render.image_settings.color_mode = "RGB"
 scene.render.filepath = os.path.join(frames_dir, "frame_")
 scene.view_settings.view_transform = "Standard"
-scene.world.color = (0.08, 0.10, 0.14)
 
-print("NEWSDESK_RENDER_START", json.dumps({"frames": LAST, "fps": FPS, "glb": use_glb, "anims": len(imported_actions), "mode": "png"}), flush=True)
+print(
+    "NEWSDESK_RENDER_START",
+    json.dumps({
+        "frames": LAST,
+        "fps": FPS,
+        "glb": use_glb,
+        "desk": bool(desk_root),
+        "anims": len(imported_actions),
+        "mode": "png",
+        "res": [W, H],
+    }),
+    flush=True,
+)
 bpy.ops.render.render(animation=True)
 
-import subprocess
 pattern = os.path.join(frames_dir, "frame_%04d.png")
 cmd = [
     "ffmpeg", "-y", "-framerate", str(FPS),
     "-i", pattern,
-    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+    "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
     "-pix_fmt", "yuv420p", "-movflags", "+faststart",
     out_abs,
 ]
