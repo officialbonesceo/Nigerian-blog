@@ -21,7 +21,6 @@ def load_json(path):
 
 char = load_json(seed["character"])
 env = load_json(seed["environment"]) if seed.get("environment") else {}
-headline = seed.get("headline", "9jaBeacon")
 anim_plan = seed.get("animation_plan") or []
 use_glb = bool(char.get("use_glb")) and bool(char.get("model_glb"))
 glb_path = char.get("model_glb", "")
@@ -82,18 +81,76 @@ def set_linear_interp(obj):
     except Exception as e:
         print("LINEAR_FAIL", e, flush=True)
 
-# Soft neutral backdrop only (no full studio yet)
+def world_bbox(objects):
+    """Axis-aligned world-space bounds for a list of objects."""
+    mins = Vector((1e9, 1e9, 1e9))
+    maxs = Vector((-1e9, -1e9, -1e9))
+    found = False
+    for o in objects:
+        if o.type not in ("MESH", "ARMATURE", "EMPTY", "CURVE"):
+            continue
+        try:
+            for corner in o.bound_box:
+                w = o.matrix_world @ Vector(corner)
+                mins.x = min(mins.x, w.x); mins.y = min(mins.y, w.y); mins.z = min(mins.z, w.z)
+                maxs.x = max(maxs.x, w.x); maxs.y = max(maxs.y, w.y); maxs.z = max(maxs.z, w.z)
+                found = True
+        except Exception:
+            continue
+    if not found:
+        return None
+    return mins, maxs
+
+def scale_root_to_size(root, target_width=None, target_height=None, min_scale=0.5, max_scale=80.0):
+    """Uniform-scale root so its world bbox matches target width and/or height."""
+    bpy.context.view_layer.update()
+    kids = [root] + list(root.children_recursive)
+    bb = world_bbox(kids)
+    if not bb:
+        print("SCALE_SKIP no bbox", root.name, flush=True)
+        return 1.0
+    mins, maxs = bb
+    size = maxs - mins
+    sx = sy = 1.0
+    if target_width and size.x > 1e-6:
+        sx = target_width / size.x
+    if target_height and size.z > 1e-6:
+        sy = target_height / size.z
+    # Prefer width for desk, height for character; if both, average
+    if target_width and target_height:
+        s = (sx + sy) * 0.5
+    elif target_width:
+        s = sx
+    else:
+        s = sy
+    s = max(min_scale, min(max_scale, s))
+    root.scale = (s, s, s)
+    bpy.context.view_layer.update()
+    print("SCALE", root.name, "factor", round(s, 3), "from_size", [round(v, 3) for v in size], flush=True)
+    return s
+
+def place_on_floor(root):
+    """Move root so lowest point sits on z=0."""
+    bpy.context.view_layer.update()
+    kids = [root] + list(root.children_recursive)
+    bb = world_bbox(kids)
+    if not bb:
+        return
+    mins, maxs = bb
+    root.location.z -= mins.z
+    bpy.context.view_layer.update()
+
+# Soft neutral backdrop
 m_floor = mat("Floor", (0.12, 0.13, 0.15), 0.55, metallic=0.05)
 m_wall = mat("Wall", (0.10, 0.12, 0.16), 0.85)
 m_ceil = mat("Ceil", (0.08, 0.09, 0.11), 0.9)
-cube("FLOOR", (0, 0.5, -0.02), (18, 14, 0.08), m_floor)
-cube("BACK", (0, 4.0, 2.4), (16, 0.12, 5.2), m_wall)
-cube("LEFT", (-7.0, 0.5, 2.4), (0.12, 10, 5.2), m_wall)
-cube("RIGHT", (7.0, 0.5, 2.4), (0.12, 10, 5.2), m_wall)
-cube("CEIL", (0, 0.5, 4.6), (16, 10, 0.1), m_ceil)
+cube("FLOOR", (0, 0.5, -0.02), (22, 16, 0.08), m_floor)
+cube("BACK", (0, 5.5, 2.6), (20, 0.12, 5.6), m_wall)
+cube("LEFT", (-9.0, 0.5, 2.6), (0.12, 12, 5.6), m_wall)
+cube("RIGHT", (9.0, 0.5, 2.6), (0.12, 12, 5.6), m_wall)
+cube("CEIL", (0, 0.5, 5.0), (20, 12, 0.1), m_ceil)
 
 presenter_root = None
-mouth_obj = None
 armature_obj = None
 mesh_with_shapes = None
 pose_bones = {}
@@ -132,16 +189,23 @@ def import_desk(path):
     for o in after:
         if o.parent is None:
             o.parent = root
-    # Sit desk at origin; scale conservatively so character fits
-    root.location = (0.0, 0.35, 0.0)
+    root.location = (0.0, 0.0, 0.0)
     root.scale = (1.0, 1.0, 1.0)
     root.rotation_euler = Euler((0, 0, 0), "XYZ")
+    # News desk should be ~3.8m wide (human-scale set)
+    scale_root_to_size(root, target_width=3.8, min_scale=0.5, max_scale=100.0)
+    place_on_floor(root)
+    # Push slightly forward so camera sees table front
+    root.location.y = 0.15
     desk_root = root
+    bb = world_bbox([root] + list(root.children_recursive))
+    if bb:
+        print("DESK_BBOX", [round(v, 3) for v in (bb[1] - bb[0])], flush=True)
     print("DESK_OK objects=", len(after), flush=True)
     return True
 
 def import_glb(path):
-    global presenter_root, mouth_obj, armature_obj, mesh_with_shapes, imported_actions
+    global presenter_root, armature_obj, mesh_with_shapes, imported_actions
     if not path or not os.path.isfile(path):
         print("GLB_MISSING", path, flush=True)
         return False
@@ -158,17 +222,41 @@ def import_glb(path):
             imported_actions[a.name] = a
     print("GLB_ACTIONS", list(imported_actions.keys())[:25], "count", len(imported_actions), flush=True)
 
-    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0.15, 0.0))
+    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
     root = bpy.context.object
     root.name = "PRESENTER_ROOT"
     for o in after:
         if o.parent is None:
             o.parent = root
-    # Seat presenter behind desk; slight scale so proportions look natural
-    root.location = (0.0, 0.15, 0.0)
-    root.scale = (0.92, 0.92, 0.92)
+    root.location = (0.0, 0.0, 0.0)
+    root.scale = (1.0, 1.0, 1.0)
     root.rotation_euler = Euler((0, 0, 0), "XYZ")
+    # Adult seated height ~1.35–1.45m from floor to head; full standing ~1.7m
+    # Scale by height so they match the desk
+    scale_root_to_size(root, target_height=1.55, min_scale=0.3, max_scale=50.0)
+    place_on_floor(root)
+
+    # Seat behind desk: if desk exists, put character slightly behind table edge
+    if desk_root is not None:
+        bpy.context.view_layer.update()
+        dbb = world_bbox([desk_root] + list(desk_root.children_recursive))
+        if dbb:
+            dmins, dmaxs = dbb
+            # Sit near back of desk (higher Y = deeper into set)
+            root.location.x = (dmins.x + dmaxs.x) * 0.5
+            root.location.y = dmaxs.y - 0.15
+            # Keep feet on floor
+            place_on_floor(root)
+            # Raise slightly if chair is in desk mesh (optional)
+            root.location.z += 0.02
+    else:
+        root.location.y = 0.2
+
     presenter_root = root
+    bpy.context.view_layer.update()
+    bb = world_bbox([root] + list(root.children_recursive))
+    if bb:
+        print("CHAR_BBOX", [round(v, 3) for v in (bb[1] - bb[0])], flush=True)
 
     for o in after:
         if o.type == "ARMATURE":
@@ -295,7 +383,7 @@ def apply_animation_plan():
                 break
     print("ANIM_PLAN_APPLIED", used, flush=True)
 
-# Desk first, then character
+# Desk first, then character (scaled to match)
 import_desk(desk_glb)
 if use_glb:
     ok = import_glb(glb_path)
@@ -306,7 +394,6 @@ if use_glb:
 else:
     print("CHARACTER_NO_GLB", flush=True)
 
-# Softer lipsync — avoid sucking/popping mouth
 OPEN_MAP = {
     "A": 0.10, "B": 0.32, "C": 0.55, "D": 0.42, "E": 0.28,
     "F": 0.22, "G": 0.30, "H": 0.18, "X": 0.03,
@@ -367,7 +454,6 @@ def apply_facial_and_lipsync(path):
         if sk is not None:
             blocks = sk.key_blocks
             if "jawOpen" in blocks:
-                # Soften jawOpen — was over-driving into "sucking" look
                 blocks["jawOpen"].value = min(0.55, open_amt * 0.7)
                 blocks["jawOpen"].keyframe_insert(data_path="value", frame=f)
             for vn in ("viseme_aa", "viseme_E", "viseme_O", "viseme_U", "viseme_PP", "viseme_FF"):
@@ -385,7 +471,6 @@ def apply_facial_and_lipsync(path):
                     blocks["eyeBlinkRight"].keyframe_insert(data_path="value", frame=f)
 
         if jaw is not None:
-            # Gentle jaw (was ~22 deg → looked robotic)
             keyframe_pose_bone(jaw, f, Euler((math.radians(10 * open_amt), 0, 0), "XYZ"))
         elif head is not None:
             talk = 0.015 * math.sin(t * 7.0)
@@ -419,8 +504,8 @@ def apply_facial_and_lipsync(path):
 
 apply_facial_and_lipsync(A.lipsync)
 
-# Camera: far → zoom in → slight arc around desk
-bpy.ops.object.camera_add(location=(0, -7.5, 2.2))
+# Camera framed on desk + presenter (human-scale set ~4m wide)
+bpy.ops.object.camera_add(location=(0, -6.5, 1.8))
 cam = bpy.context.object
 cam.data.lens = 35
 bpy.context.scene.camera = cam
@@ -433,45 +518,41 @@ def camkey(f, loc, target, lens):
     cam.keyframe_insert(data_path="rotation_euler", frame=f)
     cam.data.keyframe_insert(data_path="lens", frame=f)
 
-# Look-at point near presenter chest/desk height
-look = (0.0, 0.2, 1.25)
-camkey(1, (0.0, -8.2, 2.6), look, 32)                    # far wide
-camkey(int(LAST * 0.28), (0.15, -5.4, 1.85), look, 38)   # push in
-camkey(int(LAST * 0.55), (0.55, -4.3, 1.55), (0.05, 0.2, 1.35), 42)  # closer + slight right
-camkey(int(LAST * 0.78), (-0.35, -4.0, 1.50), (0.0, 0.2, 1.40), 44)  # arc left
-camkey(LAST, (0.1, -3.7, 1.45), (0.0, 0.15, 1.38), 46)   # medium close
+look = (0.0, 0.3, 1.15)
+camkey(1, (0.0, -7.5, 2.3), look, 32)
+camkey(int(LAST * 0.30), (0.2, -5.2, 1.7), look, 38)
+camkey(int(LAST * 0.55), (0.6, -4.2, 1.45), (0.05, 0.25, 1.25), 42)
+camkey(int(LAST * 0.80), (-0.4, -3.9, 1.4), (0.0, 0.25, 1.28), 44)
+camkey(LAST, (0.1, -3.6, 1.35), (0.0, 0.2, 1.25), 46)
 set_linear_interp(cam)
 
-# Soft realistic lighting (less flat / less cartoon)
-bpy.ops.object.light_add(type="AREA", location=(-2.8, -3.2, 4.0))
+bpy.ops.object.light_add(type="AREA", location=(-3.0, -3.0, 4.2))
 L = bpy.context.object
-L.data.energy = 650
-L.data.size = 5.5
+L.data.energy = 700
+L.data.size = 6.0
 L.data.color = (1.0, 0.97, 0.94)
-aim(L, (0, 0.2, 1.2))
+aim(L, (0, 0.2, 1.1))
 
-bpy.ops.object.light_add(type="AREA", location=(3.0, -1.0, 3.4))
+bpy.ops.object.light_add(type="AREA", location=(3.2, -1.0, 3.6))
 L2 = bpy.context.object
-L2.data.energy = 320
-L2.data.size = 4.0
-L2.data.color = (0.85, 0.92, 1.0)  # cool fill
-aim(L2, (0, 0.2, 1.2))
+L2.data.energy = 340
+L2.data.size = 4.5
+L2.data.color = (0.85, 0.92, 1.0)
+aim(L2, (0, 0.2, 1.1))
 
-bpy.ops.object.light_add(type="AREA", location=(0.0, 2.5, 3.8))
+bpy.ops.object.light_add(type="AREA", location=(0.0, 2.8, 4.0))
 L3 = bpy.context.object
-L3.data.energy = 220
-L3.data.size = 3.5
-L3.data.color = (1.0, 1.0, 1.0)
-aim(L3, (0, 0.2, 1.1))
+L3.data.energy = 240
+L3.data.size = 4.0
+aim(L3, (0, 0.2, 1.0))
 
-bpy.ops.object.light_add(type="AREA", location=(0.0, -2.0, 2.2))
+bpy.ops.object.light_add(type="AREA", location=(0.0, -2.2, 2.3))
 L4 = bpy.context.object
-L4.data.energy = 120
-L4.data.size = 2.5
+L4.data.energy = 140
+L4.data.size = 2.8
 L4.data.color = (1.0, 0.95, 0.9)
 aim(L4, (0, 0.2, 1.0))
 
-# Soft world ambient so skin isn't pure black in shadows
 world = bpy.context.scene.world
 if world is None:
     world = bpy.data.worlds.new("World")
@@ -491,8 +572,7 @@ try:
 except Exception:
     scene.render.engine = "BLENDER_EEVEE"
 if hasattr(scene, "eevee"):
-    # 8 samples: cleaner than 4, still CI-friendly
-    scene.eevee.taa_render_samples = 8 if LAST <= 160 else 12
+    scene.eevee.taa_render_samples = 6 if LAST <= 60 else 8
 scene.render.resolution_x = W
 scene.render.resolution_y = H
 out_abs = os.path.abspath(A.output)
