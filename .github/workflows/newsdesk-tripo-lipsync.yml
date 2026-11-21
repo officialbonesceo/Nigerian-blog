@@ -2,11 +2,12 @@ name: Newsdesk Tripo + Rhubarb Lipsync
 
 # Female Executive + Newsdesk.glb + Edge TTS + Rhubarb + Blender facial.
 # Manual only — does not touch D1 or content pipeline.
+# Keep seeds SHORT on GitHub Actions (~40–60s/frame on CPU).
 on:
   workflow_dispatch:
     inputs:
       seed:
-        description: "Seed JSON path"
+        description: "Seed JSON (ci_fast = 4s preview; alausa = longer full)"
         required: true
         default: "newsdesk/seeds/ci_fast_executive.json"
 
@@ -53,7 +54,8 @@ jobs:
           python3 -m json.tool "$CHAR" > /dev/null
           GLB=$(python3 -c "import json; print(json.load(open('$CHAR')).get('model_glb',''))")
           DESK=$(python3 -c "import json; print(json.load(open('/tmp/seed.json')).get('desk_glb','assets/presenter/Newsdesk.glb'))")
-          echo "OK seed=$SEED_FILE char=$CHAR glb=$GLB desk=$DESK"
+          FRAMES=$(python3 -c "import json; p=json.load(open('/tmp/seed.json'))['project']; print(int(p.get('fps',10)*float(p.get('duration_seconds',4))))")
+          echo "OK seed=$SEED_FILE frames≈$FRAMES glb=$GLB desk=$DESK"
           if [ -n "$GLB" ] && [ -f "$GLB" ]; then
             echo "Character GLB: $(du -h "$GLB")"
           else
@@ -64,8 +66,7 @@ jobs:
           if [ -f "$DESK" ]; then
             echo "Desk GLB: $(du -h "$DESK")"
           else
-            echo "Desk GLB missing at '$DESK' — continuing without desk"
-            ls -la assets/presenter/ || true
+            echo "Desk GLB missing — render will use empty desk slot"
           fi
 
       - name: Generate narration (Edge TTS → WAV for Rhubarb)

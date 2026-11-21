@@ -46,16 +46,23 @@ export const onRequest = defineMiddleware(async ({ request, url, redirect }, nex
     return redirect(`/rss.xml`, 301);
   }
 
-  // 6. GSC "Page with redirect" / removed sections → home (301)
+  // 6. Removed sections — 410 Gone (stronger than 301 for GSC cleanup of /videos, /presenters)
+  // Keeps SEO clean until real video pages exist. No soft redirect loop.
   if (
     pathname === '/presenters' ||
     pathname === '/videos' ||
-    pathname.startsWith('/videos/')
+    pathname === '/video' ||
+    pathname.startsWith('/videos/') ||
+    pathname.startsWith('/video/')
   ) {
-    return redirect(`/`, 301);
+    return new Response('Gone', {
+      status: 410,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'public, max-age=86400',
+      },
+    });
   }
-
-  // Autonomous background ingest removed — only Daily Desk workflow may write articles.
 
   return next();
 });
