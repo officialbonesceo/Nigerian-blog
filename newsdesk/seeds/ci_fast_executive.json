@@ -4,7 +4,7 @@
     "width": 640,
     "height": 360,
     "duration_seconds": 4,
-    "title": "9jaBeacon Desk — Ultra Fast Preview"
+    "title": "9jaBeacon Desk — Sit pose fix"
   },
   "character": "newsdesk/characters/female_executive.json",
   "desk_glb": "assets/presenter/Newsdesk.glb",
@@ -13,9 +13,7 @@
   "ticker": "",
   "boards": [],
   "animation_plan": [
-    { "name": "Sit idle (chair)", "start": 0.0, "end": 0.6 },
-    { "name": "Talk with gestures", "start": 0.6, "end": 3.5 },
-    { "name": "Sit idle (chair)", "start": 3.5, "end": 4.0 }
+    { "name": "Sit idle (chair)", "start": 0.0, "end": 4.0 }
   ],
   "narration": {
     "text": "Good evening from the 9jaBeacon desk. Education Minister Tunji Alausa says Nigeria needs competent workers, not just paper certificates.",

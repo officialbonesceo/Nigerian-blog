@@ -227,7 +227,7 @@ def import_glb(path):
     scale_root_to_size(root, target_height=1.55, min_scale=0.3, max_scale=50.0)
     place_on_floor(root)
 
-    # Circular desk: seat character in the CENTER of the desk footprint
+    # Circular desk: sit IN the chair (center X, slightly toward chair back, hips lower)
     if desk_root is not None:
         bpy.context.view_layer.update()
         dbb = world_bbox([desk_root] + list(desk_root.children_recursive))
@@ -235,11 +235,13 @@ def import_glb(path):
             dmins, dmaxs = dbb
             cx = (dmins.x + dmaxs.x) * 0.5
             cy = (dmins.y + dmaxs.y) * 0.5
+            depth = (dmaxs.y - dmins.y)
             root.location.x = cx
-            root.location.y = cy
+            root.location.y = cy + depth * 0.08
             place_on_floor(root)
-            root.location.z += 0.05
-            print("CHAR_SEAT center", round(cx, 3), round(cy, 3), flush=True)
+            # Drop hips into seat so legs tuck under desk (not perched/squatting)
+            root.location.z -= 0.12
+            print("CHAR_SEAT chair", round(root.location.x, 3), round(root.location.y, 3), round(root.location.z, 3), flush=True)
     else:
         root.location.y = 0.0
 
@@ -305,17 +307,11 @@ def apply_animation_plan():
         return
     plan = list(anim_plan) if anim_plan else []
     if not plan:
-        plan = [
-            {"name": "Sit idle (chair)", "start": 0.0, "end": 1.2},
-            {"name": "Talk with gestures", "start": 1.2, "end": DUR - 1.2},
-            {"name": "Sit idle (chair)", "start": DUR - 1.2, "end": DUR},
-        ]
-    if resolve_action("Talk with gestures") is None and resolve_action("Talk"):
+        plan = [{"name": "Sit idle (chair)", "start": 0.0, "end": DUR}]
+    if resolve_action("Sit idle (chair)") is None and resolve_action("Idle"):
+        plan = [{"name": "Idle", "start": 0.0, "end": DUR}]
+    elif resolve_action("Talk with gestures") is None and resolve_action("Talk"):
         plan = [{"name": "Talk", "start": 0.0, "end": DUR}]
-    if resolve_action("Sit idle (chair)") is None and resolve_action("Idle") and len(plan) > 1:
-        for step in plan:
-            if "sit" in step.get("name", "").lower():
-                step["name"] = "Idle"
 
     if armature_obj.animation_data is None:
         armature_obj.animation_data_create()
@@ -365,7 +361,7 @@ def apply_animation_plan():
                 print("ANIM_ACTION_FAIL", e2, flush=True)
 
     if used == 0:
-        for nm in ("Talk with gestures", "Talk", "Idle", "Sit idle (chair)"):
+        for nm in ("Sit idle (chair)", "Idle", "Talk with gestures", "Talk"):
             act = resolve_action(nm)
             if act:
                 armature_obj.animation_data.action = act
@@ -494,9 +490,9 @@ def apply_facial_and_lipsync(path):
 
 apply_facial_and_lipsync(A.lipsync)
 
-bpy.ops.object.camera_add(location=(0, -5.8, 2.0))
+bpy.ops.object.camera_add(location=(0, -4.8, 2.15))
 cam = bpy.context.object
-cam.data.lens = 35
+cam.data.lens = 36
 bpy.context.scene.camera = cam
 
 def camkey(f, loc, target, lens):
@@ -507,13 +503,13 @@ def camkey(f, loc, target, lens):
     cam.keyframe_insert(data_path="rotation_euler", frame=f)
     cam.data.keyframe_insert(data_path="lens", frame=f)
 
-# Aim at character chest; medium distance so circular desk frames them
-look = (0.0, 0.0, 1.2)
-camkey(1, (0.0, -5.8, 2.0), look, 34)
-camkey(int(LAST * 0.30), (0.25, -4.4, 1.65), look, 38)
-camkey(int(LAST * 0.55), (0.55, -3.6, 1.45), (0.05, 0.0, 1.3), 42)
-camkey(int(LAST * 0.80), (-0.35, -3.3, 1.4), (0.0, 0.0, 1.28), 44)
-camkey(LAST, (0.1, -3.0, 1.35), (0.0, 0.0, 1.25), 46)
+# News framing: higher camera, look at upper chest; desk rim hides legs
+look = (0.0, 0.15, 1.35)
+camkey(1, (0.0, -4.8, 2.15), look, 36)
+camkey(int(LAST * 0.30), (0.2, -4.0, 1.95), look, 40)
+camkey(int(LAST * 0.55), (0.4, -3.4, 1.85), (0.05, 0.15, 1.4), 44)
+camkey(int(LAST * 0.80), (-0.25, -3.2, 1.8), (0.0, 0.15, 1.38), 46)
+camkey(LAST, (0.05, -3.0, 1.75), (0.0, 0.12, 1.36), 48)
 set_linear_interp(cam)
 
 bpy.ops.object.light_add(type="AREA", location=(-3.0, -3.0, 4.2))
@@ -521,27 +517,27 @@ L = bpy.context.object
 L.data.energy = 700
 L.data.size = 6.0
 L.data.color = (1.0, 0.97, 0.94)
-aim(L, (0, 0.0, 1.1))
+aim(L, (0, 0.1, 1.2))
 
 bpy.ops.object.light_add(type="AREA", location=(3.2, -1.0, 3.6))
 L2 = bpy.context.object
 L2.data.energy = 340
 L2.data.size = 4.5
 L2.data.color = (0.85, 0.92, 1.0)
-aim(L2, (0, 0.0, 1.1))
+aim(L2, (0, 0.1, 1.2))
 
 bpy.ops.object.light_add(type="AREA", location=(0.0, 2.8, 4.0))
 L3 = bpy.context.object
 L3.data.energy = 240
 L3.data.size = 4.0
-aim(L3, (0, 0.0, 1.0))
+aim(L3, (0, 0.1, 1.1))
 
 bpy.ops.object.light_add(type="AREA", location=(0.0, -2.2, 2.3))
 L4 = bpy.context.object
 L4.data.energy = 140
 L4.data.size = 2.8
 L4.data.color = (1.0, 0.95, 0.9)
-aim(L4, (0, 0.0, 1.0))
+aim(L4, (0, 0.1, 1.1))
 
 world = bpy.context.scene.world
 if world is None:
