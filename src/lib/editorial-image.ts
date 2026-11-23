@@ -1,7 +1,10 @@
 /**
  * 9jaBeacon Editorial image resolver
- * Person stories: Wikipedia Commons or branded SVG (never random stock faces).
- * Non-person: Unsplash API (TOS) then SVG.
+ * SAFE SOURCES ONLY:
+ *  1) Wikimedia Commons (persons / named subjects)
+ *  2) Unsplash (licensed free with attribution)
+ *  3) Own 9jaBeacon editorial SVG cards
+ * NEVER republish photos scraped from Punch, Vanguard, channels, etc.
  */
 import { fetchVerifiedWikipediaImage } from './wikipedia-image';
 
@@ -18,6 +21,26 @@ export interface ResolvedImageResult {
   imageCaption: string;
   imageCredit: string;
   imageLicense: string;
+}
+
+export function resolveUnsplashCredentials(): { accessKey: string; appName: string } {
+  const env = typeof process !== 'undefined' ? process.env || {} : {};
+  const candidates = [
+    env.UNSPLASH_ACCESS_KEY,
+    env.UNSPLASH_CLIENT_ID,
+    env.UNSPLASH_API_KEY,
+    env.UNSPLASH_KEY,
+  ];
+  let accessKey = '';
+  for (const c of candidates) {
+    const v = (c || '').trim().replace(/^Client-ID\s+/i, '');
+    if (v && v.length >= 20 && !/^\d+$/.test(v)) {
+      accessKey = v;
+      break;
+    }
+  }
+  const appName = (env.UNSPLASH_APP_NAME || '9jaBeacon').replace(/\s+/g, '');
+  return { accessKey, appName };
 }
 
 export function isPublisherLogoOrBanner(url?: string | null): boolean {
@@ -46,6 +69,24 @@ export function isPublisherLogoOrBanner(url?: string | null): boolean {
     'apple-touch-icon',
   ];
   return logoKeywords.some((kw) => trimmed.includes(kw)) || trimmed.endsWith('.ico');
+}
+
+/** True only for hosts we are allowed to hotlink / attribute. */
+export function isSafeFreeImageHost(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const u = url.trim().toLowerCase();
+  if (!u.startsWith('https://') && !u.startsWith('http://')) return false;
+  if (u.startsWith('data:image/')) return true;
+  return (
+    u.includes('images.unsplash.com') ||
+    u.includes('unsplash.com') ||
+    u.includes('images.pexels.com') ||
+    u.includes('pexels.com') ||
+    u.includes('upload.wikimedia.org') ||
+    u.includes('commons.wikimedia.org') ||
+    u.includes('wikipedia.org') ||
+    u.includes('cloudinary.com') // only if we uploaded our own assets there
+  );
 }
 
 function escapeXml(unsafe: string): string {
@@ -185,25 +226,13 @@ export function isPersonRelatedStory(title: string, content?: string): boolean {
   return false;
 }
 
-function resolveUnsplashAccessKey(): string {
-  const env = typeof process !== 'undefined' ? process.env || {} : {};
-  const candidates = [
-    env.UNSPLASH_ACCESS_KEY,
-    env.UNSPLASH_CLIENT_ID,
-    env.UNSPLASH_API_KEY,
-    env.UNSPLASH_KEY,
-  ];
-  for (const c of candidates) {
-    const v = (c || '').trim().replace(/^Client-ID\s+/i, '');
-    if (v && v.length >= 20 && !/^\d+$/.test(v)) return v;
-  }
-  return '';
-}
-
 function extractSearchQuery(title: string): string {
   const lower = title.toLowerCase();
   if (/\b(police|gunmen|bandits|kidnap|arrest|efcc)\b/i.test(lower)) {
     return 'nigeria police security law enforcement';
+  }
+  if (/\b(pension|retiree|gratuity|labour|protest|strike)\b/i.test(lower)) {
+    return 'africa protest demonstration workers rights';
   }
   if (/\b(naira|cbn|economy|bank|inflation|market)\b/i.test(lower)) {
     return 'nigeria economy finance naira banking';
@@ -221,19 +250,18 @@ function extractSearchQuery(title: string): string {
 }
 
 async function searchUnsplash(query: string): Promise<ResolvedImageResult | null> {
-  const key = resolveUnsplashAccessKey();
-  if (!key) {
+  const { accessKey, appName } = resolveUnsplashCredentials();
+  if (!accessKey) {
     console.warn('[Image] UNSPLASH_ACCESS_KEY missing — using fallback');
     return null;
   }
-  const appName = (process.env.UNSPLASH_APP_NAME || '9jaBeacon').replace(/\s+/g, '');
   try {
     const endpoint =
       'https://api.unsplash.com/search/photos?query=' +
       encodeURIComponent(query) +
       '&per_page=1&orientation=landscape';
     const res = await fetch(endpoint, {
-      headers: { Authorization: 'Client-ID ' + key, 'Accept-Version': 'v1' },
+      headers: { Authorization: 'Client-ID ' + accessKey, 'Accept-Version': 'v1' },
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
@@ -245,7 +273,7 @@ async function searchUnsplash(query: string): Promise<ResolvedImageResult | null
     if (!photo?.urls?.regular) return null;
     if (photo.links?.download_location) {
       fetch(photo.links.download_location, {
-        headers: { Authorization: 'Client-ID ' + key },
+        headers: { Authorization: 'Client-ID ' + accessKey },
         signal: AbortSignal.timeout(3000),
       }).catch(function () {});
     }
@@ -289,21 +317,14 @@ export async function resolveEditorialImage(options: {
   const sourceImageUrl = options.sourceImageUrl;
   const aiKeyword = options.aiKeyword;
 
-  if (sourceImageUrl && !isPublisherLogoOrBanner(sourceImageUrl)) {
-    const u = sourceImageUrl.toLowerCase();
-    if (
-      u.includes('unsplash.com') ||
-      u.includes('pexels.com') ||
-      u.includes('wikimedia') ||
-      u.includes('wikipedia')
-    ) {
-      return {
-        imageUrl: sourceImageUrl,
-        imageCaption: title + ' — Verified wire report.',
-        imageCredit: sourceName || 'Open source wire',
-        imageLicense: 'Open / Editorial',
-      };
-    }
+  // ONLY accept source image if it is already on a free host (never Punch/Vanguard/etc)
+  if (sourceImageUrl && isSafeFreeImageHost(sourceImageUrl) && !isPublisherLogoOrBanner(sourceImageUrl)) {
+    return {
+      imageUrl: sourceImageUrl,
+      imageCaption: title + ' — Verified wire report.',
+      imageCredit: sourceName || 'Open source wire',
+      imageLicense: 'Open / Editorial',
+    };
   }
 
   const isPerson = isPersonRelatedStory(title, content);
