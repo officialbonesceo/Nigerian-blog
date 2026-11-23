@@ -11,12 +11,12 @@ const siteName = settings.site_name || '9jaBeacon';
 const rawSiteUrl = (settings.site_url || 'https://www.9jabeacon.name.ng').replace(/\/+$/, '');
 const siteUrl = rawSiteUrl === 'https://9jabeacon.name.ng' ? 'https://www.9jabeacon.name.ng' : rawSiteUrl;
 const contactEmail = settings.contact_email || settings.admin_email || 'officialbonesceo@gmail.com';
-const lastUpdated = 'November 10, 2026';
+const lastUpdated = 'November 23, 2026';
 ---
 
 <Layout
   title={`About | ${siteName}`}
-  description={`${siteName} is a simple Nigerian news blog. We share stories from public reports and name the outlets we used.`}
+  description={`${siteName} is an independent Nigerian news site. We report politics, business, sports, and world stories in plain language for everyday readers.`}
   canonicalUrl={`${siteUrl}/about`}
   activeNav="about"
 >
@@ -33,25 +33,38 @@ const lastUpdated = 'November 10, 2026';
         About {siteName}
       </h1>
       <p class="text-sm text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-        {siteName} is a small Nigerian news blog. We write short, readable posts about politics, money, sports, and everyday stories people care about.
+        {siteName} is an <strong class="text-slate-800 dark:text-slate-200">independent Nigerian news site</strong>.
+        We publish short, clear reports on politics, money, sports, and world stories that matter to readers in Nigeria.
       </p>
     </header>
 
     <div class="space-y-6 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
       <section class="space-y-2">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Who we are</h2>
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">What we are</h2>
         <p>
-          We are not a big newspaper or a formal news agency. This is an independent blog that follows public stories and tries to explain them in plain language.
+          We are a <strong>news site</strong>, not a personal diary blog and not a formal newspaper company.
+          Our job is to take public information and explain it in plain English for people who want to stay informed.
         </p>
       </section>
 
       <section class="space-y-2">
         <h2 class="text-lg font-bold text-slate-900 dark:text-white">Where stories come from</h2>
         <p>
-          Posts are based on information that is already public — for example newspaper reports, official statements, and other open sources. When we use a story, we try to say where it came from (for example, “According to Punch…”).
+          Reports are based on information that is already public — newspaper reports, official statements,
+          and other open sources. When we use a story, we name the source (for example, “According to Punch…”).
         </p>
         <p>
-          Other outlets can make mistakes and later update their own reports. We do the same when we notice an error. We do not claim to be the original investigators of every story we cover.
+          Other outlets can make mistakes and later update their own reports. We correct ours when we notice an error.
+          We do not claim to be the original investigators of every story we cover.
+        </p>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Images</h2>
+        <p>
+          We do not republish copyrighted photos from other newspapers.
+          Article images come from free licensed sources (for example Unsplash or Wikimedia Commons)
+          or from our own 9jaBeacon editorial graphics.
         </p>
       </section>
 
