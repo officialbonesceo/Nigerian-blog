@@ -1,13 +1,10 @@
 {
-  "date": "2026-11-23",
+  "date": "2026-11-24",
   "follows": [
-    "did:plc:bubexenp756ihnyp2p7h64y6",
-    "did:plc:2zfemg2bdzfb6o6cs7i4vpfp",
-    "did:plc:kg2m6yf5qwro4n4m7n66gqyl"
+    "did:plc:lnpaoy2qkblkadic7exzzzau"
   ],
   "likes": [
-    "at://did:plc:k2qcxlzyjkfkcoql765zy72f/app.bsky.feed.post/3n2gzahrenk2c",
-    "at://did:plc:bpxsg2x54bjfegnzklqoiicp/app.bsky.feed.post/3n232oshya22p"
+    "at://did:plc:spjdchwn5opevbg34g5io3s2/app.bsky.feed.post/3n2z5bb2iuq2y"
   ],
   "followedEver": [
     "did:plc:yvu2cdtvbjcuervvcvyuz6hl",
@@ -28,6 +25,7 @@
     "did:plc:igtapoj4c7mkwlpf2fpap2tx",
     "did:plc:bubexenp756ihnyp2p7h64y6",
     "did:plc:2zfemg2bdzfb6o6cs7i4vpfp",
-    "did:plc:kg2m6yf5qwro4n4m7n66gqyl"
+    "did:plc:kg2m6yf5qwro4n4m7n66gqyl",
+    "did:plc:lnpaoy2qkblkadic7exzzzau"
   ]
 }
