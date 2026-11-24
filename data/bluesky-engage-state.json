@@ -2,7 +2,9 @@
   "date": "2026-11-24",
   "follows": [
     "did:plc:lnpaoy2qkblkadic7exzzzau",
-    "did:plc:u756xe7k5sqzorsjnraxbitj"
+    "did:plc:u756xe7k5sqzorsjnraxbitj",
+    "did:plc:ofn45msntkpd5phoifeed77b",
+    "did:plc:duxz6jfkwonsrdvagt5kdsof"
   ],
   "likes": [
     "at://did:plc:spjdchwn5opevbg34g5io3s2/app.bsky.feed.post/3n2z5bb2iuq2y",
@@ -29,6 +31,8 @@
     "did:plc:2zfemg2bdzfb6o6cs7i4vpfp",
     "did:plc:kg2m6yf5qwro4n4m7n66gqyl",
     "did:plc:lnpaoy2qkblkadic7exzzzau",
-    "did:plc:u756xe7k5sqzorsjnraxbitj"
+    "did:plc:u756xe7k5sqzorsjnraxbitj",
+    "did:plc:ofn45msntkpd5phoifeed77b",
+    "did:plc:duxz6jfkwonsrdvagt5kdsof"
   ]
 }
