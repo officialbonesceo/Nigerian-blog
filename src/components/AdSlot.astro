@@ -1,25 +1,10 @@
 ---
 /**
- * Strategic High-Converting Ad & Smartlink Placements for 9jaBeacon
- * 
- * Supports Diverse High-CTR Formats:
- * 1. 'banner-320x50' (Mobile & header display banner)
- * 2. 'banner-300x250' (High-RPM square display banner)
- * 3. 'feed' (Native in-feed news card matching editorial wire styling)
- * 4. 'breaking-teaser' (Urgent bulletin / breaking opportunity alert strip)
- * 5. 'opportunities-grid' (2 or 4-column native trending recommendations grid)
- * 6. 'spotlight' (High-impact full-width editorial cover banner)
- * 7. 'smartlink' (In-article partner spotlight with action button)
- * 8. 'read-also' (Editorial inline curiosity highlight callout)
- * 9. 'sidebar' (Desktop 300x250 banner + smartlink action)
- *
- * Distinct Image & Story Rotation:
- * Uses a library of 20 verified, high-quality Unsplash photos and diverse topics.
- * Accepts an `index` prop to guarantee that no two ad slots on the same page ever
- * share the same image, headline, or format.
+ * AdSlot — Adsterra network units only.
+ * Fake native "sponsored story" cards removed (user request).
+ * Formats that used clickbait cards now either show a real Adsterra unit or nothing.
  */
-
-import { getD1, getCustomAds, getSiteSettings } from '../lib/runtime-db';
+import { getD1, getSiteSettings } from '../lib/runtime-db';
 
 interface Props {
   format?:
@@ -38,256 +23,46 @@ interface Props {
   headline?: string;
   teaser?: string;
   loading?: 'lazy' | 'eager';
-  index?: number; // Deterministic offset to prevent duplicate images/stories on the same page
+  index?: number;
 }
 
 const {
   format = 'in-article',
   className = '',
-  smartLinkUrl = '',
-  headline = '',
-  teaser = '',
   loading,
-  index = 0,
 } = Astro.props;
 
-// Fetch live database settings for site-wide ad configurations
 let dbSettings: Record<string, string> = {};
 try {
   const db = getD1(Astro.locals);
   dbSettings = await getSiteSettings(db);
 } catch {}
 
-const DEFAULT_SMARTLINK = 'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead';
-const configuredSmartlink = dbSettings.ad_smartlink_url || dbSettings.monetag_smartlink_url || DEFAULT_SMARTLINK;
-
-// 20 High-converting, fully compliant partner stories with 100% verified unique Unsplash photography
-const NATIVE_ROTATING_STORIES = [
-  {
-    category: 'Careers & Tech',
-    badge: 'Partner Spotlight',
-    title: 'Remote Global Tech Contracts & Digital Skills: 2026 Resource Guide for Nigerian Professionals',
-    teaser: 'Detailed breakdown of vetted international onboarding pipelines, professional portfolio standards, and accredited remote industry pathways.',
-    timeAgo: 'Sponsored',
-    readingTime: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Explore Contracts',
-  },
-  {
-    category: 'Finance & FX',
-    badge: 'Trending Guide',
-    title: 'Multi-Currency Virtual Dollar Cards & Zero-Fee Remittances: Navigating FX Channels Compliantly',
-    teaser: 'Key insights into regulated foreign exchange payment gateways, offshore dollar wallets, and secure international educational transfers.',
-    timeAgo: 'Sponsored',
-    readingTime: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Check FX Rates',
-  },
-  {
-    category: 'Global Mobility',
-    badge: 'Verified Resource',
-    title: 'International Professional Mobility & Skilled Talent Tracks: Verification & Eligibility Guide',
-    teaser: 'Official documentation frameworks, certified credential evaluations, and verified talent sponsorship resources for global careers.',
-    timeAgo: 'Sponsored',
-    readingTime: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'View Eligibility',
-  },
-  {
-    category: 'Business & Energy',
-    badge: 'Partner Spotlight',
-    title: 'Commercial Solar Inverters & Enterprise Clean Energy: Slashing Operational Tariffs in Nigeria',
-    teaser: 'Institutional strategies for protecting business liquidity, deploying commercial solar solutions, and hedging operational costs against inflation.',
-    timeAgo: 'Sponsored',
-    readingTime: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Calculate Savings',
-  },
-  {
-    category: 'Education & Grants',
-    badge: 'Featured Window',
-    title: 'Fully Funded International Fellowships & Tech Scholarships Open for African Applicants',
-    teaser: 'Essential eligibility criteria, application portfolio milestones, and deadline schedules for accredited postgraduate and professional grants.',
-    timeAgo: 'Sponsored',
-    readingTime: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Check Grants',
-  },
-  {
-    category: 'Diaspora & Trade',
-    badge: 'Market Analysis',
-    title: 'High-Yield Foreign Currency Accounts & Cross-Border Merchant Settlement for Exporters',
-    teaser: 'A comprehensive review of liquidity benchmarks, international trade compliance standards, and risk-managed foreign currency instruments.',
-    timeAgo: 'Sponsored',
-    readingTime: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Access Markets',
-  },
-  {
-    category: 'Tech & Productivity',
-    badge: 'Tech Bulletin',
-    title: 'Enterprise Cloud Tools & Digital Automation: Scaling African SMB Revenue with Minimal Overhead',
-    teaser: 'Vetted workflows, automated workflow pipelines, and cloud customer management tools accelerating productivity across high-growth startups.',
-    timeAgo: 'Sponsored',
-    readingTime: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Unlock Tools',
-  },
-  {
-    category: 'Real Estate & Wealth',
-    badge: 'Asset Report',
-    title: 'Prime Commercial Land & Structured Real Estate Syndications in Abuja and Lagos Free Zones',
-    teaser: 'A comprehensive guide to title verification, digital land registries, and inflation-hedged yields on verified Nigerian commercial assets.',
-    timeAgo: 'Sponsored',
-    readingTime: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Explore Estates',
-  },
-  {
-    category: 'Digital Infrastructure',
-    badge: 'Connectivity',
-    title: 'High-Bandwidth Dedicated Fibre & Satellite Broadband: Enterprise Pricing & Reliability Rankings',
-    teaser: 'Empirical speed tests, uptime service level agreements, and deployment costs for uninterrupted corporate internet connectivity.',
-    timeAgo: 'Sponsored',
-    readingTime: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Compare Plans',
-  },
-  {
-    category: 'Smart Devices',
-    badge: 'Gadget Trade-In',
-    title: 'Certified Pre-Owned Flagship Smartphones & Zero-Interest Gadget Financing Schemes in Nigeria',
-    teaser: 'Reliable device warranty frameworks, trade-in valuation metrics, and authorized service centers delivering premium value on tech hardware.',
-    timeAgo: 'Sponsored',
-    readingTime: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02560?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'View Hardware',
-  },
-  {
-    category: 'Cloud & DevOps',
-    badge: 'Skill Roadmap',
-    title: 'Accredited Cloud Architecture & Systems Engineering Certifications for High-Salary Placements',
-    teaser: 'Curated curriculum pathways, cloud provider scholarship vouchers, and practical lab credentials valued by global engineering recruiters.',
-    timeAgo: 'Sponsored',
-    readingTime: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Review Roadmap',
-  },
-  {
-    category: 'Cybersecurity',
-    badge: 'Security Brief',
-    title: 'Zero-Trust Defense Systems & Threat Intelligence Standards for Fintechs and Banking Institutions',
-    teaser: 'Protecting digital infrastructure, customer transaction ledgers, and institutional databases against advanced credential attacks.',
-    timeAgo: 'Sponsored',
-    readingTime: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Audit Security',
-  },
-  {
-    category: 'Healthcare & Wellness',
-    badge: 'Corporate Plan',
-    title: 'Comprehensive Corporate HMO Plans & 24/7 Telemedicine Coverage for Distributed African Teams',
-    teaser: 'Affordable health insurance packages, emergency evacuation retainers, and preventative primary care access across all 36 states.',
-    timeAgo: 'Sponsored',
-    readingTime: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Compare HMOs',
-  },
-  {
-    category: 'Logistics & Haulage',
-    badge: 'Supply Chain',
-    title: 'Inter-State Cold Chain & Smart GPS Fleet Haulage: Slashing Post-Harvest Losses in Nigeria',
-    teaser: 'Modern telemetry tracking, temperature-controlled transit networks, and automated cargo insurance protecting agricultural supply lines.',
-    timeAgo: 'Sponsored',
-    readingTime: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Track Fleets',
-  },
-  {
-    category: 'Media Production',
-    badge: 'Creator Studio',
-    title: 'Broadcast-Grade Studio Gear, Sound Design & Independent Media Monetization Playbooks',
-    teaser: 'Professional equipment setups, copyright monetization strategies, and podcast distribution workflows yielding sustainable revenue.',
-    timeAgo: 'Sponsored',
-    readingTime: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'See Equipment',
-  },
-  {
-    category: 'Energy & Commodities',
-    badge: 'Oil & Gas',
-    title: 'Modular Refinery Offtake Agreements & Domestic Gas Utilization: Private Investment Milestones',
-    teaser: 'Regulatory licensing requirements, domestic crude allocation incentives, and commercial returns on gas compression infrastructure.',
-    timeAgo: 'Sponsored',
-    readingTime: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1508847154043-be5407fcaa5a?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Read Analysis',
-  },
-  {
-    category: 'Legal & Compliance',
-    badge: 'Corporate Law',
-    title: 'CAC Corporate Restructuring, Trademark Protection & Tax Incentives for Nigerian Innovators',
-    teaser: 'Essential regulatory guidelines, pioneer status tax holidays, and intellectual property registrations safeguarding business equity.',
-    timeAgo: 'Sponsored',
-    readingTime: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'Check Framework',
-  },
-  {
-    category: 'Capital & Investment',
-    badge: 'Venture Alert',
-    title: 'Seed Stage Angel Syndicates & Growth Equity Funding Rounds Closing in West Africa This Quarter',
-    teaser: 'Direct pipeline data on active angel networks, non-dilutive grant windows, and term-sheet negotiation benchmarks for founders.',
-    timeAgo: 'Sponsored',
-    readingTime: 3,
-    imageUrl: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=600&q=80',
-    ctaText: 'View Pipeline',
-  }
-];
-
-// Rotate dynamically every 5 minutes, offset deterministically by slot index so no two slots on the page share the same item
-const baseRotation = Math.floor(Date.now() / (5 * 60 * 1000));
-const storyIndex = (baseRotation + index) % NATIVE_ROTATING_STORIES.length;
-const currentNativeStory = NATIVE_ROTATING_STORIES[storyIndex];
-
-// Multi-story slots take distinct offsets
-const secondaryStory = NATIVE_ROTATING_STORIES[(storyIndex + 1) % NATIVE_ROTATING_STORIES.length];
-const thirdStory = NATIVE_ROTATING_STORIES[(storyIndex + 2) % NATIVE_ROTATING_STORIES.length];
-const fourthStory = NATIVE_ROTATING_STORIES[(storyIndex + 3) % NATIVE_ROTATING_STORIES.length];
-
-let effectiveHeadline = headline || currentNativeStory.title;
-let effectiveTeaser = teaser || currentNativeStory.teaser;
-let effectiveLink = (smartLinkUrl && smartLinkUrl.trim().length > 0)
-  ? smartLinkUrl.trim()
-  : configuredSmartlink;
-
-// Check for custom active ads in database
-if (!headline) {
-  try {
-    const db = getD1(Astro.locals);
-    const activeAds = await getCustomAds(db, true);
-    if (activeAds && activeAds.length > 0) {
-      const slotAd = activeAds[index % activeAds.length] || activeAds[0];
-      effectiveHeadline = slotAd.title;
-      effectiveTeaser = slotAd.teaser || currentNativeStory.teaser;
-      effectiveLink = slotAd.target_url;
-    }
-  } catch {}
-}
-
 const BANNER_320X50_KEY = dbSettings.ad_banner_320x50_key || '68c3e01457bdbc56eeaf6737cd933b72';
 const BANNER_300X250_KEY = dbSettings.ad_banner_300x250_key || '6605a898998325cc0d10c2c5c77a29d8';
 
-const srcDoc320x50 = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:0;display:flex;justify-content:center;align-items:center;background:transparent;overflow:hidden;}</style></head><body><script>atOptions={'key':'${BANNER_320X50_KEY}','format':'iframe','height':50,'width':320,'params':{}};</script><script src="https://www.highrevenueformat.com/${BANNER_320X50_KEY}/invoke.js"></script></body></html>`;
+const srcDoc320x50 = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:0;display:flex;justify-content:center;align-items:center;background:transparent;overflow:hidden;}</style></head><body><script>atOptions={'key':'${BANNER_320X50_KEY}','format':'iframe','height':50,'width':320,'params':{}};<\/script><script src="https://www.highrevenueformat.com/${BANNER_320X50_KEY}/invoke.js"><\/script></body></html>`;
 
-const srcDoc300x250 = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:0;display:flex;justify-content:center;align-items:center;background:transparent;overflow:hidden;}</style></head><body><script>atOptions={'key':'${BANNER_300X250_KEY}','format':'iframe','height':250,'width':300,'params':{}};</script><script src="https://www.highrevenueformat.com/${BANNER_300X250_KEY}/invoke.js"></script></body></html>`;
+const srcDoc300x250 = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:0;display:flex;justify-content:center;align-items:center;background:transparent;overflow:hidden;}</style></head><body><script>atOptions={'key':'${BANNER_300X250_KEY}','format':'iframe','height':250,'width':300,'params':{}};<\/script><script src="https://www.highrevenueformat.com/${BANNER_300X250_KEY}/invoke.js"><\/script></body></html>`;
+
+// Real Adsterra units only
+const show320 = format === 'banner-320x50';
+const show300 =
+  format === 'banner-300x250' ||
+  format === 'in-article' ||
+  format === 'feed' ||
+  format === 'sidebar' ||
+  format === 'smartlink' ||
+  format === 'breaking-teaser' ||
+  format === 'spotlight' ||
+  format === 'read-also' ||
+  format === 'opportunities-grid';
 
 const topBannerLoading = loading || 'eager';
 const midBannerLoading = loading || 'lazy';
 ---
 
-<!-- 1. Strategic 320x50 Mobile / Horizontal Banner -->
-{format === 'banner-320x50' && (
+{show320 && (
   <div class={`my-3 w-full flex flex-col items-center justify-center not-prose ${className}`}>
     <div class="flex items-center justify-between w-full max-w-[320px] mb-1 px-1 text-[10px] text-slate-400 dark:text-slate-500 font-mono">
       <span>Advertisement</span>
@@ -306,422 +81,21 @@ const midBannerLoading = loading || 'lazy';
   </div>
 )}
 
-<!-- 2. Strategic 300x250 Native Banner -->
-{(format === 'banner-300x250' || format === 'in-article') && (
-  <div class={`my-6 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs not-prose transition-colors ${className}`}>
-    <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-      <div class="flex items-center gap-2">
-        <span class="relative flex h-2 w-2">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-        </span>
-        <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
-          Sponsored Feature
-        </span>
-      </div>
-      <a
-        href="/contact#advertise"
-        class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-      >
-        Advertise
-      </a>
+{show300 && (
+  <div class={`my-6 flex flex-col items-center justify-center not-prose ${className}`}>
+    <div class="flex items-center justify-between w-full max-w-[300px] mb-1 px-1 text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+      <span>Advertisement</span>
+      <a href="/contact#advertise" class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Advertise</a>
     </div>
-
-    <!-- 300x250 Iframe Banner Container -->
-    <div class="w-full flex flex-col items-center justify-center min-h-[250px] py-1">
-      <div class="w-[300px] h-[250px] min-w-[300px] min-h-[250px] overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 flex items-center justify-center">
-        <iframe
-          srcdoc={srcDoc300x250}
-          width="300"
-          height="250"
-          loading={midBannerLoading}
-          title="Native Sponsor Unit (300x250)"
-          class="border-0 w-[300px] h-[250px] overflow-hidden block"
-        />
-      </div>
-    </div>
-  </div>
-)}
-
-<!-- 3. IN-FEED SMARTLINK: Native Editorial Wire Format (Distinct Image & Title Per Slot) -->
-{format === 'feed' && (
-  <article class={`p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/25 dark:border-emerald-500/20 hover:border-emerald-500/50 dark:hover:border-emerald-500/40 shadow-xs transition-all duration-200 group overflow-hidden ${className}`}>
-    <div class="flex items-start justify-between gap-3 sm:gap-4">
-      <div class="flex-1 min-w-0 space-y-1.5 overflow-hidden">
-        <div class="flex items-center gap-1.5 flex-wrap">
-          <span class="inline-block text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-mono">
-            Sponsored Spotlight
-          </span>
-          <span class="inline-block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-mono truncate max-w-full">
-            {currentNativeStory.category}
-          </span>
-        </div>
-
-        <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 leading-snug line-clamp-2 transition-colors break-words">
-          <a
-            href={effectiveLink}
-            target="_blank"
-            rel="noopener noreferrer sponsored"
-            class="focus:outline-hidden"
-          >
-            {effectiveHeadline}
-          </a>
-        </h3>
-
-        <p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed hidden sm:block">
-          {effectiveTeaser}
-        </p>
-
-        <div class="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-          <span class="font-medium text-emerald-700 dark:text-emerald-400 font-mono">Verified Resource</span>
-          <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0"></span>
-          <span class="shrink-0">{currentNativeStory.readingTime} min read</span>
-          <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0"></span>
-          <span class="text-emerald-600 dark:text-emerald-400 font-semibold group-hover:underline inline-flex items-center gap-0.5">
-            {currentNativeStory.ctaText} &rarr;
-          </span>
-        </div>
-      </div>
-
-      <a
-        href={effectiveLink}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
-        class="shrink-0 relative w-20 h-20 sm:w-28 sm:h-24 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800/60"
-        tabindex="-1"
-      >
-        <img
-          src={currentNativeStory.imageUrl}
-          alt={effectiveHeadline}
-          loading="lazy"
-          decoding="async"
-          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-        <div class="absolute top-1 left-1 px-1 py-0.5 rounded bg-black/70 text-[8px] font-black uppercase text-amber-300 font-mono leading-none">
-          AD
-        </div>
-      </a>
-    </div>
-  </article>
-)}
-
-<!-- 4. BREAKING-TEASER SMARTLINK: Urgent Opportunity Bulletin Strip -->
-{format === 'breaking-teaser' && (
-  <aside class={`my-3 p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-amber-50 via-white to-amber-50 dark:from-slate-900 dark:via-amber-950/20 dark:to-slate-900 border border-amber-300/80 dark:border-amber-700/50 shadow-xs transition-all not-prose group overflow-hidden ${className}`}>
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div class="flex items-center gap-2.5 min-w-0">
-        <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-          <svg class="w-4 h-4 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        </div>
-        <div class="min-w-0">
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <span class="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 text-[9px] font-black uppercase tracking-wider">
-              HIGH CTR ALERT
-            </span>
-            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-mono uppercase font-bold">
-              {currentNativeStory.category}
-            </span>
-          </div>
-          <a
-            href={effectiveLink}
-            target="_blank"
-            rel="noopener noreferrer sponsored"
-            class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-1"
-          >
-            {effectiveHeadline}
-          </a>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
-        <a
-          href={effectiveLink}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
-          class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black tracking-wide transition shadow-xs flex items-center gap-1 active:scale-95 cursor-pointer"
-        >
-          <span>{currentNativeStory.ctaText}</span>
-          <span>&rarr;</span>
-        </a>
-      </div>
-    </div>
-  </aside>
-)}
-
-<!-- 5. SPOTLIGHT SMARTLINK: Full-Width Visual Hero Card -->
-{format === 'spotlight' && (
-  <div class={`my-5 rounded-2xl overflow-hidden bg-slate-900 text-white border border-slate-800 shadow-md relative group not-prose ${className}`}>
-    <div class="relative h-48 sm:h-56 w-full overflow-hidden">
-      <img
-        src={currentNativeStory.imageUrl}
-        alt={effectiveHeadline}
-        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-60"
+    <div class="w-[300px] h-[250px] min-w-[300px] min-h-[250px] overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-center justify-center">
+      <iframe
+        srcdoc={srcDoc300x250}
+        width="300"
+        height="250"
+        loading={midBannerLoading}
+        title="Native Sponsor Unit (300x250)"
+        class="border-0 w-[300px] h-[250px] overflow-hidden block"
       />
-      <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent"></div>
-      
-      <div class="absolute top-3 left-3 flex items-center gap-2">
-        <span class="px-2 py-0.5 rounded bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider font-mono">
-          Featured Opportunity
-        </span>
-        <span class="text-[10px] text-slate-300 font-mono uppercase font-semibold">
-          {currentNativeStory.category}
-        </span>
-      </div>
-
-      <div class="absolute bottom-3 left-3 right-3 sm:left-5 sm:right-5 space-y-1.5">
-        <h3 class="text-base sm:text-xl font-black text-white group-hover:text-emerald-400 transition-colors leading-snug line-clamp-2">
-          <a href={effectiveLink} target="_blank" rel="noopener noreferrer sponsored">
-            {effectiveHeadline}
-          </a>
-        </h3>
-        <p class="text-xs text-slate-300 line-clamp-2 hidden sm:block">
-          {effectiveTeaser}
-        </p>
-        <div class="pt-1 flex items-center justify-between">
-          <span class="text-[10px] text-slate-400 font-mono">Sponsored Partner Resource</span>
-          <a
-            href={effectiveLink}
-            target="_blank"
-            rel="noopener noreferrer sponsored"
-            class="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition flex items-center gap-1 shadow-sm active:scale-95"
-          >
-            <span>{currentNativeStory.ctaText}</span>
-            <span>&rarr;</span>
-          </a>
-        </div>
-      </div>
     </div>
   </div>
-)}
-
-<!-- 6. IN-ARTICLE SMARTLINK: Policy-Compliant Editorial Partner Spotlight -->
-{format === 'smartlink' && (
-  <div class={`my-6 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-500/30 dark:border-emerald-500/25 hover:border-emerald-500/60 dark:hover:border-emerald-500/50 shadow-xs not-prose transition-all group ${className}`}>
-    <div class="flex items-center justify-between gap-2 mb-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
-      <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 font-mono">
-          Sponsored Feature
-        </span>
-        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 font-mono">
-          {currentNativeStory.category} · {currentNativeStory.badge}
-        </span>
-      </div>
-      <span class="text-[10px] text-slate-400 font-mono">
-        {currentNativeStory.readingTime} min read
-      </span>
-    </div>
-
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div class="flex items-start gap-3.5 text-left flex-1 min-w-0">
-        <div class="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
-          <img
-            src={currentNativeStory.imageUrl}
-            alt={effectiveHeadline}
-            class="w-full h-full object-cover group-hover:scale-105 transition-transform"
-          />
-        </div>
-        <div>
-          <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-snug">
-            <a href={effectiveLink} target="_blank" rel="noopener noreferrer sponsored">
-              {effectiveHeadline}
-            </a>
-          </h4>
-          <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-            {effectiveTeaser}
-          </p>
-        </div>
-      </div>
-
-      <a
-        href={effectiveLink}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
-        class="shrink-0 w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
-      >
-        <span>{currentNativeStory.ctaText}</span>
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-        </svg>
-      </a>
-    </div>
-  </div>
-)}
-
-<!-- 7. READ-ALSO SMARTLINK: High-CTR Editorial Curiosity Callout -->
-{format === 'read-also' && (
-  <div class={`my-5 p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border-l-4 border-emerald-500 border-r border-t border-b border-slate-200 dark:border-slate-800 not-prose shadow-xs transition-all hover:bg-slate-100/80 dark:hover:bg-slate-800/60 group ${className}`}>
-    <div class="flex items-center justify-between gap-2 mb-1.5">
-      <div class="flex items-center gap-1.5">
-        <span class="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1">
-          <svg class="w-3.5 h-3.5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.477.859h4z" />
-          </svg>
-          Recommended Resource
-        </span>
-        <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 font-bold">
-          Sponsored
-        </span>
-      </div>
-      <span class="text-[10px] text-slate-400 font-mono">External Opportunity</span>
-    </div>
-    <a
-      href={effectiveLink}
-      target="_blank"
-      rel="noopener noreferrer sponsored"
-      class="text-sm sm:text-base font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center justify-between gap-3"
-    >
-      <span>{effectiveHeadline}</span>
-      <span class="text-emerald-600 dark:text-emerald-400 shrink-0 font-bold group-hover:translate-x-1 transition-transform">&rarr;</span>
-    </a>
-  </div>
-)}
-
-<!-- 8. OPPORTUNITIES-GRID: 2 to 4 Sponsored Recommendations With Distinct Imagery -->
-{format === 'opportunities-grid' && (
-  <div class={`my-7 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs not-prose ${className}`}>
-    <div class="flex items-center justify-between gap-2 mb-3.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
-      <div class="flex items-center gap-2">
-        <span class="relative flex h-2 w-2">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-        </span>
-        <h4 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white font-mono">
-          Trending Opportunities Around The Web
-        </h4>
-      </div>
-      <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 font-bold font-mono">
-        Sponsored
-      </span>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-      <!-- Card 1 -->
-      <a
-        href={effectiveLink}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
-        class="flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-emerald-50/50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 hover:border-emerald-500/40 transition-all group"
-      >
-        <div class="w-full h-28 rounded-lg overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 mb-2.5">
-          <img src={currentNativeStory.imageUrl} alt={currentNativeStory.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-        </div>
-        <div class="flex-1 min-w-0">
-          <span class="text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 font-mono block mb-1">
-            {currentNativeStory.category}
-          </span>
-          <p class="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">
-            {currentNativeStory.title}
-          </p>
-          <span class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-2 inline-flex items-center gap-1 font-bold">
-            {currentNativeStory.ctaText} &rarr;
-          </span>
-        </div>
-      </a>
-
-      <!-- Card 2 -->
-      <a
-        href={effectiveLink}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
-        class="flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-emerald-50/50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 hover:border-emerald-500/40 transition-all group"
-      >
-        <div class="w-full h-28 rounded-lg overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 mb-2.5">
-          <img src={secondaryStory.imageUrl} alt={secondaryStory.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-        </div>
-        <div class="flex-1 min-w-0">
-          <span class="text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 font-mono block mb-1">
-            {secondaryStory.category}
-          </span>
-          <p class="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">
-            {secondaryStory.title}
-          </p>
-          <span class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-2 inline-flex items-center gap-1 font-bold">
-            {secondaryStory.ctaText} &rarr;
-          </span>
-        </div>
-      </a>
-
-      <!-- Card 3 -->
-      <a
-        href={effectiveLink}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
-        class="flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-emerald-50/50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 hover:border-emerald-500/40 transition-all group"
-      >
-        <div class="w-full h-28 rounded-lg overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 mb-2.5">
-          <img src={thirdStory.imageUrl} alt={thirdStory.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-        </div>
-        <div class="flex-1 min-w-0">
-          <span class="text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 font-mono block mb-1">
-            {thirdStory.category}
-          </span>
-          <p class="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">
-            {thirdStory.title}
-          </p>
-          <span class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-2 inline-flex items-center gap-1 font-bold">
-            {thirdStory.ctaText} &rarr;
-          </span>
-        </div>
-      </a>
-
-      <!-- Card 4 -->
-      <a
-        href={effectiveLink}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
-        class="flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-emerald-50/50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 hover:border-emerald-500/40 transition-all group"
-      >
-        <div class="w-full h-28 rounded-lg overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 mb-2.5">
-          <img src={fourthStory.imageUrl} alt={fourthStory.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-        </div>
-        <div class="flex-1 min-w-0">
-          <span class="text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 font-mono block mb-1">
-            {fourthStory.category}
-          </span>
-          <p class="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">
-            {fourthStory.title}
-          </p>
-          <span class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-2 inline-flex items-center gap-1 font-bold">
-            {fourthStory.ctaText} &rarr;
-          </span>
-        </div>
-      </a>
-    </div>
-  </div>
-)}
-
-<!-- 9. Desktop Sidebar 300x250 Banner + Smartlink Action -->
-{format === 'sidebar' && (
-  <aside class={`p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 not-prose ${className}`}>
-    <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">
-      <span class="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Spotlight</span>
-      <a href="/contact#advertise" class="hover:underline">Advertise</a>
-    </div>
-
-    <!-- 300x250 Native Banner -->
-    <div class="w-full flex justify-center py-1">
-      <div class="w-[300px] h-[250px] overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 flex items-center justify-center">
-        <iframe
-          srcdoc={srcDoc300x250}
-          width="300"
-          height="250"
-          loading="lazy"
-          title="Sidebar Advertisement"
-          class="border-0 w-[300px] h-[250px] overflow-hidden block"
-        />
-      </div>
-    </div>
-
-    <!-- Supplementary Smartlink Callout -->
-    <a
-      href={effectiveLink}
-      target="_blank"
-      rel="noopener noreferrer sponsored"
-      class="block w-full text-center py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold transition shadow-xs cursor-pointer"
-    >
-      🔥 Explore Verified Partner Deals &rarr;
-    </a>
-  </aside>
 )}
