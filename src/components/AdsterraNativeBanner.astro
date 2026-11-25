@@ -1,17 +1,7 @@
 ---
 /**
- * Adsterra Native Banner Component for 9jaBeacon
- * 
- * Features:
- * - High-RPM native ad grid matching 9jaBeacon dark/light color palette.
- * - Guaranteed 100% Fill Rate: If Adsterra is blocked by client ad-blockers,
- *   has slow network latency, or returns zero bids, a rich 4-card native
- *   partner grid with distinct imagery, high-CTR titles, and smartlinks is displayed.
- * - Zero blank spaces or layout shifts on the Home tab.
+ * Adsterra native container only — no fake Unsplash "sponsored opportunity" cards.
  */
-
-import { getD1, getSiteSettings } from '../lib/runtime-db';
-
 interface Props {
   containerId?: string;
   scriptUrl?: string;
@@ -23,57 +13,9 @@ interface Props {
 const {
   containerId = 'container-4e5de78ab786afbf822590e03b1b657e',
   scriptUrl = 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js',
-  label = 'Sponsored Opportunities & Trending Insights',
+  label = 'Advertisement',
   className = '',
-  smartLinkUrl = '',
 } = Astro.props;
-
-let dbSettings: Record<string, string> = {};
-try {
-  const db = getD1(Astro.locals);
-  dbSettings = await getSiteSettings(db);
-} catch {}
-
-const DEFAULT_SMARTLINK = 'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead';
-const effectiveSmartlink = (smartLinkUrl && smartLinkUrl.trim().length > 0)
-  ? smartLinkUrl.trim()
-  : (dbSettings.ad_smartlink_url || dbSettings.monetag_smartlink_url || DEFAULT_SMARTLINK);
-
-// 4 distinct fallback recommendations with unique images and high-CTR hooks
-const NATIVE_BACKUP_CARDS = [
-  {
-    category: 'Remote Careers',
-    badge: 'Trending Now',
-    title: 'Top International Remote Tech Work & USD Payout Portals Accepting Nigerian Applicants',
-    teaser: 'Verified contracting pipelines, tax-compliant remittance routes, and digital skills in highest demand across 2026.',
-    imageUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80',
-    cta: 'View Work Tracks',
-  },
-  {
-    category: 'FX & Virtual Cards',
-    badge: 'Popular Guide',
-    title: 'Zero-Fee Virtual Dollar Cards & Fast FX Cross-Border Settlement Channels for Africans',
-    teaser: 'Regulated foreign currency wallets, high-yield USD accounts, and international tuition transfer platforms.',
-    imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80',
-    cta: 'Compare Wallets',
-  },
-  {
-    category: 'Green Energy',
-    badge: 'Cost Saver',
-    title: 'Commercial Solar Inverter Packages & Battery Storage: Cut Diesel Generator Costs by 70%',
-    teaser: 'Engineering specifications, institutional financing frameworks, and certified solar installers operating nationwide.',
-    imageUrl: 'https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=600&q=80',
-    cta: 'Calculate ROI',
-  },
-  {
-    category: 'Global Mobility',
-    badge: 'Essential Checklist',
-    title: 'Accredited International Relocation & Global Talent Visas: 2026 Documentation Frameworks',
-    teaser: 'Credential assessment benchmarks, express-entry eligibility scoring, and licensed immigration advisors.',
-    imageUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80',
-    cta: 'Check Scoring',
-  },
-];
 ---
 
 <section
@@ -81,90 +23,23 @@ const NATIVE_BACKUP_CARDS = [
   class={`adsterra-native-wrapper my-7 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden transition-colors ${className}`}
   aria-label="Sponsored Content"
 >
-  <!-- Header Tag & Sponsorship Disclosures -->
-  <div class="flex items-center justify-between gap-2 mb-3.5 pb-2.5 border-b border-slate-100 dark:border-slate-800/80">
-    <div class="flex items-center gap-2">
-      <span class="relative flex h-2 w-2">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-      </span>
-      <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
-        {label}
-      </span>
-      <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold border border-amber-500/20 font-mono">
-        SPONSORED
-      </span>
-    </div>
+  <div class="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800/80">
+    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-mono">
+      {label}
+    </span>
     <a
       href="/contact#advertise"
       class="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium border border-slate-200 dark:border-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
     >
-      Partner With 9jaBeacon
+      Advertise
     </a>
   </div>
 
-  <!-- Adsterra Container Target -->
-  <div class="w-full relative min-h-[160px]">
+  <div class="w-full min-h-[120px] flex justify-center items-center">
     <div id={containerId} class="w-full flex justify-center"></div>
-
-    <!-- Resilient Native Fallback: Displays 4 distinct high-converting cards if ad network script is blocked or empty -->
-    <div
-      id={`${containerId}-fallback`}
-      class="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1"
-    >
-      {NATIVE_BACKUP_CARDS.map((card) => (
-        <a
-          href={effectiveSmartlink}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
-          class="flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-emerald-50/40 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 hover:border-emerald-500/40 transition-all group shadow-xs"
-        >
-          <div class="w-full h-28 rounded-lg overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 mb-2.5 relative">
-            <img
-              src={card.imageUrl}
-              alt={card.title}
-              loading="lazy"
-              decoding="async"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-amber-300 text-[8px] font-black uppercase font-mono">
-              {card.badge}
-            </span>
-          </div>
-          <div class="flex-1 flex flex-col justify-between">
-            <div>
-              <span class="text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 font-mono block mb-1">
-                {card.category}
-              </span>
-              <p class="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">
-                {card.title}
-              </p>
-            </div>
-            <span class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-2.5 inline-flex items-center gap-1 font-bold group-hover:underline">
-              {card.cta} &rarr;
-            </span>
-          </div>
-        </a>
-      ))}
-    </div>
   </div>
 
-  <!-- Adsterra Native Banner Script Tag (Optional / Non-Blocking) -->
   {scriptUrl && (
     <script is:inline async="async" data-cfasync="false" src={scriptUrl}></script>
   )}
-
-  <script is:inline define:vars={{ containerId }}>
-    // If Adsterra injects units into the container, hide the fallback to avoid duplicate stacking
-    const target = document.getElementById(containerId);
-    const fallback = document.getElementById(containerId + '-fallback');
-    if (target && fallback) {
-      const observer = new MutationObserver(() => {
-        if (target.children.length > 0) {
-          fallback.style.display = 'none';
-        }
-      });
-      observer.observe(target, { childList: true, subtree: true });
-    }
-  </script>
 </section>
