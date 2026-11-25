@@ -2,7 +2,6 @@
 import Layout from '../layouts/Layout.astro';
 import TrendingBar from '../components/TrendingBar.astro';
 import TopStoryCard from '../components/TopStoryCard.astro';
-import HeroCarousel from '../components/HeroCarousel.astro';
 import ArticleCard from '../components/ArticleCard.astro';
 import MostReadSection from '../components/MostReadSection.astro';
 import FAQSection from '../components/FAQSection.astro';
@@ -17,7 +16,6 @@ export const prerender = false;
 let latestArticles: Article[] = [];
 let d1Available = true;
 
-// Prefer path /page/N (middleware redirects ?page= here). Fallback query only during transition.
 const pathPage = Astro.params.page ? parseInt(String(Astro.params.page), 10) : NaN;
 const queryPage = parseInt(Astro.url.searchParams.get('page') || '1', 10);
 const page = Math.max(1, Number.isFinite(pathPage) ? pathPage : (Number.isFinite(queryPage) ? queryPage : 1));
@@ -34,7 +32,6 @@ try {
 
 const hasNextPage = latestArticles.length > pageSize;
 const currentFeed = latestArticles.slice(0, pageSize);
-const heroSlides = page === 1 ? currentFeed.slice(0, 6) : [];
 const effectiveTopStory = page === 1 && currentFeed[0] ? currentFeed[0] : null;
 const breakingNews = page === 1 ? currentFeed.filter((a) => Number(a.is_breaking) === 1).slice(0, 1) : [];
 const mostRead = page === 1 ? currentFeed.slice(0, 5) : [];
@@ -44,12 +41,9 @@ const pageHref = (n: number) => (n <= 1 ? `${siteBase}/` : `${siteBase}/page/${n
 const prevUrl = page > 1 ? pageHref(page - 1) : undefined;
 const nextUrl = hasNextPage ? pageHref(page + 1) : undefined;
 
-const useCarousel = page === 1 && heroSlides.length > 0;
 const DEFAULT_ADSTERRA_CONTAINER = 'container-4e5de78ab786afbf822590e03b1b657e';
 const DEFAULT_ADSTERRA_SCRIPT =
   'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js';
-const smartLink =
-  'https://www.profitableratecpmnetwork.com/ip0y1pan?key=406d5b2ea65353486dc2e9a7547d5ead';
 
 const title =
   page > 1
@@ -58,7 +52,7 @@ const title =
 const description =
   page > 1
     ? 'More Nigerian news: politics, business, sports and world stories from 9jaBeacon.'
-    : "Nigeria's independent digital newsroom. Fast, verified Nigerian news.";
+    : "Nigeria's digital newsroom. Fast, verified Nigerian news.";
 ---
 
 <Layout
@@ -100,15 +94,21 @@ const description =
     </div>
   </div>
 
-  {page === 1 && useCarousel && (
-    <HeroCarousel
-      slides={heroSlides}
-      adsterraContainerId={DEFAULT_ADSTERRA_CONTAINER}
-      adsterraScriptUrl={DEFAULT_ADSTERRA_SCRIPT}
-      smartLinkUrl={smartLink}
-    />
+  {/* Static Adsterra banner only — no scrolling carousel */}
+  {page === 1 && (
+    <div class="mb-6 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-900">
+      <div class="flex items-center justify-between px-3 py-2 border-b border-slate-800">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400">Sponsored</span>
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Adsterra</span>
+      </div>
+      <div class="min-h-[120px] flex items-center justify-center p-3">
+        <div id={DEFAULT_ADSTERRA_CONTAINER} class="w-full flex justify-center"></div>
+      </div>
+      <script is:inline async="async" data-cfasync="false" src={DEFAULT_ADSTERRA_SCRIPT}></script>
+    </div>
   )}
-  {page === 1 && !useCarousel && effectiveTopStory && (
+
+  {page === 1 && effectiveTopStory && (
     <div class="mt-2 mb-6">
       <TopStoryCard article={effectiveTopStory} />
     </div>
