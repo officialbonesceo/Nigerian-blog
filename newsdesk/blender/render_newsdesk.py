@@ -478,9 +478,9 @@ def apply_facial_and_lipsync(path):
 
 apply_facial_and_lipsync(A.lipsync)
 
-bpy.ops.object.camera_add(location=(0, -3.2, 0.95))
+bpy.ops.object.camera_add(location=(0, -4.5, 0.55))
 cam = bpy.context.object
-cam.data.lens = 40
+cam.data.lens = 35
 bpy.context.scene.camera = cam
 
 def camkey(f, loc, target, lens):
@@ -491,38 +491,38 @@ def camkey(f, loc, target, lens):
     cam.keyframe_insert(data_path="rotation_euler", frame=f)
     cam.data.keyframe_insert(data_path="lens", frame=f)
 
-# Open on desk front (logo zone), then rise to presenter face
-camkey(1, (0.0, -3.2, 0.95), (0.0, 0.2, 0.85), 40)
-camkey(int(LAST * 0.22), (0.0, -3.6, 1.25), (0.0, 0.15, 1.05), 38)
-camkey(int(LAST * 0.45), (0.15, -3.8, 1.55), (0.0, 0.12, 1.28), 36)
-camkey(int(LAST * 0.70), (0.2, -3.5, 1.65), (0.0, 0.1, 1.38), 38)
-camkey(LAST, (0.05, -3.2, 1.58), (0.0, 0.08, 1.35), 40)
+# Hold on DESK FRONT (logo panel), then slowly rise to face
+camkey(1, (0.0, -4.5, 0.55), (0.0, 0.0, 0.55), 35)
+camkey(int(LAST * 0.28), (0.0, -4.2, 0.65), (0.0, 0.05, 0.70), 36)
+camkey(int(LAST * 0.48), (0.1, -4.0, 1.10), (0.0, 0.08, 1.05), 37)
+camkey(int(LAST * 0.72), (0.15, -3.6, 1.45), (0.0, 0.10, 1.30), 38)
+camkey(LAST, (0.05, -3.3, 1.55), (0.0, 0.08, 1.35), 40)
 set_linear_interp(cam)
 
 bpy.ops.object.light_add(type="AREA", location=(-3.0, -3.0, 4.2))
 L = bpy.context.object
-L.data.energy = 1100
-L.data.size = 7.0
+L.data.energy = 420
+L.data.size = 5.5
 L.data.color = (1.0, 0.98, 0.95)
 aim(L, (0, 0.1, 1.2))
 
 bpy.ops.object.light_add(type="AREA", location=(3.2, -1.0, 3.6))
 L2 = bpy.context.object
-L2.data.energy = 520
-L2.data.size = 5.0
+L2.data.energy = 220
+L2.data.size = 4.0
 L2.data.color = (0.9, 0.95, 1.0)
 aim(L2, (0, 0.1, 1.2))
 
 bpy.ops.object.light_add(type="AREA", location=(0.0, 2.8, 4.0))
 L3 = bpy.context.object
-L3.data.energy = 380
-L3.data.size = 4.5
+L3.data.energy = 160
+L3.data.size = 3.5
 aim(L3, (0, 0.1, 1.1))
 
 bpy.ops.object.light_add(type="AREA", location=(0.0, -2.2, 2.3))
 L4 = bpy.context.object
-L4.data.energy = 260
-L4.data.size = 3.2
+L4.data.energy = 90
+L4.data.size = 2.5
 L4.data.color = (1.0, 0.96, 0.92)
 aim(L4, (0, 0.1, 1.1))
 
@@ -533,8 +533,8 @@ if world is None:
 world.use_nodes = True
 bg = world.node_tree.nodes.get("Background")
 if bg:
-    bg.inputs[0].default_value = (0.14, 0.16, 0.18, 1)
-    bg.inputs[1].default_value = 0.55
+    bg.inputs[0].default_value = (0.06, 0.07, 0.09, 1)
+    bg.inputs[1].default_value = 0.25
 
 scene = bpy.context.scene
 scene.frame_start = 1
