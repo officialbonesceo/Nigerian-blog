@@ -1,9 +1,10 @@
 ---
 /**
- * Hero carousel: real news slides + one Adsterra ad slide (no fake sponsored cards).
+ * Hero carousel: news slides + one Adsterra 300x250 banner slide (no fake cards).
  */
 import type { Article } from '../lib/types';
 import { DEFAULT_FALLBACK_IMAGE_URL } from '../lib/fallback-image';
+import { getD1, getSiteSettings } from '../lib/runtime-db';
 
 interface Props {
   slides: Article[];
@@ -12,25 +13,30 @@ interface Props {
   smartLinkUrl?: string;
 }
 
-const {
-  slides,
-  adsterraContainerId = 'container-hero-4e5de78ab786afbf822590e03b1b657e',
-  adsterraScriptUrl = 'https://pl31396495.profitableratecpmnetwork.com/4e5de78ab786afbf822590e03b1b657e/invoke.js',
-} = Astro.props;
+const { slides } = Astro.props;
+
+let bannerKey = '6605a898998325cc0d10c2c5c77a29d8';
+try {
+  const db = getD1(Astro.locals);
+  const settings = await getSiteSettings(db);
+  if (settings.ad_banner_300x250_key) bannerKey = settings.ad_banner_300x250_key;
+} catch {}
+
+const srcDoc300x250 = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:0;display:flex;justify-content:center;align-items:center;background:#0f172a;overflow:hidden;min-height:100%;}</style></head><body><script>atOptions={'key':'${bannerKey}','format':'iframe','height':250,'width':300,'params':{}};<\/script><script src="https://www.highrevenueformat.com/${bannerKey}/invoke.js"><\/script></body></html>`;
 
 const newsCount = slides.length;
-const total = newsCount + 1; // +1 Adsterra slide
+const total = newsCount + 1;
 ---
 
 <section
   id="hero-carousel"
   class="relative w-full rounded-2xl overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 bg-slate-900 mb-6"
   data-news-ms="4500"
-  data-ad-ms="7000"
+  data-ad-ms="8000"
   data-news-count={String(newsCount)}
   data-total={String(total)}
   aria-roledescription="carousel"
-  aria-label="Top stories by category"
+  aria-label="Top stories"
 >
   <div class="relative aspect-[16/10] sm:aspect-[21/9] w-full">
     {slides.map((article, i) => {
@@ -87,7 +93,7 @@ const total = newsCount + 1; // +1 Adsterra slide
       );
     })}
 
-    <!-- Adsterra only — no fake sponsored cards -->
+    <!-- Adsterra 300x250 banner slide -->
     <div
       class={`hero-slide absolute inset-0 transition-opacity duration-500 opacity-0 z-0 pointer-events-none`}
       data-index={String(newsCount)}
@@ -96,15 +102,22 @@ const total = newsCount + 1; // +1 Adsterra slide
       role="group"
       aria-label="Sponsored"
     >
-      <div class="w-full h-full bg-slate-950 flex flex-col p-3 sm:p-4">
-        <div class="flex items-center justify-between gap-2 mb-2 shrink-0">
+      <div class="w-full h-full bg-slate-950 flex flex-col items-center justify-center p-3 sm:p-4">
+        <div class="flex items-center justify-between w-full max-w-[300px] mb-2 shrink-0">
           <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500 text-slate-950 text-[10px] font-extrabold uppercase tracking-wider">
             Sponsored
           </span>
           <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Adsterra</span>
         </div>
-        <div class="flex-1 min-h-0 flex items-center justify-center overflow-auto">
-          <div id={adsterraContainerId} class="w-full flex justify-center items-center"></div>
+        <div class="w-[300px] h-[250px] min-w-[300px] min-h-[250px] overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900 flex items-center justify-center">
+          <iframe
+            srcdoc={srcDoc300x250}
+            width="300"
+            height="250"
+            loading="lazy"
+            title="Sponsored Advertisement"
+            class="border-0 w-[300px] h-[250px] overflow-hidden block"
+          />
         </div>
       </div>
     </div>
@@ -131,10 +144,6 @@ const total = newsCount + 1; // +1 Adsterra slide
   </div>
 </section>
 
-{adsterraScriptUrl && (
-  <script is:inline async="async" data-cfasync="false" src={adsterraScriptUrl}></script>
-)}
-
 <script is:inline>
   (function () {
     function initHero() {
@@ -143,7 +152,7 @@ const total = newsCount + 1; // +1 Adsterra slide
       root.setAttribute('data-hero-bound', '1');
 
       var newsMs = parseInt(root.getAttribute('data-news-ms') || '4500', 10);
-      var adMs = parseInt(root.getAttribute('data-ad-ms') || '7000', 10);
+      var adMs = parseInt(root.getAttribute('data-ad-ms') || '8000', 10);
       var total = parseInt(root.getAttribute('data-total') || '1', 10);
       if (total < 1) return;
 

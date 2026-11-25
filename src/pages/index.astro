@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import TrendingBar from '../components/TrendingBar.astro';
 import TopStoryCard from '../components/TopStoryCard.astro';
+import HeroCarousel from '../components/HeroCarousel.astro';
 import ArticleCard from '../components/ArticleCard.astro';
 import MostReadSection from '../components/MostReadSection.astro';
 import FAQSection from '../components/FAQSection.astro';
@@ -31,6 +32,7 @@ try {
 
 const hasNextPage = latestArticles.length > pageSize;
 const currentFeed = latestArticles.slice(0, pageSize);
+const heroSlides = page === 1 ? currentFeed.slice(0, 6) : [];
 const effectiveTopStory = page === 1 && currentFeed[0] ? currentFeed[0] : null;
 const breakingNews = page === 1 ? currentFeed.filter((a) => Number(a.is_breaking) === 1).slice(0, 1) : [];
 const mostRead = page === 1 ? currentFeed.slice(0, 5) : [];
@@ -39,6 +41,8 @@ const siteBase = 'https://www.9jabeacon.name.ng';
 const pageHref = (n: number) => (n <= 1 ? `${siteBase}/` : `${siteBase}/page/${n}`);
 const prevUrl = page > 1 ? pageHref(page - 1) : undefined;
 const nextUrl = hasNextPage ? pageHref(page + 1) : undefined;
+
+const useCarousel = page === 1 && heroSlides.length > 0;
 
 const title =
   page > 1
@@ -89,7 +93,10 @@ const description =
     </div>
   </div>
 
-  {page === 1 && effectiveTopStory && (
+  {page === 1 && useCarousel && (
+    <HeroCarousel slides={heroSlides} />
+  )}
+  {page === 1 && !useCarousel && effectiveTopStory && (
     <div class="mt-2 mb-6">
       <TopStoryCard article={effectiveTopStory} />
     </div>
