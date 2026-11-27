@@ -1,22 +1,22 @@
 {
   "project": {
-    "fps": 10,
-    "width": 640,
-    "height": 360,
-    "duration_seconds": 4,
-    "title": "9jaBeacon Desk — Sit pose fix"
+    "fps": 12,
+    "width": 720,
+    "height": 405,
+    "duration_seconds": 8,
+    "title": "9jaBeacon Desk — Broadcast style"
   },
   "character": "newsdesk/characters/female_executive.json",
   "desk_glb": "assets/presenter/Newsdesk.glb",
   "environment": "newsdesk/environments/studio_broadcast_v2.json",
-  "headline": "Skills over certificates",
-  "ticker": "",
+  "headline": "Skills over certificates — Minister Alausa",
+  "ticker": "9jaBeacon · NEWS · BUSINESS · FINANCE  ·  Skills over paper certificates  ·  Verified Nigerian news",
   "boards": [],
   "animation_plan": [
-    { "name": "Sit idle (chair)", "start": 0.0, "end": 4.0 }
+    { "name": "Sit idle (chair)", "start": 0.0, "end": 8.0 }
   ],
   "narration": {
-    "text": "Good evening from the 9jaBeacon desk. Education Minister Tunji Alausa says Nigeria needs competent workers, not just paper certificates.",
+    "text": "Good evening from the 9jaBeacon desk. Education Minister Tunji Alausa says Nigeria needs competent workers, not just paper certificates. Skills, he argues, must come first if the country is to build a capable workforce for the years ahead.",
     "voice": "en-NG-EzinneNeural"
   },
   "lipsync": true,
