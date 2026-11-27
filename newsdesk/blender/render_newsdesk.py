@@ -13,7 +13,7 @@ cfg = seed["project"]
 FPS = min(int(cfg.get("fps", 16)), 24)
 W = min(int(cfg.get("width", 960)), 1280)
 H = min(int(cfg.get("height", 540)), 720)
-DUR = min(float(cfg.get("duration_seconds", 8)), 18.0)
+DUR = min(float(cfg.get("duration_seconds", 8)), 20.0)
 LAST = max(16, int(FPS * DUR))
 
 def load_json(path):
@@ -136,8 +136,8 @@ def place_on_floor(root):
     root.location.z -= mins.z
     bpy.context.view_layer.update()
 
-m_floor = mat("Floor", (0.12, 0.13, 0.15), 0.55, metallic=0.05)
-m_wall = mat("Wall", (0.10, 0.12, 0.16), 0.85)
+m_floor = mat("Floor", (0.08, 0.10, 0.11), 0.4, metallic=0.15)
+m_wall = mat("Wall", (0.04, 0.12, 0.08), 0.85)
 m_ceil = mat("Ceil", (0.08, 0.09, 0.11), 0.9)
 cube("FLOOR", (0, 0.5, -0.02), (22, 16, 0.08), m_floor)
 cube("BACK", (0, 5.5, 2.6), (20, 0.12, 5.6), m_wall)
@@ -478,9 +478,63 @@ def apply_facial_and_lipsync(path):
 
 apply_facial_and_lipsync(A.lipsync)
 
-bpy.ops.object.camera_add(location=(0, -4.5, 0.55))
+# --- Broadcast lower-third (red news bar + green brand) ---
+headline = str(seed.get("headline") or "9jaBeacon News")[:64]
+
+def emission_mat(name, color, strength=3.0):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs[0].default_value = (*color, 1)
+    em.inputs[1].default_value = strength
+    nt.links.new(em.outputs[0], out.inputs[0])
+    return m
+
+m_red = emission_mat("LT_RED", (0.85, 0.08, 0.12), 4.0)
+cube("LT_RED_BAR", (0.0, -2.85, 0.22), (3.6, 0.02, 0.035), m_red)
+m_green = emission_mat("LT_GREEN", (0.05, 0.65, 0.32), 3.5)
+cube("LT_GREEN_BAR", (0.0, -2.85, 0.32), (3.6, 0.02, 0.12), m_green)
+m_plate = mat("LT_PLATE", (0.02, 0.03, 0.04), 0.7)
+cube("LT_PLATE", (0.0, -2.84, 0.48), (3.6, 0.015, 0.22), m_plate)
+try:
+    bpy.ops.object.text_add(location=(-1.65, -2.82, 0.42))
+    t = bpy.context.object
+    t.name = "LT_HEADLINE"
+    t.data.body = headline
+    t.data.size = 0.09
+    t.data.extrude = 0.002
+    t.rotation_euler = Euler((math.radians(90), 0, 0), "XYZ")
+    mt = mat("LT_TEXT", (1.0, 1.0, 1.0), 0.3)
+    if t.data.materials:
+        t.data.materials[0] = mt
+    else:
+        t.data.materials.append(mt)
+except Exception as e:
+    print("LT_TEXT_FAIL", e, flush=True)
+try:
+    bpy.ops.object.text_add(location=(-1.65, -2.82, 0.28))
+    t2 = bpy.context.object
+    t2.name = "LT_BRAND"
+    t2.data.body = "9jaBeacon"
+    t2.data.size = 0.055
+    t2.data.extrude = 0.001
+    t2.rotation_euler = Euler((math.radians(90), 0, 0), "XYZ")
+    mt2 = mat("LT_BRAND_MAT", (0.9, 1.0, 0.92), 0.3)
+    if t2.data.materials:
+        t2.data.materials[0] = mt2
+    else:
+        t2.data.materials.append(mt2)
+except Exception as e:
+    print("LT_BRAND_FAIL", e, flush=True)
+print("LOWER_THIRD_OK", headline[:40], flush=True)
+
+bpy.ops.object.camera_add(location=(0, -5.2, 1.15))
 cam = bpy.context.object
-cam.data.lens = 35
+cam.data.lens = 28
 bpy.context.scene.camera = cam
 
 def camkey(f, loc, target, lens):
@@ -491,40 +545,40 @@ def camkey(f, loc, target, lens):
     cam.keyframe_insert(data_path="rotation_euler", frame=f)
     cam.data.keyframe_insert(data_path="lens", frame=f)
 
-# Hold on DESK FRONT (logo panel), then slowly rise to face
-camkey(1, (0.0, -4.5, 0.55), (0.0, 0.0, 0.55), 35)
-camkey(int(LAST * 0.28), (0.0, -4.2, 0.65), (0.0, 0.05, 0.70), 36)
-camkey(int(LAST * 0.48), (0.1, -4.0, 1.10), (0.0, 0.08, 1.05), 37)
-camkey(int(LAST * 0.72), (0.15, -3.6, 1.45), (0.0, 0.10, 1.30), 38)
-camkey(LAST, (0.05, -3.3, 1.55), (0.0, 0.08, 1.35), 40)
+camkey(1, (0.0, -5.2, 1.15), (0.0, 0.3, 0.85), 28)
+camkey(int(LAST * 0.22), (0.0, -4.6, 1.05), (0.0, 0.2, 0.90), 30)
+camkey(int(LAST * 0.45), (0.05, -4.0, 1.25), (0.0, 0.12, 1.15), 34)
+camkey(int(LAST * 0.70), (0.1, -3.5, 1.45), (0.0, 0.10, 1.32), 38)
+camkey(LAST, (0.0, -3.2, 1.52), (0.0, 0.08, 1.35), 40)
 set_linear_interp(cam)
 
-bpy.ops.object.light_add(type="AREA", location=(-3.0, -3.0, 4.2))
+bpy.ops.object.light_add(type="AREA", location=(-2.8, -2.8, 3.8))
 L = bpy.context.object
-L.data.energy = 420
-L.data.size = 5.5
-L.data.color = (1.0, 0.98, 0.95)
+L.data.energy = 380
+L.data.size = 5.0
+L.data.color = (0.95, 1.0, 0.96)
 aim(L, (0, 0.1, 1.2))
 
-bpy.ops.object.light_add(type="AREA", location=(3.2, -1.0, 3.6))
+bpy.ops.object.light_add(type="AREA", location=(2.8, -1.2, 3.4))
 L2 = bpy.context.object
-L2.data.energy = 220
+L2.data.energy = 200
 L2.data.size = 4.0
-L2.data.color = (0.9, 0.95, 1.0)
+L2.data.color = (0.75, 1.0, 0.85)
 aim(L2, (0, 0.1, 1.2))
 
-bpy.ops.object.light_add(type="AREA", location=(0.0, 2.8, 4.0))
+bpy.ops.object.light_add(type="AREA", location=(0.0, 2.5, 3.6))
 L3 = bpy.context.object
-L3.data.energy = 160
+L3.data.energy = 140
 L3.data.size = 3.5
+L3.data.color = (0.7, 1.0, 0.8)
 aim(L3, (0, 0.1, 1.1))
 
-bpy.ops.object.light_add(type="AREA", location=(0.0, -2.2, 2.3))
+bpy.ops.object.light_add(type="AREA", location=(0.0, -1.8, 0.9))
 L4 = bpy.context.object
-L4.data.energy = 90
-L4.data.size = 2.5
-L4.data.color = (1.0, 0.96, 0.92)
-aim(L4, (0, 0.1, 1.1))
+L4.data.energy = 120
+L4.data.size = 2.8
+L4.data.color = (0.2, 0.95, 0.45)
+aim(L4, (0, 0.0, 0.6))
 
 world = bpy.context.scene.world
 if world is None:
@@ -533,8 +587,8 @@ if world is None:
 world.use_nodes = True
 bg = world.node_tree.nodes.get("Background")
 if bg:
-    bg.inputs[0].default_value = (0.06, 0.07, 0.09, 1)
-    bg.inputs[1].default_value = 0.25
+    bg.inputs[0].default_value = (0.04, 0.08, 0.06, 1)
+    bg.inputs[1].default_value = 0.22
 
 scene = bpy.context.scene
 scene.frame_start = 1
@@ -545,7 +599,7 @@ try:
 except Exception:
     scene.render.engine = "BLENDER_EEVEE"
 if hasattr(scene, "eevee"):
-    scene.eevee.taa_render_samples = 12 if LAST <= 60 else 10
+    scene.eevee.taa_render_samples = 10 if LAST <= 100 else 8
 scene.render.resolution_x = W
 scene.render.resolution_y = H
 out_abs = os.path.abspath(A.output)
