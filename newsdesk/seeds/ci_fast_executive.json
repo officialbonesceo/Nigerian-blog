@@ -1,16 +1,16 @@
 {
   "project": {
-    "fps": 12,
-    "width": 720,
-    "height": 405,
+    "fps": 16,
+    "width": 1280,
+    "height": 720,
     "duration_seconds": 8,
-    "title": "9jaBeacon Desk — Broadcast style"
+    "title": "9jaBeacon Desk — HD broadcast"
   },
   "character": "newsdesk/characters/female_executive.json",
   "desk_glb": "assets/presenter/Newsdesk.glb",
   "environment": "newsdesk/environments/studio_broadcast_v2.json",
   "headline": "Skills over certificates — Minister Alausa",
-  "ticker": "9jaBeacon · NEWS · BUSINESS · FINANCE  ·  Skills over paper certificates  ·  Verified Nigerian news",
+  "ticker": "9jaBeacon · NEWS · BUSINESS · FINANCE  ·  Skills over paper certificates",
   "boards": [],
   "animation_plan": [
     { "name": "Sit idle (chair)", "start": 0.0, "end": 8.0 }
