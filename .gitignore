@@ -5,16 +5,31 @@ dist/
 
 # Environment Variables & Secrets
 .env
-.env.local
-.env.production
-.env.development
+.env.*
+!.env.example
 
-# Ephemeral local SQLite build/ingestion database
+# Local DBs
 9jabeacon.db
 9jabeacon.db-wal
 9jabeacon.db-shm
+local.sqlite
+*.sqlite
+*.db
 
-# OS & Editor files
+# Secrets / credentials (never commit)
+**/secrets/
+**/*credential*
+**/*service-account*.json
+**/firebase-adminsdk*.json
+.wrangler/state/
+
+# Render outputs
+output/
+*.mp4
+*.wav
+*_frames/
+
+# OS & Editor
 .DS_Store
 Thumbs.db
 .vscode/

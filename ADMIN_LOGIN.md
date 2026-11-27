@@ -1,22 +1,9 @@
-# 9jaBeacon Admin Login
+# Admin access
 
-## How to access the admin panel
+Admin login is at `/bonesceo/admin/login`.
 
-1. Go to: `/bonesceo/admin/login`
-2. Use this email: `officialbonesceo@gmail.com`
-3. Password options that currently work:
-   - `BonesCeo@9jaBeacon2026!`
-   - `admin123` (temporary recovery password)
+**Never commit passwords, recovery codes, or real secrets here.**
 
-## After login
-You will be redirected to `/bonesceo/admin`
-
-## Important
-- Change the password as soon as possible from the admin settings.
-- The Google button is not full OAuth yet — use email + password for now.
-
-## What was fixed
-- Fake engagement numbers removed
-- Newspaper logos (Punch, Vanguard, etc.) rejected
-- Strong category mapping added (Money / Sports / World / Naija)
-- Multi-category support for cases like player transfers (Sports + Money)
+- Set admin credentials only in production (Cloudflare / D1 / env).
+- Use a strong unique password.
+- Prefer environment variables for any auth secrets.
