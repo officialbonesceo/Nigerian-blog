@@ -1,0 +1,119 @@
+name: Presenter Render
+
+# 3D presenter + desk + TTS + lipsync + Blender. Manual dispatch only.
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "Seed JSON path"
+        required: true
+        default: "newsdesk/seeds/ci_fast_executive.json"
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      SEED_FILE: ${{ github.event.inputs.seed || 'newsdesk/seeds/ci_fast_executive.json' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            blender ffmpeg fonts-dejavu-core python3-numpy \
+            libegl1 libgl1 libxrender1 libxi6 libxkbcommon0 \
+            wget unzip
+          python3 -m pip install --user --upgrade edge-tts numpy
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+          BLENDER_PY=$(blender --background --python-expr "import sys; print(sys.executable)" 2>/dev/null | tail -1 || true)
+          if [ -n "$BLENDER_PY" ] && [ -x "$BLENDER_PY" ]; then
+            "$BLENDER_PY" -m pip install --user numpy 2>/dev/null || true
+          fi
+
+          RH_VER=1.13.0
+          wget -q "https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v${RH_VER}/Rhubarb-Lip-Sync-${RH_VER}-Linux.zip" -O /tmp/rhubarb.zip
+          sudo unzip -o /tmp/rhubarb.zip -d /opt/rhubarb
+          RH_DIR=$(find /opt/rhubarb -maxdepth 2 -type d -name "Rhubarb*" | head -1)
+          sudo ln -sf "$RH_DIR/rhubarb" /usr/local/bin/rhubarb
+          rhubarb --version || true
+          blender --version | head -1
+
+      - name: Validate seed + models
+        run: |
+          python3 -m json.tool "$SEED_FILE" > /tmp/seed.json
+          CHAR=$(python3 -c "import json; print(json.load(open('/tmp/seed.json'))['character'])")
+          python3 -m json.tool "$CHAR" > /dev/null
+          GLB=$(python3 -c "import json; print(json.load(open('$CHAR')).get('model_glb',''))")
+          DESK=$(python3 -c "import json; print(json.load(open('/tmp/seed.json')).get('desk_glb','assets/presenter/Newsdesk.glb'))")
+          FRAMES=$(python3 -c "import json; p=json.load(open('/tmp/seed.json'))['project']; print(int(p.get('fps',10)*float(p.get('duration_seconds',4))))")
+          echo "OK seed=$SEED_FILE frames≈$FRAMES"
+          test -f "$GLB" || { echo "Character GLB missing"; exit 1; }
+          test -f "$DESK" || echo "Desk GLB optional missing"
+
+      - name: Generate narration
+        run: |
+          python3 <<'PY'
+          import json, asyncio, os, pathlib, subprocess
+          seed = json.load(open(os.environ["SEED_FILE"]))
+          nar = seed.get("narration", {})
+          text = nar.get("text") or seed.get("headline", "News desk update.")
+          voice = nar.get("voice", "en-NG-EzinneNeural")
+          out = pathlib.Path("output/newsdesk")
+          out.mkdir(parents=True, exist_ok=True)
+          mp3 = out / "narration.mp3"
+          wav = out / "narration.wav"
+          async def main():
+              import edge_tts
+              await edge_tts.Communicate(text, voice).save(str(mp3))
+          asyncio.run(main())
+          subprocess.check_call([
+              "ffmpeg", "-y", "-i", str(mp3),
+              "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
+              str(wav)
+          ])
+          print("narration ok", voice)
+          PY
+
+      - name: Lipsync
+        run: |
+          mkdir -p output/newsdesk
+          rhubarb -f json -o output/newsdesk/mouth.json \
+            -r phonetic output/newsdesk/narration.wav \
+            || rhubarb -f json -o output/newsdesk/mouth.json output/newsdesk/narration.wav
+
+      - name: Blender render
+        run: |
+          mkdir -p output/newsdesk
+          export PYTHONPATH="$(python3 -c 'import numpy,os; print(os.path.dirname(os.path.dirname(numpy.__file__)))'):${PYTHONPATH:-}"
+          set +e
+          blender --background --factory-startup --python newsdesk/blender/render_newsdesk.py -- \
+            --seed "$SEED_FILE" \
+            --output output/newsdesk/scene-silent.mp4 \
+            --lipsync output/newsdesk/mouth.json
+          BR=$?
+          set -e
+          test -f output/newsdesk/scene-silent.mp4 || { echo "no video"; exit 1; }
+
+      - name: Assemble MP4
+        run: |
+          ffmpeg -y -i output/newsdesk/scene-silent.mp4 -i output/newsdesk/narration.mp3 \
+            -map 0:v:0 -map 1:a:0 -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p \
+            -c:a aac -b:a 128k -shortest -movflags +faststart \
+            output/newsdesk/presenter-render.mp4
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: presenter-render
+          path: |
+            output/newsdesk/presenter-render.mp4
+            output/newsdesk/mouth.json
+            output/newsdesk/narration.mp3
+          if-no-files-found: error
+          retention-days: 7
